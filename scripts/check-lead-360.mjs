@@ -8,7 +8,20 @@ const route = read(contract.route);
 const timeline = read(contract.timelineRoute);
 const page = read(contract.page);
 const failures = [];
-const markers = { identity: "storedLead", origin: "origin:", history: "activities", score: "lead.score", activities: "eventResult", development: "projectResult", owner: "ownerResult", communications: "communications:", pipeline: "opportunities:", nextAction: "contactBriefing" };
+// ── MARCADOR REAPONTADO EM 2026-08-03 — `activities` ────────────────────────
+//
+// Era `eventResult`, o nome da variável que recebia o resultado de registrar
+// uma interação. A variável deixou de existir em aea092f5 ("a ficha para de
+// dizer 'sem interação' para 416 leads que têm histórico"), quando o registro
+// passou por `recordLiveLeadEvent` e a leitura passou a montar `activities` a
+// partir de `historico.interacoes`. A ÁREA não sumiu: ficou mais rica.
+//
+// O marcador novo é a função de escrita, e não um nome de variável. Nome de
+// variável é a coisa mais fácil de trocar sem mudar nada — um marcador assim
+// reprova refatoração e aprova regressão, que é o inverso do que se quer. A
+// função é o que precisa continuar existindo para a ficha poder registrar
+// interação.
+const markers = { identity: "storedLead", origin: "origin:", history: "activities", score: "lead.score", activities: "recordLiveLeadEvent(", development: "projectResult", owner: "ownerResult", communications: "communications:", pipeline: "opportunities:", nextAction: "contactBriefing" };
 for (const area of contract.requiredAreas) if (!route.includes(markers[area]) && !page.includes(markers[area])) failures.push(`área ausente: ${area}`);
 if (!route.includes("requireLeadAccess(identity, id)") || !route.includes('eq("organization_id", identity.organizationId)')) failures.push("Lead 360 sem escopo canônico");
 if (!timeline.includes('const db = identity.supabase') || !timeline.includes('db.from("messages")') || !timeline.includes('db.from("conversations")')) failures.push("comunicações não respeitam RLS do usuário");

@@ -344,17 +344,6 @@ textarea:focus {
   background: var(--atlas-surface);
   box-shadow: none;
 }
-.atlas-panel-hover {
-  transition:
-    transform 0.25s ease,
-    border-color 0.25s ease,
-    box-shadow 0.25s ease;
-}
-.atlas-panel-hover:hover {
-  transform: none;
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: none;
-}
 .atlas-metric {
   position: relative;
   overflow: hidden;
@@ -4850,7 +4839,7 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
 .atlas-ambient-orb { animation: none; opacity: .05; filter: blur(120px); transform: translateZ(0); }
 .atlas-panel { content-visibility: auto; contain-intrinsic-block-size: auto 420px; backdrop-filter: none; }
 .atlas-app-topbar, .atlas-sidebar { backdrop-filter: blur(20px) saturate(140%); }
-@media (hover: none) { .atlas-panel-hover:hover, .atlas-metric:hover { transform: none; } }
+@media (hover: none) { .atlas-metric:hover { transform: none; } }
 @media (max-width: 639px) { .atlas-ambient-orb-two { display: none; } .atlas-ambient-orb-one { opacity: .06; filter: blur(62px); } .atlas-app-topbar, .atlas-sidebar { backdrop-filter: blur(12px); } }
 
 /* Lead 360 — prioridade visual para a ação que move a venda */
@@ -7417,6 +7406,209 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
     container-type: inline-size;
   }
 
+  /* ── A DENSIDADE PRECISA ALCANÇAR A PRIMITIVA ────────────────────────────
+     MEDIDO em 02/08/2026: o modo compacto tocava 8 seletores — cabeçalho de
+     página, cabeçalho de cartão, métrica, célula de tabela e estado vazio. E
+     NENHUM deles é onde a página gasta altura: o produto empilha `.cc6-panel`
+     (563 usos) cujo padding vem de `p-5`/`p-4`/`p-6` no `.tsx`, dentro de
+     grades cujo gap vem de `gap-4`/`gap-3`. Nada disso era alcançado. O botão
+     existia, mudava um atributo, e a tela ficava praticamente igual.
+
+     ── A PRIMEIRA TENTATIVA ESTAVA ERRADA, E O ERRO VALE REGISTRO ──────────
+     No Tailwind v4 todo `p-*` e `gap-*` deriva de uma raiz só (medido no
+     bundle SERVIDO: `.p-5 { padding: calc(var(--spacing) * 5) }`). Redefinir
+     `--spacing` no shell compacto resolveria tudo com UMA declaração.
+
+     Só que `--spacing` também alimenta `w-*`, `h-*` e `min-h-*`. E entre eles
+     está `min-h-11` — 117 usos, que é exatamente o alvo de toque de 44px do
+     v3. Com `--spacing` a 0.2rem ele viraria 35,2px. Ou seja: a declaração
+     mais elegante rebaixava silenciosamente o piso de acessibilidade em 117
+     lugares, e nenhum portão pegaria — `check-linguagem-visual` confere os
+     44px das primitivas declaradas AQUI, em px literal, não os de `min-h-11`.
+     Ícones `h-4` cairiam junto, de 16px para 12,8px.
+
+     Por isso a densidade escala APENAS padding e gap, uma regra por
+     utilitário. São 120 regras geradas mecanicamente a partir dos utilitários
+     que o produto realmente usa (8.910 ocorrências em `.tsx`), não escritas à
+     mão. Verboso de propósito: o alcance é exatamente o que está escrito.
+
+     E preserva a INTENÇÃO de cada página: quem escolheu `p-3` continua mais
+     apertado que quem escolheu `p-6`. Uma regra que cravasse um padding único
+     na primitiva achataria essa diferença — e, como este arquivo é sem camada,
+     venceria o `.tsx` sem apelação, inclusive nos painéis que pedem `p-0`
+     para encostar uma tabela na borda.
+
+     Escopo: só no modo compacto, só a partir de 1180px, só dentro do shell.
+     O modo confortável não recebe nenhuma declaração nova — nada muda de
+     aparência para quem não aperta o botão. */
+  .atlas-app-shell[data-desktop-density="compact"] {
+    --atlas-densidade-fator: var(--atlas-densidade-compacta);
+  }
+
+  /* As 157 regras geradas: um utilitario por linha, propriedade por
+     propriedade. `--atlas-densidade-fator` e o unico numero a girar.
+     Padding, gap E MARGEM: os tres sao espaco entre coisas, e nenhum
+     deles e alvo de toque ou tamanho de icone. `w-*`, `h-*` e
+     `min-h-*` ficaram DE FORA de proposito — e o `min-h-11` (117 usos,
+     os 44px do v3) que essa fronteira protege. */
+  .atlas-app-shell[data-desktop-density="compact"] .mt-1 { margin-top: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-3 { gap: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-2 { margin-top: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-2 { gap: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-5 { padding: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-4 { padding: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-4 { margin-top: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-3 { margin-top: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-5 { padding-inline: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-3 { padding-block: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-6 { padding: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-4 { gap: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-3 { padding-inline: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-3 { padding: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-4 { padding-inline: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-1\.5 { margin-top: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-2\.5 { padding-block: calc(var(--spacing) * 2.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-0\.5 { margin-top: calc(var(--spacing) * 0.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-5 { margin-top: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-2 { padding-block: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-10 { padding-bottom: calc(var(--spacing) * 10 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-4 { padding-block: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pr-4 { padding-right: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-8 { padding: calc(var(--spacing) * 8 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-y-1 { row-gap: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pt-4 { padding-top: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-6 { margin-top: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pt-3 { padding-top: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-1\.5 { gap: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-y-2 { row-gap: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pt-5 { padding-top: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pl-5 { padding-left: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-3 { padding-bottom: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-6 { gap: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-x-4 { column-gap: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-x-3 { column-gap: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-4 { padding-bottom: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-3\.5 { padding-block: calc(var(--spacing) * 3.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pr-3 { padding-right: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-6 { padding-inline: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-y-4 { row-gap: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-1\.5 { padding-block: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-x-10 { column-gap: calc(var(--spacing) * 10 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-2 { padding-inline: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-1 { padding-block: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pl-4 { padding-left: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-x-2 { column-gap: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-5 { gap: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-y-3 { row-gap: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mb-2 { margin-bottom: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-5 { padding-bottom: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-1 { gap: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-2\.5 { padding-inline: calc(var(--spacing) * 2.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-1 { padding-bottom: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-8 { margin-top: calc(var(--spacing) * 8 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-12 { padding-bottom: calc(var(--spacing) * 12 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-0\.5 { padding-block: calc(var(--spacing) * 0.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-x-8 { column-gap: calc(var(--spacing) * 8 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-2\.5 { margin-top: calc(var(--spacing) * 2.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-x-6 { column-gap: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-6 { padding-block: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-8 { padding-block: calc(var(--spacing) * 8 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mb-3 { margin-bottom: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mb-4 { margin-bottom: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-8 { padding-bottom: calc(var(--spacing) * 8 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pt-2 { padding-top: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-2\.5 { gap: calc(var(--spacing) * 2.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-7 { padding: calc(var(--spacing) * 7 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pr-5 { padding-right: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-1\.5 { padding-inline: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .ml-1 { margin-left: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mx-5 { margin-inline: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-2 { padding: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-2 { padding-bottom: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-x-5 { column-gap: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .ml-2 { margin-left: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-y-0\.5 { row-gap: calc(var(--spacing) * 0.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mb-5 { margin-bottom: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pl-6 { padding-left: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pt-2\.5 { padding-top: calc(var(--spacing) * 2.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-5 { padding-block: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-3\.5 { padding-inline: calc(var(--spacing) * 3.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-y-1\.5 { row-gap: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mb-6 { margin-bottom: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pt-1 { padding-top: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pt-6 { padding-top: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-1 { padding-inline: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-10 { padding: calc(var(--spacing) * 10 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-3\.5 { padding: calc(var(--spacing) * 3.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mx-6 { margin-inline: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-20 { padding-block: calc(var(--spacing) * 20 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .ml-1\.5 { margin-left: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-6 { padding-bottom: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pl-3 { padding-left: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pr-1 { padding-right: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mr-1 { margin-right: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-7 { margin-top: calc(var(--spacing) * 7 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pr-1\.5 { padding-right: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pt-3\.5 { padding-top: calc(var(--spacing) * 3.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-10 { padding-inline: calc(var(--spacing) * 10 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-7 { padding-inline: calc(var(--spacing) * 7 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-8 { padding-inline: calc(var(--spacing) * 8 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-10 { padding-block: calc(var(--spacing) * 10 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-28 { padding-block: calc(var(--spacing) * 28 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-8 { gap: calc(var(--spacing) * 8 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-x-1\.5 { column-gap: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-x-2\.5 { column-gap: calc(var(--spacing) * 2.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-12 { margin-top: calc(var(--spacing) * 12 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-2\.5 { padding-bottom: calc(var(--spacing) * 2.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mb-8 { margin-bottom: calc(var(--spacing) * 8 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-3\.5 { margin-top: calc(var(--spacing) * 3.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mx-4 { margin-inline: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-0\.5 { padding-bottom: calc(var(--spacing) * 0.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-1\.5 { padding-bottom: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pl-1\.5 { padding-left: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pl-2 { padding-left: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pr-12 { padding-right: calc(var(--spacing) * 12 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pr-2 { padding-right: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-12 { padding-inline: calc(var(--spacing) * 12 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-14 { padding-inline: calc(var(--spacing) * 14 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-12 { padding-block: calc(var(--spacing) * 12 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .py-14 { padding-block: calc(var(--spacing) * 14 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-x-9 { column-gap: calc(var(--spacing) * 9 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mb-7 { margin-bottom: calc(var(--spacing) * 7 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .ml-10 { margin-left: calc(var(--spacing) * 10 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mr-2 { margin-right: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-10 { margin-top: calc(var(--spacing) * 10 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-9 { padding: calc(var(--spacing) * 9 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-16 { padding-bottom: calc(var(--spacing) * 16 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pl-8 { padding-left: calc(var(--spacing) * 8 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pt-0\.5 { padding-top: calc(var(--spacing) * 0.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-0\.5 { gap: calc(var(--spacing) * 0.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-10 { gap: calc(var(--spacing) * 10 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-12 { gap: calc(var(--spacing) * 12 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-14 { gap: calc(var(--spacing) * 14 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-24 { gap: calc(var(--spacing) * 24 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-y-5 { row-gap: calc(var(--spacing) * 5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mb-1 { margin-bottom: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mr-1\.5 { margin-right: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mr-3 { margin-right: calc(var(--spacing) * 3 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-14 { margin-top: calc(var(--spacing) * 14 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mt-9 { margin-top: calc(var(--spacing) * 9 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .my-4 { margin-block: calc(var(--spacing) * 4 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-1 { padding: calc(var(--spacing) * 1 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-12 { padding: calc(var(--spacing) * 12 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pr-11 { padding-right: calc(var(--spacing) * 11 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pr-14 { padding-right: calc(var(--spacing) * 14 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pr-6 { padding-right: calc(var(--spacing) * 6 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pt-1\.5 { padding-top: calc(var(--spacing) * 1.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pt-8 { padding-top: calc(var(--spacing) * 8 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .px-0\.5 { padding-inline: calc(var(--spacing) * 0.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .gap-x-7 { column-gap: calc(var(--spacing) * 7 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .mx-2 { margin-inline: calc(var(--spacing) * 2 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .p-2\.5 { padding: calc(var(--spacing) * 2.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pb-3\.5 { padding-bottom: calc(var(--spacing) * 3.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pl-3\.5 { padding-left: calc(var(--spacing) * 3.5 * var(--atlas-densidade-fator)); }
+  .atlas-app-shell[data-desktop-density="compact"] .pr-3\.5 { padding-right: calc(var(--spacing) * 3.5 * var(--atlas-densidade-fator)); }
+
   .atlas-app-shell[data-desktop-density="compact"] .atlas-app-main {
     padding-top: calc(var(--atlas-topbar-height) + 20px);
     padding-bottom: 40px;
@@ -7729,7 +7921,6 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 }
 
 .atlas-app-shell[data-visual-system="atlas-core-v2"] :is(
-  .atlas-panel-hover,
   .atlas-surface-card,
   .atlas-metric
 ):hover {
@@ -8031,16 +8222,9 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
    geometria (hairlines, faixa de severidade), acento único e semânticos via
    tokens do design system. Zero glow / drop-shadow novo. */
 
-/* Cabeçalho: eyebrow mono uppercase + data operacional mono. */
-.cc5-eyebrow {
-  margin: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--atlas-text-tertiary);
-}
+/* Cabeçalho: eyebrow mono uppercase + data operacional mono.
+   `.cc5-eyebrow` mudou de endereço: agora divide a regra com `.cc6-eyebrow`,
+   mais abaixo, porque os dois eram o mesmo rótulo com dois tracking. */
 .cc5-opdate {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
@@ -8390,14 +8574,29 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
    significado, profundidade por geometria (zero glow) e revelação gated.
    Todas as páginas consomem estas classes; nenhuma redefine identidade local. */
 
-.cc6-panel {
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  border-radius: 16px;
+/* ── A PRIMITIVA DE SUPERFÍCIE, E O SEU NOME OFICIAL ───────────────────────
+   Uma receita, dois nomes na MESMA regra. `.atlas-superficie` é o nome do v3;
+   `.cc6-panel` é o nome que 563 usos já escrevem. Apelido não é segunda
+   receita: se fossem duas regras, divergiriam — foi exatamente assim que este
+   arquivo chegou a 12 variantes de painel.
+
+   MODIFICADORES, e são só estes:
+     `--quiet`      (`.cc6-panel-quiet`)    superfície de dentro, mais baixa
+     `--destaque`   (`.cc6-destaque`)       borda de acento: isto importa
+     `--alerta`     (`.cc6-alerta`)         borda de perigo
+     `--interativo` (`.cc6-interativo`)     responde ao ponteiro
+   A regra de ouro: se for preciso ESCOLHER entre dois painéis, o padrão
+   falhou. Escolhe-se o MODIFICADOR, nunca a superfície. */
+.cc6-panel,
+.atlas-superficie {
+  border: 1px solid var(--atlas-superficie-borda);
+  border-radius: var(--atlas-superficie-raio);
   background: linear-gradient(180deg, #0f1830 0%, #0b1224 100%);
 }
-.cc6-panel-quiet {
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  border-radius: 12px;
+.cc6-panel-quiet,
+.atlas-superficie--quiet {
+  border: 1px solid var(--atlas-superficie-borda);
+  border-radius: var(--atlas-superficie-raio-quieto);
   background: rgba(15, 24, 48, 0.55);
 }
 /* ── BORDA DENTRO DE BORDA NÃO SEPARA NADA ────────────────────────────────
@@ -8443,7 +8642,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
    consumidor recriando o hover é uma divergência esperando acontecer. */
 .cc6-panel { transition: border-color 0.2s ease; }
 .cc6-panel:hover,
-.cc6-panel:has(:focus-visible) { border-color: rgba(148, 163, 184, 0.22); }
+.cc6-panel:has(:focus-visible) { border-color: var(--atlas-superficie-borda-forte); }
 
 /* ── O PAINEL NÃO VIRAVA COM O TEMA — 268 USOS ─────────────────────────────
    MEDIDO NA PRODUÇÃO em 01/08/2026, em /marketing, forçando `data-theme=light`
@@ -8484,7 +8683,86 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   background: rgba(15, 24, 48, 0.065);
   border-color: transparent;
 }
-.cc6-eyebrow {
+/* ── O SELO DE ESTADO: A CLASSE PASSA A SERVIR ─────────────────────────────
+   MEDIDO em 02/08/2026: `components/atlas/status-badge.tsx` (219 instâncias)
+   baixava `atlas-badge atlas-badge-<tom>` e, no MESMO className, anulava as
+   três propriedades que a variante existe para dar — `border-color`,
+   `background` e `color` — com utilitários `!`. As seis variantes eram
+   carregadas para serem descartadas: 100% do que `.atlas-badge-*` pinta era
+   sobrescrito. Mais `text-micro!` e `tracking-[0.14em]!` por cima do
+   `font-size: 11px` e do `letter-spacing: 0` da base.
+
+   O `!` não era capricho: `.atlas-badge-*` é regra SEM CAMADA, e sem camada
+   vence `@layer utilities`. Para o componente mandar na própria aparência, só
+   o `!important` resolvia. É a mesma armadilha que obrigou o AtlasCard a
+   repintar a receita do painel.
+
+   A saída não é mais um `!`: é a classe dizer a verdade. Estes valores não
+   foram escolhidos — foram LIDOS do `getComputedStyle` das 6 variantes contra
+   o CSS que o servidor entrega, e reproduzem o pixel exato de hoje.
+
+   `.atlas-badge-*` continua intocada: ela ainda serve os 17 usos diretos
+   (AtlasUI, CopilotDock, FeedbackCenter), que rendem OUTRO tratamento —
+   Geist 11px sem caixa alta. Duas aparências que sempre existiram, agora cada
+   uma declarada uma vez, em vez de uma declarada e desfeita. */
+.cc6-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--atlas-radius-pill);
+  padding: 5px 9px;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+.cc6-badge-neutral {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: rgba(148, 163, 184, 0.07);
+  color: var(--atlas-texto-medio);
+}
+.cc6-badge-info {
+  border-color: rgba(75, 141, 248, 0.32);
+  background: rgba(75, 141, 248, 0.1);
+  color: var(--atlas-accent-hover);
+}
+.cc6-badge-success {
+  border-color: rgba(52, 211, 153, 0.28);
+  background: rgba(52, 211, 153, 0.09);
+  color: var(--atlas-estado-sucesso);
+}
+.cc6-badge-warning {
+  border-color: rgba(245, 181, 68, 0.3);
+  background: rgba(245, 181, 68, 0.09);
+  color: var(--atlas-estado-atencao);
+}
+.cc6-badge-danger {
+  border-color: rgba(251, 113, 133, 0.3);
+  background: rgba(251, 113, 133, 0.1);
+  color: var(--atlas-estado-perigo);
+}
+/* "violet" nunca foi violeta: o CC-5 já o mapeava para a variante quieta do
+   acento único, para não abrir uma segunda cor decorativa. O nome ficou. */
+.cc6-badge-violet {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: rgba(148, 163, 184, 0.05);
+  color: var(--atlas-accent-hover);
+}
+
+/* ── UM RÓTULO SÓ ─────────────────────────────────────────────────────────
+   Havia TRÊS tratamentos de eyebrow em caixa alta, separados por nada além de
+   history: `.cc6-eyebrow` (.22em/500), `.cc5-eyebrow` (.14em/600) e a variante
+   que o AtlasCardHeader montava com `!` — também .14em, um terceiro valor.
+   A do AtlasCardHeader já caiu. Esta fecha a última: `.cc5-eyebrow` passa a
+   ser o mesmo tratamento, não um parecido.
+
+   `margin: 0` saiu junto e isso é seguro, não descuido: o reset do Tailwind já
+   zera a margem de `<p>` — medido, `margin` computa `0px` nas duas classes. */
+.cc6-eyebrow,
+.cc5-eyebrow {
   font-family: ui-monospace, "SF Mono", "Geist Mono", Menlo, monospace;
   font-size: 11px;
   font-weight: 500;

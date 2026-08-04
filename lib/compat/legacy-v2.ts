@@ -127,9 +127,57 @@ export const NEXT_ACTION_COLUMNS = [
   "purpose",
 ] as const;
 
+/**
+ * Colunas de ATIVIDADE. Terceiro grupo com a mesma doença, e o mais caro em
+ * confiança: aqui a interface não fica vazia, ela fica CONVINCENTE e errada.
+ *
+ * `mapLegacyLead` faz, desde sempre:
+ *
+ *   last_interaction_at: first(row, "last_interaction_at", "updated_at", "created_at")
+ *   updated_at:          first(row, "updated_at", "created_at")
+ *
+ * Nenhuma das duas canônicas estava em select nenhum, então as DUAS caíam em
+ * `created_at` — sempre, nas 490 leads. Medido em 02/08/2026 na base viva:
+ *
+ *   updated_at difere de created_at ....... 489 de 490
+ *   diferença maior que 1 dia ............. 468 de 490
+ *   last_interaction_at preenchido ........ 24, todas com valor ≠ created_at
+ *
+ * Efeito: a coluna "Último contato" da lista e o selo "parado há N dias" contam
+ * desde o CADASTRO. E como o mapeador entrega os dois campos PREENCHIDOS (com
+ * `created_at`), `proactiveSignal` enxerga `hasActivity = true` e carimba
+ * `basis: "atividade"` — a tela não erra só o número, ela atesta uma
+ * procedência que não tem. Medido numa lead real: selo "68d · base: atualização
+ * ou interação mais recente", quando a última interação foi há 3 dias.
+ *
+ * ── POR QUE AQUI E NÃO EM `LIVE_LEAD_SELECT` ────────────────────────────────
+ *
+ * Custo não é o motivo: são dois timestamptz, 8 B cada (medido com
+ * `pg_column_size`), 16 B por lead — 320 KB numa leitura de 20.000, contra os
+ * ~10 MB que `metadata` custaria. Barato entra no compartilhado, e o estendido
+ * É o compartilhado de quem lê lead: lista, Kanban, ficha, painel do corretor,
+ * SLA do time e o repositório de compatibilidade.
+ *
+ * O motivo é o degrau. `LIVE_LEAD_SELECT` é o ÚLTIMO degrau da escada — não há
+ * para onde cair depois dele. `updated_at` e `last_interaction_at` nasceram na
+ * MESMA migration que `next_action_at` (20260717213001, a ponte V3): o mesmo
+ * `alter table public.leads add column if not exists`. Se `next_action_at` fica
+ * fora do degrau final porque banco pré-V3 não a tem, estas duas ficam pela
+ * razão idêntica. Colocá-las embaixo derrubaria com 42703 as 20 rotas que usam
+ * o select base num banco que ainda não correu a ponte.
+ *
+ * Conferidas no banco vivo antes de entrar: `updated_at` é `not null`,
+ * `last_interaction_at` é `timestamptz` nulável. As duas existem.
+ */
+export const ATIVIDADE_COLUMNS = [
+  "updated_at",
+  "last_interaction_at",
+] as const;
+
 export const LIVE_LEAD_SELECT_WITH_SLA = [
   LIVE_LEAD_SELECT,
   ...FIRST_CONTACT_SLA_COLUMNS,
+  ...ATIVIDADE_COLUMNS,
   ...NEXT_ACTION_COLUMNS,
 ].join(",");
 
@@ -156,7 +204,31 @@ export const LIVE_LEAD_SELECT_WITH_SLA = [
 // antes de entrar aqui. O recuo deste select é tudo-ou-nada: uma coluna
 // inexistente derruba o grupo inteiro com 42703, e a página perde também
 // `availability_status` e `max_active_leads` sem erro visível.
-export const LIVE_PROFILE_SELECT = "id,name,full_name,email,role,active,organization_id,team,max_active_leads,availability_status,last_seen_at";
+//
+// ── `commercial_role` E `reports_to`: A HIERARQUIA ERA ADIVINHADA ───────────
+//
+// `mapLegacyProfile` lê `first(row, "commercial_role", "role")` e
+// `first(row, "reports_to")`, e `resolveLiveHierarchy` (lib/compat/live-hierarchy)
+// decide o organograma inteiro com esses dois campos. Nenhum dos dois estava
+// neste select: o papel caía em `role` e o chefe chegava sempre nulo, então
+// TODO `reports_to` era derivado do palpite "o primeiro gerente da lista".
+//
+// Medido em 02/08/2026 na organização real (7c8c71c1): 14 dos 26 perfis têm
+// `reports_to` gravado e nenhum era lido; entre os 6 perfis ativos, 1 diverge
+// em papel E em chefe — `role=director` com `commercial_role=manager`. Esse é
+// tratado como diretor de topo, ganha `reports_to: null`, e
+// `descendantsFromLiveProfiles` deixa de alcançá-lo: o escopo do diretor real
+// fecha em 5 de 6 pessoas. O gerente some do próprio organograma.
+//
+// As duas nasceram na ponte V3 (20260717213001) e foram CONFERIDAS no banco
+// vivo antes de entrar — `commercial_role` preenchido em 26/26 (tem constraint
+// `profiles_commercial_role_check`), `reports_to` é uuid nulável.
+//
+// `access_role` NÃO entra: `mapLegacyProfile` também a resolve, mas nenhuma das
+// 15 telas que leem este select consome o campo — quem o usa (RBAC em
+// lib/api/security, /api/v1/admin/users) tem consulta própria. Coluna que
+// ninguém lê é custo sem leitor, e o degrau é tudo-ou-nada.
+export const LIVE_PROFILE_SELECT = "id,name,full_name,email,role,commercial_role,reports_to,active,organization_id,team,max_active_leads,availability_status,last_seen_at";
 
 const statusAliases: Record<string, string> = {
   new: "novo",
@@ -253,9 +325,26 @@ export function statusConhecidos(): string[] {
   return Object.keys(statusStorageAliases);
 }
 
+/**
+ * O nome da opção da tela → a coluna que o banco sabe ordenar.
+ *
+ * `updated_at` apontava para `created_at`, e o seletor de `app/(crm)/leads`
+ * oferece "Última atualização": ordenar por última atualização ordenava por
+ * data de CADASTRO. Não é o mesmo recorte — em 468 das 490 leads desta base as
+ * duas datas diferem por mais de um dia, e a ordem que o corretor pediu para
+ * achar o que se mexeu devolvia o que chegou.
+ *
+ * O desvio existia porque `updated_at` não estava em select nenhum, e o arquivo
+ * assumia que a coluna também não existia no banco. Existe: `not null`, na ponte
+ * V3 (20260717213001), conferida no banco vivo. Ver `ATIVIDADE_COLUMNS`.
+ *
+ * O recuo para `created_at` continua para o que NÃO é opção conhecida — chave
+ * desconhecida não pode escolher coluna, e `created_at` é a única presente em
+ * qualquer banco.
+ */
 export function liveLeadSortColumn(value: unknown) {
   if (value === "score") return "score_ia";
-  if (value === "updated_at") return "created_at";
+  if (value === "updated_at") return "updated_at";
   return value === "name" ? "name" : "created_at";
 }
 
@@ -305,7 +394,31 @@ export function mapLegacyLead(row: CompatRow): CompatRow {
   return {
     ...row,
     status: canonicalLeadStatus(first(row, "status")),
-    score: Number(first(row, "score", "score_ia") ?? 0),
+    /**
+     * ── O NÚMERO QUE FILTRA E O NÚMERO QUE PINTA ERAM DIFERENTES ────────────
+     *
+     * A ordem era `first(row, "score", "score_ia")`, e o select traz AS DUAS
+     * colunas — então `row.score` sempre vencia. Só que a rota de leads FILTRA
+     * por `score_ia` (crm/leads/route.ts:428-429, :459) e ORDENA por `score_ia`
+     * (o próprio `liveLeadSortColumn` deste arquivo, :346, traduz "score" para
+     * "score_ia"). Quem escolhe a lead e quem a desenha olhavam colunas
+     * distintas.
+     *
+     * MEDIDO no banco vivo em 03/08/2026, sobre 490 leads: as duas colunas
+     * divergem em 29, e em NOVE a divergência atravessa a fronteira de faixa —
+     *
+     *     8 leads  filtro diz MORNA (score_ia 35–55)  ·  tela pinta FRIA (score 0–28)
+     *     1 lead   filtro diz FRIA  (score_ia 30)     ·  tela pinta MORNA (score 48)
+     *
+     * O corretor filtra "Morno", recebe as 8 e elas chegam com cara de fria —
+     * então ele pula justamente o que pediu para ver. E a ordenação piorava:
+     * a lista era ordenada por um número e exibida com outro.
+     *
+     * `score_ia` passa a vir primeiro porque é a coluna que a consulta usa.
+     * `score` continua como reserva para linha legada que não tenha `score_ia`
+     * — que é a razão de este mapa existir.
+     */
+    score: Number(first(row, "score_ia", "score") ?? 0),
     temperature: text(rawTemperature).trim().toLocaleLowerCase("pt-BR") || null,
     assigned_to: first(row, "assigned_to", "assigned_user_id"),
     development_id: first(row, "development_id", "project_id"),
@@ -358,7 +471,37 @@ export function leadAsOpportunity(row: CompatRow): CompatRow {
     lead_id: lead.id,
     name: first(lead, "name") || "Lead sem nome",
     stage: first(lead, "status") || "novo",
+    /**
+     * ── ATENÇÃO: `value` É ORÇAMENTO DECLARADO, NÃO VENDA ─────────────────
+     *
+     * A coluna `value` não existe em `leads`; este campo SEMPRE cai em
+     * `budget_max`/`budget_min` — o que a pessoa DISSE que podia pagar no
+     * formulário. Quem somar isto e chamar de receita erra por ordens de
+     * grandeza.
+     *
+     * Medido em 03/08/2026: /reports somava exatamente isto e exibia "VGV em
+     * oportunidades: R$ 5.011.616.337". As vendas apuradas da empresa somam
+     * R$ 1.506.000, e 99,77% daquele número era UMA lead com orçamento
+     * declarado de 5 bilhões. A base tem inclusive um orçamento de −5.
+     *
+     * O nome fica por compatibilidade (consumidores antigos leem esta chave),
+     * mas `orcamentoDeclarado` diz a verdade ao lado. Quem quer RECEITA usa
+     * `apurarVgv` de lib/crm/fechamento-valor-da-venda.ts — o dono único desse
+     * fato, que /sales e a ficha da lead já usam.
+     *
+     * Este arquivo NÃO PODE IMPORTAR NADA: contratos o carregam por `data:` URL
+     * e nem alias nem caminho relativo resolvem ali. Por isso a apuração não
+     * acontece aqui — acontece em quem consome.
+     */
     value: first(lead, "value", "budget_max", "budget_min") ?? 0,
+    orcamentoDeclarado: (() => {
+      const bruto = first(lead, "budget_max", "budget_min");
+      const numero = Number(bruto);
+      // Negativo e não numérico são ausência de dado, não dado.
+      return Number.isFinite(numero) && numero > 0 ? numero : null;
+    })(),
+    /** Passagem CRUA de `sale_value_brl`. A regra de apuração não mora aqui. */
+    saleValueBrl: first(lead, "sale_value_brl"),
     probability: 0,
     assigned_to: lead.assigned_to,
     development_id: lead.development_id,

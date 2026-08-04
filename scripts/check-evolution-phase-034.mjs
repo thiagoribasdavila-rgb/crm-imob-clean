@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { familiaDeclara } from "./lib/css-propriedade.mjs";
+import { familiaDeclara, mediaAlcanca, regrasQueCitam } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-034-navigation-mobile-workspace.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -33,8 +33,21 @@ const checks = [
     && topbar.includes('className="atlas-mobile-search"')
     && topbar.includes('aria-label="Abrir meu perfil"')],
   ["Dock e área segura protegem a zona de toque", styles.includes("padding-bottom: calc(104px + env(safe-area-inset-bottom))") && styles.includes("min-height: var(--atlas-mobile-dock-action)") && styles.includes("min-height: var(--atlas-mobile-primary-action)")],
-  ["Ações frequentes evitam atraso de toque", styles.includes("touch-action: manipulation") && styles.includes("-webkit-tap-highlight-color: transparent")],
-  ["Celulares estreitos mantêm rótulos", styles.includes("@media (max-width: 374px)") && styles.includes(".atlas-mobile-dock-action small") && config.mobileContract.primaryActionMaximumLabelPx === 64],
+  // ── REAPONTADA EM 02/08/2026 ──────────────────────────────────────────────
+  // Era `styles.includes("touch-action: manipulation") && styles.includes(
+  // "-webkit-tap-highlight-color: transparent")`: duas buscas soltas num
+  // arquivo de 10.960 linhas, sem dizer de QUEM eram as propriedades. Passavam
+  // com o dock móvel — o alvo desta fase — sem nenhuma das duas.
+  // Agora as duas têm de estar no CORPO da mesma regra da família do dock.
+  ["Ações frequentes evitam atraso de toque",
+    regrasQueCitam(styles, ".atlas-mobile-dock").some(({ corpo }) =>
+      /touch-action:\s*manipulation/.test(corpo) && /-webkit-tap-highlight-color:\s*transparent/.test(corpo))],
+  // Era `includes("@media (max-width: 374px)") && includes(".atlas-mobile-dock-action small")`:
+  // o bloco @media e a classe podiam viver em pontas opostas do arquivo, sem
+  // relação nenhuma. `mediaAlcanca` exige que o rótulo esteja DENTRO do bloco.
+  ["Celulares estreitos mantêm rótulos",
+    mediaAlcanca(styles, "max-width: 374px", ".atlas-mobile-dock-action small")
+    && config.mobileContract.primaryActionMaximumLabelPx === 64],
   ["Implementação React não cria estado ou efeito", !mobileDock.includes("useState") && !mobileDock.includes("useEffect") && config.structuralBaseline.newStateOrEffectAdded === false],
   ["Melhoria estrutural não vira conversão inventada", config.structuralBaseline.runtimeOneHandSuccessMeasured === false && config.truthPolicy.structuralReachabilityPresentedAsMeasuredConversion === false && config.truthPolicy.fakeBehaviorMetricPublished === false],
   ["Relatório registra alcance, limite e próxima fase", report.includes("ao alcance do polegar") && report.includes("58 pixels") && report.includes("Fase 035")],

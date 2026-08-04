@@ -8,8 +8,15 @@ import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { SessionSecurityPanel } from "./SessionSecurityPanel";
 import { BrokerConnectionPanel } from "@/components/whatsapp/broker-connection-panel";
+import {
+  validarCadastro, validarFoto, caminhoDaFoto, formatarTelefone, LIMITE_DA_BIO,
+  TIPOS_DE_IMAGEM_ACEITOS,
+} from "@/lib/crm/cadastro-do-corretor";
 
-type Profile = { id: string; name: string | null; role: string; availability_status: string | null };
+type Profile = {
+  id: string; name: string | null; role: string; availability_status: string | null;
+  full_name: string | null; phone: string | null; creci: string | null; bio: string | null; avatar_url: string | null;
+};
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
@@ -33,21 +40,56 @@ export default function ProfileSettings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
 
   useEffect(() => { void (async () => {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) { setLoading(false); return; }
     setEmail(auth.user.email || "");
-    const { data } = await supabase.from("profiles").select("id,name,role,availability_status").eq("id", auth.user.id).single();
+    const { data } = await supabase.from("profiles").select("id,name,role,availability_status,full_name,phone,creci,bio,avatar_url").eq("id", auth.user.id).single();
     setProfile(data as Profile | null); setLoading(false);
   })(); }, []);
 
   async function saveProfile(event: FormEvent) {
     event.preventDefault(); if (!profile) return; setSaving(true); setNotice(null);
-    const name = profile.name?.trim();
-    if (!name) { setNotice({ tone: "error", text: "Informe seu nome completo." }); setSaving(false); return; }
-    const { error } = await supabase.from("profiles").update({ name }).eq("id", profile.id);
+    // A tela grava DIRETO no Supabase (política `profiles_update_self`): não há
+    // rota no meio para validar. Ou a regra vive no módulo puro, ou vive
+    // espalhada em onChange — e é assim que um CRECI com espaço no fim vira um
+    // CRECI diferente do mesmo CRECI.
+    const veredito = validarCadastro({
+      fullName: profile.full_name || profile.name, phone: profile.phone, creci: profile.creci, bio: profile.bio,
+    });
+    if (!veredito.ok) { setNotice({ tone: "error", text: veredito.mensagem }); setSaving(false); return; }
+    const { error } = await supabase.from("profiles").update(veredito.valor).eq("id", profile.id);
+    if (!error) setProfile({ ...profile, ...veredito.valor });
     setNotice(error ? { tone: "error", text: error.message } : { tone: "success", text: "Perfil atualizado com sucesso." }); setSaving(false);
+  }
+
+  /**
+   * A foto vai para `profile-avatars`, na PASTA DO PRÓPRIO USUÁRIO — a política
+   * do storage exige `foldername(name)[1] = auth.uid()`, e o erro que volta
+   * quando o caminho é outro ("violates row-level security") não fala em pasta.
+   * Por isso o caminho se monta no módulo, uma vez.
+   */
+  async function enviarFoto(arquivo: File | null | undefined) {
+    if (!profile || !arquivo) return;
+    const check = validarFoto(arquivo);
+    if (!check.ok) { setNotice({ tone: "error", text: check.mensagem }); return; }
+    setEnviandoFoto(true); setNotice(null);
+    const caminho = caminhoDaFoto(profile.id, arquivo.type);
+    // `upsert` porque o nome do arquivo é fixo: trocar a foto SUBSTITUI, em vez
+    // de acumular um arquivo por troca dentro da pasta de cada pessoa.
+    const envio = await supabase.storage.from("profile-avatars").upload(caminho, arquivo, { upsert: true, contentType: arquivo.type });
+    if (envio.error) { setNotice({ tone: "error", text: `Não consegui enviar a foto: ${envio.error.message}` }); setEnviandoFoto(false); return; }
+    const { data: publica } = supabase.storage.from("profile-avatars").getPublicUrl(caminho);
+    // O sufixo de tempo derrota o cache do navegador: sem ele, trocar a foto
+    // mantém a antiga na tela e a pessoa acha que o envio falhou.
+    const url = `${publica.publicUrl}?v=${Date.now()}`;
+    const { error } = await supabase.from("profiles").update({ avatar_url: url }).eq("id", profile.id);
+    if (error) { setNotice({ tone: "error", text: error.message }); setEnviandoFoto(false); return; }
+    setProfile({ ...profile, avatar_url: url });
+    setNotice({ tone: "success", text: "Foto atualizada." });
+    setEnviandoFoto(false);
   }
 
   async function changePassword(event: FormEvent) {
@@ -67,7 +109,7 @@ export default function ProfileSettings() {
       Não foi possível localizar seu perfil.
     </div>
   );
-  const initials = (profile.name || email || "AT").slice(0, 2).toUpperCase();
+  const initials = (profile.full_name || profile.name || email || "AT").slice(0, 2).toUpperCase();
 
   return (
     <div className="space-y-4 pb-10" data-profile-layout="cc6-identity">
@@ -91,11 +133,34 @@ export default function ProfileSettings() {
         <TiltShell className="cc6-panel cc6-reveal p-5" delayMs={40}>
           <form onSubmit={saveProfile} className="flex flex-col gap-5 lg:flex-row lg:items-start">
             <div className="flex min-w-0 items-center gap-4 lg:w-72 lg:shrink-0">
-              <span aria-hidden="true" className="cc6-panel-quiet grid h-16 w-16 shrink-0 place-items-center text-xl font-semibold text-[var(--atlas-texto-forte)]">
-                {initials}
-              </span>
+              {/* A foto é um BOTÃO de rótulo, não um ícone decorativo ao lado
+                  de um "escolher arquivo": o alvo é a própria imagem, que é
+                  onde a pessoa clica por instinto. O input fica escondido mas
+                  focável pelo teclado. */}
+              <label
+                className={`relative grid h-16 w-16 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-xl ${profile.avatar_url ? "" : "cc6-panel-quiet"} ${focusRing} focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--atlas-accent)]`}
+                title="Trocar foto"
+              >
+                {profile.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span aria-hidden="true" className="text-xl font-semibold text-[var(--atlas-texto-forte)]">{initials}</span>
+                )}
+                <span className="absolute inset-x-0 bottom-0 bg-black/55 py-0.5 text-center text-micro font-medium text-white">
+                  {enviandoFoto ? "enviando…" : "trocar"}
+                </span>
+                <input
+                  type="file"
+                  className="sr-only"
+                  accept={TIPOS_DE_IMAGEM_ACEITOS.join(",")}
+                  disabled={enviandoFoto}
+                  onChange={(event) => { void enviarFoto(event.target.files?.[0]); event.target.value = ""; }}
+                />
+                <span className="sr-only">Trocar foto do perfil</span>
+              </label>
               <div className="min-w-0">
-                <h2 className="truncate text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{profile.name || "Usuário Atlas"}</h2>
+                <h2 className="truncate text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{profile.full_name || profile.name || "Usuário Atlas"}</h2>
                 {/* `.cc6-num` recebe um âmbar escuro cravado de uma regra global do tema
                     claro (escrita para o chip de estado "parado há Nd"): o
                     e-mail da própria pessoa saía âmbar, como se fosse alerta, em
@@ -108,11 +173,61 @@ export default function ProfileSettings() {
               </div>
             </div>
             <div className="min-w-0 flex-1 lg:border-l lg:border-[rgba(148,163,184,0.12)] lg:pl-5">
-              <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Nome completo
-                <input className={`${inputClass} mt-1.5`} value={profile.name || ""} onChange={(event) => setProfile({ ...profile, name: event.target.value })} />
-              </label>
+              {/* Estes campos existiam no banco desde 22/07 — `avatar_url`,
+                  `phone`, `creci`, `bio` — junto com o bucket e as políticas de
+                  envio. A tela dizia "entram quando homologados no banco" e o
+                  resultado, medido em 03/08/2026, era 26 perfis com ZERO foto,
+                  ZERO telefone, ZERO CRECI e ZERO arquivo no bucket. Nada estava
+                  quebrado: faltava o formulário. */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs font-medium text-[var(--atlas-texto-medio)] sm:col-span-2">Nome completo
+                  <input
+                    className={`${inputClass} mt-1.5`}
+                    value={profile.full_name || profile.name || ""}
+                    onChange={(event) => setProfile({ ...profile, full_name: event.target.value, name: event.target.value })}
+                    placeholder="Nome e sobrenome — é o que a lead vê"
+                    autoComplete="name"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Telefone
+                  <input
+                    className={`${inputClass} mt-1.5`}
+                    value={formatarTelefone(profile.phone)}
+                    onChange={(event) => setProfile({ ...profile, phone: event.target.value })}
+                    placeholder="(11) 98765-4321"
+                    inputMode="tel"
+                    autoComplete="tel"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">CRECI
+                  <input
+                    className={`${inputClass} mt-1.5`}
+                    value={profile.creci || ""}
+                    onChange={(event) => setProfile({ ...profile, creci: event.target.value })}
+                    placeholder="123456-SP"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-[var(--atlas-texto-medio)] sm:col-span-2">
+                  Apresentação
+                  {/* O contador só aparece perto do limite: número permanente ao
+                      lado de campo vazio é ruído, e some do olhar justamente
+                      quando passaria a importar. */}
+                  {(profile.bio || "").length > LIMITE_DA_BIO - 60 ? (
+                    <span className={`ml-2 tabular-nums ${(profile.bio || "").length > LIMITE_DA_BIO ? "text-[var(--atlas-estado-perigo)]" : "text-[var(--atlas-texto-fraco)]"}`}>
+                      {(profile.bio || "").length}/{LIMITE_DA_BIO}
+                    </span>
+                  ) : null}
+                  <textarea
+                    className={`${inputClass} mt-1.5 min-h-20 py-2.5 leading-5`}
+                    value={profile.bio || ""}
+                    onChange={(event) => setProfile({ ...profile, bio: event.target.value })}
+                    placeholder="Uma linha sobre você — aparece para o incorporador parceiro."
+                    rows={2}
+                  />
+                </label>
+              </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">Foto, telefone e CRECI entram quando homologados no banco.</p>
+                <p className="text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">Telefone e CRECI ficam visíveis para a sua liderança.</p>
                 <button type="submit" disabled={saving} className="atlas-button-primary min-h-11 disabled:opacity-50">
                   {saving ? "Salvando…" : "Salvar perfil"}
                 </button>

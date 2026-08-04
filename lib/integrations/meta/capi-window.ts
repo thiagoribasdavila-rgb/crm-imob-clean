@@ -27,6 +27,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { normalizarModoDeEnvio } from "@/lib/meta/modo-de-envio";
 import {
   buildCapiLeadEvents,
   isCapiEventCandidate,
@@ -379,8 +380,10 @@ export async function loadOrgCapiConfig(
     datasetId: String(data.dataset_id),
     // Qualquer valor que não seja exatamente "live" é tratado como teste.
     // Errar para o lado do teste custa um evento não contabilizado; errar para
-    // o outro contamina a otimização real.
-    mode: data.mode === "live" ? "live" : "test",
+    // o outro contamina a otimização real. A regra mora em um lugar só porque
+    // esta era a terceira cópia dela — e cópias de regra de modo foi
+    // exatamente como o remetente e a fila passaram a discordar.
+    mode: normalizarModoDeEnvio(data.mode),
     testEventCode: data.test_event_code ?? null,
     enabled: data.enabled === true,
   };

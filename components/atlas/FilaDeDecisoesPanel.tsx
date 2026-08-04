@@ -48,6 +48,16 @@ export function FilaDeDecisoesPanel() {
   const [estado, setEstado] = useState<Estado>({ fase: "carregando" });
   const [gravando, setGravando] = useState<string | null>(null);
   const [recado, setRecado] = useState<string | null>(null);
+  /**
+   * "Outra pessoa chegou primeiro" não é um erro qualquer.
+   *
+   * Três pessoas enxergam este painel (2 gerentes + 1 diretor, medido em
+   * `profiles`) e as 20 decisões da fila são as mesmas para as três. Duas no
+   * mesmo card é rotina, não exceção — e o recado precisa se distinguir de
+   * "falhou" à primeira olhada, porque a ação seguinte é oposta: não é tentar
+   * de novo, é falar com quem pegou a lead.
+   */
+  const [corridaPerdida, setCorridaPerdida] = useState(false);
 
   const carregar = useCallback(async () => {
     setEstado({ fase: "carregando" });
@@ -79,6 +89,7 @@ export function FilaDeDecisoesPanel() {
   const decidir = async (d: Decisao, decisao: "aprovada" | "recusada") => {
     setGravando(d.id);
     setRecado(null);
+    setCorridaPerdida(false);
     try {
       const r = await fetch("/api/v1/crm/decisoes-pendentes", {
         method: "POST",
@@ -87,7 +98,14 @@ export function FilaDeDecisoesPanel() {
       });
       const j = await r.json();
       if (!r.ok || !j?.ok) {
+        const perdeuACorrida = j?.error?.details?.corridaPerdida === true;
+        setCorridaPerdida(perdeuACorrida);
         setRecado(j?.error?.message || "Não foi possível registrar a decisão.");
+        // O card que a pessoa clicou já não existe mais como pendência. Deixá-lo
+        // na tela convida ao segundo clique — que só produziria o mesmo 409 e a
+        // sensação de que o produto travou. Recarregar É a resposta; a frase
+        // acima é que explica por que ele sumiu, e com quem a lead ficou.
+        if (perdeuACorrida) await carregar();
         return;
       }
       setRecado(
@@ -138,7 +156,16 @@ export function FilaDeDecisoesPanel() {
         </p>
       ) : null}
 
-      {recado ? <p className="atlas-fila-decisoes-recado">{recado}</p> : null}
+      {recado ? (
+        <p
+          className="atlas-fila-decisoes-recado"
+          data-corrida-perdida={corridaPerdida ? "true" : undefined}
+          role={corridaPerdida ? "alert" : undefined}
+        >
+          {corridaPerdida ? <span aria-hidden="true">🏁 </span> : null}
+          {recado}
+        </p>
+      ) : null}
 
       {estado.fase === "pronto" && estado.decisoes.length === 0 ? (
         <p className="atlas-fila-decisoes-vazio">

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
+import { HOT_LEAD_CRITERION_SHORT, isDeclaredHotTemperature, isHotLead } from "@/lib/atlas/temperatura-do-lead";
 
 type Lead = {
   id: string; name: string | null; status: string | null; score: number | null;
@@ -14,7 +15,9 @@ type Lead = {
 
 function priority(lead: Lead, now: number) {
   let value = Number(lead.score ?? 0);
-  if (lead.temperature === "quente") value += 20;
+  // Mesma leitura normalizada do cartão acima: `=== "quente"` cru deixava uma
+  // lead gravada "QUENTE" fora do bônus de prioridade, sem erro nenhum.
+  if (isDeclaredHotTemperature(lead.temperature)) value += 20;
   if (!lead.next_action_at) value += 12;
   else if (new Date(lead.next_action_at).getTime() < now) value += 25;
   if (!lead.last_interaction_at) value += 10;
@@ -43,7 +46,14 @@ export default function AIQualifyPage() {
   }, []);
 
   const ranked = useMemo(() => [...leads].sort((a, b) => priority(b, referenceTime) - priority(a, referenceTime)), [leads, referenceTime]);
-  const hot = leads.filter((lead) => lead.temperature === "quente" || Number(lead.score ?? 0) >= 70).length;
+  /* ── O CRITÉRIO DE "QUENTE" NÃO É REDIGIDO NESTA TELA ──────────────────────
+     Era `lead.temperature === "quente" || Number(lead.score ?? 0) >= 70`: um
+     quinto literal 70, e uma comparação SENSÍVEL A CAIXA numa base que tem
+     "MORNO", "FRIO" e "quente" convivendo — uma lead marcada "QUENTE" à mão
+     não contava. `isHotLead` normaliza e usa a MESMA fronteira em que o scorer
+     grava "quente", que é o ponto: as duas metades do critério não são dois
+     testes, são duas proveniências do mesmo fato. */
+  const hot = leads.filter((lead) => isHotLead({ score_ia: lead.score, temperature: lead.temperature })).length;
   const overdue = leads.filter((lead) => lead.next_action_at && referenceTime && new Date(lead.next_action_at).getTime() < referenceTime).length;
   const withoutAction = leads.filter((lead) => !lead.next_action_at).length;
 
@@ -55,7 +65,12 @@ export default function AIQualifyPage() {
 
       <section className="grid gap-4 sm:grid-cols-4">
         <AtlasMetric label="Carteira analisada" value={loading ? "—" : leads.length} detail="Dentro do seu escopo" trend="RLS" tone="blue" />
-        <AtlasMetric label="Leads quentes" value={loading ? "—" : hot} detail="Score ≥ 70 ou temperatura quente" trend="PRIORIDADE" tone="rose" />
+        {/* O rótulo dizia "Score ≥ 70 ou temperatura quente" — dois caminhos
+            independentes, com o 70 digitado no JSX. Um deles nunca acendeu:
+            medido no banco vivo em 2026-08-02, o máximo de score_ia em 490
+            leads é 63, e as 3 leads quentes acendem pela temperatura declarada,
+            a scores 45/50/50. A frase agora sai da constante. */}
+        <AtlasMetric label="Leads quentes" value={loading ? "—" : hot} detail={HOT_LEAD_CRITERION_SHORT} trend="PRIORIDADE" tone="rose" />
         <AtlasMetric label="Ações atrasadas" value={loading ? "—" : overdue} detail="Follow-up fora do prazo" trend="SLA" tone="amber" />
         <AtlasMetric label="Sem próxima ação" value={loading ? "—" : withoutAction} detail="Carteira sem cadência definida" trend="RISCO" tone="violet" />
       </section>
@@ -66,7 +81,7 @@ export default function AIQualifyPage() {
         <div className="p-5 sm:p-6">
           {loading ? <div className="space-y-3">{[1,2,3,4,5].map((item) => <AtlasSkeleton key={item} className="h-20 w-full" />)}</div> : ranked.length === 0 ? <AtlasEmpty title="Nenhum lead para qualificar" description="Cadastre leads para ativar a fila inteligente." /> : <div className="space-y-3">{ranked.slice(0, 20).map((lead, index) => {
             const isOverdue = Boolean(lead.next_action_at && referenceTime && new Date(lead.next_action_at).getTime() < referenceTime);
-            return <Link key={lead.id} href={`/leads/${lead.id}`} className="grid gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4 transition hover:border-sky-400/20 hover:bg-sky-400/[0.04] sm:grid-cols-[44px_1fr_auto] sm:items-center"><span className="grid h-10 w-10 place-items-center rounded-xl bg-sky-400/10 text-sm font-bold text-sky-300">{index + 1}</span><div><strong className="block text-sm text-white">{lead.name || "Lead sem nome"}</strong><span className="mt-1 block text-xs text-slate-500">{lead.source || "Origem não informada"} · {lead.status || "novo"} · {isOverdue ? "follow-up atrasado" : lead.next_action_at ? "ação agendada" : "sem próxima ação"}</span></div><div className="flex items-center gap-2"><AtlasBadge tone={isOverdue ? "danger" : lead.temperature === "quente" ? "warning" : "info"}>{lead.score ?? 0} pontos</AtlasBadge><span className="text-sky-300">→</span></div></Link>;
+            return <Link key={lead.id} href={`/leads/${lead.id}`} className="grid gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4 transition hover:border-sky-400/20 hover:bg-sky-400/[0.04] sm:grid-cols-[44px_1fr_auto] sm:items-center"><span className="grid h-10 w-10 place-items-center rounded-xl bg-sky-400/10 text-sm font-bold text-sky-300">{index + 1}</span><div><strong className="block text-sm text-white">{lead.name || "Lead sem nome"}</strong><span className="mt-1 block text-xs text-slate-500">{lead.source || "Origem não informada"} · {lead.status || "novo"} · {isOverdue ? "follow-up atrasado" : lead.next_action_at ? "ação agendada" : "sem próxima ação"}</span></div><div className="flex items-center gap-2"><AtlasBadge tone={isOverdue ? "danger" : isDeclaredHotTemperature(lead.temperature) ? "warning" : "info"}>{lead.score ?? 0} pontos</AtlasBadge><span className="text-sky-300">→</span></div></Link>;
           })}</div>}
         </div>
       </AtlasCard>

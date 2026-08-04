@@ -1,0 +1,11 @@
+{
+  "$comentario": "Regras com contrato e SEM chamador de produção. O portão falha quando esta lista CRESCE — é o momento em que a quinta ocorrência de 'fio no chão' nasceria. Ao ligar o fio, remova a linha daqui.",
+  "congeladoEm": "2026-08-03",
+  "regras": [
+    "lib/ai/quem-espera-uma-pessoa.ts",
+    "lib/atlas/prontidao-do-catalogo.ts",
+    "lib/crm/traduz-status-de-planilha.ts",
+    "lib/deploy/autorizacao-de-instalacao.ts",
+    "lib/whatsapp/pool-de-numeros.ts"
+  ]
+}

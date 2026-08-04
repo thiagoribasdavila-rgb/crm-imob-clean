@@ -46,6 +46,13 @@ const REWRITES = [
   ['from "./audience-finder"', 'from "./audience-finder.mjs"'],
   ['from "./housing-audience"', 'from "./housing-audience.mjs"'],
   ['from "./campaign-executor"', 'from "./campaign-executor.mjs"'],
+  // A régua (e o tradutor plano→peça) usam import relativo COM extensão .ts —
+  // é o que permite o mesmo módulo ser carregado pela tela e por node.
+  ['from "./regua-da-meta.ts"', 'from "./regua-da-meta.mjs"'],
+  ['from "../ai/creative-strategist.ts"', 'from "./creative-strategist.mjs"'],
+  ['from "../meta/marketing/housing-audience.ts"', 'from "./housing-audience.mjs"'],
+  ['from "@/lib/marketing/regua-no-plano"', 'from "./regua-no-plano.mjs"'],
+  ['from "@/lib/marketing/regua-da-meta"', 'from "./regua-da-meta.mjs"'],
   ['from "next/server"', 'from "./__stub-next-server.mjs"'],
   ['from "@/lib/api/core"', 'from "./__stub-api-core.mjs"'],
   ['from "@/lib/api/security"', 'from "./__stub-api-security.mjs"'],
@@ -114,6 +121,8 @@ emit("housing-audience", "lib/meta/marketing/housing-audience.ts");
 emit("audience-finder", "lib/meta/marketing/audience-finder.ts");
 emit("campaign-executor", "lib/meta/marketing/campaign-executor.ts");
 emit("publication-plan", "lib/meta/marketing/publication-plan.ts");
+emit("regua-da-meta", "lib/marketing/regua-da-meta.ts");
+emit("regua-no-plano", "lib/marketing/regua-no-plano.ts");
 emit("route", "app/api/v1/marketing/ready-campaigns/route.ts");
 
 const route = await import(pathToFileURL(path.join(tmp, "route.mjs")).href);
@@ -444,7 +453,8 @@ const spin = campaigns.find((c) => c.id === "spin");
 }
 
 // --------------------------------------------------------------------------
-// 16: cross-check — os planos gerados passam no validador do executor
+// 16: cross-check — os planos gerados passam no validador do executor, e a
+//     ÚNICA coisa que o executor recusa é a peça visual ausente (caso 15)
 //
 // Aqui o que se testa é a ESTRUTURA do plano (dependências entre passos e
 // caminhos de referência), não se a configuração já está completa. Por isso o
@@ -453,6 +463,15 @@ const spin = campaigns.find((c) => c.id === "spin");
 // casos 12 e 13 provem que o placeholder vira pendência. Usar aqueles mesmos
 // planos aqui punha o check em contradição com ele mesmo — exigia plano limpo de
 // um cenário desenhado para estar sujo.
+//
+// A asserção era "zero problemas" e virou um par, em 02/08/2026, quando o
+// executor passou a recusar criativo SEM PEÇA VISUAL. O caso 15 já provava que
+// estes planos saem de propósito sem mídia (`missingToActivate` traz "mídia"):
+// exigir zero problemas aqui obrigaria a régua a fingir que um criativo vazio
+// pode ser executado. O par é mais forte que o "zero" que ele substitui —
+// prova que o executor recusa EXATAMENTE o artefato que falta, e que nada mais
+// no plano está sujo. Um gate que recusasse tudo passaria na primeira metade e
+// morreria na segunda.
 // --------------------------------------------------------------------------
 {
   const configurado = await callGET({
@@ -461,9 +480,27 @@ const spin = campaigns.find((c) => c.id === "spin");
   const planos = configurado.__kind === "success" ? configurado.data.campaigns : [];
   const problemas = planos.map((c) => ({ id: c.id, p: validateExecutionPlan(c.steps) }));
   t(
-    "caso 16: planos das duas campanhas validam limpo no executor (dependências/paths)",
-    problemas.every((x) => x.p.length === 0),
+    "caso 16a: a única recusa do executor é a peça visual ausente",
+    planos.length > 0 &&
+      problemas.every((x) => x.p.length === 1 && /peça visual|peca visual/i.test(x.p[0])),
     JSON.stringify(problemas),
+  );
+
+  // A mesma estrutura COM a peça anexada tem de passar limpa — senão o "1
+  // problema" acima poderia ser um executor quebrado dizendo qualquer coisa.
+  const comMidia = planos.map((c) => {
+    const steps = JSON.parse(JSON.stringify(c.steps));
+    const criativo = steps.find((s) => s.kind === "create_creative");
+    criativo.payload.asset_feed_spec = {
+      ...(criativo.payload.asset_feed_spec ?? {}),
+      images: [{ hash: "hash_de_teste_1" }],
+    };
+    return { id: c.id, p: validateExecutionPlan(steps) };
+  });
+  t(
+    "caso 16b: com a peça anexada, o mesmo plano valida limpo (dependências/paths)",
+    comMidia.length > 0 && comMidia.every((x) => x.p.length === 0),
+    JSON.stringify(comMidia),
   );
 }
 
@@ -495,6 +532,75 @@ const spin = campaigns.find((c) => c.id === "spin");
     "caso 18: rate limit aplicado no escopo ready-campaigns e nenhuma chamada de rede",
     !networkTouched && rate.length > 0 && rate.every((c) => c.options.scope === "ready-campaigns" && c.options.limit === 30),
     JSON.stringify({ networkTouched, escopo: rate[0]?.options }),
+  );
+}
+
+// --------------------------------------------------------------------------
+// 19: FUNCIONAL — a cidade vai pela CHAVE da Meta, com raio, nunca pelo nome
+//
+// Medido contra a conta real (leitura, 02/08/2026):
+//   delivery_estimate       key "269969"    → 19.700.000–23.200.000 MAU, ready
+//   delivery_estimate       key "São Paulo" → 0–0, sem estimate_ready
+//   targetingsentencelines  key "269969"    → "Brasil: São Paulo (+24 km) …"
+//   targetingsentencelines  key "São Paulo" → ": (+24 km)"   ← geo VAZIO
+//
+// A rota mandava o NOME. A Meta não recusa: aceita, resolve para lugar nenhum e
+// devolve 200 — o anúncio nasce apontando para ninguém e nenhuma tela acusa.
+// O valor é lido do PLANO gerado, não do texto da rota.
+// --------------------------------------------------------------------------
+{
+  const cidades = campaigns.map((c) => {
+    const adset = c.steps.find((s) => s.kind === "create_adset")?.payload;
+    return adset?.targeting?.geo_locations?.cities ?? null;
+  });
+  const todasComChave = cidades.every(
+    (lista) =>
+      Array.isArray(lista) &&
+      lista.length > 0 &&
+      lista.every(
+        (c) => /^[0-9]{4,12}$/.test(String(c?.key ?? "")) && Number(c?.radius) >= 24 && c?.distance_unit === "kilometer",
+      ),
+  );
+  t(
+    "caso 19: geo do conjunto usa chave numérica da Meta com raio ≥ 24 km (nunca o nome da cidade)",
+    cidades.length === 2 && todasComChave,
+    JSON.stringify(cidades),
+  );
+}
+
+// --------------------------------------------------------------------------
+// 20: a régua da Meta roda sobre o PLANO e o veredito viaja na resposta
+//
+// Esta rota é a que produz as propostas reais do painel da Sala de Comando, e
+// era a única composição sem NENHUMA conferência de política. O veredito precisa
+// (a) existir, (b) ter medido público e categoria especial, (c) liberar propor,
+// e (d) NÃO liberar ativar — porque mídia é pendência declarada aqui.
+// --------------------------------------------------------------------------
+{
+  const vereditos = campaigns.map((c) => c.regua);
+  const mediuPublico = vereditos.every(
+    (r) =>
+      Array.isArray(r?.itens) &&
+      r.itens.some((i) => i.chave === "travas_housing" && i.estado === "aprovado") &&
+      r.itens.some((i) => i.chave === "categoria_especial" && i.estado === "aprovado") &&
+      r.itens.some((i) => i.chave === "plano_create_campaign" && i.estado === "aprovado") &&
+      r.itens.some((i) => i.chave === "plano_create_adset" && i.estado === "aprovado"),
+  );
+  t(
+    "caso 20: régua rodou sobre o plano — público/categoria/estrutura medidos, podePropor=true, podeAtivar=false (falta mídia)",
+    vereditos.length === 2 &&
+      mediuPublico &&
+      campaigns.every((c) => c.podePropor === true && Array.isArray(c.motivos) && c.motivos.length === 0) &&
+      vereditos.every((r) => r.podeAtivar === false && r.motivosParaAtivar.some((m) => /imagem nem v[íi]deo/i.test(m))),
+    JSON.stringify(
+      campaigns.map((c) => ({
+        id: c.id,
+        podePropor: c.podePropor,
+        podeAtivar: c.regua?.podeAtivar,
+        motivos: c.motivos,
+        itens: (c.regua?.itens ?? []).map((i) => `${i.chave}:${i.estado}`),
+      })),
+    ),
   );
 }
 

@@ -248,6 +248,30 @@
       }
     },
     {
+      "nome": "sombra-do-atendimento",
+      "rota": "/api/v2/ai/sombra-do-atendimento/process",
+      "cadencia": "10 8 * * *",
+      "porque": "O DEGRAU 1 DO ATENDIMENTO AUTÔNOMO, e o único que não depende do dono. Medido em 02/08/2026: message_templates tem 0 linhas de QUALQUER status, e sem template aprovado a IA não envia, sem envio não nasce jornada (ai_sales_journeys: 0) e sem jornada não há entrega matinal (nightly_broker_handoffs: 0). O modo sombra não precisa de template, número nem aprovação: ele PREPARA a fila do dia (qual lead, qual gesto, qual mensagem, qual prioridade), REGISTRA a intenção em ai_shadow_decisions e não envia nada. Na mesma execução ele CONCILIA o que o humano fez depois — sem isso a sombra é opinião da IA sobre si mesma, que é exatamente o estado das 20 linhas existentes (todas com decisao_humana nula). 08h10 fica dentro da janela de 7h–11h59 que a própria rota impõe (nightlyWindow().morningHandoff) e ANTES de o corretor trabalhar o dia: preparar depois compararia a IA com um dia que já aconteceu. Uma vez por dia porque a unidade da comparação é o dia de trabalho do humano; rodar de hora em hora multiplicaria intenção sobre a mesma lead sem nenhum humano novo para observar.",
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "ai_shadow_decisions",
+        "coluna": "created_at",
+        "filtro": "agent=eq.sombra-do-atendimento",
+        "condicional": true,
+        "inferida": false,
+        "$porqueOFiltro": [
+          "MEDIDO EM 02/08/2026: ai_shadow_decisions já tem 20 linhas, TODAS do agente",
+          "`sla-primeiro-contato`, gravadas em 31/07. Sem o filtro, check-vigias-vivos",
+          "leria o carimbo daquelas linhas e declararia este vigia VIVO no dia em que",
+          "ele ainda não existia — falso verde produzido pela tabela ser compartilhada.",
+          "",
+          "É a mesma família do defeito que aquele portão foi escrito para caçar, e",
+          "por isso a declaração de evidência ganhou recorte em vez de o portão ganhar",
+          "uma exceção."
+        ]
+      }
+    },
+    {
       "nome": "baseline-de-conversao",
       "rota": "/api/v2/ai/baseline-de-conversao/process",
       "cadencia": "25 4 * * *",
@@ -258,6 +282,58 @@
         "coluna": "created_at",
         "condicional": true,
         "inferida": true
+      }
+    },
+    {
+      "nome": "carta-morta",
+      "rota": "/api/v2/integrations/carta-morta/vigia",
+      "cadencia": "47 * * * *",
+      "porque": "A fila morta encheu EM SILÊNCIO: medido em 02/08/2026, 12 linhas, zero resolvidas, a mais antiga de 31/07 01:50 — três dias sem ninguém saber. O vigia acende em duas entradas (a fila cresceu desde a última passagem, ou existe entrega morta acima de 24 h), porque um alarme só de crescimento deixaria as doze de hoje caladas para sempre. De hora em hora basta: carta morta só nasce depois de 5 tentativas do worker do outbox, então nada aqui é transitório. O minuto 47 evita o minuto 0 e o minuto 17 já ocupados.",
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "atlas_worker_runs",
+        "coluna": "concluido_em",
+        "condicional": false,
+        "inferida": false
+      }
+    },
+    {
+      "nome": "ingestao-parada",
+      "rota": "/api/v2/integrations/ingestao/vigia",
+      "cadencia": "53 * * * *",
+      "porque": "A entrada de leads da Meta parou às 15:29 de 03/08/2026 e seis leads reais (16:16 → 21:52) nunca chegaram ao CRM. Ninguém soube por seis horas: o painel de saúde media integração CONFIGURADA, não integração PRODUZINDO. O vigia acende em duas entradas independentes — silêncio anômalo comparado com o histórico da MESMA faixa de horário (para não tocar toda madrugada) ou evento entrando e não virando lead. De hora em hora acompanha o backfill (33 * * * *) sem competir com ele; o minuto 53 evita 0, 17, 33 e 47, já ocupados.",
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "atlas_worker_runs",
+        "coluna": "concluido_em",
+        "condicional": false,
+        "inferida": false
+      }
+    },
+    {
+      "nome": "meta-backfill",
+      "rota": "/api/v2/marketing/meta-backfill/process",
+      "cadencia": "33 * * * *",
+      "porque": "Nem toda Página tem webhook. Medido em 03/08/2026: a Página 1115087091694606 (Inside Smart Apartment Perdizes) concentra 85 anúncios e produz de 5 a 15 leads POR DIA, e NÃO aceita inscrição leadgen — inscrever exige a tarefa MANAGE, recusada com (#200) porque é Página de cliente e só o dono concede. Sem este vigia, a única entrada dessas leads é alguém lembrar de clicar no botão do backfill todo dia. Janela de 48h com cadência de 1h: a sobreposição é de propósito, para uma execução que falha não abrir buraco — repetição vira 'duplicadas' pela unique de external_lead_id, e duplicado sem tarefa no outbox ainda é reparado. Minuto 33 para não competir com meta-sem-destino (17) nem carta-morta (47) pela cota da Graph.",
+      "timeoutMs": 290000,
+      "evidencia": {
+        "tabela": "meta_lead_events",
+        "coluna": "created_at",
+        "condicional": true,
+        "inferida": false
+      }
+    },
+    {
+      "nome": "aviso-ao-corretor",
+      "rota": "/api/v2/crm/aviso-ao-corretor/process",
+      "cadencia": "*/5 * * * *",
+      "porque": "Entre a lead chegar e o prazo apertar existe uma janela em que ninguém chama o corretor — e o prazo mais curto desta operação é de 5 minutos. A pastilha e o aviso do navegador cobrem quem está com o Atlas aberto; este worker cobre quem não está. Lê lead_distribution_history, que é a única tabela escrita por TODOS os caminhos de atribuição, e usa marca d'água da passagem anterior para não duplicar nem perder. Cadência igual à do vigia de SLA porque o prazo que os dois protegem é o mesmo.",
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "atlas_worker_runs",
+        "coluna": "concluido_em",
+        "condicional": false,
+        "inferida": false
       }
     }
   ],

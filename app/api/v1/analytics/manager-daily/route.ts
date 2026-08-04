@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 import {
   LIVE_LEAD_SELECT,
   mapLegacyLead,
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
     ).length;
     const withoutNextAction = active.filter((lead) => !lead.next_action_at).length;
     const hot = active.filter(
-      (lead) => normalize(lead.temperature) === "quente" || number(lead.score) >= 70,
+      (lead) => normalize(lead.temperature) === "quente" || number(lead.score) >= HOT_SCORE_THRESHOLD,
     ).length;
     const recentAssignments = portfolio.filter(
       (lead) => (time(lead.created_at) ?? 0) >= now - DAY,

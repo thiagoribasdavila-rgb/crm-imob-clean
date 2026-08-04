@@ -28,6 +28,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+/* Prontidão da CONTA — o que vale para qualquer proposta, não só para esta.
+   Mesmo componente montado em /approvals: uma fonte, dois lugares. Escrever a
+   pergunta duas vezes produziria duas respostas. */
+import { ProntidaoParaPublicarPanel } from "@/components/atlas/ProntidaoParaPublicarPanel";
 /* Os limites vêm do núcleo, não de prosa: rótulo que repete o número à mão
    vira mentira no dia em que a régua da Meta mudar. O módulo é puro (só
    `import type`), então entra no bundle do cliente sem arrastar servidor. */
@@ -36,6 +40,12 @@ import {
   LIMITE_TEXTO,
   LIMITE_DESCRICAO,
 } from "@/lib/marketing/campanhas-criativos-composicao";
+/* O modo de geração vem do mesmo módulo que a rota importa. Escrever a string à
+   mão nos dois lados faria um rename passar sem erro de compilação: a rota
+   cairia no modo antigo e esta tela mostraria "peças geradas" sem nenhuma
+   conferência de número por trás. Módulo sem imports — atravessa o bundle do
+   navegador sem arrastar `node:crypto` nem `server-only`. */
+import { MODO_COM_LASTRO } from "@/lib/marketing/modo-de-geracao";
 
 // ── Tipos espelhando a resposta das rotas ─────────────────────────────────
 
@@ -79,11 +89,76 @@ type LastroDaIA = {
   provedor: string; modelo: string; tokensTotais: number; custoEstimadoUsd: number | null;
   camposUsados: string[]; camposAusentes: string[]; objetivo: string; geradoEm: string;
 };
+
+/**
+ * A RESPOSTA DO GERADOR COM LASTRO — o que /api/v1/marketing/creative-studio
+ * devolve no modo `variacoes_com_lastro`.
+ *
+ * `variacoes` traz APROVADAS E RECUSADAS na mesma lista, de propósito: uma tela
+ * que só mostrasse as aprovadas faria "pedi 4 e vieram 2" parecer capricho do
+ * modelo, quando na verdade duas citaram número que o estoque não sustenta.
+ */
+type FatoDoCRM = {
+  chave: string; rotulo: string; valor: number | string; unidade: string;
+  origem: { tabela: string; coluna: string; filtro: string; linhas: number };
+};
+type FonteWeb = { url: string; publicador: string; publicadoEm: string | null; trecho: string };
+type DivergenciaDeNumero = {
+  campo: string; trecho: string; valorCitado: number; unidade: string; motivo: string;
+};
+type ViolacaoDePolitica = { field: string; rule: string; detail: string };
+type VariacaoComLastro = {
+  conceito: string; angulo: string; persona: string; etapa: string;
+  titulo: string; textoPrincipal: string; descricao: string; chamada: string; objecao: string;
+  aprovada: boolean;
+  divergencias: DivergenciaDeNumero[];
+  violacoes: ViolacaoDePolitica[];
+  numerosCitados: number;
+};
+type PecasComLastro = {
+  modo: typeof MODO_COM_LASTRO;
+  ficha: {
+    nome: string; bairro: string | null; cidade: string | null;
+    unidadesDisponiveis: number;
+    precoMin: number | null; precoMax: number | null;
+    areaMin: number | null; areaMax: number | null;
+    fatos: FatoDoCRM[]; fontesWeb: FonteWeb[]; divergenciasDeCadastro: string[];
+  };
+  variacoes: VariacaoComLastro[];
+  ctaSugerido: string;
+  gravacao: {
+    gravadas: number; ids: string[];
+    naoGravadas: Array<{ titulo: string; motivo: string }>;
+    recusadas: number; impedimentos: string[];
+  };
+  consumo: { provedor: string; modelo: string; tokensTotais: number; custoEstimadoUsd: number | null; chamadas: number };
+  pendenciasDoProduto: string[];
+  proximoPasso: string;
+};
 type PropostaPronta = { kind: "create"; title: string; payload: Record<string, unknown> };
+
+/** A régua da Meta — o que a plataforma recusaria, medido antes de propor. */
+type EstadoDaRegua = "aprovado" | "reprovado" | "nao_medido";
+type ItemDaRegua = {
+  chave: string; grupo: "texto" | "politica" | "midia" | "publico"; rotulo: string;
+  estado: EstadoDaRegua; severidade: "bloqueio" | "aviso";
+  /** O que o item impede quando reprova: a peça errada x o artefato ausente. */
+  impede: "propor" | "ativar" | "nada";
+  detalhe: string; fonte: string; trecho?: string | null;
+  ondeResolver?: { rotulo: string; href: string } | null;
+};
+type Regua = {
+  itens: ItemDaRegua[]; aprovados: number; reprovados: number; naoMedidos: number;
+  bloqueios: number; bloqueiosParaPropor: number; bloqueiosParaAtivar: number;
+  avisos: number; podePropor: boolean; podeAtivar: boolean;
+  motivos: string[]; motivosParaAtivar: string[];
+};
+
 type RespostaPrevia = {
   previa: Previa; itens: ItemDeProntidao[]; resumo: Resumo; plano: Plano;
   planoIndisponivel: string | null;
   violacoesDePublico: Array<{ field: string; rule: string; detail: string }>;
+  regua: Regua;
   titulo: string; propostaPronta: PropostaPronta | null;
   origemDoTexto: "humano" | "ia" | "ia_editado"; lastroDaIA: LastroDaIA | null;
 };
@@ -91,6 +166,27 @@ type RespostaPrevia = {
 /** Prontidão de PRODUTO e CRM — outra rota, outra fonte. Nunca recalculada aqui. */
 type ItemProduto = { chave: string; rotulo: string; ok: boolean; detalhe: string };
 type ProntidaoProduto = { grupos: { produto: ItemProduto[]; crm: ItemProduto[] } };
+
+/**
+ * A biblioteca de mídia JÁ IMPORTADA — o que substitui a digitação do hash.
+ *
+ * `pecas` é o que dá para escolher hoje (está no CRM); `naBiblioteca` é o que a
+ * conta tem na Meta. A distância entre os dois é exatamente o botão de importar,
+ * e `naoImportadas: null` significa que a leitura não foi completa — nunca que
+ * não falta nada.
+ */
+type PecaDeMidia = {
+  id: string; tipo: "imagem" | "video"; referencia: string; contaId: string;
+  nome: string; endereco: string | null; situacao: string | null;
+  dimensoes: string | null; importadoEm: string | null;
+};
+type Biblioteca = {
+  contaId: string | null;
+  pecas: PecaDeMidia[];
+  naBiblioteca: number | null;
+  naoImportadas: number | null;
+  erros: string[];
+};
 
 const CTAS = [
   { valor: "SIGN_UP", rotulo: "Cadastre-se" },
@@ -105,6 +201,14 @@ async function cabecalho(): Promise<Record<string, string>> {
 }
 
 const brl = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+/**
+ * Como o campo de mídia vira lista de referências. UMA função, usada pela
+ * medição E pela lista de peças: dois recortes do mesmo texto divergiriam na
+ * primeira edição, e a divergência apareceria como "marquei a peça e a
+ * prontidão continua dizendo que falta mídia".
+ */
+const referencias = (bruto: string): string[] => bruto.split(/[\s,]+/).filter(Boolean);
 
 /* Cor por estado, sempre em token: hex cravado não é sobrescrito pelo tema
    claro e o texto some sobre fundo branco — a classe de defeito medida neste
@@ -144,6 +248,70 @@ function LinhaDeProntidao({ item }: { item: ItemDeProntidao }) {
   );
 }
 
+/* A régua tem TRÊS estados e DUAS severidades, e as duas dimensões são
+   independentes: um aviso reprovado é laranja e não impede nada; um bloqueio
+   reprovado é vermelho e impede propor. Pintar os dois iguais faria o usuário
+   tratar "vai entregar pior" e "a Meta recusa" como a mesma coisa. */
+const TINTA_REGUA: Record<EstadoDaRegua, string> = {
+  aprovado: "text-[var(--atlas-estado-sucesso)]",
+  reprovado: "text-[var(--atlas-estado-perigo)]",
+  nao_medido: "text-[var(--atlas-texto-fraco)]",
+};
+const MARCA_REGUA: Record<EstadoDaRegua, string> = { aprovado: "✓", reprovado: "×", nao_medido: "?" };
+const NOME_REGUA: Record<EstadoDaRegua, string> = {
+  aprovado: "passa", reprovado: "reprova", nao_medido: "não medido",
+};
+const GRUPO_REGUA: Record<ItemDaRegua["grupo"], string> = {
+  politica: "POLÍTICA", texto: "TEXTO", midia: "MÍDIA", publico: "PÚBLICO",
+};
+
+/** Linha da régua. A FONTE aparece sempre: regra sem procedência não se audita. */
+function LinhaDaRegua({ item }: { item: ItemDaRegua }) {
+  const cor = item.estado === "reprovado" && item.severidade === "aviso"
+    ? "text-[var(--atlas-estado-atencao)]"
+    : TINTA_REGUA[item.estado];
+  return (
+    <li className="flex flex-wrap items-baseline gap-x-2 gap-y-1 py-2">
+      <span className={`cc6-num shrink-0 ${cor}`} aria-hidden>{MARCA_REGUA[item.estado]}</span>
+      <span className="cc6-chip">{GRUPO_REGUA[item.grupo]}</span>
+      <span className="text-corpo text-[var(--atlas-texto-forte)]">{item.rotulo}</span>
+      {/* O rótulo diz QUAL portão o item fecha. Antes ele dizia "impede propor"
+          para todo bloqueio — e era mentira em mídia: a peça visual aparece
+          depois, por outra mão, e o que ela impede é a ATIVAÇÃO. */}
+      {item.estado === "reprovado" ? (
+        <span className={`cc6-chip ${item.impede === "propor" ? "cc6-alerta" : ""}`}>
+          {item.impede === "propor"
+            ? "impede propor"
+            : item.impede === "ativar"
+              ? "impede ativar"
+              : "só piora a entrega"}
+        </span>
+      ) : null}
+      <span className="sr-only">{NOME_REGUA[item.estado]}.</span>
+      <span className="w-full text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+        {item.detalhe}
+        {item.trecho ? (
+          <>
+            {" "}
+            <span className="text-[var(--atlas-estado-perigo)]">Trecho: “{item.trecho}”.</span>
+          </>
+        ) : null}
+        {item.ondeResolver && item.estado === "reprovado" ? (
+          <>
+            {" "}
+            <Link className="underline" href={item.ondeResolver.href}>
+              Resolve em {item.ondeResolver.rotulo}.
+            </Link>
+          </>
+        ) : null}
+      </span>
+      <span className="w-full text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+        Fonte: {item.fonte}
+      </span>
+    </li>
+  );
+}
+
 export default function ComporPropostaDeAnuncio() {
   const [contexto, setContexto] = useState<Contexto | null>(null);
   const [erro, setErro] = useState("");
@@ -165,10 +333,35 @@ export default function ComporPropostaDeAnuncio() {
   const [imageHashes, setImageHashes] = useState("");
   const [videoIds, setVideoIds] = useState("");
 
+  // Biblioteca de mídia da conta, já dentro do CRM.
+  const [biblioteca, setBiblioteca] = useState<Biblioteca | null>(null);
+  const [importando, setImportando] = useState(false);
+  const [avisoBiblioteca, setAvisoBiblioteca] = useState("");
+
   // Origem do texto — o que a Caixa de Aprovações vai ler junto da proposta.
   const [origemDoTexto, setOrigemDoTexto] = useState<"humano" | "ia" | "ia_editado">("humano");
   const [lastroDaIA, setLastroDaIA] = useState<LastroDaIA | null>(null);
   const [gerandoIA, setGerandoIA] = useState(false);
+  /**
+   * ── O VEREDITO DE LASTRO VENCE QUANDO O TEXTO MUDA ────────────────────────
+   *
+   * `lastroDaIA` é a conferência do texto que a IA escreveu. Assim que a pessoa
+   * edita o título, o texto principal ou a descrição, esse veredito passa a
+   * falar de OUTRO texto — e continuava na tela, verde, ao lado do texto novo.
+   *
+   * Não é um selo desatualizado: é um selo sobre outra coisa. Trocar "a partir
+   * de R$ 450 mil" (que tem lastro no cadastro) por "R$ 380 mil" (que não tem)
+   * mantinha o "com lastro" aceso, e a proposta seguia para a Caixa de
+   * Aprovações com a diretoria assinando embaixo de uma conferência que nunca
+   * olhou aquele número.
+   *
+   * Enquanto estiver vencido, o envio reconfere pela rota de lastro antes de
+   * propor — e recusa se o número novo não se sustentar.
+   */
+  const [lastroVencido, setLastroVencido] = useState(false);
+  const [reconferindoLastro, setReconferindoLastro] = useState(false);
+  // As peças que a IA escreveu com lastro, com a conferência de cada número.
+  const [pecas, setPecas] = useState<PecasComLastro | null>(null);
 
   const [previa, setPrevia] = useState<RespostaPrevia | null>(null);
   const [medindo, setMedindo] = useState(false);
@@ -230,6 +423,65 @@ export default function ComporPropostaDeAnuncio() {
     return () => { vivo = false; };
   }, [developmentId]);
 
+  // ── Biblioteca de mídia: a lista que substitui a digitação do hash ──────
+  //
+  // A leitura é por CONTA. Um `image_hash` só vale dentro da conta que o
+  // hospeda: oferecer a peça da conta A numa proposta da conta B seria oferecer
+  // um criativo que a Meta recusa na hora de publicar.
+  const carregarBiblioteca = useCallback(async () => {
+    if (!contaId) { setBiblioteca(null); return; }
+    try {
+      const r = await fetch(`/api/v1/marketing/biblioteca-de-midia?contaId=${encodeURIComponent(contaId)}`, {
+        headers: await cabecalho(), cache: "no-store",
+      });
+      const p = await r.json();
+      if (!r.ok) throw new Error(p?.error?.message ?? "Biblioteca indisponível.");
+      setBiblioteca(p.data as Biblioteca);
+    } catch (e) {
+      // Falha aqui NÃO trava a composição: o campo manual continua aceitando o
+      // hash digitado. O que ela não pode é passar por "a conta não tem peça".
+      setBiblioteca(null);
+      setAvisoBiblioteca(e instanceof Error ? e.message : "Não foi possível ler a biblioteca de mídia.");
+    }
+  }, [contaId]);
+
+  useEffect(() => { void carregarBiblioteca(); }, [carregarBiblioteca]);
+
+  /**
+   * Traz para o CRM o hash/ID que a Meta já tem. NADA é enviado à Meta: subir
+   * peça é escrita na conta do dono e continua acontecendo no Gerenciador de
+   * Anúncios. Rodar de novo não duplica — a rota só acrescenta o que falta.
+   */
+  async function importarBiblioteca() {
+    setImportando(true);
+    setAvisoBiblioteca("");
+    try {
+      const r = await fetch("/api/v1/marketing/biblioteca-de-midia", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(await cabecalho()) },
+        body: JSON.stringify({ contaId }),
+      });
+      const p = await r.json();
+      if (!r.ok) throw new Error(p?.error?.message ?? "Não foi possível importar.");
+      setAvisoBiblioteca(String(p.data?.resumo?.frase ?? ""));
+      await carregarBiblioteca();
+    } catch (e) {
+      setAvisoBiblioteca(e instanceof Error ? e.message : "Falha ao importar a biblioteca.");
+    } finally {
+      setImportando(false);
+    }
+  }
+
+  /** Marcar/desmarcar uma peça é editar o MESMO campo que a digitação usa. */
+  function alternarPeca(peca: PecaDeMidia) {
+    const atuais = referencias(peca.tipo === "imagem" ? imageHashes : videoIds);
+    const proximas = atuais.includes(peca.referencia)
+      ? atuais.filter((r) => r !== peca.referencia)
+      : [...atuais, peca.referencia];
+    if (peca.tipo === "imagem") setImageHashes(proximas.join(", "));
+    else setVideoIds(proximas.join(", "));
+  }
+
   // ── Prévia medida no servidor, a cada mudança da composição ─────────────
   const medir = useCallback(async () => {
     setMedindo(true);
@@ -245,8 +497,8 @@ export default function ComporPropostaDeAnuncio() {
           textos: textoPrincipal ? [textoPrincipal] : [],
           descricoes: descricao ? [descricao] : [],
           cta,
-          imageHashes: imageHashes.split(/[\s,]+/).filter(Boolean),
-          videoIds: videoIds.split(/[\s,]+/).filter(Boolean),
+          imageHashes: referencias(imageHashes),
+          videoIds: referencias(videoIds),
           origemDoTexto, lastroDaIA,
         }),
       });
@@ -269,7 +521,20 @@ export default function ComporPropostaDeAnuncio() {
     return () => clearTimeout(t);
   }, [contexto, medir]);
 
-  // ── IA propõe o texto ────────────────────────────────────────────────────
+  /**
+   * ── IA propõe o texto, COM LASTRO ────────────────────────────────────────
+   *
+   * `modo: "variacoes_com_lastro"` é o que liga esta tela ao gerador que
+   * confere cada número citado contra `properties` antes de a peça existir.
+   * Sem o modo, a rota devolve o briefing + copies de sempre — que nunca vê o
+   * estoque e por isso nunca pode citar preço.
+   *
+   * O que muda para quem usa: a IA passa a devolver VÁRIAS peças, cada uma com
+   * o veredito da conferência, e o texto aplicado ao formulário é o da primeira
+   * APROVADA. Quando nenhuma passa, os campos NÃO são preenchidos e o motivo
+   * fica na tela — preencher com uma peça recusada seria transformar a
+   * conferência em enfeite.
+   */
   async function proporComIA() {
     if (!empreendimento) return;
     setGerandoIA(true); setErro("");
@@ -277,34 +542,30 @@ export default function ComporPropostaDeAnuncio() {
       const r = await fetch("/api/v1/marketing/creative-studio", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(await cabecalho()) },
-        body: JSON.stringify({ developmentId, objetivo }),
+        body: JSON.stringify({ developmentId, objetivo, modo: MODO_COM_LASTRO }),
       });
       const p = await r.json();
       if (!r.ok) throw new Error(p?.error?.message ?? "A geração falhou.");
-      const d = p.data as {
-        copies: { titulos: string[]; textosPrincipais: string[]; descricoes: string[]; ctas: string[] };
-        consumo: { provedor: string; modelo: string; tokensTotais: number; custoEstimadoUsd: number | null };
-        pendenciasDoProduto: string[];
-      };
-      setTitulo(d.copies.titulos[0] ?? "");
-      setTextoPrincipal(d.copies.textosPrincipais[0] ?? "");
-      setDescricao(d.copies.descricoes[0] ?? "");
-      setOrigemDoTexto("ia");
-      // O lastro é o que a IA TINHA à mão. `pendenciasDoProduto` é a lista do
-      // que faltava — e é por isso que a peça não cita preço nem prazo.
-      setLastroDaIA({
+      const d = p.data as PecasComLastro;
+      setPecas(d);
+
+      // O lastro é o que a IA TINHA à mão — agora com PROCEDÊNCIA: cada insumo
+      // diz de qual tabela e coluna saiu, e quantas linhas o sustentam.
+      // `pendenciasDoProduto` é a lista do que o CRM não tem, e é por isso que a
+      // peça não cita aquilo.
+      const lastro: LastroDaIA = {
         provedor: d.consumo.provedor, modelo: d.consumo.modelo,
         tokensTotais: d.consumo.tokensTotais, custoEstimadoUsd: d.consumo.custoEstimadoUsd,
-        camposUsados: [
-          empreendimento.nome,
-          ...(empreendimento.bairro ? [`bairro ${empreendimento.bairro}`] : []),
-          ...(empreendimento.cidade ? [`cidade ${empreendimento.cidade}`] : []),
-          ...(empreendimento.precoMin ? [`preço a partir de ${brl(empreendimento.precoMin)}`] : []),
-          ...(empreendimento.tipologias.length ? [`${empreendimento.tipologias.length} tipologia(s)`] : []),
-        ],
+        camposUsados: d.ficha.fatos.map(
+          (f) => `${f.rotulo}: ${f.valor} (${f.origem.tabela}.${f.origem.coluna}, ${f.origem.linhas} linha(s))`,
+        ),
         camposAusentes: d.pendenciasDoProduto,
         objetivo, geradoEm: new Date().toISOString(),
-      });
+      };
+      setLastroDaIA(lastro);
+
+      const primeiraAprovada = d.variacoes.find((v) => v.aprovada);
+      if (primeiraAprovada) aplicarVariacao(primeiraAprovada, d.ctaSugerido);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha na geração.");
     } finally {
@@ -312,18 +573,89 @@ export default function ComporPropostaDeAnuncio() {
     }
   }
 
+  /**
+   * Leva UMA variação para os campos da composição.
+   *
+   * A ordem importa: `setOrigemDoTexto("ia")` vem DEPOIS dos campos porque
+   * `marcarEdicao` só é chamado pelo `onChange` do usuário — escrever por código
+   * não é edição humana, e marcar "ia_editado" aqui faria a auditoria de origem
+   * mentir na direção oposta.
+   */
+  function aplicarVariacao(v: VariacaoComLastro, ctaSugerido?: string) {
+    setTitulo(v.titulo);
+    setTextoPrincipal(v.textoPrincipal);
+    setDescricao(v.descricao);
+    if (ctaSugerido && CTAS.some((c) => c.valor === ctaSugerido)) setCta(ctaSugerido);
+    setOrigemDoTexto("ia");
+  }
+
   /* Editar texto de IA muda a origem — e a Caixa precisa saber disso. Uma peça
      "de IA" que um humano reescreveu inteira não é mais proposta de IA, e
      manter o selo original faria a auditoria de origem mentir. */
   const marcarEdicao = useCallback(() => {
     setOrigemDoTexto((o) => (o === "ia" ? "ia_editado" : o));
+    // O veredito de lastro passa a falar de um texto que não está mais na tela.
+    setLastroVencido(true);
   }, []);
 
   // ── Enviar para aprovação ────────────────────────────────────────────────
+  /**
+   * Reconfere os textos que estão NA TELA contra o cadastro do produto e as
+   * fontes regionais vigentes. É a mesma pergunta que o modo com lastro do
+   * estúdio faz — só que sobre o texto editado à mão, que nenhum outro caminho
+   * confere. Devolve o motivo quando reprova, para a pessoa saber qual número
+   * cadastrar em vez de só ver "não pode".
+   */
+  async function reconferirLastro(): Promise<{ ok: true } | { ok: false; motivo: string }> {
+    const textos = [titulo, textoPrincipal, descricao].map((t) => t.trim()).filter((t) => t.length > 0);
+    if (textos.length === 0) return { ok: true };
+    // A codificação sai da interpolação e vira variável de propósito. Dentro do
+    // template, `${encodeURIComponent(developmentId)}` é a MESMA URL — mas o
+    // parêntese cai no meio do segmento, e o curinga com que
+    // `check-rotas-orfas` casa segmento dinâmico exclui `)`. O portão passava a
+    // não enxergar esta chamada e acusava a rota de órfã: o instrumento estava
+    // certo, a forma é que era invisível para ele. As outras chamadas deste
+    // arquivo já interpolam variável simples.
+    const idDoProduto = encodeURIComponent(developmentId);
+    const r = await fetch(`/api/v1/developments/${idDoProduto}/region-study/lastro`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(await cabecalho()) },
+      body: JSON.stringify({ textos }),
+    });
+    const p = await r.json();
+    if (!r.ok) {
+      // Falha de leitura NÃO libera: não conseguir conferir é motivo para parar,
+      // nunca para seguir. É a regra que o próprio módulo de lastro documenta.
+      return { ok: false, motivo: p?.error?.message ?? "Não foi possível conferir o lastro do texto editado." };
+    }
+    const dados = p.data as { aprovado: boolean; removidos: Array<{ texto: string; motivo: string }> };
+    if (dados.aprovado) return { ok: true };
+    const primeiro = dados.removidos[0];
+    return {
+      ok: false,
+      motivo: primeiro
+        ? `O texto editado não tem lastro: ${primeiro.motivo}. Cadastre a fonte ou o valor no empreendimento antes de propor.`
+        : "O texto editado não tem lastro no cadastro nem em fonte regional vigente.",
+    };
+  }
+
   async function enviarParaAprovacao() {
     if (!previa?.propostaPronta) return;
     setEnviando(true); setErroEnvio("");
     try {
+      // A proposta é o documento que a diretoria assina, e a assinatura autoriza
+      // gasto depois. Texto editado à mão passa pelo mesmo portão que o texto da
+      // IA — senão o portão vira uma função de qual botão a pessoa apertou.
+      if (lastroVencido) {
+        setReconferindoLastro(true);
+        const veredito = await reconferirLastro().finally(() => setReconferindoLastro(false));
+        if (!veredito.ok) {
+          setErroEnvio(veredito.motivo);
+          setEnviando(false);
+          return;
+        }
+        setLastroVencido(false);
+      }
       const r = await fetch("/api/v1/marketing/proposals", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(await cabecalho()) },
@@ -528,10 +860,116 @@ export default function ComporPropostaDeAnuncio() {
                 </div>
               </div>
               <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
-                A IA consome tokens (o custo aparece abaixo) e grava as peças como rascunho.
-                Deixar em branco usa a sugestão determinística montada da ficha do empreendimento —
-                que é regra, não IA, e por isso não recebe o selo.
+                A IA consome tokens (o custo aparece abaixo) e grava as peças APROVADAS como
+                rascunho. Cada número citado é conferido contra o estoque real de unidades
+                antes de a peça existir: peça com número que o estoque não sustenta é recusada, não
+                corrigida em silêncio. Deixar em branco usa a sugestão determinística montada da
+                ficha do empreendimento — que é regra, não IA, e por isso não recebe o selo.
               </p>
+
+              {/* ── AS PEÇAS QUE A IA ESCREVEU, COM A CONFERÊNCIA À MOSTRA ──
+                  Aprovadas e recusadas na mesma lista. Esconder a recusa faria
+                  "pedi 4 e vieram 2" parecer capricho do modelo, quando o que
+                  aconteceu foi a conferência mordendo um número inventado. */}
+              {pecas ? (
+                <div className="cc6-hairline mt-5 pt-4">
+                  <p className={rotulo}>
+                    PEÇAS GERADAS · {pecas.variacoes.filter((v) => v.aprovada).length} aprovada(s) de{" "}
+                    {pecas.variacoes.length} · {pecas.gravacao.gravadas} gravada(s) como rascunho
+                  </p>
+                  <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+                    Lastro: {pecas.ficha.unidadesDisponiveis} unidade(s) disponível(is)
+                    {pecas.ficha.precoMin !== null && pecas.ficha.precoMax !== null
+                      ? ` · de ${brl(pecas.ficha.precoMin)} a ${brl(pecas.ficha.precoMax)}`
+                      : " · sem preço de unidade disponível no CRM"}
+                    {pecas.ficha.areaMin !== null && pecas.ficha.areaMax !== null
+                      ? ` · de ${pecas.ficha.areaMin} a ${pecas.ficha.areaMax} m²`
+                      : ""}
+                    {" · "}
+                    {pecas.ficha.fontesWeb.length} fonte(s) de mercado verificada(s)
+                  </p>
+
+                  {pecas.ficha.divergenciasDeCadastro.length ? (
+                    <ul className="mt-2 space-y-1">
+                      {pecas.ficha.divergenciasDeCadastro.map((d) => (
+                        <li key={d} className="text-rotulo leading-4 text-[var(--atlas-estado-atencao)]">
+                          Cadastro × estoque: {d}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+
+                  {pecas.gravacao.impedimentos.length ? (
+                    <ul className="mt-2 space-y-1">
+                      {pecas.gravacao.impedimentos.map((m) => (
+                        <li key={m} className="text-rotulo leading-4 text-[var(--atlas-estado-perigo)]">
+                          Nada foi gravado: {m}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {pecas.gravacao.naoGravadas.map((n) => (
+                    <p key={`${n.titulo}-${n.motivo}`} className="mt-2 text-rotulo leading-4 text-[var(--atlas-estado-atencao)]">
+                      Recusada pelo banco: “{n.titulo}” — {n.motivo}
+                    </p>
+                  ))}
+
+                  <ul className="mt-3 space-y-3">
+                    {/* O filete separador é decidido AQUI, pelo índice, e não por
+                        `first:border-t-0`: `.cc6-hairline` é uma regra UNLAYERED de
+                        globals.css e vence `@layer utilities`, onde o utilitário do
+                        Tailwind mora. A classe existiria no HTML e não pintaria nada —
+                        a mesma classe de defeito que este arquivo já documenta nos
+                        campos de formulário. Classe inerte é mentira no fonte. */}
+                    {pecas.variacoes.map((v, i) => (
+                      <li key={`${v.conceito}-${v.titulo}`} className={i === 0 ? "" : "cc6-hairline pt-3"}>
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <span
+                            className={`cc6-num shrink-0 ${v.aprovada ? "text-[var(--atlas-estado-sucesso)]" : "text-[var(--atlas-estado-perigo)]"}`}
+                            aria-hidden
+                          >
+                            {v.aprovada ? "✓" : "×"}
+                          </span>
+                          <span className="sr-only">{v.aprovada ? "aprovada." : "recusada."}</span>
+                          <span className="text-corpo text-[var(--atlas-texto-forte)]">{v.conceito}</span>
+                          <span className="cc6-chip">{v.angulo}</span>
+                          <span className="cc6-chip">{v.persona}</span>
+                          <span className="cc6-chip">{v.etapa}</span>
+                          <span className="cc6-chip">{v.numerosCitados} número(s) citado(s)</span>
+                          {v.aprovada ? (
+                            <button
+                              type="button"
+                              onClick={() => aplicarVariacao(v, pecas.ctaSugerido)}
+                              className="cc6-chip cc6-interativo-acento"
+                            >
+                              usar esta peça
+                            </button>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-corpo leading-5 text-[var(--atlas-texto-forte)]">{v.titulo}</p>
+                        <p className="mt-1 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">{v.textoPrincipal}</p>
+                        <p className="mt-1 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+                          {v.descricao} · {v.chamada} · responde: {v.objecao}
+                        </p>
+                        {v.divergencias.map((d) => (
+                          <p key={`${d.campo}-${d.trecho}`} className="mt-1 text-rotulo leading-4 text-[var(--atlas-estado-perigo)]">
+                            Número sem lastro [{d.campo}] “{d.trecho}”: {d.motivo}
+                          </p>
+                        ))}
+                        {v.violacoes.map((p) => (
+                          <p key={`${p.field}-${p.rule}`} className="mt-1 text-rotulo leading-4 text-[var(--atlas-estado-perigo)]">
+                            Política da Meta [{p.field}] {p.rule}: {p.detail}
+                          </p>
+                        ))}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p className="mt-3 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+                    {pecas.proximoPasso}
+                  </p>
+                </div>
+              ) : null}
 
               <label className={`${rotulo} mt-5`} htmlFor="cc-titulo">TÍTULO (ATÉ {LIMITE_TITULO} CARACTERES)</label>
               <input
@@ -563,13 +1001,96 @@ export default function ComporPropostaDeAnuncio() {
                 </div>
               </div>
 
+              {/* ── MÍDIA ──────────────────────────────────────────────────
+                  A peça JÁ EXISTE na conta: em 02/08/2026 eram 25 imagens
+                  ACTIVE na biblioteca da Meta e 0 linhas em `creative_assets`.
+                  O que faltava era o CRM saber citá-las — e enquanto faltava,
+                  publicar exigia copiar um hash de 32 caracteres à mão do
+                  Gerenciador de Anúncios. A lista abaixo é essa importação; o
+                  campo de digitação continua embaixo, porque hash vindo de
+                  fora (outra conta, peça recém-subida) precisa de caminho. */}
               <div className="cc6-hairline mt-5 pt-4">
-                <p className={rotulo}>MÍDIA</p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className={rotulo}>MÍDIA</p>
+                  <button
+                    type="button" onClick={() => void importarBiblioteca()}
+                    disabled={!contaId || importando}
+                    className="cc6-ghost-btn disabled:opacity-40"
+                  >
+                    {importando ? "Importando…" : "Importar da biblioteca da Meta"}
+                  </button>
+                </div>
                 <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
-                  Enviar imagem ou vídeo é ESCRITA na Meta e não acontece nesta tela. Informe aqui o
-                  hash da imagem ou o ID do vídeo já presentes na biblioteca da conta.
+                  Enviar imagem ou vídeo é ESCRITA na Meta e não acontece nesta tela. Importar só
+                  COPIA para o CRM o hash/ID do que a conta já tem — nada sobe, nada é criado.
                 </p>
-                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+
+                {biblioteca?.pecas.length ? (
+                  <ul className="mt-3 grid gap-2">
+                    {biblioteca.pecas.map((peca) => {
+                      const marcada = referencias(peca.tipo === "imagem" ? imageHashes : videoIds)
+                        .includes(peca.referencia);
+                      return (
+                        <li key={peca.id}>
+                          <label className="flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-1 py-1">
+                            <input
+                              type="checkbox" checked={marcada}
+                              onChange={() => alternarPeca(peca)}
+                              className="accent-[color:var(--atlas-accent)]"
+                            />
+                            <span className="cc6-chip">{peca.tipo === "imagem" ? "IMAGEM" : "VÍDEO"}</span>
+                            <span className="text-corpo text-[var(--atlas-texto-forte)]">{peca.nome}</span>
+                            <span className="w-full text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+                              {peca.referencia}
+                              {peca.dimensoes ? ` · ${peca.dimensoes}` : ""}
+                              {peca.situacao ? ` · ${peca.situacao}` : ""}
+                              {peca.endereco ? (
+                                <>
+                                  {" · "}
+                                  <a
+                                    href={peca.endereco} target="_blank" rel="noreferrer noopener"
+                                    className="underline underline-offset-2 text-[var(--atlas-accent)]"
+                                  >
+                                    ver peça
+                                  </a>
+                                </>
+                              ) : null}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+                    {!contaId
+                      ? "Escolha a conta de anúncios para ver as peças dela."
+                      : "Nenhuma peça importada para esta conta ainda. O botão acima traz o que a Meta já tem."}
+                  </p>
+                )}
+
+                {/* Os dois números lado a lado, e `null` dito como "não medido":
+                    "0 peças novas" por leitura que falhou pareceria biblioteca
+                    inteira importada. */}
+                {biblioteca ? (
+                  <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+                    {biblioteca.pecas.length} no CRM ·{" "}
+                    {biblioteca.naBiblioteca === null
+                      ? "biblioteca da Meta não lida"
+                      : `${biblioteca.naBiblioteca} na conta`}
+                    {biblioteca.naoImportadas ? ` · ${biblioteca.naoImportadas} ainda fora do CRM` : ""}
+                  </p>
+                ) : null}
+                {biblioteca?.erros.length ? (
+                  <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-estado-atencao)]">
+                    {biblioteca.erros.join(" · ")}
+                  </p>
+                ) : null}
+                {avisoBiblioteca ? (
+                  <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">{avisoBiblioteca}</p>
+                ) : null}
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className={rotulo} htmlFor="cc-img">HASHES DE IMAGEM</label>
                     <input
@@ -587,6 +1108,10 @@ export default function ComporPropostaDeAnuncio() {
                     />
                   </div>
                 </div>
+                <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+                  Os campos acompanham a lista: marcar uma peça escreve a referência aqui, e o que
+                  for digitado à mão continua valendo.
+                </p>
               </div>
 
               {lastroDaIA ? (
@@ -723,6 +1248,14 @@ export default function ComporPropostaDeAnuncio() {
               </section>
             ) : null}
 
+            {/* ── Conta, Página, mídia e conversão: o que vale para QUALQUER
+                proposta, não só para esta. Terceira fonte, e a tela diz isso —
+                as três listas medem coisas diferentes e nenhuma linha aparece
+                em duas delas. Aqui é onde a divergência de conta aparece: a
+                proposta pode estar impecável e apontar para uma conta que este
+                token não alcança. ── */}
+            <ProntidaoParaPublicarPanel titulo="CONTA, DESTINO, MÍDIA E CONVERSÃO" />
+
             {/* ── Prévia ── */}
             {previa ? (
               <section className="cc6-panel p-5">
@@ -765,11 +1298,76 @@ export default function ComporPropostaDeAnuncio() {
                       : `ATENÇÃO: status ${previa.plano.statusEncontrados.join(", ")} — algo nasceria ativo.`}
                   </p>
                 )}
-                {previa.violacoesDePublico.length ? (
-                  <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-estado-perigo)]">
-                    Público reprovado na política HOUSING: {previa.violacoesDePublico.map((v) => v.detail).join(" · ")}
+              </section>
+            ) : null}
+
+            {/* ── A régua da Meta ──
+                Antes desta seção, a tela mostrava só uma linha vermelha com as
+                violações de público — e o botão de propor continuava clicável.
+                Agora a conferência aparece item a item, e o que ela reprova
+                como bloqueio realmente impede propor. */}
+            {previa ? (
+              <section className="cc6-panel p-5">
+                <p className="cc6-eyebrow">A META ACEITARIA ESTA PEÇA?</p>
+                {/* DOIS números, não um. O número único era colorido por
+                    `podePropor` — e uma peça sem imagem apareceria como "1
+                    bloqueio" em verde, que é a mesma frase dizendo duas coisas
+                    contrárias. Agora cada portão tem a sua linha. */}
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span
+                    className={`cc6-num ${
+                      previa.regua.podePropor
+                        ? "text-[var(--atlas-estado-sucesso)]!"
+                        : "text-[var(--atlas-estado-perigo)]!"
+                    }`}
+                  >
+                    {previa.regua.bloqueiosParaPropor}
+                  </span>
+                  <span className="text-corpo text-[var(--atlas-texto-medio)]">
+                    {previa.regua.podePropor
+                      ? `bloqueio para PROPOR — ${previa.regua.aprovados} item(ns) passam${previa.regua.avisos ? `, ${previa.regua.avisos} aviso(s)` : ""}`
+                      : `bloqueio(s) para PROPOR — a Meta recusaria esta peça, ou a política põe a CONTA em risco`}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span
+                    className={`cc6-num ${
+                      previa.regua.bloqueiosParaAtivar
+                        ? "text-[var(--atlas-estado-atencao)]!"
+                        : "text-[var(--atlas-estado-sucesso)]!"
+                    }`}
+                  >
+                    {previa.regua.bloqueiosParaAtivar}
+                  </span>
+                  <span className="text-corpo text-[var(--atlas-texto-medio)]">
+                    {previa.regua.bloqueiosParaAtivar
+                      ? "artefato(s) que faltam para ATIVAR — a proposta sai, o anúncio não sobe até isto ser resolvido"
+                      : "artefato faltando para ATIVAR"}
+                  </span>
+                </div>
+                {/* Só os itens de ATIVAR. `regua.motivosParaAtivar` traz também
+                    os de propor (o que não pode ser proposto também não sobe), e
+                    repeti-los aqui duplicaria a lista vermelha do botão. */}
+                {previa.regua.itens.some((i) => i.impede === "ativar" && i.estado === "reprovado") ? (
+                  <ul className="mt-2 space-y-1">
+                    {previa.regua.itens
+                      .filter((i) => i.impede === "ativar" && i.estado === "reprovado")
+                      .map((i) => (
+                        <li key={i.chave} className="text-rotulo leading-4 text-[var(--atlas-estado-atencao)]">
+                          — {i.rotulo}: {i.detalhe}
+                        </li>
+                      ))}
+                  </ul>
+                ) : null}
+                {previa.regua.naoMedidos > 0 ? (
+                  <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+                    {previa.regua.naoMedidos} item(ns) NÃO MEDIDOS — não são aprovações. A geometria de
+                    uma peça referenciada por hash só existe depois de lida na biblioteca da Meta.
                   </p>
                 ) : null}
+                <ul className="mt-2 divide-y divide-[var(--atlas-borda-fraca)]">
+                  {previa.regua.itens.map((i) => <LinhaDaRegua key={i.chave} item={i} />)}
+                </ul>
               </section>
             ) : null}
 
@@ -794,16 +1392,46 @@ export default function ComporPropostaDeAnuncio() {
                     disabled={!previa?.propostaPronta || enviando}
                     className="cc6-ghost-btn mt-3 w-full disabled:opacity-40"
                   >
-                    {enviando ? "Registrando…" : "Enviar para aprovação"}
+                    {/* A reconferência de lastro é dita, e não escondida atrás de
+                        "Registrando…": ela pode RECUSAR o envio, e um rótulo que
+                        promete registro enquanto o portão ainda decide faria a
+                        recusa parecer erro do produto. */}
+                    {reconferindoLastro
+                      ? "Conferindo o lastro do texto editado…"
+                      : enviando
+                        ? "Registrando…"
+                        : lastroVencido
+                          ? "Conferir lastro e enviar para aprovação"
+                          : "Enviar para aprovação"}
                   </button>
                   {/* Botão desabilitado SEMPRE diz por quê. Um controle morto sem
                       explicação faz o usuário concluir que o produto quebrou. */}
                   {!previa?.propostaPronta ? (
-                    <p className="mt-3 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
-                      {previa?.planoIndisponivel
-                        ? `Ainda não dá para propor — ${previa.planoIndisponivel}.`
-                        : "Ainda não dá para propor: escolha empreendimento, conta e verba."}
-                    </p>
+                    /* O botão morto diz por quê, e agora há TRÊS motivos
+                       possíveis. A régua vem primeiro: quando ela bloqueia,
+                       dizer "escolha empreendimento, conta e verba" mandaria a
+                       pessoa mexer no lugar errado. */
+                    <div className="mt-3 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+                      {previa && !previa.regua.podePropor ? (
+                        <>
+                          <p className="text-[var(--atlas-estado-perigo)]">
+                            A régua da Meta reprovou {previa.regua.bloqueios} item(ns). Uma proposta que a
+                            Meta recusaria não vai para aprovação — corrija antes:
+                          </p>
+                          <ul className="mt-2 space-y-1">
+                            {previa.regua.motivos.map((m) => (
+                              <li key={m}>— {m}</li>
+                            ))}
+                          </ul>
+                        </>
+                      ) : (
+                        <p>
+                          {previa?.planoIndisponivel
+                            ? `Ainda não dá para propor — ${previa.planoIndisponivel}.`
+                            : "Ainda não dá para propor: escolha empreendimento, conta e verba."}
+                        </p>
+                      )}
+                    </div>
                   ) : (
                     <p className="mt-3 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
                       A proposta entra PENDENTE, com o plano inteiro anexado.

@@ -81,7 +81,12 @@ export async function chavesDasCidades(
   return resolvidas.filter((k): k is string => Boolean(k));
 }
 
-/** Já é uma chave da Meta (só dígitos) e não um nome? */
-export function pareceChave(valor: string): boolean {
-  return /^[0-9]{4,12}$/.test(valor.trim());
-}
+/**
+ * Já é uma chave da Meta (só dígitos) e não um nome?
+ *
+ * Delegado a `ehChaveDeGeo` (housing-audience) de propósito: o padrão que
+ * DECIDE aqui tem de ser o mesmo que REPROVA na régua. Enquanto eram duas
+ * expressões iguais em dois arquivos, uma podia afrouxar sem a outra saber —
+ * e a que afrouxasse seria a que deixa passar.
+ */
+export { ehChaveDeGeo as pareceChave } from "./housing-audience";

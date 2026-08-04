@@ -203,8 +203,26 @@ test("o telefone é normalizado do mesmo jeito nos dois lados", () => {
 
 // ── Presença viva ───────────────────────────────────────────────────────────
 
-test("o heartbeat grava QUANDO, não só a bandeira", () => {
-  assert.match(distribuicao, /last_seen_at: new Date\(\)\.toISOString\(\)/);
+test("o heartbeat grava QUANDO, não só a bandeira — e nas DUAS tabelas de presença", () => {
+  /**
+   * Este portão conferia o literal `new Date().toISOString()` colado na linha do
+   * `last_seen_at`. Quando o batimento passou a carimbar TAMBÉM
+   * `commercial_presence` — a tabela e a janela de 90 segundos que o motor
+   * governado exige para achar candidato —, o instante virou uma constante
+   * compartilhada pelas duas escritas e o portão reprovou uma mudança que o
+   * deixou mais forte.
+   *
+   * Reapontado para a PROPRIEDADE, que é o que ele sempre quis dizer: existe um
+   * único instante, e ele carimba as duas tabelas. Dois `new Date()` separados
+   * passariam no portão antigo e deixariam as tabelas com carimbos diferentes —
+   * exatamente a divergência que o batimento existe para não criar.
+   */
+  assert.match(distribuicao, /const agora = new Date\(\)\.toISOString\(\);/,
+    "um instante só para as duas escritas");
+  assert.match(distribuicao, /from\("profiles"\)\.update\(\{[\s\S]{0,220}?last_seen_at: agora/,
+    "a bandeira que quinze telas leem continua carimbada");
+  assert.match(distribuicao, /from\("commercial_presence"\)\.upsert\(\{[\s\S]{0,260}?last_seen_at: agora/,
+    "sem carimbar commercial_presence o motor não enxerga ninguém e toda distribuição morre em distribution_no_broker_with_capacity");
   assert.match(ler("lib", "compat", "legacy-v2.ts"), /availability_status,last_seen_at/,
     "sem a coluna no select compartilhado a leitura seria undefined em silêncio");
 });

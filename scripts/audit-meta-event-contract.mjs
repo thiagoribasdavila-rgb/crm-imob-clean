@@ -9,6 +9,9 @@ const pipeline = read("app/api/v1/pipeline/route.ts");
 const approvals = read("app/api/v2/approvals/[id]/route.ts");
 const worker = read("app/api/v2/outbox/process/route.ts");
 const conversionMigration = read("supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql");
+const conversionModeMigration = read("supabase/migrations/20260802230000_modo_de_producao_aceito_no_capi.sql");
+const modeModule = read("lib/meta/modo-de-envio.ts");
+const settings = read("app/api/v1/integrations/meta/route.ts");
 const outboxMigration = read("supabase/migrations/20260711060000_atlas_level6_resilience.sql");
 
 const has = (source, ...markers) => markers.every((marker) => source.includes(marker));
@@ -51,8 +54,22 @@ const staticAudit = {
   },
   eligibility: {
     configurationMustBeEnabled: has(conversions, "!config?.enabled"),
-    queueRestrictedToTestMode: has(conversions, 'config.mode !== "test"'),
-    deliveryRestrictedToTestMode: has(worker, 'config.mode !== "test"', "!config.test_event_code"),
+    /* ── ESTAS TRÊS APONTAM PARA O COMPORTAMENTO, NÃO PARA A LINHA ──────────
+       Até 02/08/2026 aqui havia `queueRestrictedToTestMode` e
+       `deliveryRestrictedToTestMode`, e as duas ficavam VERDES por conterem o
+       texto `config.mode !== "test"`. Verdes, elas congelavam o defeito que
+       existiam para vigiar: a fila só era alimentada em modo de teste, e em
+       modo de teste a Meta não aprende. Sair do teste parava o envio em
+       silêncio (não enfileirar era o caminho de sucesso do `return`).
+       As asserções foram INVERTIDAS em vez de removidas — um portão que exige
+       a ausência do texto antigo não volta atrás por descuido. */
+    queueIndependentOfMode: !/config\.mode/.test(conversions) && has(conversions, 'reason: "conversion_disabled"'),
+    testCodeDemandedAndSentByOnePredicate: has(
+      worker,
+      "deveEnviarCodigoDeTeste(modoDeEnvio) && !config.test_event_code",
+      "deveEnviarCodigoDeTeste(modoDeEnvio) ? { test_event_code: config.test_event_code }",
+    ),
+    unknownModeFallsBackToTest: has(modeModule, 'valor === "live" ? "live" : "test"'),
     consentCheckedBeforeQueue: has(conversions, "dataSharingConsent !== true"),
     consentCheckedBeforeDelivery: has(worker, "dataSharingConsent !== true"),
     matchKeyCheckedBeforeDelivery: has(worker, "!userData.em && !userData.ph"),
@@ -73,7 +90,13 @@ const staticAudit = {
     outboxTenantScoped: has(outboxMigration, "organization_id", "tenant outbox isolation"),
     retryAndDeadLetter: has(worker, "attempts >= 5", 'status: terminal ? "dead_letter" : "failed"'),
     sameEventIdOnRetry: has(worker, "event_id: conversion.event_id"),
-    productionBlocked: has(conversionMigration, "check (mode = 'test')") && has(worker, "Conversões Meta permanecem bloqueadas fora do modo de teste."),
+    /* O bloqueio saiu da coluna e virou GESTO: a restrição aceita os dois
+       valores conhecidos, e quem promove é `conversion_go_live`, que exige
+       diretoria e dataset já configurado em teste. A ausência da frase antiga
+       do worker é parte da asserção — ela era a prova de que produção não
+       tinha caminho. */
+    productionModeAccepted: has(conversionModeMigration, "check (mode in ('test', 'live'))") && !worker.includes("Conversões Meta permanecem bloqueadas fora do modo de teste."),
+    goLiveIsADirectorGesture: has(settings, 'body.action === "conversion_go_live"', "isDirector", 'mode: "live"', 'mode: "test", enabled: true'),
   },
 };
 
@@ -103,6 +126,12 @@ async function auditRuntime() {
       testOnly: (configs.data || []).every((item) => item.mode === "test"),
       consentRequired: (configs.data || []).every((item) => item.consent_required === true),
       enabledWithTestCode: (configs.data || []).filter((item) => item.enabled && item.test_event_code).length,
+      /* Produção agora é ALCANÇÁVEL, então ela precisa ser MEDIDA — antes o
+         relatório afirmava `productionDeliveryEnabled: false` por convicção,
+         e uma constante nunca deixa de estar certa. */
+      liveEnabled: (configs.data || []).filter((item) => item.enabled && item.mode === "live").length,
+      /* Em modo teste, config sem código é envio que estoura no worker. */
+      testWithoutCode: (configs.data || []).filter((item) => item.enabled && item.mode !== "live" && !item.test_event_code).length,
     },
     events: {
       total: events.data?.length || 0,
@@ -129,12 +158,13 @@ console.log(JSON.stringify({
     sourceEvidenceReady: evidenceReady,
     runtimeReady,
     safeForSingleTestEvent: staticReady && evidenceReady && runtimeReady,
-    productionDeliveryEnabled: false,
+    productionDeliveryEnabled: (runtime.configs?.liveEnabled ?? 0) > 0,
   },
   blockers: [
     ...(!evidenceReady ? ["source_evidence_not_persisted"] : []),
     ...(runtime.status !== "verified_read_only" ? ["runtime_schema_not_ready"] : []),
     ...(runtime.events?.duplicateRows ? ["runtime_duplicates_detected"] : []),
+    ...(runtime.configs?.testWithoutCode ? ["test_mode_without_test_event_code"] : []),
   ],
   governance: {
     identifiersPrinted: false,

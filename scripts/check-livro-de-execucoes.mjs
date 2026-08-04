@@ -45,6 +45,13 @@ const TABELA = "atlas_worker_runs";
  * reescritos no mesmo dia para parar de engolir erro) e subiu para 3 com o
  * `first-contact-sla`.
  *
+ * 3 → 6 em 02/08/2026: entraram `task-reminders`, `lead-reservations` e
+ * `task-recurrences`. Os três têm a MESMA forma — autenticação, uma RPC, um
+ * retorno — e por isso foram os de menor risco para ligar em lote. O desfecho
+ * sai do que a RPC contou: se nenhum número voltou maior que zero, é
+ * `sem_trabalho`, que é desfecho legítimo e era justamente o que se confundia
+ * com "nunca rodou".
+ *
  * Ele entrou por um motivo prático: é o de MAIOR cadência, 5 em 5 minutos. Com
  * só os noturnos registrando, a primeira linha do livro apareceria às 3h da
  * manhã seguinte ao deploy; com ele, aparece em minutos. Prova rápida vale mais
@@ -52,7 +59,24 @@ const TABELA = "atlas_worker_runs";
  *
  * Só sobe.
  */
-const PISO = 3;
+// 02/08/2026: 3 → 6 → 13. A cobertura está COMPLETA: os treze vigias do
+// agendador deixam rastro em `atlas_worker_runs`.
+//
+// O piso em 13 é o mais forte que este portão pode ter, e ele muda o que uma
+// falha significa: até hoje, "o vigia não tem linha no livro" era ambíguo —
+// podia ser que ele não rodou, ou que ele rodou e não sabia registrar. Com 13
+// de 13 instrumentados, ausência de linha passa a significar UMA coisa só: ele
+// não rodou. É isso que torna `vigias-vivos:check` capaz de responder se o
+// crontab foi instalado.
+//
+// Piso que só sobe. Se um vigia novo entrar no agendador sem livro, esta
+// asserção fica vermelha — e é para ficar.
+//
+// 13 → 14 em 02/08/2026: entrou `sombra-do-atendimento`, o degrau 1 do
+// atendimento autônomo. Ele nasceu COM livro — que é a única forma de um vigia
+// novo entrar sem derrubar esta catraca, e é exatamente o efeito pretendido:
+// a cobertura completa de ontem não pode virar 14/15 amanhã em silêncio.
+const PISO = 14;
 
 const falhas = [];
 

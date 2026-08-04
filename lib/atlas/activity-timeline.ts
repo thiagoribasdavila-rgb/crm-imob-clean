@@ -30,6 +30,12 @@ const contactTypes = new Set([
   "note",
   "meeting",
   "visit",
+  // `whatsapp` FALTAVA — e é o segundo canal mais registrado pelo corretor (16
+  // linhas em `lead_events` contra 40 de `call`, medidas em 02/08/2026). Sem a
+  // chave aqui, nenhum ramo casava e a função caía no `return "change"` do fim:
+  // "Falei por WhatsApp" era desenhado na timeline como MOVIMENTAÇÃO e sumia do
+  // filtro "Contato". Categoria errada não avisa que está errada.
+  "whatsapp",
   "whatsapp_opt_out",
   "nightly_journey_reply",
 ]);

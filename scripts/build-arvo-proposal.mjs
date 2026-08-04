@@ -77,7 +77,11 @@ const copyViolations = validateCopy(copy);
 // ---------------------------------------------------------------------------
 // 2) asset_feed_spec + esqueleto CBO/HOUSING a R$ 100/dia + targeting HOUSING.
 // ---------------------------------------------------------------------------
-const targeting = housingTargetingSpec({ countries: ["BR"], cities: ["São Paulo"] });
+// Geo pela CHAVE da Meta ("269969"), não pelo nome. Com o nome no campo `key` a
+// Meta aceita em silêncio e resolve para localização VAZIA — medido em
+// 02/08/2026: delivery_estimate 0–0 com "São Paulo", 19,7–23,2 milhões com
+// "269969". A chave vem do catálogo (brief.cityKey), fonte única do repo.
+const targeting = housingTargetingSpec({ countries: ["BR"], cities: [brief.cityKey ?? "269969"] });
 const skeleton = leadCampaignSkeleton(brief, weeklyBudgetBrl, targeting);
 const assetFeedSpec = toAssetFeedSpec(copy, { linkUrl: "http://fb.me/", pageId: PAGE });
 

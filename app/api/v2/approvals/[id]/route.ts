@@ -7,6 +7,7 @@ import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 import { resolveLeadOwner, recordDistribution } from "@/lib/distribution/hierarchical-cascade";
 import { ACTION_PROPOSAL_REQUEST_TYPE, type ActionProposalPayload } from "@/lib/ai/action-proposals";
 import { canDecideMetaCampaign, isMetaCampaignApproval, META_CAMPAIGN_AUTHORITY_MESSAGE } from "@/lib/meta/marketing/approval-authority";
+import { registrarAtividade } from "@/lib/crm/registro-de-atividade";
 
 export const dynamic = "force-dynamic";
 
@@ -92,7 +93,21 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         if (execError || !task) return NextResponse.json({ error: `Execução falhou (tarefa): ${execError?.message || "sem id"}` }, { status: 502 });
         executed = { taskId: task.id, dueAt: action.dueAt };
       } else if (kind === "reassign_lead") {
-        const ownership = await resolveLeadOwner(admin, identity.organizationId, null);
+        // O escopo da lead decide de quem é a vez. Redistribuir sem ele mandaria
+        // a lead do Arvo para a fila geral — inclusive para quem foi deixado de
+        // fora do elenco daquele empreendimento de propósito. A lead já existe
+        // aqui (é ela que está sendo reatribuída), então os dois ids vêm dela e
+        // não de palpite.
+        const { data: escopoDaLead } = await admin
+          .from("leads")
+          .select("development_id,campaign_id")
+          .eq("id", approval.entity_id)
+          .eq("organization_id", identity.organizationId)
+          .maybeSingle();
+        const ownership = await resolveLeadOwner(admin, identity.organizationId, null, {
+          projetoId: (escopoDaLead?.development_id as string | null) ?? null,
+          campanhaId: (escopoDaLead?.campaign_id as string | null) ?? null,
+        });
         if (!ownership.ownerId) return NextResponse.json({ error: "Cascata sem elegíveis agora — nenhum corretor ou gerente disponível." }, { status: 409 });
         const { error: execError } = await admin.from("leads").update({ assigned_to: ownership.ownerId, assigned_user_id: ownership.ownerId }).eq("id", approval.entity_id).eq("organization_id", identity.organizationId);
         if (execError) return NextResponse.json({ error: `Execução falhou (redistribuição): ${execError.message}` }, { status: 502 });
@@ -180,7 +195,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       await admin.from("commercial_simulations").update({ status: body.decision, updated_at: decidedAt }).eq("id", approval.entity_id).eq("organization_id", identity.organizationId);
       const { data: simulation } = await admin.from("commercial_simulations").select("lead_id").eq("id", approval.entity_id).eq("organization_id", identity.organizationId).single();
       if (simulation) {
-        await admin.from("activities").insert({ organization_id: identity.organizationId, lead_id: simulation.lead_id, user_id: identity.userId, type: "commercial_proposal_decision", title: body.decision === "approved" ? "Proposta comercial aprovada" : "Proposta comercial devolvida", description: body.reason || (body.decision === "approved" ? "Preço, estoque e regra revisados pela gestão." : "Requer ajuste antes do envio ao cliente."), metadata: { simulationId: approval.entity_id, decision: body.decision }, occurred_at: decidedAt });
+        // A DECISÃO da gestão sobre a proposta — aprovar ou devolver — é o
+        // registro que a auditoria comercial procura primeiro, e era o que o
+        // 42703 de `activities.title` apagava sem deixar vestígio.
+        await registrarAtividade(admin, { organizationId: identity.organizationId, leadId: String(simulation.lead_id), userId: identity.userId, type: "commercial_proposal_decision", titulo: body.decision === "approved" ? "Proposta comercial aprovada" : "Proposta comercial devolvida", description: body.reason || (body.decision === "approved" ? "Preço, estoque e regra revisados pela gestão." : "Requer ajuste antes do envio ao cliente."), metadata: { simulationId: approval.entity_id, decision: body.decision }, occurredAt: decidedAt });
         if (body.decision === "approved") {
           const { data: lead } = await admin.from("leads").select("status").eq("id", simulation.lead_id).eq("organization_id", identity.organizationId).single();
           const previousStage = lead?.status || "qualificacao";

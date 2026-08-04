@@ -54,6 +54,14 @@ const ORFAS_CONHECIDAS = new Map([
   ["/api/v1/kaizen", "fila de melhoria contínua sem tela"],
   ["/api/v1/kaizen/[id]", "idem"],
   ["/api/v1/marketing/lead-forms", "formulários da Meta sem tela que os liste"],
+  // ── DUAS QUE O INSTRUMENTO CORRIGIDO REVELOU EM 03/08/2026 ─────────────────
+  //
+  // Não são órfãs novas: são órfãs ANTIGAS que este portão não via, porque lia
+  // o texto cru dos arquivos e uma menção em comentário contava como chamada.
+  // Entram declaradas — com o motivo e a data — para ficarem VISÍVEIS na
+  // contagem enquanto esperam tela, em vez de voltarem a se esconder.
+  ["/api/v1/developments/[id]/commission", "escrita de regra de comissão (GET/PUT) sem tela — a leitura já existe em lib/crm/commission-rules.ts; falta a tela de cadastro no empreendimento (03/08/2026)"],
+  ["/api/v1/integrations/meta/capi-export", "exportação do lote CAPI (GET ensaio / POST envio) sem tela nem cron — onda 5 de docs/ESTRATEGIA_META_ANDROMEDA.md (03/08/2026)"],
   ["/api/atlas2030/data-products/publish", "Atlas 2030: publicação de data product sem gatilho"],
   ["/api/atlas2030/graph/upsert", "Atlas 2030: escrita no grafo sem gatilho"],
   ["/api/v1/ai/director-briefing", "briefing do diretor gerado e não exibido em tela nenhuma"],
@@ -105,10 +113,34 @@ const fontes = ["app", "components", "lib", "hooks", "config"].flatMap((d) =>
     (p, nome) => /\.(tsx?|mjs|js|json)$/.test(nome) && !p.includes("/app/api/"),
   ),
 );
+/**
+ * ── COMENTÁRIO NÃO É CHAMADA ────────────────────────────────────────────────
+ *
+ * Este portão lia o texto CRU dos arquivos, então uma rota citada em prosa
+ * contava como alcançada.
+ *
+ * Foi exatamente assim que `/api/v1/marketing/execute` atravessou meses sem ser
+ * acusada: ela é a ÚNICA rota que age de verdade na Meta — criar, pausar,
+ * ativar, mexer em verba — e nenhuma tela a chamava. O que a mantinha "viva"
+ * aos olhos deste portão era um comentário em
+ * `lib/meta/marketing/approval-authority.ts` explicando onde a execução morava.
+ *
+ * Um portão que aceita a DESCRIÇÃO de uma ligação como prova da ligação é a
+ * forma mais cara de asserção que só verifica a si mesma: ele fica verde
+ * justamente enquanto o elo está partido, e quem produz o falso verde é o
+ * comentário — escrito por quem entendia do assunto e quis documentar.
+ *
+ * O recorte é conservador de propósito: bloco e linha que COMEÇA com `//`
+ * (após espaços). Não se remove `//` no meio da linha, senão `https://` viraria
+ * comentário e sumiriam URLs legítimas de dentro de strings.
+ */
+const semComentarios = (fonte) =>
+  fonte.replace(/\/\*[\s\S]*?\*\//g, "\n").replace(/^[ \t]*\/\/.*$/gm, "");
+
 const texto = fontes
   .map((f) => {
     try {
-      return readFileSync(f, "utf8");
+      return semComentarios(readFileSync(f, "utf8"));
     } catch {
       return "";
     }

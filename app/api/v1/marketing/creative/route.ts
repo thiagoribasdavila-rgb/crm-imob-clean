@@ -64,8 +64,13 @@ export async function POST(request: NextRequest) {
   const linkUrl = body?.linkUrl?.trim();
   const weeklyBudgetBrl = Number(body?.weeklyBudgetBrl);
   const hasBudget = Number.isFinite(weeklyBudgetBrl) && weeklyBudgetBrl > 0;
-  // targeting calibrado pela política HOUSING — geo da cidade do brief
-  const targeting = housingTargetingSpec(brief.city ? { cities: [brief.city] } : {});
+  // Targeting calibrado pela política HOUSING — geo pela CHAVE da cidade.
+  //
+  // Aqui ia `cities: [brief.city]`, ou seja o NOME ("São Paulo") no campo em que
+  // a Meta espera a chave ("269969"). A Meta aceita em silêncio e resolve para
+  // localização vazia (medido: delivery_estimate 0–0 com o nome, 19,7–23,2 mi
+  // com a chave). Sem chave no catálogo, país inteiro — amplo, mas verdadeiro.
+  const targeting = housingTargetingSpec(brief.cityKey ? { cities: [brief.cityKey] } : {});
 
   return apiSuccess({
     copy,

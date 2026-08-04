@@ -15,10 +15,19 @@ import { LIVE_PROFILE_SELECT, mapLegacyProfile, mapLegacyProject } from "@/lib/c
 import { EmptyState } from "@/components/atlas/empty-state";
 import { ErrorState } from "@/components/atlas/error-state";
 import { LoadingState } from "@/components/atlas/loading-state";
+import { AtivarAvisoDeLead } from "@/components/atlas/AtivarAvisoDeLead";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { NextActionQuickSet } from "@/components/crm/next-action-quick-set";
+import { RegistroDeContatoNaLinha } from "@/components/crm/registro-de-contato-na-linha";
+import {
+  ehAceitoPelaRota,
+  type RegistroDeContato,
+} from "@/components/crm/registro-de-contato-desfechos";
 import { AcompanhamentoCorretorFilaDeRecuperacao } from "@/components/crm/acompanhamento-corretor-fila-de-recuperacao";
+// A fronteira de quente/morno vem do modulo canonico — este arquivo escolhia
+// o proprio numero para a MESMA pergunta.
+import { HOT_SCORE_THRESHOLD, WARM_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 
 type Lead = {
   id: string;
@@ -220,8 +229,11 @@ function statusTone(value: string | null) {
 }
 
 function scoreTone(score: number | null) {
-  if (Number(score ?? 0) >= 70) return "danger";
-  if (Number(score ?? 0) >= 40) return "warning";
+  if (Number(score ?? 0) >= HOT_SCORE_THRESHOLD) return "danger";
+  // Era `>= 40`. A fronteira canônica de morno é 35 (WARM_SCORE_THRESHOLD), e o
+  // 40 digitado aqui criava a segunda verdade que a consolidação existiu para
+  // acabar: a linha de cima já vinha da fronteira, a de baixo não.
+  if (Number(score ?? 0) >= WARM_SCORE_THRESHOLD) return "warning";
   return "info";
 }
 
@@ -258,7 +270,7 @@ function phoneLinks(phone: string | null) {
 function isHotLead(lead: Lead) {
   return (
     (lead.temperature ?? "").toLowerCase() === "quente" ||
-    Number(lead.score ?? 0) >= 70
+    Number(lead.score ?? 0) >= HOT_SCORE_THRESHOLD
   );
 }
 
@@ -518,6 +530,139 @@ export default function LeadsPage() {
       /* Sem área de transferência: o número segue visível para copiar à mão. */
     }
   }
+
+  /**
+   * REGISTRAR O CONTATO NA PRÓPRIA LINHA — otimista, com reversão que aparece.
+   *
+   * ── O que isto conserta ───────────────────────────────────────────────────
+   *
+   * MEDIDO no banco em 02/08/2026: 490 leads, 22 com `first_contacted_at`
+   * (4,5%), **0 atividades de contato** — as 481 atividades existentes são
+   * todas `pipeline_stage_changed`. A rota `POST /api/v1/leads/[id]/first-contact`
+   * já existia e já estava certa; `FirstContactQuickLog` também. Os dois só
+   * estavam montados na FICHA (`/leads/[id]`). Nesta lista — onde o corretor
+   * passa o dia — havia ZERO ocorrência dos dois.
+   *
+   * Registrar exigia abrir a ficha de cada lead e voltar. Ninguém faz isso 30
+   * vezes por dia. Não era a equipe que não ligava: era o sistema que só
+   * aceitava o registro no lugar onde ela não estava.
+   *
+   * ── Por que otimista, e por que a reversão importa mais que o otimismo ────
+   *
+   * A linha muda antes da resposta porque o corretor está em movimento: sem
+   * retorno imediato ele toca de novo e duplica o registro. Mas se a rota
+   * recusar — sessão vencida, lead fora da carteira (a rota devolve 403 para
+   * lead de colega), rede caída — o patch é DESFEITO e o erro relançado, que é
+   * o que acende o `role="alert"` na linha.
+   *
+   * Falha silenciosa aqui seria pior do que não ter o botão: o corretor jura
+   * que registrou, o banco não tem a linha, e a próxima auditoria conclui de
+   * novo que ninguém liga para lead.
+   *
+   * ── A confirmação NÃO é o 201 ─────────────────────────────────────────────
+   *
+   * A rota devolve 201 mesmo quando `complete_first_contact_sla` não existe
+   * neste banco (fase 34 não aplicada): o evento entra na linha do tempo e
+   * `first_contacted_at` continua NULO. Pintar a linha como contatada nesse
+   * caso seria desenhar um dado que o banco não tem — exatamente a métrica
+   * inventada que esta tela não pode produzir. Por isso a confirmação lê o
+   * campo que a própria rota devolve sobre o que ela conseguiu gravar.
+   */
+  /**
+   * ── UM PATCH SÓ, PARA AS DUAS SUPERFÍCIES QUE MARCAM ───────────────────────
+   *
+   * A tabela desktop e o cartão mobile chamam ESTA função. Repetir o `setItems`
+   * em cada uma criaria duas verdades sobre a mesma escrita — e a cópia que
+   * existia no cartão já carregava o defeito que isto conserta:
+   *
+   *     next_action_at: quando ?? l.next_action_at
+   *
+   * `??` cai de volta no valor antigo quando `quando` é `null` — que é
+   * exatamente o retorno de LIMPAR. A lead saía da agenda no banco e continuava
+   * marcada na tela, até alguém recarregar. Aqui o `null` é gravado como `null`.
+   *
+   * `next_action` entra junto porque é o QUÊ: sem ele a linha continuaria
+   * exibindo "Ligar" numa lead que acabou de virar "Preparar proposta".
+   *
+   * Patch cirúrgico, não recarga: `setReloadKey` refaria a consulta inteira só
+   * para atualizar UMA linha, e com a ficha aberta em lâmina fecharia o painel
+   * no meio do trabalho. Os dois `useMemo` que dependem de `items`
+   * (`visiblePriorityQueue` e `pageMetrics`) recalculam sozinhos — é assim que
+   * a Fila de ação reordena sem ninguém apertar F5.
+   */
+  function aplicarProximaAcao(leadId: string, quando: string | null, descricao: string | null) {
+    setItems((atuais) =>
+      atuais.map((l) =>
+        l.id === leadId ? { ...l, next_action_at: quando, next_action: descricao } : l,
+      ),
+    );
+  }
+
+  async function registrarContatoDaLinha(lead: Lead, registro: RegistroDeContato) {
+    /* A guarda contra "caminhos divergentes": um par (canal, resultado) que a
+       rota não conhece vira HTTP 400 genérico na mão de quem está trabalhando,
+       e nenhum teste desta árvore o pegaria. Aqui ele nem sai — e o patch
+       otimista nem chega a acontecer, então não há o que desfazer. */
+    if (!ehAceitoPelaRota(registro)) {
+      throw new Error(
+        `desfecho fora do vocabulário da rota (${registro.canal}/${registro.resultado})`,
+      );
+    }
+    const contatoAnterior = lead.first_contacted_at;
+    const agora = new Date().toISOString();
+    /* Só `first_contacted_at`, e só quando estava vazio. `last_interaction_at`
+       fica de fora de propósito: a rota não o escreve, e antecipá-lo aqui
+       apagaria o chip de "parada há N dias" com um valor que o servidor não
+       tem — a linha voltaria a mentir sozinha na próxima carga. */
+    setItems((atuais) =>
+      atuais.map((l) =>
+        l.id === lead.id
+          ? { ...l, first_contacted_at: l.first_contacted_at ?? agora }
+          : l,
+      ),
+    );
+    const desfazer = () =>
+      setItems((atuais) =>
+        atuais.map((l) =>
+          l.id === lead.id ? { ...l, first_contacted_at: contatoAnterior } : l,
+        ),
+      );
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("sessão expirada, entre de novo");
+      const r = await fetch(`/api/v1/leads/${lead.id}/first-contact`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(registro),
+      });
+      const payload = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        throw new Error(
+          payload?.error?.message || `o servidor recusou (HTTP ${r.status})`,
+        );
+      }
+      const gravou = payload?.data ?? {};
+      /* Primeiro contato só está gravado se o SLA fechou — é a RPC que carimba
+         `first_contacted_at`. Recontato só está gravado se o evento entrou. */
+      const confirmado = gravou?.primeiroContato
+        ? gravou?.slaFechado === true
+        : gravou?.eventoRegistrado === true;
+      if (!confirmado) {
+        throw new Error(
+          typeof gravou?.aviso === "string" && gravou.aviso
+            ? gravou.aviso
+            : "o servidor não confirmou o registro",
+        );
+      }
+    } catch (erro) {
+      desfazer();
+      throw erro instanceof Error ? erro : new Error("falha de rede");
+    }
+  }
   const [nextAction, setNextAction] = useState<NextActionFilter>("");
   const [sort, setSort] = useState("created_at");
   const [direction, setDirection] = useState<SortDirection>("desc");
@@ -737,7 +882,7 @@ export default function LeadsPage() {
     let active = true;
 
     async function loadReferences() {
-      const [profileResult, campaignResult, developmentResult, meResult] =
+      const [profileResult, campaignResult, developmentResult, empreendimentoResult, meResult] =
         await Promise.all([
           supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("active", true).order("created_at"),
           // Lista de referência do filtro (não é agregado): o teto de 500 fica,
@@ -747,12 +892,28 @@ export default function LeadsPage() {
           // aparecer no filtro. Mais recentes primeiro.
           supabase.from("marketing_campaigns").select("id,name,platform,status,created_at").order("created_at", { ascending: false }).limit(500),
           supabase.from("crm_projects").select("id,organization_id,name,developer_name,code,status,city,neighborhood,address,launch_date,delivery_date,created_at,updated_at").order("name").limit(100),
+          /* ── OS DOIS ESPAÇOS DE ID, PORQUE AS LEADS USAM OS DOIS ────────────
+             MEDIDO em 03/08/2026: 203 leads têm referência de projeto e só 5
+             resolviam nesta tela — 198 pintavam "Projeto não identificado".
+             `leads.development_id` guarda id de `developments`; o mapa era
+             montado só com `crm_projects`, e os dois conjuntos de id são
+             DISJUNTOS. Carregar os dois faz o nome aparecer venha de onde vier. */
+          supabase.from("developments").select("id,name").limit(500),
           fetch("/api/v1/auth/me").then((response) => response.json()),
         ]);
       if (!active) return;
       setProfiles(((profileResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProfile) as unknown as Profile[]);
       setCampaigns((campaignResult.data ?? []) as ReferenceRow[]);
-      setDevelopments(((developmentResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProject) as ReferenceRow[]);
+      // O filtro continua listando `crm_projects` (é o que a rota casa em
+      // `project_id`), mas o MAPA de nomes recebe os dois: quem EXIBE não pode
+      // depender de qual das duas tabelas a lead referenciou.
+      const deCrmProjects = ((developmentResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProject) as ReferenceRow[];
+      const deDevelopments = ((empreendimentoResult.data ?? []) as Record<string, unknown>[]).map((row) => ({
+        id: String(row.id ?? ""),
+        name: String(row.name ?? ""),
+      })) as ReferenceRow[];
+      const jaListados = new Set(deCrmProjects.map((item) => item.id));
+      setDevelopments([...deCrmProjects, ...deDevelopments.filter((d) => d.id && !jaListados.has(d.id))]);
       setCurrentRole(
         meResult?.data?.profile?.commercialRole ||
           meResult?.data?.profile?.role ||
@@ -760,7 +921,7 @@ export default function LeadsPage() {
       );
       setCurrentProfileId(meResult?.data?.profile?.id || "");
       const referenceError =
-        profileResult.error || campaignResult.error || developmentResult.error;
+        profileResult.error || campaignResult.error || developmentResult.error || empreendimentoResult.error;
       if (referenceError) setError("Alguns filtros auxiliares estão sincronizando. A carteira principal continua protegida.");
       setReferencesLoading(false);
     }
@@ -807,12 +968,28 @@ export default function LeadsPage() {
           else params.set("assigned_to", broker);
         }
         if (project) params.set("development_id", project);
-        if (score === "hot") params.set("min_score", "70");
+        /**
+         * ── O FILTRO "MORNO" MOSTRAVA 6% DA BASE MORNA ─────────────────────
+         *
+         * Estes três eram números digitados: quente >= 70, morno 40–69, frio
+         * <= 39. A fronteira canônica de morno é 35, não 40.
+         *
+         * MEDIDO no banco vivo em 03/08/2026: 182 leads são mornas pelo
+         * critério canônico (35–69) e este filtro devolvia 11. As outras 171 —
+         * 94% da faixa — ficavam de fora, rotuladas "Frio · 0–39". O corretor
+         * que abria "Morno" para trabalhar o segmento via 6% dele, e nada na
+         * tela dizia que faltava alguém.
+         *
+         * Agora os três recortes saem da mesma fronteira e são COMPLEMENTARES
+         * por construção: o teto de um é o piso do seguinte menos um, então
+         * nenhuma lead cai entre duas faixas nem aparece nas duas.
+         */
+        if (score === "hot") params.set("min_score", String(HOT_SCORE_THRESHOLD));
         if (score === "warm") {
-          params.set("min_score", "40");
-          params.set("max_score", "69");
+          params.set("min_score", String(WARM_SCORE_THRESHOLD));
+          params.set("max_score", String(HOT_SCORE_THRESHOLD - 1));
         }
-        if (score === "cold") params.set("max_score", "39");
+        if (score === "cold") params.set("max_score", String(WARM_SCORE_THRESHOLD - 1));
         if (attention) params.set("attention", attention);
         if (faixa) params.set("faixa", faixa);
         if (vinculo) params.set("vinculo", vinculo);
@@ -1578,6 +1755,14 @@ export default function LeadsPage() {
 
             Nada saiu: `h2`, chip, `aria-live`, `data-phase`, os três cartões e
             todos os botões continuam, com os mesmos rótulos. ── */}
+        {/* A oferta de ativar o aviso do navegador. Fica ACIMA da fila de ação
+            porque é sobre perceber a lead antes de trabalhá-la, e some sozinha
+            quando não há nada a oferecer (permissão já concedida, negada, ou
+            navegador sem suporte). */}
+        <div className="mt-3">
+          <AtivarAvisoDeLead />
+        </div>
+
         {loading || visiblePriorityQueue.length ? (
         <section
           className="cc6-hairline mt-3 pt-3"
@@ -1956,9 +2141,13 @@ export default function LeadsPage() {
                 className={`atlas-filtro-controle ${focusRing}`}
               >
                 <option value="">Todos os scores</option>
-                <option value="hot">Quente · 70–100</option>
-                <option value="warm">Morno · 40–69</option>
-                <option value="cold">Frio · 0–39</option>
+                {/* Os rótulos saem da MESMA fronteira que o recorte. Escritos à
+                    mão, eles diziam "Morno · 40–69" enquanto a consulta usava
+                    outro número — e o rótulo é a única coisa que a pessoa tem
+                    para saber o que pediu. */}
+                <option value="hot">Quente · {HOT_SCORE_THRESHOLD}–100</option>
+                <option value="warm">Morno · {WARM_SCORE_THRESHOLD}–{HOT_SCORE_THRESHOLD - 1}</option>
+                <option value="cold">Frio · 0–{WARM_SCORE_THRESHOLD - 1}</option>
               </select>
               <select
                 value={nextAction}
@@ -2216,6 +2405,10 @@ export default function LeadsPage() {
                       <th>Score</th>
                       <th>Corretor</th>
                       <th>Último contato</th>
+                      {/* A coluna que faltava. Ela vem ANTES de "Próxima ação"
+                          porque é essa a ordem do trabalho: registra-se o que
+                          acabou de acontecer, e só depois se marca o que vem. */}
+                      <th>Primeiro contato</th>
                       <th>Próxima ação</th>
                       <th>
                         <span className="sr-only">Ações rápidas</span>
@@ -2394,13 +2587,57 @@ export default function LeadsPage() {
                               </span>
                             )}
                           </td>
-                          <td>
+                          {/* O REGISTRO FICA NA LINHA, e não atrás de hover:
+                              as "Ações rápidas" ao lado só aparecem com o
+                              ponteiro em cima — no celular elas não existem, e
+                              é do celular que o corretor liga. Esta coluna é
+                              sempre visível, nos dois dispositivos. */}
+                          {/* 268px é a conta, não um chute: dois alvos de 44px
+                              com `basis-20` (80) + o expansor (56) + 12 de
+                              respiro = 228, e a folga leva "Não atendeu" a
+                              caber numa linha só em vez de quebrar dentro do
+                              botão. Abaixo disso a coluna funciona, mas fica
+                              apertada — a tabela já rola na horizontal. */}
+                          <td style={{ minWidth: 268 }}>
+                            <RegistroDeContatoNaLinha
+                              leadId={lead.id}
+                              leadNome={lead.name || "Lead sem nome"}
+                              contatadoEm={lead.first_contacted_at}
+                              variante="tabela"
+                              aoRegistrar={(registro) =>
+                                registrarContatoDaLinha(lead, registro)
+                              }
+                            />
+                          </td>
+                          {/* ── ONDE FALTAVA O BOTÃO ────────────────────────
+                              Esta coluna DIZIA a próxima ação desde sempre e
+                              não deixava marcá-la: o único escritor
+                              (`NextActionQuickSet`) só existia no cartão
+                              mobile, que o CSS esconde a partir de 1180px.
+                              Medido em produção: das 67 leads abertas, ZERO
+                              tinham próxima ação. Não era a operação — era a
+                              tela, que cobrava o compromisso e não oferecia
+                              onde assumi-lo.
+
+                              240px é a conta do estado ABERTO: "Mandar
+                              WhatsApp" e "Semana que vem" são os dois rótulos
+                              mais largos e precisam caber sem quebrar dentro
+                              do botão. A tabela já rola na horizontal. */}
+                          <td style={{ minWidth: 240 }}>
                             <span
                               className="atlas-next-action"
                               data-overdue={due.overdue ? "true" : "false"}
                             >
                               {due.label}
                             </span>
+                            <NextActionQuickSet
+                              leadId={lead.id}
+                              proximaAcaoEm={lead.next_action_at}
+                              descricaoAtual={lead.next_action}
+                              aoMarcar={(quando, descricao) =>
+                                aplicarProximaAcao(lead.id, quando, descricao)
+                              }
+                            />
                           </td>
                           <td>
                             <div
@@ -2604,25 +2841,34 @@ export default function LeadsPage() {
                           </button>
                         ) : null}
                       </div>
+                      {/* LOGO ABAIXO DE "📞 Ligar", e não em outro lugar do
+                          cartão: o gesto real é tocar em Ligar, sair para o
+                          discador, voltar — e o desfecho tem de estar embaixo
+                          do polegar no instante em que ele volta. Empurrá-lo
+                          para o fim do cartão custaria uma rolagem, que é
+                          exatamente o custo que fez 95,5% da base ficar sem
+                          registro. */}
+                      <RegistroDeContatoNaLinha
+                        leadId={lead.id}
+                        leadNome={lead.name || "Lead sem nome"}
+                        contatadoEm={lead.first_contacted_at}
+                        variante="cartao"
+                        aoRegistrar={(registro) =>
+                          registrarContatoDaLinha(lead, registro)
+                        }
+                      />
                       {/* Marcar a próxima ação sem sair da fila. Antes disto, a
                           única forma de gravar `next_action_at` era agendar uma
                           VISITA ou submeter a ficha inteira — e 208 de 217 leads
-                          estavam sem próxima ação porque não havia onde clicar. */}
+                          estavam sem próxima ação porque não havia onde clicar.
+                          O mesmo componente agora também vive na tabela desktop:
+                          o patch de estado é UM só (`aplicarProximaAcao`). */}
                       <NextActionQuickSet
                         leadId={lead.id}
                         proximaAcaoEm={lead.next_action_at}
                         descricaoAtual={lead.next_action}
-                        // Antes: `setReloadKey(k => k + 1)`, que refazia a
-                        // consulta inteira só para atualizar UMA linha — e com
-                        // a ficha em lâmina fecharia o painel no meio do
-                        // trabalho. O patch otimista mexe só na lead marcada;
-                        // se o servidor discordar, a próxima carga corrige.
-                        aoMarcar={(quando) =>
-                          setItems((atuais) =>
-                            atuais.map((l) =>
-                              l.id === lead.id ? { ...l, next_action_at: quando ?? l.next_action_at } : l,
-                            ),
-                          )
+                        aoMarcar={(quando, descricao) =>
+                          aplicarProximaAcao(lead.id, quando, descricao)
                         }
                       />
                     </div>

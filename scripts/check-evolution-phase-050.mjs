@@ -24,10 +24,52 @@ new Function("exports", "module", compilado)(moduloCompat.exports, moduloCompat)
 const colunasBase = moduloCompat.exports.LIVE_LEAD_SELECT.split(",");
 const colunasComSla = moduloCompat.exports.LIVE_LEAD_SELECT_WITH_SLA.split(",");
 const colunasDegradadas = colunasComSla.filter((coluna) => !colunasBase.includes(coluna));
+// ── TERCEIRO GRUPO DECLARADO EM 02/08/2026 ──────────────────────────────────
+//
+// `ATIVIDADE_COLUMNS` (updated_at, last_interaction_at) entrou no select
+// estendido. Não é frouxidão somá-lo aqui: a propriedade que esta asserção
+// protege é "o recuo abre mão EXATAMENTE do que os catálogos declaram", e o
+// catálogo agora tem três grupos. Se um dia alguém acrescentar coluna ao
+// estendido SEM declará-la num catálogo, a comparação continua reprovando —
+// que é o ponto.
+//
+// Causa medida: as duas nasceram na ponte V3 20260717213001, no mesmo
+// `add column if not exists` de `next_action_at`, e por isso ficam fora do
+// `LIVE_LEAD_SELECT` (que é o último degrau da escada e serve banco pré-V3).
+// Sem elas no estendido, `mapLegacyLead` caía em `created_at`: medido, 489 das
+// 490 leads exibiam a data de CADASTRO na coluna "Último contato", e o selo
+// "parado há N dias" declarava `basis="atividade"` — procedência falsa.
+//
+// A ORDEM importa: `colunasDegradadas` preserva a ordem do estendido, e a
+// comparação é por string. Aqui a ordem espelha a de `LIVE_LEAD_SELECT_WITH_SLA`.
 const grupoDeclarado = [
   ...moduloCompat.exports.FIRST_CONTACT_SLA_COLUMNS,
+  ...moduloCompat.exports.ATIVIDADE_COLUMNS,
   ...moduloCompat.exports.NEXT_ACTION_COLUMNS,
 ];
+
+/**
+ * O select que o RECUO usa, resolvido por execução.
+ *
+ * A rota declara a constante como template (`${LIVE_LEAD_SELECT},metadata`), e o
+ * que importa é o VALOR dela, não o texto. Aqui o nome é extraído da chamada de
+ * recuo e a definição correspondente é avaliada com o catálogo real do módulo
+ * compat — assim uma constante que passe a apontar para outra coisa é pega,
+ * enquanto renomear a constante não reprova nada.
+ *
+ * `null` quando não dá para resolver: nesse caso a asserção reprova, porque não
+ * se aprova o que não se conseguiu medir.
+ */
+const selectDoRecuo = (() => {
+  const chamada = route.match(/montarConsulta\(\s*([A-Za-z_$][\w$]*)\s*,\s*false\s*\)/);
+  if (!chamada) return null;
+  const definicao = route.match(new RegExp(String.raw`const\s+${chamada[1]}\s*=\s*\`([^\`]*)\``));
+  if (!definicao) return null;
+  return definicao[1].replace(
+    /\$\{([A-Za-z_$][\w$]*)\}/g,
+    (_, nome) => String(moduloCompat.exports[nome] ?? `\${${nome}}`),
+  );
+})();
 
 const checks = [
   ["Fase 050 concluída sem alterar dados ou schema", phase.status === "completed" && phase.productionDataModified === false && phase.databaseSchemaChanged === false],
@@ -65,7 +107,33 @@ const checks = [
   // ESTREITO (só o grupo SLA + próxima ação) e reusa o MESMO construtor, para
   // não repetir a classe de bug dos caminhos divergentes — dois caminhos que
   // consultam a mesma coisa com filtros diferentes.
-  ["Consulta inválida e fallback massivo foram removidos", !route.includes('assigned_to, campaign_id, development_id') && !route.includes("limit(5000)") && !/\.slice\(\s*offset/.test(route) && route.includes("montarConsulta(LIVE_LEAD_SELECT, false)")],
+  // ── REAPONTADA EM 02/08/2026 — a forma da CHAMADA saiu, a propriedade ficou ──
+  //
+  // A asserção exigia a string literal `montarConsulta(LIVE_LEAD_SELECT, false)`.
+  // A rota passou a usar uma constante local — `COLUNAS_DA_LISTA_SEM_SLA`, que é
+  // `LIVE_LEAD_SELECT` mais `metadata` — pelo mesmo motivo que a ficha do Lead 360
+  // já fazia: a LISTA lê `metadata.meta.campaignName` e `dataSharingConsent`, e
+  // sem a coluna o mapeador entrega `{}`. Medido: 487 de 490 leads têm metadata
+  // não vazio, e o nome da campanha existe em 20 delas sem nenhuma exibi-lo.
+  //
+  // `metadata` fica FORA do select compartilhado de propósito: 494 B por lead no
+  // JSON, e `distribution` busca até 20.000 — 9,4 MB por chamada numa rota que
+  // nem abre o campo. Por isso a constante é local.
+  //
+  // O que esta asserção protege é a PROPRIEDADE do recuo, não a grafia da linha:
+  //   1. o recuo passa `false` (não finge que mediu SLA);
+  //   2. o select do recuo COMEÇA pelo select base — não virou outra coisa;
+  //   3. o recuo NÃO carrega nenhuma coluna do grupo estendido, que é o que o
+  //      tornaria inútil (o 42703 voltaria pelo mesmo motivo).
+  // Verificada por EXECUÇÃO das constantes, não por grep na chamada.
+  ["Consulta inválida e fallback massivo foram removidos",
+    !route.includes('assigned_to, campaign_id, development_id')
+    && !route.includes("limit(5000)")
+    && !/\.slice\(\s*offset/.test(route)
+    && /montarConsulta\(\s*[A-Za-z_$][\w$]*\s*,\s*false\s*\)/.test(route)
+    && selectDoRecuo !== null
+    && selectDoRecuo.startsWith(moduloCompat.exports.LIVE_LEAD_SELECT)
+    && grupoDeclarado.every((coluna) => !selectDoRecuo.split(",").includes(coluna))],
   // O recuo é tudo-ou-nada: uma coluna a mais no grupo estendido que não exista
   // na base legada derruba o grupo INTEIRO com 42703. Por isso o conjunto que o
   // recuo abre mão precisa ser exatamente o que os dois catálogos declaram —

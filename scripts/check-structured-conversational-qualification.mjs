@@ -86,7 +86,41 @@ need(
   "rawConversationStored:false",
   "noAutomaticInference:true",
 );
-need("app/api/ai/copilot/route.ts", "lead_qualification_profiles", "qualificationProgress", "brokerConfirmed: true");
+need("app/api/ai/copilot/route.ts", "lead_qualification_profiles", "qualificationProgress");
+
+/**
+ * ── REAPONTAMENTO EM 2026-08-02: `brokerConfirmed: true` ────────────────────
+ *
+ * Este portão exigia a string literal `brokerConfirmed: true` no copiloto. A
+ * promessa da fase é "o corretor confirma"; a asserção media um LITERAL.
+ *
+ * MEDIDO na base viva em 02/08/2026: o copiloto lia só
+ * `lead_qualification_profiles`, que tem 3 linhas para 490 leads. Das 15 leads
+ * que responderam em `/qualify`, 13 não têm linha lá — para essas o copiloto
+ * escrevia sem objetivo, prazo nem forma de pagamento, dados que estavam
+ * gravados na outra gaveta. Unindo as fontes, 178 leads passaram a ter sinal
+ * (487 → 309 leads em zero), e parte deles veio do anúncio ou do cadastro, não
+ * de confirmação do corretor.
+ *
+ * Nesse cenário o literal `true` VIRA MENTIRA — e, pior, o portão obrigaria a
+ * mantê-la: seria um portão congelando o defeito. A asserção foi REAPONTADA
+ * para a propriedade que a promessa realmente quer, e sai mais forte:
+ *
+ *   · `brokerConfirmed` tem de ser DERIVADO da origem de cada sinal;
+ *   · `true` cravado passa a ser PROIBIDO (antes era obrigatório);
+ *   · a memória comercial só recebe o recorte confirmado dentro do CRM, que é
+ *     o que sustenta "prazo e pagamento nunca entram sem confirmação".
+ *
+ * A prova executável dos dois lados vive em
+ * `tests/contracts/uma-gaveta-de-qualificacao.test.mjs`.
+ */
+needBehavior("app/api/ai/copilot/route.ts", [
+  "CORRETOR CONFIRMA (a bandeira é DERIVADA da origem, nunca cravada)",
+  (s) =>
+    !/brokerConfirmed:\s*true\b/.test(s) &&
+    /brokerConfirmed:\s*Object\.values\(unificada\.origens\)\.every\(\s*\(origem\)\s*=>\s*origem\s*===\s*"corretor"\s*\)/.test(s) &&
+    /confirmedQualification\s*=\s*perfilConfirmadoNoCrm\(unificada\)/.test(s),
+]);
 
 // A pergunta seguinte nasce de UMA lacuna, e para quando não há lacuna.
 needBehavior("lib/ai/conversational-qualification.ts", [

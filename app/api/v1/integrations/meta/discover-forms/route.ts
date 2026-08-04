@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { resolverPageId, validarFormId } from "@/lib/meta/identificadores";
+import { paginaDaOrganizacao } from "@/lib/meta/pagina-da-organizacao";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -74,11 +76,61 @@ export async function POST(request: NextRequest) {
     return apiError("META_TOKEN_AUSENTE", "META_LEAD_ACCESS_TOKEN não está configurada.", access.meta, { status: 503, headers: rate.headers });
   }
 
-  const body = (await request.json().catch(() => ({}))) as { pageId?: string; aplicar?: boolean };
-  const pageId = String(body.pageId || process.env.META_PAGE_ID || "").trim();
+  const body = (await request.json().catch(() => ({}))) as {
+    pageId?: string;
+    formId?: string | null;
+    sourceName?: string;
+    allForms?: boolean;
+    aplicar?: boolean;
+  };
   const aplicar = body.aplicar === true;
-  if (!pageId) {
-    return apiError("META_PAGE_AUSENTE", "Informe pageId ou configure META_PAGE_ID.", access.meta, { status: 400, headers: rate.headers });
+  const todosOsFormularios = body.allForms !== false;
+
+  /**
+   * ── A ORDEM DE RESOLUÇÃO, E POR QUE O PEDIDO VENCE ────────────────────────
+   *
+   * Antes: `body.pageId || process.env.META_PAGE_ID`. Parecia equivalente e não
+   * é — o `||` deixa a variável global vencer quando o pedido traz um valor
+   * INVÁLIDO. A pessoa colaria a conta de anúncios, o servidor consultaria em
+   * silêncio a Página do ambiente, a tela mostraria formulários DE OUTRA PÁGINA
+   * e nada denunciaria. Contornar entrada errada é pior que recusá-la.
+   *
+   * `resolverPageId` (lib/meta/identificadores.ts) impõe a ordem — pedido,
+   * origem salva, ambiente — e RECUSA um valor presente e inválido em vez de
+   * pular para o próximo.
+   *
+   * A validação vive num módulo puro porque a tela também precisa dela: duas
+   * cópias da mesma regra divergem, e este repositório já pagou por isso em
+   * `score`/`score_ia` e no recorte de status declarado nove vezes.
+   */
+  const organizationId = access.access.organization.id;
+  const admin = getSupabaseAdmin();
+
+  // A Página já registrada entra na ordem como segunda opção. Sem isto o ramo
+  // "fonte salva" de `resolverPageId` existiria só nos testes — e quem abrisse
+  // a tela sem digitar nada cairia direto em META_PAGE_ID, que não existe no
+  // servidor. É o mesmo defeito de held-leads, um andar acima.
+  const paginaRegistrada = await paginaDaOrganizacao(admin, organizationId);
+
+  const vereditoDaPagina = resolverPageId({
+    doPedido: body.pageId,
+    daFonteSalva: paginaRegistrada.pageId,
+    doAmbiente: process.env.META_PAGE_ID,
+  });
+  if (!vereditoDaPagina.ok) {
+    return apiError(vereditoDaPagina.codigo, vereditoDaPagina.mensagem, access.meta, {
+      status: 400,
+      headers: rate.headers,
+    });
+  }
+  const pageId = vereditoDaPagina.valor;
+
+  const vereditoDoFormulario = validarFormId(body.formId, todosOsFormularios);
+  if (!vereditoDoFormulario.ok) {
+    return apiError(vereditoDoFormulario.codigo, vereditoDoFormulario.mensagem, access.meta, {
+      status: 400,
+      headers: rate.headers,
+    });
   }
 
   const { token: pageToken, erro: erroDeToken } = await paginaAccessToken(pageId, systemToken, versao);
@@ -106,8 +158,6 @@ export async function POST(request: NextRequest) {
     if (!after || !(corpo.data ?? []).length) break;
   }
 
-  const organizationId = access.access.organization.id;
-  const admin = getSupabaseAdmin();
   const registradas = await admin
     .from("meta_lead_sources")
     .select("id,page_id,form_id,name,active")

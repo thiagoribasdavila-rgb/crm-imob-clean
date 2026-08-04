@@ -1,4 +1,5 @@
 import type { ApiIdentity } from "@/lib/security/api-auth";
+import { isHotLead } from "@/lib/atlas/temperatura-do-lead";
 
 type Row = Record<string, unknown>;
 
@@ -38,7 +39,12 @@ export async function buildRealEstateContext(identity: ApiIdentity) {
   const sold = properties.filter((item) => ["sold", "vendido", "ganho"].includes(status(item.status)));
   const reserved = properties.filter((item) => ["reserved", "reservado", "held"].includes(status(item.status)));
   const overdue = leads.filter((item) => item.next_action_at && new Date(String(item.next_action_at)).getTime() < now);
-  const hot = leads.filter((item) => number(item.score) >= 70 || status(item.temperature) === "quente");
+  // `hotLeads` é servido à IA como contexto: se o 70 daqui divergir do 70 do
+  // scorer, o modelo passa a raciocinar sobre uma definição de "quente" que não
+  // é a do produto. A fronteira vem de `lib/atlas/temperatura-do-lead.ts`.
+  // O eixo lido continua sendo `score` (o select desta função pede `score`); a
+  // constante troca só o número, não a coluna.
+  const hot = leads.filter((item) => isHotLead({ score_ia: item.score, temperature: item.temperature }));
   const withoutNextAction = leads.filter((item) => !item.next_action_at);
   const openOpportunities = opportunities.filter((item) => !["ganho", "won", "perdido", "lost"].includes(status(item.stage)));
   const pipeline = openOpportunities.reduce((sum, item) => sum + number(item.value), 0);

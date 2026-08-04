@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { mediaAlcanca } from "./lib/css-propriedade.mjs";
 
 const read = (path) => fs.readFileSync(path, "utf8");
 const sprint = JSON.parse(read("config/corrective-sprint-050-059.json"));
@@ -68,10 +69,15 @@ const checks = [
   ],
   [
     "Kanban tem tratamento responsivo e cartão de risco",
-    styles.includes("atlas-kanban-board") &&
-      styles.includes("atlas-pipeline-lead[data-risk") &&
-      styles.includes("atlas-kanban-mobile-nav") &&
-      styles.includes("@media (max-width: 820px)"),
+    // ── REAPONTADA EM 02/08/2026 ─────────────────────────────────────────
+    // Quatro `includes` soltos: três classes e um breakpoint, sem nenhuma
+    // relação exigida entre eles. "Tratamento responsivo" É a relação — a
+    // navegação móvel do Kanban tem de estar DENTRO do bloco de 820px. Do
+    // jeito antigo, apagar o bloco @media inteiro e deixar um `@media
+    // (max-width: 820px)` decorativo em qualquer outro canto passava.
+    styles.includes("atlas-pipeline-lead[data-risk") &&
+      mediaAlcanca(styles, "max-width: 820px", ".atlas-kanban-board") &&
+      mediaAlcanca(styles, "max-width: 820px", ".atlas-kanban-mobile-nav"),
   ],
   [
     "Tarefas e agenda usam due_date e user_id ativos",
@@ -100,11 +106,35 @@ const checks = [
   // valendo e não é contradição: a ROTA não consulta a tabela direto, ela passa
   // por `readCompatibleDevelopments`, que é onde a escolha entre as duas
   // tabelas fica documentada num lugar só.
+  // ── REAPONTADA EM 02/08/2026 — o portão EXIGIA a tabela vazia ───────────────
+  //
+  // A cláusula era `projectsApi.includes('.from("inventory_units")')`. Ou seja:
+  // esta asserção obrigava a rota de portfólio a ler `inventory_units`, e o
+  // verde dela dependia de o defeito continuar existindo.
+  //
+  // Medido no banco de produção em 02/08/2026:
+  //   inventory_units .... 0 linhas
+  //   properties ......... 30 unidades, R$ 9.205.000 de VGV
+  //
+  // E o lado da escrita decide a questão: `/api/v1/developments/[id]/inventory`
+  // INSERE e ATUALIZA `properties` e não encosta em `inventory_units`; nenhuma
+  // função do banco escreve na tabela antiga. Canônica é onde o produto grava.
+  //
+  // Enquanto isto exigia a tabela vazia, os cartões "Unidades disponíveis",
+  // "Absorção do portfólio" e "VGV observado" mostravam zero — e zero de estoque
+  // é uma afirmação forte, não uma ausência discreta.
+  //
+  // A asserção ficou MAIS forte, não mais frouxa: além de exigir a tabela com
+  // dado, ela agora PROÍBE a volta à tabela vazia. A última cláusula continua
+  // valendo — a rota não consulta `developments` direto, passa por
+  // `readCompatibleDevelopments`, onde a escolha entre as duas tabelas de
+  // empreendimento fica documentada num lugar só.
   [
     "Projetos leem a tabela de empreendimento que as leads referenciam",
     projectsApi.includes("readCompatibleDevelopments") &&
       liveRepositories.includes('.from("developments")') &&
-      projectsApi.includes('.from("inventory_units")') &&
+      projectsApi.includes('.from("properties")') &&
+      !projectsApi.includes('.from("inventory_units")') &&
       projectsApi.includes('.from("knowledge_documents")') &&
       !projectsApi.includes('.from("developments")'),
   ],

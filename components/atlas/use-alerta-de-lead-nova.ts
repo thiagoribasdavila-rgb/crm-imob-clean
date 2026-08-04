@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { decidirAnuncio, podarAvisados, type ChegadaConhecida } from "@/lib/crm/aviso-fora-da-aba";
 
 /**
  * O AVISO DE LEAD NOVA — e a disciplina de não mentir quando não sabe.
@@ -48,16 +49,83 @@ export type AlertaDeLeadNova = {
   chegouAgora: boolean;
   /** Frase pronta para title/leitor de tela. Sempre diz de quando é o dado. */
   explicacao: string;
+  /** Quem chegou: nome, origem e espera. Vazio quando não há nada pendente. */
+  chegadas: ChegadaConhecida[];
   /** Marca tudo como visto (chamado ao abrir a lista de leads). */
   marcarComoVisto: () => Promise<void>;
+  /**
+   * Pede ao navegador a permissão de aviso. Só pode ser chamada de dentro de um
+   * gesto da pessoa — o navegador ignora (e alguns punem) pedidos automáticos.
+   */
+  pedirPermissaoDeAviso: () => Promise<"concedida" | "negada" | "indisponivel">;
+  /** O estado atual da permissão, para a tela poder oferecer o botão certo. */
+  permissaoDeAviso: "concedida" | "negada" | "nao-pedida" | "indisponivel";
 };
+
+/** Onde a memória de "já avisei sobre esta lead" sobrevive ao recarregar. */
+const CHAVE_DOS_AVISADOS = "atlas:leads-avisadas";
+
+function lerAvisados(): string[] {
+  try {
+    const cru = window.localStorage.getItem(CHAVE_DOS_AVISADOS);
+    const lista = cru ? (JSON.parse(cru) as unknown) : [];
+    return Array.isArray(lista) ? lista.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    // `localStorage` bloqueado (aba anônima, política de terceiros) não pode
+    // derrubar o alerta: sem memória, o pior que acontece é avisar de novo.
+    return [];
+  }
+}
+
+function gravarAvisados(ids: string[]): void {
+  try {
+    window.localStorage.setItem(CHAVE_DOS_AVISADOS, JSON.stringify(podarAvisados(ids)));
+  } catch { /* idem */ }
+}
+
+/**
+ * O som do aviso, sintetizado — sem arquivo, sem rede.
+ *
+ * Duas notas curtas e baixas (0,05 de volume). Um arquivo de áudio custaria uma
+ * requisição no caminho quente e um asset para versionar; e um som ALTO é a
+ * segunda forma mais rápida de fazer alguém desligar o aviso, logo depois de
+ * avisar duas vezes sobre a mesma lead.
+ *
+ * Falha em silêncio de propósito: navegador que bloqueia áudio sem gesto prévio
+ * não pode derrubar a notificação, que é a parte que importa.
+ */
+function tocarAviso(): void {
+  try {
+    const Contexto = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Contexto) return;
+    const contexto = new Contexto();
+    if (contexto.state === "suspended") { void contexto.close(); return; }
+    [0, 0.14].forEach((atraso, indice) => {
+      const oscilador = contexto.createOscillator();
+      const ganho = contexto.createGain();
+      oscilador.type = "sine";
+      oscilador.frequency.value = indice === 0 ? 880 : 1174;
+      ganho.gain.setValueAtTime(0.0001, contexto.currentTime + atraso);
+      ganho.gain.exponentialRampToValueAtTime(0.05, contexto.currentTime + atraso + 0.01);
+      ganho.gain.exponentialRampToValueAtTime(0.0001, contexto.currentTime + atraso + 0.12);
+      oscilador.connect(ganho).connect(contexto.destination);
+      oscilador.start(contexto.currentTime + atraso);
+      oscilador.stop(contexto.currentTime + atraso + 0.13);
+    });
+    window.setTimeout(() => void contexto.close(), 600);
+  } catch { /* som é acessório; o aviso não depende dele */ }
+}
 
 export function useAlertaDeLeadNova(): AlertaDeLeadNova {
   const [novas, setNovas] = useState(0);
   const [estado, setEstado] = useState<EstadoDoAlerta>("indisponivel");
   const [verificadoEm, setVerificadoEm] = useState<number | null>(null);
   const [chegouAgora, setChegouAgora] = useState(false);
+  const [chegadas, setChegadas] = useState<ChegadaConhecida[]>([]);
+  const [permissaoDeAviso, setPermissaoDeAviso] = useState<AlertaDeLeadNova["permissaoDeAviso"]>("indisponivel");
   const anterior = useRef(0);
+  /** `false` até a primeira leitura completar — ver a regra 3 do módulo puro. */
+  const linhaDeBase = useRef(false);
 
   const verificar = useCallback(async () => {
     try {
@@ -69,15 +137,50 @@ export function useAlertaDeLeadNova(): AlertaDeLeadNova {
         cache: "no-store",
       });
       if (!resposta.ok) throw new Error(String(resposta.status));
-      const corpo = (await resposta.json()) as { data?: { novas?: number } };
+      const corpo = (await resposta.json()) as { data?: { novas?: number; chegadas?: ChegadaConhecida[] } };
       const total = Number(corpo?.data?.novas ?? 0);
+      const lista = Array.isArray(corpo?.data?.chegadas) ? corpo.data.chegadas : [];
       // A animação só dispara quando o número SOBE. Repetir o pulso a cada
       // releitura com o mesmo valor é o que treina o olho a ignorar.
       setChegouAgora(total > anterior.current);
       anterior.current = total;
       setNovas(total);
+      setChegadas(lista);
       setEstado(total > 0 ? "chegou" : "nenhuma");
       setVerificadoEm(Date.now());
+
+      // ── O AVISO QUE SAI DA ABA ────────────────────────────────────────────
+      //
+      // A decisão inteira mora em `lib/crm/aviso-fora-da-aba.ts`, testada: uma
+      // vez por lead, nada com a aba visível, nada na primeira leitura. Aqui só
+      // sobra o efeito.
+      const anuncio = decidirAnuncio(lista, {
+        jaAvisados: new Set(lerAvisados()),
+        linhaDeBaseEstabelecida: linhaDeBase.current,
+        abaVisivel: document.visibilityState === "visible",
+      });
+      gravarAvisados(anuncio.proximosAvisados);
+      linhaDeBase.current = true;
+
+      if (anuncio.titulo && typeof Notification !== "undefined" && Notification.permission === "granted") {
+        const aviso = new Notification(anuncio.titulo, {
+          body: anuncio.corpo ?? undefined,
+          // `tag` faz o navegador SUBSTITUIR o aviso anterior em vez de
+          // empilhar. Três leads em três minutos viram um aviso atualizado, não
+          // três caixas para fechar uma a uma.
+          tag: "atlas-lead-nova",
+          // `app/icon.svg` é servido pelo Next em `/icon.svg`. Um caminho que
+          // não existe faz o aviso aparecer sem ícone em vez de falhar, mas
+          // apontar para nada seria mentira no código.
+          icon: "/icon.svg",
+        });
+        aviso.onclick = () => {
+          window.focus();
+          if (anuncio.destino) window.location.assign(anuncio.destino);
+          aviso.close();
+        };
+        tocarAviso();
+      }
     } catch {
       // Nunca zera `novas`: o último número conhecido continua sendo a melhor
       // informação disponível, e o estado passa a declarar que ela envelheceu.
@@ -133,6 +236,7 @@ export function useAlertaDeLeadNova(): AlertaDeLeadNova {
       });
       anterior.current = 0;
       setNovas(0);
+      setChegadas([]);
       setEstado("nenhuma");
       setVerificadoEm(Date.now());
     } catch {
@@ -140,15 +244,40 @@ export function useAlertaDeLeadNova(): AlertaDeLeadNova {
     }
   }, []);
 
+  // O estado da permissão é lido, nunca pedido automaticamente: pedir sem gesto
+  // é ignorado pelos navegadores modernos e queima a única chance de pedir.
+  useEffect(() => {
+    if (typeof Notification === "undefined") { setPermissaoDeAviso("indisponivel"); return; }
+    setPermissaoDeAviso(
+      Notification.permission === "granted" ? "concedida"
+        : Notification.permission === "denied" ? "negada"
+          : "nao-pedida",
+    );
+  }, []);
+
+  const pedirPermissaoDeAviso = useCallback(async () => {
+    if (typeof Notification === "undefined") return "indisponivel" as const;
+    const resultado = await Notification.requestPermission();
+    const traduzido = resultado === "granted" ? ("concedida" as const) : ("negada" as const);
+    setPermissaoDeAviso(traduzido);
+    return traduzido;
+  }, []);
+
   const horario = verificadoEm
     ? new Date(verificadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : null;
+  // A pastilha passa a NOMEAR quem chegou. "3 leads novas" manda procurar;
+  // "Chiara Ferro, Hericles Lima e mais 1" já diz o que a pessoa vai encontrar,
+  // e é o mesmo texto que o leitor de tela recita.
+  const quem = chegadas.length
+    ? chegadas.slice(0, 2).map((c) => c.nome).join(", ") + (chegadas.length > 2 ? ` e mais ${chegadas.length - 2}` : "")
     : null;
   const explicacao =
     estado === "nao-medido"
       ? `Não consegui verificar as chegadas${horario ? ` desde ${horario}` : ""}.`
       : estado === "chegou"
-        ? `${novas} ${novas === 1 ? "lead nova esperando" : "leads novas esperando"}${horario ? ` · verificado às ${horario}` : ""}`
+        ? `${novas} ${novas === 1 ? "lead nova esperando" : "leads novas esperando"}${quem ? `: ${quem}` : ""}${horario ? ` · verificado às ${horario}` : ""}`
         : "Nenhuma lead nova.";
 
-  return { estado, novas, chegouAgora, explicacao, marcarComoVisto };
+  return { estado, novas, chegouAgora, explicacao, chegadas, marcarComoVisto, pedirPermissaoDeAviso, permissaoDeAviso };
 }

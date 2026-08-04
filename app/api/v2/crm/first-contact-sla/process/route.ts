@@ -6,6 +6,7 @@ import { isMissingColumn } from "@/lib/compat/legacy-v2";
 import { enviarAlertaTelegram, montarAlertaDeSla, telegramConfigurado } from "@/lib/integrations/telegram";
 import { registrarEmSombra } from "@/lib/ai/registro-de-sombra";
 import { recomendarRedistribuicao, TETO_DE_RECOMENDACOES } from "@/lib/crm/redistribuicao-em-sombra";
+import { abrirJornadaEmSombra, resumirAberturas } from "@/lib/ai/jornada-em-sombra";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -66,6 +67,16 @@ export async function POST(request: Request) {
   // primeira execução criaria 207 tarefas de uma vez e soterraria a equipe.
   const LIMITE_DE_RECUPERACAO_MIN = Number(process.env.ATLAS_SLA_JANELA_RECUPERACAO_MIN || 2880); // 48h
   const MAX_TAREFAS_POR_EXECUCAO = Number(process.env.ATLAS_SLA_MAX_TAREFAS || 25);
+  /**
+   * Teto de jornadas em sombra por execução.
+   *
+   * Não é o mesmo teto das tarefas: tarefa cai na fila de uma PESSOA e 25 de uma
+   * vez já soterra o corretor. Jornada em sombra não chega a ninguém — ela é
+   * linha de banco e não envia nada —, então o limite aqui protege só o tempo da
+   * execução. Com 5 minutos de cadência, 50 por rodada drenam as 53 leads vivas
+   * sem primeiro contato medidas em 02/08/2026 em dois ciclos.
+   */
+  const MAX_JORNADAS_POR_EXECUCAO = Number(process.env.ATLAS_JORNADAS_MAX_POR_EXECUCAO || 50);
 
   try {
     const leads = await admin
@@ -312,7 +323,7 @@ export async function POST(request: Request) {
         // olhar quem está efetivamente atendendo, e "carteira menor" não é a
         // mesma coisa que "menos leads paradas".
         const [perfis, carteira] = await Promise.all([
-          admin.from("profiles").select("id,name").eq("organization_id", organizationId).eq("active", true),
+          admin.from("profiles").select("id,name,full_name").eq("organization_id", organizationId).eq("active", true),
           admin.from("leads").select("assigned_user_id,first_contacted_at,status").eq("organization_id", organizationId)
             .not("assigned_user_id", "is", null)
             .not("status", "in", "(ganho,perdido,arquivado,GANHO,PERDIDO,ARQUIVADO)"),
@@ -326,9 +337,21 @@ export async function POST(request: Request) {
           porCorretor.set(dono, atual);
         }
         const corretores = (perfis.data ?? []).map((perfil) => {
-          const p = perfil as { id: string; name: string | null };
+          const p = perfil as { id: string; name: string | null; full_name: string | null };
           const carga = porCorretor.get(p.id) ?? { emAberto: 0, semPrimeiroContato: 0 };
-          return { brokerId: p.id, nome: p.name, ...carga };
+          /* ── O NOME QUE O CRM MOSTRA É `full_name`, NÃO `name` ─────────────
+             MEDIDO em 03/08/2026: `profiles.name` é NULO em 5 dos 6 perfis
+             ATIVOS, e `full_name` está preenchido em todos. Como este worker
+             lia só `name`, 15 das 20 recomendações já gravadas em
+             `ai_shadow_decisions` pedem que o líder mande a lead para
+             "corretor sem nome cadastrado (…fc71)" — enquanto o nome está na
+             MESMA linha de profiles, na outra coluna.
+             A ordem é a que todo o resto do produto usa (mapLegacyProfile,
+             /api/v1/team): full_name primeiro, `name` de reserva. */
+          const nome = (typeof p.full_name === "string" && p.full_name.trim())
+            || (typeof p.name === "string" && p.name.trim())
+            || null;
+          return { brokerId: p.id, nome, ...carga };
         });
 
         // ── IDEMPOTÊNCIA: este worker roda de 5 em 5 minutos ────────────────
@@ -397,6 +420,84 @@ export async function POST(request: Request) {
       });
     }
 
+    // ── A REDE DE RECUPERAÇÃO DA JORNADA EM SOMBRA ─────────────────────────
+    //
+    // O sorteio do braço acontece na ENTRADA — `app/api/v1/leads` e a ingestão
+    // da Meta em `app/api/v2/outbox/process` já chamam `abrirJornadaEmSombra`.
+    // Mas nem toda lead passa por essas duas portas: importação de planilha,
+    // reativação e portal criam lead por outros caminhos, e as 53 leads vivas
+    // sem primeiro contato medidas em 02/08/2026 entraram ANTES de qualquer
+    // dessas ligações existir.
+    //
+    // Sem esta rede, `ai_sales_journeys` continuaria em zero para toda a base
+    // que já está lá — e o zero passaria a ser mentira, porque haveria código
+    // criando jornada e ninguém saberia que ele não alcança essas leads.
+    //
+    // Este vigia é o lugar certo: ele já roda de 5 em 5 minutos e já lê
+    // exatamente a população que interessa — lead sem primeiro contato, não
+    // terminal. Uma lead que entra às 23h ganha jornada em até 5 minutos, que é
+    // o mais perto de "na entrada" que um agendado consegue chegar.
+    const jornadas = { avaliadas: 0, criadas: 0, jaExistiam: 0, impedidas: 0, falhas: 0, foraDoTeto: 0, porBraco: { ia: 0, humano: 0 } as Record<string, number>, porImpedimento: {} as Record<string, number>, porCoorte: { entrada: 0, acervo: 0 } as Record<string, number> };
+    try {
+      const candidatas = (leads.data ?? []).filter((lead) => lead.id && lead.organization_id);
+      jornadas.avaliadas = candidatas.length;
+      if (candidatas.length) {
+        // Deduplicar ANTES de escrever. A unicidade `(organization_id, lead_id)`
+        // já recusaria a segunda, mas tentar 500 inserts condenados a cada 5
+        // minutos é gastar o banco para descobrir o que uma consulta responde.
+        const existentes = await admin
+          .from("ai_sales_journeys")
+          .select("lead_id")
+          .in("lead_id", candidatas.map((lead) => String(lead.id)));
+        if (existentes.error) throw existentes.error;
+        const jaTem = new Set((existentes.data ?? []).map((linha) => String((linha as { lead_id: string }).lead_id)));
+        jornadas.jaExistiam = jaTem.size;
+
+        // Teto por execução. Sem ele, a primeira execução sobre a base real
+        // abriria dezenas de jornadas de uma vez; com ele, a fila drena em
+        // poucos ciclos e o que ficou de fora é CONTADO — teto silencioso
+        // lê-se como "cobrimos tudo" quando não cobrimos.
+        const pendentesDeJornada = candidatas.filter((lead) => !jaTem.has(String(lead.id)));
+        const lote = pendentesDeJornada.slice(0, MAX_JORNADAS_POR_EXECUCAO);
+        jornadas.foraDoTeto = pendentesDeJornada.length - lote.length;
+
+        const resultados = [] as Awaited<ReturnType<typeof abrirJornadaEmSombra>>[];
+        for (const lead of lote) {
+          resultados.push(
+            await abrirJornadaEmSombra({
+              id: String(lead.id),
+              organizacaoId: String(lead.organization_id),
+              corretorId: lead.assigned_user_id ? String(lead.assigned_user_id) : null,
+              status: lead.status,
+              entradaEm: lead.created_at ? String(lead.created_at) : null,
+              nome: lead.name ? String(lead.name) : null,
+              origem: lead.source ? String(lead.source) : null,
+            }),
+          );
+        }
+        const resumo = resumirAberturas(resultados);
+        jornadas.criadas = resumo.criadas;
+        jornadas.jaExistiam += resumo.jaExistiam;
+        jornadas.impedidas = resumo.impedidas;
+        jornadas.falhas = resumo.falhas;
+        jornadas.porBraco = { ...resumo.porBraco };
+        jornadas.porImpedimento = { ...resumo.porImpedimento };
+        jornadas.porCoorte = { ...resumo.porCoorte };
+        if (resumo.falhas) {
+          logger.error("crm.sla_jornada_em_sombra_falhou", { falhas: resumo.falhas, avaliadas: jornadas.avaliadas });
+        }
+      }
+    } catch (erro) {
+      // Mesma regra da sombra de redistribuição: a jornada é EVIDÊNCIA, e
+      // derrubar o vigia de SLA por causa dela seria trocar o essencial pelo
+      // acessório. O que não pode é sumir — por isso vai para o log E para a
+      // resposta, em `motivo`.
+      jornadas.falhas += 1;
+      logger.warn("crm.sla_jornada_em_sombra_indisponivel", {
+        reason: erro instanceof Error ? erro.message : String(erro),
+      });
+    }
+
     const semDono = pendentes.filter((p) => !p.lead.assigned_user_id).length;
     logger.info("crm.first_contact_sla_worker_completed", {
       avaliadas: leads.data?.length ?? 0,
@@ -436,6 +537,14 @@ export async function POST(request: Request) {
       // O que a sombra viu. `foraDoTeto` existe para o teto não se ler como
       // "cobrimos tudo": corte silencioso é a forma mais educada de mentir.
       sombraDeRedistribuicao: sombra,
+      // A unidade do experimento. `porBraco` é o sorteio CEGO — ninguém escolhe
+      // qual lead vai para a IA — e `porCoorte` separa quem pode entrar na
+      // comparação (`entrada`) de quem já estava na base (`acervo`).
+      jornadasEmSombra: {
+        ...jornadas,
+        enviouMensagem: false,
+        entregaMatinal: "não: jornada em sombra nasce `eligible` e com `morning_handoff_required` falso — nada foi enviado, então não há atendimento noturno para o corretor assumir.",
+      },
     };
     // `sem_trabalho` quando nada foi avaliado: a fila estava limpa. E desfecho
     // legitimo, e distingui-lo de "nao rodou" e a razao de o livro existir.

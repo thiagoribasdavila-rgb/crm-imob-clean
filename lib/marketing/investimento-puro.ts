@@ -20,6 +20,12 @@ export type LinhaDaMeta = {
   spend: number;
   impressions: number;
   clicks: number;
+  /**
+   * Leads que a Meta atribuiu à campanha naquele dia. `null` = a resposta não
+   * trouxe `actions`. Zero seria uma AFIRMAÇÃO ("não gerou lead"), e é essa
+   * afirmação errada que inflava o custo por lead em 30 vezes.
+   */
+  leads?: number | null;
 };
 
 /** Uma linha de `marketing_spend`, pronta para gravar. */
@@ -30,6 +36,8 @@ export type LinhaDeInvestimento = {
   amount: number;
   impressions: number | null;
   clicks: number | null;
+  /** `null` atravessa até o banco: a coluna é nullable justamente para isto. */
+  leads_count: number | null;
 };
 
 /**
@@ -68,6 +76,8 @@ export function agrupaInvestimentoPorDia(linhas: LinhaDaMeta[]): LinhaDaMeta[] {
       spend: Number.isFinite(linha.spend) ? linha.spend : 0,
       impressions: Number.isFinite(linha.impressions) ? linha.impressions : 0,
       clicks: Number.isFinite(linha.clicks) ? linha.clicks : 0,
+      // `null` sobrevive ao agrupamento: só vira número quando a Meta respondeu.
+      leads: linha.leads == null ? null : (Number.isFinite(linha.leads) ? linha.leads : 0),
     });
   }
   return [...porChave.values()].sort((a, b) => (a.date === b.date ? a.campaignId.localeCompare(b.campaignId) : a.date.localeCompare(b.date)));
@@ -104,6 +114,9 @@ export function linhasParaGravar(
       amount: Math.round(linha.spend * 100) / 100,
       impressions: Math.round(linha.impressions),
       clicks: Math.round(linha.clicks),
+      // A coluna existia e o extrator nunca a preenchia: 102 linhas gravadas
+      // com impressões e cliques, e leads_count nulo nas 102.
+      leads_count: linha.leads == null ? null : Math.max(0, Math.round(linha.leads)),
     });
   }
   return { gravar, semCampanha };

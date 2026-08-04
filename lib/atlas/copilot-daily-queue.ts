@@ -1,8 +1,11 @@
 import {
+// A fronteira de quente/morno vem do modulo canonico — este arquivo escolhia
+// o proprio numero para a MESMA pergunta.
   canonicalPipelineStage,
   DEFAULT_PIPELINE_STAGES,
   type PipelineStageKey,
 } from "@/lib/atlas/pipeline-stages";
+import { HOT_SCORE_THRESHOLD } from "./temperatura-do-lead";
 
 export type DailyQueueSeverity = "critical" | "attention" | "opportunity";
 export type DailyQueueKind = "overdue-task" | "due-today-task" | "unscheduled-task" | "lead-opportunity";
@@ -160,7 +163,7 @@ export function buildCopilotDailyQueue(
     const observedScore = Number.isFinite(lead.score) ? Math.max(0, Math.min(100, Math.round(lead.score))) : 0;
     const isHot = ["quente", "hot"].includes(temperature);
     const advancedStage = ["proposta", "contrato"].includes(stage);
-    if (observedScore < 70 && !isHot && !advancedStage) return [];
+    if (observedScore < HOT_SCORE_THRESHOLD && !isHot && !advancedStage) return [];
 
     const nextActionTime = timestamp(lead.nextActionAt);
     const actionOverdue = nextActionTime !== null && nextActionTime < nowMs;
@@ -177,7 +180,7 @@ export function buildCopilotDailyQueue(
     const suggestedStage = stageAfter(stage);
     const reasonCodes = [
       advancedStage ? "advanced-open-stage" : "qualified-observed-signal",
-      observedScore >= 70 ? "observed-score-70-plus" : null,
+      observedScore >= HOT_SCORE_THRESHOLD ? `observed-score-${HOT_SCORE_THRESHOLD}-plus` : null,
       isHot ? "observed-hot-temperature" : null,
       withoutNextAction ? "missing-next-action" : actionOverdue ? "next-action-overdue" : actionDueSoon ? "next-action-due-soon" : null,
     ].filter((value): value is string => Boolean(value));

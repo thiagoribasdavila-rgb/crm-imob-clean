@@ -226,7 +226,12 @@ export function IaAutonomaRobo({ compacto = false }: { compacto?: boolean }) {
           {(
             [
               ["corridas de agente", estado.execucao.corridasDeAgente],
-              ["jornadas de venda", estado.execucao.jornadasDeVenda],
+              // "jornadas de venda" contava a tabela inteira. Desde 02/08/2026 a
+              // jornada nasce em SOMBRA na entrada da lead, então o rótulo antigo
+              // apresentaria preparação como execução. Os dois números aparecem
+              // separados, e o de sombra fica FORA da soma de execuções.
+              ["jornadas com envio", estado.execucao.jornadasDeVenda],
+              ["jornadas em sombra", estado.jornadasEmSombra],
               ["execuções na Meta", estado.execucao.execucoesNaMeta],
               ["passagens ao corretor", estado.execucao.passagensParaCorretor],
               ["retratos de integração", estado.execucao.retratosDeIntegracao],

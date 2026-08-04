@@ -4,6 +4,7 @@ import { calculateLeadScore } from "@/lib/atlas/scoring";
 import { chaveDaCampanhaDoGoogle, lerAtribuicaoDoGoogle, nomeDaCampanhaDoGoogle } from "@/lib/marketing/google-attribution";
 import { logger } from "@/lib/observability/logger";
 import { hashMetaValue, queueMetaConversion } from "@/lib/meta/conversions";
+import { deveEnviarCodigoDeTeste, normalizarModoDeEnvio } from "@/lib/meta/modo-de-envio";
 import { resilientFetch } from "@/lib/http/resilient-fetch";
 import { integrationCatalog } from "@/lib/integrations/catalog";
 import { analyzeInboundWhatsApp } from "@/lib/ai/whatsapp-conversation-intelligence";
@@ -13,7 +14,11 @@ import { classifyOutboxFailure } from "@/lib/meta/outbox-failure";
 import { closeOutboxEvent, recoverExpiredLeases } from "@/lib/integrations/outbox-lease";
 import { AUTO_REGISTERED_CAMPAIGN_STATUS, autoRegisteredCampaignName } from "@/lib/marketing/campaign-provenance";
 import { fecharPrimeiroContatoPorWhatsapp } from "@/lib/crm/whatsapp-first-contact";
+import { linhaDeAtividade } from "@/lib/crm/registro-de-atividade";
 import { descreverFalha } from "@/lib/integrations/descrever-falha";
+import { origemDaChamada, registrarExecucao } from "@/lib/integrations/livro-de-execucoes";
+import { abrirJornadaEmSombra } from "@/lib/ai/jornada-em-sombra";
+import { cabeNaJanelaDaCapi, STATUS_FORA_DA_JANELA } from "@/lib/meta/janela-de-conversao";
 
 export const dynamic = "force-dynamic";
 
@@ -334,8 +339,93 @@ export function outboxPausado(): { pausado: boolean; motivo: string | null } {
   };
 }
 
+/**
+ * ── O LIVRO DE EXECUÇÕES CHEGA AO VIGIA QUE ENVIA MENSAGEM (02/08/2026) ──────
+ *
+ * Este é o último dos treze, e foi deixado por último de propósito: é o único
+ * que fala com o cliente. Um registro errado aqui não polui um painel — ele
+ * mente sobre uma mensagem que saiu (ou não saiu) para uma pessoa real.
+ *
+ * O que estava indistinguível, medido lendo os quatro `return` deste arquivo:
+ *
+ *   · PAUSADO por variável de ambiente ....... 200 {pausado:true}
+ *   · fila VAZIA ............................. 200 {claimed:0}
+ *   · lote inteiro entregue ................... 200 {delivered:N}
+ *   · parado por CREDENCIAL QUEBRADA .......... 200 {stoppedEarly:"token_unhealthy"}
+ *   · parado por LIMITE DA PLATAFORMA ......... 200 {stoppedEarly:"rate_limited"}
+ *
+ * Os dois últimos são opostos e saíam iguais. `rate_limited` é a plataforma
+ * segurando o ritmo — é o comportamento esperado, e acender alarme nele ensina
+ * a operação a ignorar alarme. `token_unhealthy` é credencial quebrada: nenhuma
+ * mensagem sai até uma PESSOA renovar o token, e nesse caso o agendador
+ * (.github/workflows/atlas-vigias.yml) precisa ficar VERMELHO — ele só olha o
+ * código HTTP, e o arquivo dele promete exatamente isso.
+ *
+ * Por isso `token_unhealthy` passa a devolver 500. É a única mudança de código
+ * HTTP deste arquivo, e ela existe porque um 200 ali era a definição de falha
+ * em silêncio: a fila para de andar e ninguém fica sabendo.
+ *
+ * ── O QUE EU DELIBERADAMENTE NÃO FIZ, E POR QUÊ ─────────────────────────────
+ *
+ * `failed > 0` NÃO vira `falhou` no livro. A fila tem `attempts`, reentrega e
+ * `dead_letter`: falha de entrega individual é um estado PREVISTO, tratado pela
+ * própria máquina. Marcar `falhou` aqui deixaria o livro vermelho todo dia por
+ * um número inválido na base, e vermelho permanente é indistinguível de nenhum
+ * vermelho. O caso fica visível pelo `motivo`, não pelo desfecho.
+ *
+ * Se um dia a medição mostrar lote inteiro falhando sem causa de credencial,
+ * este é o lugar de apertar — com o número na mão, não por simetria.
+ */
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+
+  // O relógio começa ANTES da checagem de pausa: "recusei porque estou pausado"
+  // também é execução, e é justamente a que hoje some sem deixar rastro nenhum.
+  const iniciadoEm = Date.now();
+  const origem = origemDaChamada(request);
+  const livro = (desfecho: "ok" | "sem_trabalho" | "fora_da_janela" | "falhou", resposta: Record<string, unknown>, erro?: string) =>
+    registrarExecucao({ vigia: "outbox", rota: "/api/v2/outbox/process", origem, iniciadoEm, desfecho, resposta, erro });
+
+  /**
+   * ── A TRANSIÇÃO DE ESTADO QUE NINGUÉM CONFERIA ─────────────────────────────
+   *
+   * Medido em 02/08/2026 por `scripts/check-vigia-nao-engole-erro.mjs`: 17
+   * silêncios neste arquivo, e ele era a única das 13 rotas com algum.
+   *
+   * O padrão era sempre o mesmo: uma escrita de status esperada com `await` e o
+   * retorno jogado fora. (Este comentário evita reescrever a forma literal —
+   * a varredura do portão é textual e não tira comentário, então o exemplo
+   * dentro de um comentário contaria como um silêncio que não existe.)
+   * Cada uma dessas escritas marca o fim de uma decisão que JÁ foi tomada:
+   * "esta mensagem foi bloqueada por opt-out", "este evento entrou em
+   * processamento", "este contato do lote falhou". Se a marcação não grava, a
+   * decisão aconteceu no mundo e não aconteceu no banco — e o próximo ciclo
+   * reprocessa como se nada tivesse sido decidido.
+   *
+   * ── POR QUE VISÍVEL E NÃO ALARME ───────────────────────────────────────────
+   *
+   * A tentação é `throw`. Seria errado aqui: a fila tem `attempts`, reentrega e
+   * `dead_letter`, e o evento já está reivindicado — derrubar o laço no meio
+   * abandonaria os outros eventos do lote com o lease preso até expirar. Pior,
+   * faria o agendador ficar vermelho por uma transição que a própria máquina
+   * recupera no ciclo seguinte, e vermelho recorrente que se recupera sozinho é
+   * o que ensina a operação a ignorar vermelho.
+   *
+   * Então a falha é CONTADA, nomeada e devolvida no corpo e no livro. Ela deixa
+   * de ser invisível sem virar pânico. Se o número deixar de ser zero de forma
+   * consistente, aí sim há causa para investigar — e agora existe o número.
+   */
+  const escritasQueFalharam: { onde: string; code?: string }[] = [];
+  const gravar = async (
+    onde: string,
+    operacao: PromiseLike<{ error: { code?: string; message: string } | null }>,
+  ): Promise<boolean> => {
+    const { error } = await operacao;
+    if (!error) return true;
+    escritasQueFalharam.push({ onde, code: error.code });
+    logger.error("outbox.gravacao_nao_confirmada", { onde, code: error.code, message: error.message });
+    return false;
+  };
 
   // Antes de qualquer leitura da fila: se está pausado, não trave linha nenhuma.
   // Reclamar um evento e devolvê-lo deixa `attempts` incrementado por uma
@@ -343,7 +433,10 @@ export async function POST(request: Request) {
   const pausa = outboxPausado();
   if (pausa.pausado) {
     logger.warn("outbox.pausado", { motivo: pausa.motivo });
-    return NextResponse.json({ pausado: true, processados: 0, motivo: pausa.motivo }, { status: 200 });
+    // `fora_da_janela` e não `falhou`: pausa é decisão humana declarada, e o
+    // livro precisa saber diferenciar "alguém desligou" de "quebrou".
+    const corpo = { pausado: true, processados: 0, motivo: pausa.motivo };
+    return NextResponse.json({ ...corpo, livro: await livro("fora_da_janela", corpo) }, { status: 200 });
   }
 
   const workerId = `hostinger-${crypto.randomUUID()}`;
@@ -375,7 +468,10 @@ export async function POST(request: Request) {
     p_limite: 20,
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    const corpo = { error: error.message, motivo: "reivindicacao_falhou" };
+    return NextResponse.json({ ...corpo, livro: await livro("falhou", { motivo: corpo.motivo }, error.message) }, { status: 500 });
+  }
 
   let delivered = 0;
   let failed = 0;
@@ -428,7 +524,7 @@ export async function POST(request: Request) {
         if (suppressionQuery.error) throw suppressionQuery.error;
         const universalSuppression = suppressionQuery.data;
         if (universalSuppression) {
-          await admin.from("messages").update({ status: "failed", error: "Contato bloqueado por opt-out." }).eq("id", message.id);
+          await gravar("messages.opt_out_universal", admin.from("messages").update({ status: "failed", error: "Contato bloqueado por opt-out." }).eq("id", message.id));
           // 'blocked' é terminal e diz a verdade (não foi entregue). Onde o
           // CHECK ainda não admite o valor, cai para 'delivered' — o mesmo
           // desfecho que o ramo de opt-out do lote de reativação já usa: sem
@@ -453,8 +549,8 @@ export async function POST(request: Request) {
           }
           if (suppression) {
             await Promise.all([
-              admin.from("messages").update({ status: "failed", error: "Contato bloqueado por opt-out." }).eq("id", message.id),
-              admin.from("lead_reactivation_contacts").update({ status: "blocked", block_reason: "opt_out" }).eq("batch_id", templateItem.batchId).eq("message_id", message.id),
+              gravar("messages.opt_out_no_lote", admin.from("messages").update({ status: "failed", error: "Contato bloqueado por opt-out." }).eq("id", message.id)),
+              gravar("lead_reactivation_contacts.bloqueado", admin.from("lead_reactivation_contacts").update({ status: "blocked", block_reason: "opt_out" }).eq("batch_id", templateItem.batchId).eq("message_id", message.id)),
             ]);
             await closeOutboxEvent(admin, event.id, { status: "delivered", delivered_at: now, locked_at: null, locked_by: null, last_error: "Bloqueado por opt-out antes do envio." });
             continue;
@@ -487,7 +583,7 @@ export async function POST(request: Request) {
           // inbound recente bloqueia aqui.
           if (!inboundError && !lastInbound) {
             const reason = "Fora da janela de 24h do WhatsApp: o cliente não escreveu nas últimas 24 horas. Use um template aprovado.";
-            await admin.from("messages").update({ status: "failed", error: reason }).eq("id", message.id);
+            await gravar("messages.fora_da_janela_24h", admin.from("messages").update({ status: "failed", error: reason }).eq("id", message.id));
             await closeOutboxEvent(admin, event.id, { status: "dead_letter", locked_at: null, locked_by: null, last_error: reason });
             // Entra na DLQ com retry HUMANO: se o cliente responder depois, a
             // janela reabre e o reenvio deliberado passa — mas a decisão de
@@ -544,11 +640,14 @@ export async function POST(request: Request) {
         // Best-effort: falha aqui não pode desfazer uma mensagem já entregue ao
         // cliente.
         if (message.conversation_id) {
-          const { data: conversa } = await admin
+          const { data: conversa, error: erroDaConversa } = await admin
             .from("conversations")
             .select("lead_id")
             .eq("id", message.conversation_id)
             .maybeSingle();
+          // "não consegui ler a conversa" e "a conversa não tem lead" levavam ao
+          // MESMO lugar: o primeiro contato não fechava e ninguém sabia por quê.
+          if (erroDaConversa) logger.warn("outbox.conversa_nao_lida", { conversationId: message.conversation_id, code: erroDaConversa.code });
           if (conversa?.lead_id) {
             const fechamento = await fecharPrimeiroContatoPorWhatsapp(admin, {
               organizationId: event.organization_id,
@@ -564,9 +663,9 @@ export async function POST(request: Request) {
           }
         }
         if (templateItem?.batchId) {
-          await admin.from("lead_reactivation_contacts").update({ status: "sent" }).eq("batch_id", templateItem.batchId).eq("message_id", message.id);
+          await gravar("lead_reactivation_contacts.enviado", admin.from("lead_reactivation_contacts").update({ status: "sent" }).eq("batch_id", templateItem.batchId).eq("message_id", message.id));
           const { count: remaining } = await admin.from("lead_reactivation_contacts").select("id", { count: "exact", head: true }).eq("batch_id", templateItem.batchId).in("status", ["pending_approval", "queued"]);
-          await admin.from("lead_reactivation_batches").update({ status: remaining ? "running" : "completed", updated_at: now }).eq("id", templateItem.batchId);
+          await gravar("lead_reactivation_batches.progresso", admin.from("lead_reactivation_batches").update({ status: remaining ? "running" : "completed", updated_at: now }).eq("id", templateItem.batchId));
         }
       } else if (event.topic === "meta.lead.fetch" && event.aggregate_id) {
         const { data: metaEvent, error: metaError } = await admin.from("meta_lead_events").select("id,organization_id,source_id,external_lead_id,status,page_id,form_id,ad_id,adset_id,campaign_external_id").eq("id", event.aggregate_id).maybeSingle();
@@ -590,7 +689,7 @@ export async function POST(request: Request) {
            descartado no caminho. */
         if (metaError || !metaEvent) throw metaError ?? new Error(`Evento Meta ${event.aggregate_id} não encontrado — agregado órfão na fila.`);
         if (metaEvent.status !== "imported") {
-          await admin.from("meta_lead_events").update({ status: "processing", last_error: null }).eq("id", metaEvent.id);
+          await gravar("meta_lead_events.processando", admin.from("meta_lead_events").update({ status: "processing", last_error: null }).eq("id", metaEvent.id));
           const [leadData, sourceResult] = await Promise.all([
             fetchMetaLead(metaEvent.external_lead_id),
             admin.from("meta_lead_sources").select("active,default_owner_id,name,conversion_sharing_enabled,consent_basis,development_id").eq("id", metaEvent.source_id).single(),
@@ -618,24 +717,19 @@ export async function POST(request: Request) {
           // lead aparece em Marketing → Leads represadas para a liderança
           // liberar. Reter é diferente de descartar, e é o ponto todo.
           if (sourceResult.data?.active === false) {
-            await admin.from("meta_lead_events").update({
+            await gravar("meta_lead_events.fonte_inativa", admin.from("meta_lead_events").update({
               status: "blocked",
               last_error: "Fonte inativa: libere o formulário em Marketing → Leads represadas para esta lead entrar.",
-            }).eq("id", metaEvent.id);
+            }).eq("id", metaEvent.id));
             continue;
           }
 
           // O evento do webhook (metaEvent) e a leitura da Graph (leadData) podem
           // divergir; a Graph é a fonte mais fresca, o webhook é o fallback.
           const campaignExternalId = String(leadData.campaign_id || metaEvent.campaign_external_id || "").trim() || null;
-          // Distribuição RBAC 10/10: dono padrão validado → cascata corretor→gerente→fila
-          // (determinística, capacity-aware, offline-safe). Auditoria em lead_distribution_history.
-          const [ownership, campaignLink] = existingLead
-            ? ([null, null] as const)
-            : await Promise.all([
-              resolveLeadOwner(admin, metaEvent.organization_id, sourceResult.data?.default_owner_id || null),
-              resolveMetaCampaign(admin, metaEvent.organization_id, campaignExternalId),
-            ]);
+          const campaignLink = existingLead
+            ? null
+            : await resolveMetaCampaign(admin, metaEvent.organization_id, campaignExternalId);
           const leadMeta = { externalLeadId: metaEvent.external_lead_id, pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id, campaignLinkage: campaignLink?.linkage ?? null, sourceName: sourceResult.data?.name || null, dataSharingConsent: sourceResult.data?.conversion_sharing_enabled === true, consentBasis: sourceResult.data?.consent_basis || null,
             // A base legal desta lead veio do FORMULÁRIO da Meta, onde a pessoa
             // aceitou os termos antes de virar lead — não de alguém afirmando
@@ -675,7 +769,10 @@ export async function POST(request: Request) {
           const crmProjectId = sourceResult.data?.development_id ?? null;
           let developmentIdDaPonte: string | null = null;
           if (crmProjectId && !existingLead) {
-            const { data: ponte } = await admin.from("crm_projects").select("development_id").eq("id", crmProjectId).maybeSingle();
+            const { data: ponte, error: erroDaPonte } = await admin.from("crm_projects").select("development_id").eq("id", crmProjectId).maybeSingle();
+            // Erro de leitura da ponte NÃO é "não há empreendimento": o aviso
+            // abaixo já existia para a ausência, e agora distingue a falha.
+            if (erroDaPonte) logger.warn("outbox.ponte_de_empreendimento_nao_lida", { crmProjectId, code: erroDaPonte.code });
             developmentIdDaPonte = (ponte?.development_id as string | null) ?? null;
             if (!developmentIdDaPonte) {
               logger.warn("meta.lead.ponte_de_empreendimento_ausente", {
@@ -685,6 +782,46 @@ export async function POST(request: Request) {
               });
             }
           }
+
+          // ── O ESCOPO QUE A FILA DE ATENDIMENTO PRECISA ───────────────────
+          //
+          // Distribuição RBAC 10/10: dono padrão validado → cascata
+          // corretor→gerente→fila (determinística, capacity-aware,
+          // offline-safe). Auditoria em lead_distribution_history.
+          //
+          // O 4º argumento é o que faz o elenco e o rodízio EXISTIREM na
+          // prática. Sem ele — e era assim até aqui — a cascata resolvia com
+          // `escopo` indefinido, `carregarElenco` devolvia `[]` e toda fila
+          // montada na tela virava enfeite: a lead ia para o corretor com menor
+          // carga da equipe inteira, inclusive quem foi deliberadamente deixado
+          // de fora daquele empreendimento.
+          //
+          // Os ids são os que a LEAD vai carregar, não os da fonte: `projetoId`
+          // é o de `developments` (o mesmo que grava em `leads.development_id`,
+          // via ponte) e `campanhaId` é o de `marketing_campaigns`. Escopo com
+          // id de outra tabela não casaria com elenco nenhum e falharia em
+          // silêncio, que é o pior desfecho possível aqui.
+          //
+          // Resolvido DEPOIS da ponte e da campanha de propósito: os dois ids
+          // precisam existir antes de perguntar de quem é a vez.
+          const ownership = existingLead
+            ? null
+            : await resolveLeadOwner(
+              admin,
+              metaEvent.organization_id,
+              sourceResult.data?.default_owner_id || null,
+              {
+                projetoId: developmentIdDaPonte,
+                campanhaId: campaignLink?.campaignId ?? null,
+                // A fonte entra para o rodízio poder existir. Medido em
+                // 03/08/2026: OITO fontes ativas apontavam para o mesmo dono
+                // padrão, que segura 485 das 613 leads — e o degrau do dono
+                // único passa na frente da fila de atendimento. Sem o `fonteId`
+                // aqui, `source_round_robin` continuaria sendo tabela sem
+                // leitor.
+                fonteId: metaEvent.source_id ?? null,
+              },
+            );
 
           const leadPayload = {
             organization_id: metaEvent.organization_id,
@@ -762,6 +899,33 @@ export async function POST(request: Request) {
             admin.from("campaign_events").insert({ organization_id: metaEvent.organization_id, lead_id: lead.id, event_type: "lead_created", source: "meta", external_event_id: metaEvent.external_lead_id, payload: { pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id }, occurred_at: leadData.created_time || now }),
           ]);
           await queueMetaConversion({ organizationId: metaEvent.organization_id, leadId: lead.id, eventName: "Lead", eventId: `meta-lead-${metaEvent.external_lead_id}`, occurredAt: leadData.created_time || now, customData: { campaign_id: leadData.campaign_id || metaEvent.campaign_external_id, form_id: leadData.form_id || metaEvent.form_id } });
+          // ── O SORTEIO ACONTECE NA ENTRADA, E É CEGO ─────────────────────
+          //
+          // §3 de docs/design/ATENDIMENTO_AUTONOMO_MODELO.md. Esta é a porta de
+          // MAIOR volume: 57% da demanda orgânica chega entre 19h e 7h59, e o
+          // tempo mediano até alguém tocar a lead era de 92,8 horas.
+          //
+          // A jornada nasce em SOMBRA — nada é enviado. Ela é a unidade do
+          // experimento, e até 02/08/2026 só existia como efeito colateral de
+          // uma mensagem que depende de template aprovado pelo dono; por isso
+          // `ai_sales_journeys` estava em zero absoluto.
+          //
+          // Falha aqui NUNCA derruba a ingestão: a promessa desta rota é que
+          // lead paga não se perde por causa de registro acessório. A função
+          // não lança — devolve desfecho — e o que não deu vai para o log.
+          const jornadaEmSombra = await abrirJornadaEmSombra({
+            id: lead.id,
+            organizacaoId: metaEvent.organization_id,
+            corretorId: ownership?.ownerId ?? null,
+            status: "novo",
+            entradaEm: leadData.created_time || now,
+            empreendimentoId: developmentIdDaPonte,
+            nome: name,
+            origem: "Meta Lead Ads",
+          });
+          if (jornadaEmSombra.desfecho === "falhou") {
+            logger.warn("outbox.jornada_em_sombra_falhou", { leadId: lead.id, code: jornadaEmSombra.code, motivo: jornadaEmSombra.motivo });
+          }
         }
       } else if (event.topic === "meta.conversion.send" && event.aggregate_id) {
         const [{ data: conversion, error: conversionError }, { data: config, error: configError }] = await Promise.all([
@@ -778,7 +942,48 @@ export async function POST(request: Request) {
            ausente aqui precisa dizer QUAL registro, não um código. */
         if (conversionError || !conversion) throw conversionError ?? new Error("Evento de conversão não encontrado.");
         if (configError || !config) throw configError ?? new Error("Configuração de conversão não encontrada.");
-        if (!config.enabled || config.mode !== "test" || !config.test_event_code) throw new Error("Conversões Meta permanecem bloqueadas fora do modo de teste.");
+        if (!config.enabled) throw new Error("Envio de conversões desligado para esta organização (meta_conversion_configs.enabled = false).");
+        /* O modo decide UMA coisa: se o `test_event_code` acompanha o evento.
+           Ele não decide mais se a conversão existe — essa parte era metade de
+           uma pinça que fechava dos dois lados (em teste a Meta não aprendia;
+           fora do teste o CRM não enviava) e saiu em 02/08/2026.
+           `deveEnviarCodigoDeTeste` é o MESMO predicado que monta o corpo lá
+           embaixo: exigir aqui e esquecer lá mandaria o ensaio como produção. */
+        const modoDeEnvio = normalizarModoDeEnvio(config.mode);
+        if (deveEnviarCodigoDeTeste(modoDeEnvio) && !config.test_event_code) throw new Error("mode='test' sem test_event_code: sem ele o evento iria como PRODUÇÃO e entraria na otimização real. Informe o código do Gerenciador de Eventos ou promova o dataset para mode='live'.");
+        /* ── A JANELA DE 7 DIAS, CONFERIDA NA HORA DE ENVIAR ────────────────
+           `cabeNaJanelaDaCapi` existia desde a entrega da janela e era chamada
+           SÓ no enfileiramento (`capi-feedback/process`). O envio não conferia
+           nada — então evento que envelheceu DENTRO da fila saía assim mesmo,
+           levava 2804003 da Meta e voltava para `failed`, para ser retentado
+           de novo, para sempre.
+
+           Medido em 03/08/2026: 78 conversões, UMA entregue. As 67 em `failed`
+           têm `occurred_at` entre 23/06 e 26/07 — ZERO dentro da janela. O laço
+           reenviava, quatro vezes por dia, eventos que a Meta não pode aceitar
+           por definição, e pintava o painel de vermelho com uma causa que não
+           era a real.
+
+           Recusar aqui não perde nada: o que está fora da janela já estava
+           perdido. O que muda é parar de gastar chamada, parar de chamar isso
+           de "falha" e passar a dizer QUAL é o problema — que é a conversão ter
+           demorado a chegar, não o dataset nem o token. */
+        const janela = cabeNaJanelaDaCapi({ ocorridoEm: conversion.occurred_at, agora: now });
+        if (!janela.dentro) {
+          await gravar("meta_conversion_events.fora_da_janela", admin
+            .from("meta_conversion_events")
+            .update({ status: STATUS_FORA_DA_JANELA, last_error: janela.motivo?.slice(0, 1000) ?? "fora da janela da CAPI" })
+            .eq("id", conversion.id));
+          logger.warn("outbox.conversao_fora_da_janela", {
+            conversionId: conversion.id, idadeEmHoras: Math.round(janela.idadeEmHoras),
+          });
+          // Entrega FECHADA, não falhada: não há o que retentar, e marcar como
+          // falha manteria o evento voltando à fila até virar carta morta.
+          await closeOutboxEvent(admin, event.id, { status: "delivered", delivered_at: now, locked_at: null, locked_by: null, last_error: janela.motivo?.slice(0, 500) ?? null, cause: "fora_da_janela" });
+          delivered += 1;
+          continue;
+        }
+
         const accessToken = process.env.META_CONVERSIONS_ACCESS_TOKEN;
         if (!accessToken) throw new Error("META_CONVERSIONS_ACCESS_TOKEN não configurado.");
         const { data: lead, error: leadError } = await admin.from("leads").select("id,email,phone,metadata").eq("id", conversion.lead_id).eq("organization_id", conversion.organization_id).single();
@@ -795,12 +1000,12 @@ export async function POST(request: Request) {
         if (typeof meta.fbc === "string" && /^fb\.1\.\d{10,}\.\w+$/i.test(meta.fbc)) userData.fbc = meta.fbc.slice(0, 255);
         if (typeof meta.fbp === "string" && /^fb\.1\.\d{10,}\.\w+$/i.test(meta.fbp)) userData.fbp = meta.fbp.slice(0, 255);
         if (!userData.em && !userData.ph) throw new Error("Conversão sem e-mail ou telefone consentido para correspondência.");
-        await admin.from("meta_conversion_events").update({ status: "processing", attempts: Number(conversion.attempts || 0) + 1, last_error: null }).eq("id", conversion.id);
+        await gravar("meta_conversion_events.processando", admin.from("meta_conversion_events").update({ status: "processing", attempts: Number(conversion.attempts || 0) + 1, last_error: null }).eq("id", conversion.id));
         const apiVersion = metaGraphVersion();
         const response = await resilientFetch(`https://graph.facebook.com/${apiVersion}/${encodeURIComponent(config.dataset_id)}/events`, {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ data: [{ event_name: conversion.event_name, event_time: Math.floor(new Date(conversion.occurred_at).getTime() / 1000), event_id: conversion.event_id, action_source: conversion.action_source, user_data: userData, custom_data: { ...conversion.custom_data, atlas_signal_version: "andromeda-v1" } }], test_event_code: config.test_event_code }),
+          body: JSON.stringify({ data: [{ event_name: conversion.event_name, event_time: Math.floor(new Date(conversion.occurred_at).getTime() / 1000), event_id: conversion.event_id, action_source: conversion.action_source, user_data: userData, custom_data: { ...conversion.custom_data, atlas_signal_version: "andromeda-v1" } }], ...(deveEnviarCodigoDeTeste(modoDeEnvio) ? { test_event_code: config.test_event_code } : {}) }),
         }, { timeoutMs: 30_000, retries: 1, retryUnsafe: true, operation: "Meta Conversions API" });
         const metaResponse = await response.json() as Record<string, unknown>;
         // Mesma razão do WhatsApp: preserva code/subcode na mensagem para o
@@ -818,14 +1023,20 @@ export async function POST(request: Request) {
           throw marcouEntregue.error;
         }
       } else if (event.topic === "whatsapp.inbound.analyze" && event.aggregate_id) {
-        const { data: message } = await admin.from("messages").select("id,organization_id,conversation_id,content,direction").eq("id", event.aggregate_id).maybeSingle();
+        const { data: message, error: erroDaMensagem } = await admin.from("messages").select("id,organization_id,conversation_id,content,direction").eq("id", event.aggregate_id).maybeSingle();
+        // Sem isto, falha de leitura pulava a análise da conversa exatamente
+        // como se a mensagem não existisse — e a IA "não tinha o que analisar".
+        if (erroDaMensagem) logger.warn("outbox.mensagem_do_insight_nao_lida", { eventId: event.id, code: erroDaMensagem.code });
         if (message && message.direction === "inbound") {
           const payload = event.payload && typeof event.payload === "object" ? event.payload as { conversationId?: string; leadId?: string } : {};
           const leadId = payload.leadId || null;
-          const { data: recent } = await admin.from("messages").select("direction,content,created_at").eq("conversation_id", message.conversation_id).order("created_at", { ascending: true }).limit(20);
+          const { data: recent, error: erroDoHistorico } = await admin.from("messages").select("direction,content,created_at").eq("conversation_id", message.conversation_id).order("created_at", { ascending: true }).limit(20);
+          // `recent ?? []` transforma falha de leitura em conversa vazia: a IA
+          // analisaria a última mensagem SEM histórico, sem saber que está cega.
+          if (erroDoHistorico) logger.warn("outbox.historico_da_conversa_nao_lido", { conversationId: message.conversation_id, code: erroDoHistorico.code });
           const conversationText = (recent ?? []).map((m) => `${m.direction === "inbound" ? "Cliente" : "Corretor"}: ${String(m.content || "").slice(0, 300)}`).join("\n");
           const insight = await analyzeInboundWhatsApp({ organizationId: message.organization_id, conversationText, latestText: String(message.content || "") });
-          const { data: insightRow } = await admin.from("whatsapp_message_insights").upsert({
+          const { data: insightRow, error: erroDoInsight } = await admin.from("whatsapp_message_insights").upsert({
             organization_id: message.organization_id,
             conversation_id: message.conversation_id,
             message_id: message.id,
@@ -838,16 +1049,31 @@ export async function POST(request: Request) {
             source: insight.source,
             model: insight.model,
           }, { onConflict: "message_id", ignoreDuplicates: true }).select("id").maybeSingle();
+          // A análise custou uma chamada de IA. Se a gravação falhar, ela é
+          // jogada fora — e `insightRow` nulo é o MESMO valor que a deduplicação
+          // legítima produz (`ignoreDuplicates: true`). Sem este aviso não há
+          // como separar "já existia" de "não gravou".
+          if (erroDoInsight) logger.warn("outbox.insight_nao_gravado", { messageId: message.id, code: erroDoInsight.code });
           if (insightRow && leadId) {
-            await admin.from("activities").insert({ organization_id: message.organization_id, lead_id: leadId, type: "whatsapp_insight", title: `IA leu a conversa: ${insight.intent} (${insight.temperature})`, description: `${insight.summary} · Próxima ação sugerida: ${insight.recommendedAction}${insight.objectionKeys.length ? ` · Objeções: ${insight.objectionKeys.join(", ")}` : ""}`, metadata: { source: insight.source, model: insight.model, intent: insight.intent, objections: insight.objectionKeys, recommendedAction: insight.recommendedAction }, occurred_at: now });
+            // `gravar` já conferia o retorno — este ponto era o ÚNICO das sete
+            // escritas que gritava. Mas gritava 42703 a cada insight de IA
+            // porque mandava `title`, coluna inexistente. `linhaDeAtividade`
+            // monta com as colunas reais e põe a manchete em `metadata.title`.
+            await gravar("activities.whatsapp_recebido", admin.from("activities").insert(linhaDeAtividade({ organizationId: message.organization_id, leadId, type: "whatsapp_insight", titulo: `IA leu a conversa: ${insight.intent} (${insight.temperature})`, description: `${insight.summary} · Próxima ação sugerida: ${insight.recommendedAction}${insight.objectionKeys.length ? ` · Objeções: ${insight.objectionKeys.join(", ")}` : ""}`, metadata: { source: insight.source, model: insight.model, intent: insight.intent, objections: insight.objectionKeys, recommendedAction: insight.recommendedAction }, occurredAt: now })));
           }
         }
       } else if (event.topic === "portal.lead.ingest" && event.aggregate_id) {
         const { data: portalEvent, error: portalError } = await admin.from("portal_lead_events").select("id,organization_id,source_id,provider,external_lead_id,listing_id,contact,status").eq("id", event.aggregate_id).single();
         if (portalError || !portalEvent) throw portalError ?? new Error("Evento de portal não encontrado.");
         if (portalEvent.status !== "imported") {
-          await admin.from("portal_lead_events").update({ status: "processing", last_error: null }).eq("id", portalEvent.id);
-          const { data: sourceRow } = await admin.from("portal_lead_sources").select("default_owner_id,name").eq("id", portalEvent.source_id).single();
+          await gravar("portal_lead_events.processando", admin.from("portal_lead_events").update({ status: "processing", last_error: null }).eq("id", portalEvent.id));
+          const { data: sourceRow, error: erroDaFonteDoPortal } = await admin.from("portal_lead_sources").select("default_owner_id,name").eq("id", portalEvent.source_id).single();
+          // `.single()` erra com PGRST116 quando não há linha — mas o erro era
+          // descartado, então "fonte apagada" e "banco fora do ar" produziam o
+          // mesmo `sourceRow` nulo. Logo abaixo ele decide o dono padrão da lead:
+          // sem ele a lead cai na fila geral, e ninguém saberia se foi porque a
+          // fonte não tem dono ou porque a leitura falhou.
+          if (erroDaFonteDoPortal) logger.warn("outbox.fonte_do_portal_nao_lida", { sourceId: portalEvent.source_id, code: erroDaFonteDoPortal.code });
           const contact = portalEvent.contact && typeof portalEvent.contact === "object" ? portalEvent.contact as { name?: string; email?: string; phone?: string; message?: string } : {};
           const providerLabel = integrationCatalog.find((item) => item.provider === portalEvent.provider)?.name || portalEvent.provider;
           // Gêmeo da dedupe do caminho Meta: erro virava "não existe" e a lead
@@ -857,10 +1083,6 @@ export async function POST(request: Request) {
           const existingLeadQuery = await admin.from("leads").select("id").eq("organization_id", portalEvent.organization_id).contains("metadata", { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id } }).maybeSingle();
           if (existingLeadQuery.error) throw existingLeadQuery.error;
           const existingLead = existingLeadQuery.data;
-          // Mesma cascata RBAC do caminho Meta — portais tinham o mesmo gap.
-          const ownership = existingLead
-            ? null
-            : await resolveLeadOwner(admin, portalEvent.organization_id, sourceRow?.default_owner_id || null);
           // ── ATRIBUIÇÃO DO GOOGLE ────────────────────────────────────────
           // Três dos quatro empreendimentos atendidos anunciam no Google, e o
           // CRM tinha 2 leads de google_ads contra 201 da Meta — não porque o
@@ -899,6 +1121,26 @@ export async function POST(request: Request) {
               campanhaRegistrada: Boolean(campanhaDoGoogle),
             });
           }
+
+          // Mesma cascata RBAC do caminho Meta — portais tinham o mesmo gap.
+          //
+          // Resolvido DEPOIS da atribuição do Google porque é ela que descobre a
+          // campanha desta lead, e é a campanha que define de quem é a vez na
+          // fila de atendimento. Resolver antes (como estava) deixava o escopo
+          // sempre vazio e o rodízio da campanha sem efeito nenhum.
+          //
+          // `projetoId` vai nulo de propósito: o portal não traz empreendimento,
+          // e o insert abaixo tampouco grava um. Inventar o vínculo aqui para
+          // "aproveitar" uma fila de projeto seria distribuir a lead a um time
+          // escolhido por palpite.
+          const ownership = existingLead
+            ? null
+            : await resolveLeadOwner(
+              admin,
+              portalEvent.organization_id,
+              sourceRow?.default_owner_id || null,
+              { projetoId: null, campanhaId: campanhaDoGoogle },
+            );
 
           const leadInsert = existingLead ? { data: existingLead, error: null } : await admin.from("leads").insert({
             organization_id: portalEvent.organization_id,
@@ -1019,7 +1261,7 @@ export async function POST(request: Request) {
       if (event.topic === "portal.lead.ingest" && event.aggregate_id) await admin.from("portal_lead_events").update({ status: terminal ? "dead_letter" : "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
       const reactivationBatchId = event.payload && typeof event.payload === "object" ? String((event.payload as { reactivationBatchId?: unknown }).reactivationBatchId || "") : "";
       if (terminal && reactivationBatchId && event.aggregate_id) {
-        await admin.from("lead_reactivation_contacts").update({ status: "failed", block_reason: message.slice(0, 500) }).eq("batch_id", reactivationBatchId).eq("message_id", event.aggregate_id);
+        await gravar("lead_reactivation_contacts.falhou", admin.from("lead_reactivation_contacts").update({ status: "failed", block_reason: message.slice(0, 500) }).eq("batch_id", reactivationBatchId).eq("message_id", event.aggregate_id));
       }
       if (terminal) {
         // Mesma razao da carta morta do ramo acima: sem camada abaixo, o
@@ -1041,14 +1283,42 @@ export async function POST(request: Request) {
 
   // `processed` passa a contar o que foi REALMENTE reivindicado: com a parada
   // por credencial, dizer que o lote inteiro foi processado seria mentira.
-  return NextResponse.json({
+  const claimed = (events ?? []).length;
+  const corpo = {
     workerId,
-    claimed: (events ?? []).length,
+    claimed,
     processed,
     delivered,
     failed,
     stoppedEarly,
-    remaining: stoppedEarly ? (events ?? []).length - processed : 0,
+    remaining: stoppedEarly ? claimed - processed : 0,
     leases,
-  });
+    // Transições de estado que não confirmaram. Zero é o valor esperado; um
+    // número consistentemente diferente de zero é o sinal de que o banco está
+    // recusando escrita que o worker acha que fez. Antes de 02/08/2026 este
+    // número não existia — as 16 escritas simplesmente não eram conferidas.
+    gravacoesNaoConfirmadas: escritasQueFalharam.length,
+    ondeNaoConfirmou: escritasQueFalharam.slice(0, 10),
+    // `motivo` existe para que "não entreguei nada" nunca seja ambíguo. Cada
+    // valor pede uma ação diferente de quem lê, e é essa a razão de existirem
+    // cinco em vez de um booleano.
+    motivo:
+      stoppedEarly === "token_unhealthy" ? "credencial_quebrada"
+      : stoppedEarly === "rate_limited" ? "limite_da_plataforma"
+      : claimed === 0 ? "fila_vazia"
+      : delivered === 0 ? "nenhuma_entrega_no_lote"
+      : failed ? "entregue_com_falhas_parciais"
+      : "ok",
+  };
+
+  // Credencial quebrada é a ÚNICA saída deste bloco que precisa de gente: a fila
+  // não anda mais sozinha. 500 é o que faz o agendador acender.
+  if (stoppedEarly === "token_unhealthy") {
+    logger.error("outbox.credencial_quebrada", { workerId, claimed, processed, remaining: corpo.remaining });
+    return NextResponse.json({ ...corpo, livro: await livro("falhou", corpo) }, { status: 500 });
+  }
+
+  // Fila vazia NÃO é falha: o vigia acordou, olhou e não havia o que enviar — e
+  // é exatamente esse o desfecho que hoje se confunde com "nunca rodou".
+  return NextResponse.json({ ...corpo, livro: await livro(claimed === 0 ? "sem_trabalho" : "ok", corpo) });
 }

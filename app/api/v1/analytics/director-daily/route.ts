@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { MINIMUM_CAPACITY_ACTORS, MINIMUM_CAPACITY_SAMPLE, MINIMUM_CAPACITY_WEEKS, hasBasis, simulateCapacity, type CapacityContext } from "@/lib/ai/decision-simulator";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { derivarPraca, triarFila } from "@/lib/atlas/triagem-da-fila";
+import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { isMissingColumn, mapLegacyLead, mapLegacyProject, type CompatRow } from "@/lib/compat/legacy-v2";
 import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
@@ -459,7 +460,7 @@ export async function GET(request: NextRequest) {
     // Uma leitura, uma declaração: todo bloco abaixo derivado de `leads` é
     // "ao menos" enquanto sampleComplete for falso.
     readCoverage: { leadsRead: leads.length, sampleComplete: leadSampleComplete, unavailableReason: leadSampleNote, source: "public.leads (paginado)", readAt: leadSnapshot ? new Date(leadSnapshot.at).toISOString() : null, cacheTtlSeconds: LEAD_SNAPSHOT_TTL_MS / 1000 },
-    commercial: { leads: leads.length, sampleComplete: leadSampleComplete, activeLeads: activeLeads.length, hotLeads: activeLeads.filter((lead) => normalize(lead.temperature) === "quente" || money(lead.score) >= 70).length, unassigned: unassignedActive, unassignedScope: leadSampleComplete ? "leads_abertos" : "leads_abertos_amostra_incompleta", won: wonLeads.length, conversionRate: leads.length ? Math.round(wonLeads.length / leads.length * 1000) / 10 : 0, firstContactOverdue, followUpOverdue, withoutNextAction },
+    commercial: { leads: leads.length, sampleComplete: leadSampleComplete, activeLeads: activeLeads.length, hotLeads: activeLeads.filter((lead) => normalize(lead.temperature) === "quente" || money(lead.score) >= HOT_SCORE_THRESHOLD).length, unassigned: unassignedActive, unassignedScope: leadSampleComplete ? "leads_abertos" : "leads_abertos_amostra_incompleta", won: wonLeads.length, conversionRate: leads.length ? Math.round(wonLeads.length / leads.length * 1000) / 10 : 0, firstContactOverdue, followUpOverdue, withoutNextAction },
     /**
      * O CORTE DA FILA. Somente contagens — nenhum telefone, nenhum id de lead,
      * nenhum trecho de PII sai daqui. `lidoEm` viaja junto porque a faixa é

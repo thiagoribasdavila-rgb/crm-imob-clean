@@ -5,6 +5,10 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { evaluateReactivationPlan } from "@/lib/commercial/consented-reactivation-policy";
 import { mapLegacyProfile, mapLegacyProject } from "@/lib/compat/legacy-v2";
+// A fronteira de "quente" e "morno" vem do modulo canonico. Esta rota escrevia
+// os proprios 70 e 45 — e o portao que deveria pegar isso nao a enxergava,
+// porque ela diz "high"/"medium" e nunca escreve a palavra "quente".
+import { HOT_SCORE_THRESHOLD, WARM_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 
 type ImportRow = { name?: string; phone?: string; email?: string };
 function normalizePhone(value: string) {
@@ -108,7 +112,7 @@ export async function GET(request: NextRequest) {
     targets: profiles.filter((item) => visible.has(item.id) && (item.commercial_role || item.role) === "broker"),
     projects: projectsResult.data ?? [],
     batches: batches.map((batch) => ({ ...batch, summary: contacts.filter((item) => item.batch_id === batch.id).reduce((sum, item) => { sum[item.status] = (sum[item.status] || 0) + 1; if (item.block_reason) sum[`blocked:${item.block_reason}`] = (sum[`blocked:${item.block_reason}`] || 0) + 1; return sum; }, {} as Record<string, number>) })),
-    offers: (offerContacts ?? []).map((contact) => { const lead = Array.isArray(contact.lead) ? contact.lead[0] : contact.lead; const score = Number(lead?.score || 0); return { contactId: contact.id, batchId: contact.batch_id, status: contact.status, lead, aiPriority: score >= 70 ? "high" : score >= 45 ? "medium" : "learning", aiSuggestion: score >= 70 ? "Priorizar abordagem consultiva hoje." : contact.status === "replied" ? "Retomar a conversa com base na última resposta." : "Validar interesse e atualizar o perfil antes da oferta." }; }).filter((item) => item.lead),
+    offers: (offerContacts ?? []).map((contact) => { const lead = Array.isArray(contact.lead) ? contact.lead[0] : contact.lead; const score = Number(lead?.score || 0); return { contactId: contact.id, batchId: contact.batch_id, status: contact.status, lead, aiPriority: score >= HOT_SCORE_THRESHOLD ? "high" : score >= WARM_SCORE_THRESHOLD ? "medium" : "learning", aiSuggestion: score >= HOT_SCORE_THRESHOLD ? "Priorizar abordagem consultiva hoje." : contact.status === "replied" ? "Retomar a conversa com base na última resposta." : "Validar interesse e atualizar o perfil antes da oferta." }; }).filter((item) => item.lead),
     /* ── A FILA QUE ALIMENTA O LOTE ──────────────────────────────────────
        Esta rota já sabia EXECUTAR um lote de reativação — cria conversa,
        mensagem e pedido de aprovação. O que ela não respondia era a pergunta

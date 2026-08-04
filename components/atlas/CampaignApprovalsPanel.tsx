@@ -31,7 +31,25 @@ type ReadyCampaign = {
   pageId: string | null;
   leadFormId: string | null;
   missingToActivate: string[];
+  /**
+   * Veredito da régua da Meta sobre o plano desta campanha.
+   *
+   * Opcionais no tipo de propósito: uma resposta antiga (ou uma rota degradada)
+   * não deve fazer o painel quebrar. Mas a AUSÊNCIA nunca vira permissão — ver
+   * `podeEnviar` abaixo, que exige o `podePropor === true` explícito.
+   */
+  podePropor?: boolean;
+  motivos?: string[];
 };
+
+/**
+ * Só envia quem a régua liberou EXPLICITAMENTE.
+ *
+ * `c.podePropor !== false` seria a forma preguiçosa e erraria para o lado
+ * errado: campo ausente viraria "pode". Aqui ausência é "não sei", e "não sei"
+ * não clica no botão que registra o documento que autoriza gasto depois.
+ */
+const podeEnviar = (c: ReadyCampaign): boolean => c.podePropor === true;
 type ProposalItem = { id: string; status: string; kind: string; title: string; note: string; expiresAt: string | null };
 
 type PanelState =
@@ -182,13 +200,24 @@ export function CampaignApprovalsPanel() {
                   {c.missingToActivate.length ? (
                     <p className="text-rotulo leading-4 text-[#c98a2b]">Para ativar falta: {c.missingToActivate.join("; ")}.</p>
                   ) : null}
+                  {/* A régua reprovou: o motivo aparece ANTES do botão e o botão
+                      fica travado. Pintar de vermelho e deixar clicar é decorar
+                      o problema — e a rota de propostas recusaria depois, com o
+                      usuário já tendo achado que mandou. */}
+                  {!podeEnviar(c) ? (
+                    <p className="text-rotulo leading-4 text-[var(--atlas-estado-perigo)]">
+                      {c.motivos?.length
+                        ? `A Meta recusaria: ${c.motivos.join(" · ")}`
+                        : "Régua da Meta não medida nesta resposta — envio bloqueado até haver veredito."}
+                    </p>
+                  ) : null}
                   <button
                     type="button"
-                    disabled={submitting === c.id}
+                    disabled={submitting === c.id || !podeEnviar(c)}
                     onClick={() => void submit(c)}
-                    className="mt-auto rounded-[8px] border border-[rgba(75,141,248,0.4)] px-3 py-2 text-sm font-medium text-[#78a6f9] transition-colors hover:bg-[rgba(75,141,248,0.1)] disabled:opacity-50"
+                    className="mt-auto rounded-[8px] border border-[rgba(75,141,248,0.4)] px-3 py-2 text-sm font-medium text-[#78a6f9] transition-colors hover:bg-[rgba(75,141,248,0.1)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {submitting === c.id ? "Enviando…" : "Enviar para aprovação"}
+                    {submitting === c.id ? "Enviando…" : podeEnviar(c) ? "Enviar para aprovação" : "Bloqueada pela régua da Meta"}
                   </button>
                 </div>
               ))}

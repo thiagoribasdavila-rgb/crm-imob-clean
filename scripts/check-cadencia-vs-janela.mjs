@@ -144,11 +144,39 @@ for (const w of workers) {
   }
   if (!src.includes("nightlyWindow")) continue;
 
-  // Qual guarda esta rota usa? Ela decide qual janela vale.
-  const usaManha = /window\.morningHandoff|!\s*window\.morningHandoff/.test(src);
-  const usaAtivo = /window\.active|!\s*window\.active/.test(src);
+  /**
+   * ── O PORTÃO ANCORAVA NO NOME DA VARIÁVEL, E PULAVA CALADO (02/08/2026) ────
+   *
+   * A régua anterior era `/window\.morningHandoff/` — literal, com o nome
+   * `window` cravado. As duas rotas que existiam na época escrevem `const
+   * window = nightlyWindow()`, então ela funcionava por coincidência de estilo.
+   *
+   * MEDIDO: `sombra-do-atendimento` escreve `const janela = nightlyWindow()` e
+   * guarda a janela da manhã exatamente como o `nightly-handoff`. O portão não
+   * reconheceu, `chave` saiu nula e o `continue` PULOU a rota — sem uma linha de
+   * aviso. Um vigia agendado fora da própria janela passaria por aqui em
+   * silêncio, que é precisamente o defeito que este arquivo existe para pegar.
+   *
+   * Agora a âncora é semântica: descobre-se QUAL variável recebeu
+   * `nightlyWindow()` e é nela que se procura a guarda. E quando a rota chama
+   * `nightlyWindow` e mesmo assim não dá para dizer qual janela ela usa, isso
+   * vira FALHA — não um pulo. Portão que não conseguiu olhar não pode sair
+   * verde: era assim que ele saía.
+   */
+  const atribuicao = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?nightlyWindow\s*\(/.exec(src);
+  const alvo = atribuicao?.[1] ?? null;
+  const usaManha = alvo ? new RegExp(`${alvo}\\.morningHandoff\\b`).test(src) : false;
+  const usaAtivo = alvo ? new RegExp(`${alvo}\\.active\\b`).test(src) : false;
   const chave = usaManha ? "morningHandoff" : usaAtivo ? "active" : null;
-  if (!chave || !JANELAS[chave]) continue;
+  if (!chave || !JANELAS[chave]) {
+    falha(
+      `${w.nome}: dá para saber qual janela a rota impõe`,
+      `${arquivo} chama nightlyWindow() e não deu para identificar a guarda` +
+        `${alvo ? ` (a janela é guardada em "${alvo}", e nem ${alvo}.morningHandoff nem ${alvo}.active aparecem)` : " (nenhuma variável recebe o retorno)"}. ` +
+        "Sem isso a cadência não é conferida contra janela nenhuma — e a versão anterior deste portão PULAVA em silêncio nesse caso.",
+    );
+    continue;
+  }
 
   const j = JANELAS[chave];
   const horas = horasDaCadencia(w.cadencia);

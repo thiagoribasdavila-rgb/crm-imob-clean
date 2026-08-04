@@ -1,3 +1,7 @@
+// Import RELATIVO com extensao .ts: `lib/atlas/temperatura-do-lead.ts` é módulo
+// puro e precisa continuar carregável por `node --test`, que não conhece os
+// `paths` do tsconfig.
+import { HOT_SCORE_THRESHOLD, WARM_SCORE_THRESHOLD } from "./temperatura-do-lead.ts";
 import type { AtlasLead } from "@/types/atlas";
 
 export interface LeadScoreResult {
@@ -24,6 +28,16 @@ export function calculateLeadScore(lead: Partial<AtlasLead>): LeadScoreResult {
   }
 
   score = Math.min(100, score);
-  const temperature = score >= 70 ? "quente" : score >= 35 ? "morno" : "frio";
+  // ── A FRONTEIRA DE "QUENTE" NÃO É DESTE ARQUIVO ────────────────────────────
+  //
+  // Era `score >= 70` aqui, e OUTRO `70` em campaign-quality.ts, e OUTRO em
+  // attention-signals.ts, e OUTRO em lead-qualification.ts. Quatro literais
+  // para a mesma fronteira: enquanto os quatro forem iguais por coincidência,
+  // `score_ia >= 70 OU temperature === "quente"` é `X OU X` — e no dia em que
+  // um deles se mexer, os dois lados do OU passam a falar de coisas diferentes
+  // com o mesmo nome, sem erro nenhum na tela.
+  const temperature = score >= HOT_SCORE_THRESHOLD
+    ? "quente"
+    : score >= WARM_SCORE_THRESHOLD ? "morno" : "frio";
   return { score, temperature, reasons };
 }

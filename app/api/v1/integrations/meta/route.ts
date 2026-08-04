@@ -4,6 +4,7 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { evaluateAndromedaLearning } from "@/lib/meta/andromeda-learning-loop";
 import { buildMetaCampaignIntelligence } from "@/lib/meta/campaign-intelligence";
+import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -143,7 +144,53 @@ export async function POST(request: NextRequest) {
       .select("dataset_id,mode,enabled,consent_required")
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 503 });
+    if (error) {
+      /**
+       * ── "TENTE DE NOVO" PARA UMA PORTA QUE NUNCA VAI ABRIR ─────────────────
+       *
+       * Medido no banco vivo em 02/08/2026:
+       *
+       *     CHECK ((mode = 'test'::text))
+       *
+       * A migration que abre `mode` para `('test','live')`
+       * (20260802230000_modo_de_producao_aceito_no_capi.sql) está ESCRITA e NÃO
+       * APLICADA. Enquanto for assim, este `update` volta com 23514 —
+       * `check_violation` — em toda tentativa.
+       *
+       * O que a rota fazia com isso: devolvia `error.message` cru e status 503.
+       * As duas coisas erradas, e cada uma por um motivo:
+       *
+       * - a MENSAGEM era *"new row for relation ... violates check constraint
+       *   meta_conversion_configs_mode_check"*. Quem lê é o diretor, no painel.
+       *   Não há nada aí que ele possa fazer, e o texto ainda expõe nome de
+       *   tabela e de constraint a quem só pediu para ligar a otimização.
+       * - o STATUS 503 quer dizer "indisponível agora, tente de novo". Mas a
+       *   condição não é transitória: nenhuma quantidade de cliques aplica um
+       *   `alter table`. 503 aqui é um convite a bater na mesma porta para
+       *   sempre — e o pior desfecho é o diretor concluir que o produto está
+       *   instável, quando falta um passo de deploy.
+       *
+       * 409 diz o que é: o pedido está correto, o banco é que ainda não aceita.
+       * E a mensagem nomeia o passo que destrava, porque é a única coisa acionável.
+       */
+      const constraintRecusou = error.code === "23514";
+      if (constraintRecusou) {
+        return NextResponse.json(
+          {
+            error:
+              "O banco ainda não aceita o modo produção. Falta aplicar a migration " +
+              "20260802230000_modo_de_producao_aceito_no_capi.sql, que libera mode='live'. " +
+              "Enquanto isso o Dataset segue em teste e nenhuma conversão conta para a otimização.",
+            pendencia: "migration_nao_aplicada",
+          },
+          { status: 409 },
+        );
+      }
+      // Demais falhas continuam 503 — essas, sim, podem passar sozinhas. Mas sem
+      // devolver o texto do Postgres para a tela.
+      logger.error("meta.conversion_go_live.falhou", { code: error.code, message: error.message });
+      return NextResponse.json({ error: "Não foi possível promover o Dataset agora." }, { status: 503 });
+    }
     return NextResponse.json({
       ok: true,
       data,

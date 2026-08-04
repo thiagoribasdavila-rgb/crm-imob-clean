@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { ACOES, PRAZOS, type ChaveDeAcao, type ChaveDePrazo } from "@/lib/crm/next-action";
+import {
+  ACOES,
+  PRAZOS,
+  lerRespostaDaMarcacao,
+  type ChaveDeAcao,
+  type ChaveDePrazo,
+} from "@/lib/crm/next-action";
 
 /**
  * MARCAR A PRÓXIMA AÇÃO SEM SAIR DA FILA.
@@ -24,6 +30,22 @@ import { ACOES, PRAZOS, type ChaveDeAcao, type ChaveDePrazo } from "@/lib/crm/ne
  *
  * **Fechado por padrão.** Numa fila de 25 leads, 25 blocos de botões abertos
  * são mais ruído do que a fila inteira. Abre quando a pessoa pede.
+ *
+ * ── UM ESCRITOR, TRÊS SUPERFÍCIES ───────────────────────────────────────────
+ *
+ * Este componente nasceu montado num lugar só: o CARTÃO MOBILE da lista de
+ * leads, dentro de `.atlas-leads-mobile` — que o CSS esconde a partir de
+ * 1180px. Ou seja: no monitor onde o corretor passa o dia, o botão não existia.
+ * Medido em produção depois de meses no ar: das 67 leads ABERTAS, ZERO tinham
+ * próxima ação (as 5 marcadas da base inteira são leads já perdidas).
+ *
+ * Eu havia reportado esse "5 de 490" como comportamento da operação. Era
+ * defeito de produto — o corretor não agendava porque não havia onde clicar.
+ *
+ * A correção é montar o MESMO componente na tabela desktop e no cartão do
+ * Kanban, nunca escrever um segundo botão que fale com a mesma coluna: dois
+ * escritores para `next_action_at` seriam duas verdades sobre o mesmo
+ * compromisso, e é assim que os caminhos divergem sem ninguém notar.
  */
 export function NextActionQuickSet({
   leadId,
@@ -34,7 +56,12 @@ export function NextActionQuickSet({
   leadId: string;
   proximaAcaoEm?: string | null;
   descricaoAtual?: string | null;
-  aoMarcar?: (quando: string | null) => void;
+  /**
+   * Recebe o que o SERVIDOR confirmou, não o que a tela pediu. `quando` vem
+   * `null` quando a próxima ação foi LIMPA — quem recebe precisa gravar esse
+   * `null`, e não cair de volta no valor antigo.
+   */
+  aoMarcar?: (quando: string | null, descricao: string | null) => void;
 }) {
   const [aberto, setAberto] = useState(false);
   const [acao, setAcao] = useState<ChaveDeAcao | null>(null);
@@ -50,18 +77,24 @@ export function NextActionQuickSet({
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessao.session?.access_token || ""}` },
         body: JSON.stringify(corpo),
       });
-      const b = await r.json();
-      if (!r.ok) {
-        setResultado(b?.error?.message || "Não foi possível marcar.");
+      // Resposta sem JSON (502 do proxy devolve HTML) não pode estourar no
+      // parser: a pessoa veria a exceção no lugar do que aconteceu.
+      const b = await r.json().catch(() => null);
+      /* A leitura é PURA e mora em lib/crm/next-action.ts: ela recusa o
+         `response.ok` que não vem acompanhado do eco do que ficou gravado.
+         Sem isso, um 200 sem linha afetada — o caso silencioso do PostgREST —
+         desenharia "✓ terça, 14h30" numa lead que continua sem compromisso. */
+      const leitura = lerRespostaDaMarcacao(corpo.limpar ? "limpar" : "marcar", r.ok, b);
+      if (!leitura.confirmado) {
+        setResultado(leitura.motivo);
         return;
       }
-      const quando = b?.data?.proximaAcaoEm ?? null;
-      setResultado(quando
-        ? `✓ ${new Date(quando).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
+      setResultado(leitura.quando
+        ? `✓ ${new Date(leitura.quando).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
         : "✓ próxima ação removida");
       setAberto(false);
       setAcao(null);
-      aoMarcar?.(quando);
+      aoMarcar?.(leitura.quando, leitura.descricao);
     } catch {
       setResultado("Falha de rede.");
     } finally {

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { familiaDeclara, mediaAlcanca } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-032-navigation-desktop-workspace.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -28,9 +29,23 @@ const checks = [
   ["Escolha persiste sem efeito colateral no atualizador", appShell.includes('const next = desktopDensity === "compact" ? "comfortable" : "compact"') && appShell.includes("setDesktopDensity(next)") && appShell.includes("window.localStorage.setItem(DESKTOP_DENSITY_KEY, next)")],
   ["Shell expõe densidade e workspace adaptativo", appShell.includes("data-desktop-density={desktopDensity}") && appShell.includes('data-desktop-layout="adaptive-wide-workspace"')],
   ["Topbar oferece botão semântico e estado acessível", topbar.includes('className="atlas-desktop-density-toggle"') && topbar.includes('aria-pressed={desktopDensity === "compact"}') && topbar.includes("onToggleDesktopDensity")],
-  ["Controle existe somente no desktop amplo", styles.includes("@media (min-width: 1180px)") && styles.includes(".atlas-desktop-density-toggle") && config.desktopContract.minimumViewportPx === 1180],
+  // ── REAPONTADAS EM 02/08/2026 ─────────────────────────────────────────────
+  // O par `includes("@media (min-width: 1180px)") && includes(".atlas-desktop-density-toggle")`
+  // não afirma que o controle vive DENTRO do breakpoint — afirma que as duas
+  // palavras existem no arquivo. `mediaAlcanca` fecha o bloco e olha dentro.
+  ["Controle existe somente no desktop amplo",
+    mediaAlcanca(styles, "min-width: 1180px", ".atlas-desktop-density-toggle")
+    && config.desktopContract.minimumViewportPx === 1180],
   ["Seis superfícies compartilhadas são compactadas", compactSelectors.every((selector) => styles.includes(selector)) && config.structuralBaseline.compactSharedSurfaces === 6],
-  ["Workspace usa container e gutter estável", styles.includes("container-name: atlas-workspace") && styles.includes("scrollbar-gutter: stable") && config.structuralBaseline.wideWorkspaceContainerEnabled === true],
+  // `scrollbar-gutter: stable` aparece UMA vez no arquivo, e não na família que
+  // esta asserção nomeia: ela mora em `.atlas-app-main`. O container mora em
+  // `.atlas-app-content`. Agora cada propriedade é cobrada de quem a declara —
+  // apagar a gutter de `.atlas-app-main` passava despercebido se qualquer
+  // outra regra do arquivo ganhasse a mesma linha.
+  ["Workspace usa container e gutter estável",
+    familiaDeclara(styles, ".atlas-app-content", "container-name", "atlas-workspace")
+    && familiaDeclara(styles, ".atlas-app-main", "scrollbar-gutter", "stable")
+    && config.structuralBaseline.wideWorkspaceContainerEnabled === true],
   ["Tablet e celular permanecem isolados", config.desktopContract.tabletAndMobileUnaffected === true && config.exitCriteria.tabletRulesChanged === false && config.exitCriteria.mobileRulesChanged === false],
   ["Compactação não vira produtividade inventada", config.structuralBaseline.runtimeScrollReductionMeasured === false && config.truthPolicy.structuralCompactionPresentedAsRuntimeOutcome === false && config.truthPolicy.fakeBehaviorMetricPublished === false],
   ["Relatório registra escolha, limite e próxima fase", report.includes("dois níveis de densidade") && report.includes("1.180 pixels") && report.includes("Fase 033")],

@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import { classificarRotasCrm } from "./lib/rotas-crm.mjs";
 
 const CRM_ROOT = "app/(crm)";
 
@@ -17,9 +18,10 @@ function routeFromPage(file) {
   return relative || "/";
 }
 
-function segmentCount(route) {
-  return route.split("/").filter(Boolean).length;
-}
+/* `segmentCount` saiu daqui em 02/08/2026: a contagem de segmentos era a regra
+   de classificação, e a regra passou inteira para `lib/rotas-crm.mjs`, onde o
+   portão da fase 021 também a lê. Duas cópias da mesma regra é como este
+   repositório já produziu guardas que se contradizem. */
 
 const navigationSource = fs.readFileSync("lib/atlas/navigation.ts", "utf8");
 const compiledNavigation = ts.transpileModule(navigationSource, {
@@ -43,15 +45,19 @@ const routeSet = new Set(routes);
 const canonicalDestinations = [
   ...new Set([...atlasNavigation, ...atlasContextCommands].map((item) => item.href)),
 ].sort();
-const canonicalSet = new Set(canonicalDestinations);
 const missingCanonicalDestinations = canonicalDestinations.filter((route) => !routeSet.has(route));
-const dynamicContextRoutes = routes.filter((route) => route.includes("[")).sort();
-const deepSupportRoutes = routes
-  .filter((route) => route !== "/" && !canonicalSet.has(route) && !route.includes("[") && segmentCount(route) > 1)
-  .sort();
-const topLevelNonCanonicalRoutes = routes
-  .filter((route) => route !== "/" && !canonicalSet.has(route) && !route.includes("[") && segmentCount(route) === 1)
-  .sort();
+
+/* A classificação mora em `lib/rotas-crm.mjs` e é a MESMA que o portão da fase
+   021 usa para julgar. Duas cópias da regra viram duas verdades — este
+   repositório já pagou por isso em mais de um lugar. O que este arquivo
+   acrescenta é só o que o portão não teria como medir sozinho: as listas
+   brutas e as rotas ÓRFÃS (família inexistente), que antes nem eram
+   publicadas. Nenhum campo saiu — `measure-navigation-baseline.mjs` continua
+   lendo os mesmos nomes. */
+const classificacao = classificarRotasCrm(routes, canonicalDestinations);
+const dynamicContextRoutes = classificacao.baldes.dinamicas.slice().sort();
+const deepSupportRoutes = classificacao.baldes.apoio.slice().sort();
+const topLevelNonCanonicalRoutes = classificacao.baldes.topo.slice().sort();
 // A raiz "/" deixou de ser um redirect do grupo (crm) para virar a landing
 // pública real (app/page.tsx, verificada ao vivo em produção) — o antigo
 // (crm)/page.tsx (redirect("/dashboard")) colidia de rota com ela (Next.js
@@ -91,6 +97,15 @@ const inventory = {
   dynamicContextRoutes,
   deepSupportRoutes,
   topLevelNonCanonicalRoutes,
+  // ── Acrescentados em 02/08/2026 ──────────────────────────────────────────
+  // `routes` é a lista bruta que o inventário sempre teve na memória e nunca
+  // publicou — sem ela, quem lê este JSON só consegue comparar TOTAIS, que foi
+  // exatamente o que a fase 021 fazia. `orphanRoutes` é a propriedade que
+  // nenhum total alcança: rota profunda cuja família não existe.
+  routes,
+  orphanRoutes: classificacao.orfas,
+  duplicatedRouteBuckets: classificacao.duplicadas,
+  bucketsCloseOnMeasuredTotal: classificacao.fecha,
   privacy: {
     readsApplicationData: false,
     readsEnvironmentSecrets: false,

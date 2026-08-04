@@ -102,6 +102,13 @@ export async function GET(request: Request) {
       limit: 500,
       ownerId: lideranca ? null : identity.userId,
       ownerIds: idsDoFiltro,
+      // O card do Kanban mostra `metadata.meta.campaignName` (ver `metaCampaign`
+      // em app/(crm)/pipeline/page.tsx). Sem a coluna, `mapLegacyLead` entrega
+      // `{}` e o card cai no `campaign_id` — o UUID da campanha aparecia onde
+      // deveria estar o nome, e buscar pelo nome não devolvia lead nenhuma.
+      // O custo (509 B/lead) é pedido só aqui: os outros quatro chamadores do
+      // repositório não leem o campo. Ver `comMetadata` em live-repositories.
+      comMetadata: true,
     });
     if (!compatiblePipeline.ok) throw new Error(compatiblePipeline.error.code);
 

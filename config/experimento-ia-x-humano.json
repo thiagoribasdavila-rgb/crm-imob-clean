@@ -1,0 +1,70 @@
+{
+  "$comentario": [
+    "A FATIA DO DIRETOR — quanto da demanda a IA prepara, por faixa.",
+    "",
+    "── Por que em config, e não no código ─────────────────────────────────────",
+    "",
+    "Mesma razão de config/orcamento-e-autonomia-da-ia.json: a fatia é decisão do",
+    "dono. No código, cada ajuste vira deploy — e o §5 do desenho exige um botão",
+    "de parada com efeito imediato. Zerar as três faixas aqui é esse botão: o",
+    "sorteio passa a devolver `humano` para toda lead, sem tocar em uma linha de",
+    "código.",
+    "",
+    "── O que ele NÃO consegue fazer ──────────────────────────────────────────",
+    "",
+    "Nenhum valor deste arquivo libera envio. Enquanto `modoSombra.acoesRetidas`",
+    "contiver `enviar_mensagem`, o braço é sorteado, gravado e NADA sai — os dois",
+    "braços recebem o mesmo tratamento. `estadoDoExperimento()` em",
+    "lib/ai/braco-do-experimento.ts publica isso em voz alta, para que ninguém",
+    "leia jornada gravada como experimento em curso.",
+    "",
+    "Valor ilegível (campo ausente, texto no lugar de número, arquivo corrompido)",
+    "cai em 0% — nunca no padrão do código. Falhar aberto aqui seria mandar",
+    "cliente para a IA porque alguém errou uma vírgula."
+  ],
+
+  "semente": "atlas-2026-08-degrau-1",
+  "$comentarioSemente": [
+    "Entra na frente do id no hash. Trocá-la REEMBARALHA a base inteira e",
+    "invalida a comparação acumulada até aqui — é recomeçar o experimento, não",
+    "ajustá-lo. Por isso ela carrega a data de início no próprio nome."
+  ],
+
+  "iniciadoEm": "2026-08-02T00:00:00.000Z",
+  "$comentarioIniciadoEm": [
+    "A FRONTEIRA entre as duas coortes.",
+    "",
+    "Lead criada a partir daqui é `entrada`: o relógio do primeiro toque dela",
+    "começou a correr com o sorteio já valendo, e ela pode entrar na comparação",
+    "de §4 do desenho.",
+    "",
+    "Lead anterior é `acervo`. O braço dela é o mesmo — o braço é função do id —,",
+    "e preparar a jornada dela é útil. Mas o tempo até o primeiro toque dela já",
+    "vinha correndo sob tratamento humano: contá-la na comparação seria inventar",
+    "um comparativo. Medido em 02/08/2026: 67 leads vivas, 53 sem primeiro",
+    "contato — todas de acervo."
+  ],
+
+  "fatiaDaIa": {
+    "$comentario": [
+      "Percentual da faixa que recebe o braço `ia`. §3 do desenho.",
+      "",
+      "fora_do_expediente = 100: não é experimento, é COBERTURA. Medido em",
+      "02/08/2026, 57% da demanda orgânica chega entre 19h e 7h59, e o tempo",
+      "MEDIANO até alguém tocar a lead é de 92,8 horas. Com 0% de atendimento",
+      "humano à noite não existe grupo de controle — chamar essa faixa de teste",
+      "seria inventar um comparativo que não existe.",
+      "",
+      "expediente_lead_nova = 20: dentro da faixa 10–30% que o desenho sugere. É",
+      "aqui que a comparação acontece de verdade, porque aqui existe o outro",
+      "braço.",
+      "",
+      "negociacao_aberta = 0: acima do teto da IA (`qualification`). O valor está",
+      "escrito em vez de omitido de propósito — omitir daria o mesmo 0 e ninguém",
+      "saberia se foi decisão ou esquecimento."
+    ],
+    "fora_do_expediente": 100,
+    "expediente_lead_nova": 20,
+    "negociacao_aberta": 0
+  }
+}

@@ -3,6 +3,7 @@ import {
   CAMPAIGN_QUALITY_MINIMUM_LEADS,
   type CampaignQualityRow,
 } from "@/lib/atlas/campaign-quality";
+import { HOT_SCORE_THRESHOLD } from "../atlas/temperatura-do-lead";
 
 // Conselheiro Pipeline × Andromeda — recomendações por campanha a partir de
 // SOMENTE dados agregados (linhas do campaign-quality, distribuição do funil
@@ -110,8 +111,15 @@ export type AndromedaAdvice = {
 // Regras explícitas do fallback determinístico — publicadas no payload do
 // endpoint (padrão rules/formula do broker-daily) para explicabilidade.
 export const ANDROMEDA_ADVISOR_RULES = {
+  // ── O CRITERIO SERVIDO AO MODELO É O MESMO DO CÓDIGO ──────────────────────
+  //
+  // Este texto é publicado no payload para explicabilidade — é o que a IA usa
+  // para dizer POR QUE julgou. Escrito à mão, o 70 aqui vira uma TERCEIRA
+  // verdade: no dia em que a fronteira mudar, a IA passa a explicar uma regra
+  // que o produto não usa mais, e ninguém percebe, porque explicação não tem
+  // teste. Interpolado, ele não pode divergir.
   qualificationVocabulary:
-    "qualificationRate = QUALIFICAÇÃO DE CADASTRO (score >= 70 ou temperature quente — proxy), calculada só sobre os leads com esse eixo MEDIDO e null quando não há base medida; conversionRate/sales = VENDA confirmada no CRM; commercialQualificationRate = evidência de funil (etapa >= visita). As três nunca são a mesma grandeza e o rationale sempre diz qual usou",
+    `qualificationRate = QUALIFICAÇÃO DE CADASTRO (score >= ${HOT_SCORE_THRESHOLD} ou temperature quente — proxy), calculada só sobre os leads com esse eixo MEDIDO e null quando não há base medida; conversionRate/sales = VENDA confirmada no CRM; commercialQualificationRate = evidência de funil (etapa >= visita). As três nunca são a mesma grandeza e o rationale sempre diz qual usou`,
   conversionSample: `amostra para julgar conversão: >= ${ANDROMEDA_ADVISOR_MIN_SALES_TO_JUDGE} vendas na janela OU >= ${ANDROMEDA_ADVISOR_MIN_LEADS_TO_JUDGE_CONVERSION} leads`,
   keepInsufficientSample: `leads < ${CAMPAIGN_QUALITY_MINIMUM_LEADS} => keep (amostra insuficiente; nenhuma decisão de verba — mesmo gate do director-daily)`,
   investigateAttribution:

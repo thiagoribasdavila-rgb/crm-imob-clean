@@ -18,6 +18,7 @@ import {
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { decidirProximaAcao } from "@/lib/crm/gesto-da-proxima-acao";
+import { FichaDoComprador } from "@/components/crm/FichaDoComprador";
 import { LeadOperationalBar } from "@/components/crm/lead-operational-bar";
 import {
   LeadContextCorrection,
@@ -33,6 +34,7 @@ import {
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
 import { ContactAttemptsBadge } from "@/components/crm/contact-attempts-badge";
 import { CompatibilidadeDoClientePanel } from "@/components/atlas/CompatibilidadeDoClientePanel";
+import { estadoDoFechamento } from "@/lib/crm/fechamento-valor-da-venda";
 
 type LeadRow = {
   id: string;
@@ -46,6 +48,16 @@ type LeadRow = {
   score: number | null;
   budget_min: number | null;
   budget_max: number | null;
+  /* ── O VALOR DA VENDA VOLTAVA DA API E MORRIA AQUI ─────────────────────────
+     `sale_value_brl` já vem no `LIVE_LEAD_SELECT`, ou seja, a rota
+     `/api/v1/leads/[id]` SEMPRE devolveu este campo. A ficha nunca o declarou e
+     nunca o mostrou: o corretor é obrigado a informar o valor para fechar
+     (a rota do pipeline recusa `ganho` sem ele, com `SALE_VALUE_REQUIRED`) e
+     depois não encontra esse número em lugar nenhum na ficha da lead.
+     Exigir e não devolver é a classe "cobra e destrói" — a mesma que jogou
+     fora 102 motivos de descarte. Aqui o dado já existia; faltava exibir. */
+  sale_value_brl?: number | string | null;
+  sale_value_recorded_at?: string | null;
   preferred_regions: string[] | null;
   bedrooms: number | null;
   purpose: string | null;
@@ -58,6 +70,14 @@ type LeadRow = {
       adsetId?: string;
       adId?: string;
       formId?: string;
+      /* Os NOMES vêm na mesma gaveta que os ids desde a ingestão da Meta, e a
+         ficha só declarava os ids — então mostrava "120219…" onde o banco tem
+         "Inside Perdizes · Conversão". Medido em 02/08/2026: 20 leads têm
+         `campaignName`, `adsetName`, `adName` e `formName` gravados. */
+      campaignName?: string;
+      adsetName?: string;
+      adName?: string;
+      formName?: string;
       sourceName?: string;
       dataSharingConsent?: boolean;
     };
@@ -165,6 +185,11 @@ type UnifiedProfile = {
     event_type: string;
     occurred_at: string;
   }>;
+  /* `false` = a leitura de `campaign_events` FALHOU. A rota publica isto desde
+     que passou a buscar a tabela; a ficha não declarava o campo e por isso não
+     tinha como distinguir "nenhum sinal" de "não deu para medir" — que é o
+     mesmo zero silencioso que a rota levou meses para tirar de si. */
+  campaignEventsMensuraveis?: boolean;
   sources: string[];
 };
 type ContactBriefing = {
@@ -396,6 +421,12 @@ export default function LeadDetailPage() {
   const [contextSaving, setContextSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  /* O valor da venda tem estado próprio: ele NÃO entra no `setLead` do
+     formulário porque não é editado pela rota da lead — vai pela rota que já
+     existia para isso, e que até agora nenhuma tela do corretor chamava. */
+  const [valorDaVenda, setValorDaVenda] = useState("");
+  const [gravandoValor, setGravandoValor] = useState(false);
+  const [erroDoValor, setErroDoValor] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [activityTitle, setActivityTitle] = useState("");
   const [activityDescription, setActivityDescription] = useState("");
@@ -447,6 +478,39 @@ export default function LeadDetailPage() {
       medicao: dados?.medicao ?? null,
       aviso: dados?.aviso ?? null,
     };
+  }
+
+  /**
+   * Informar o valor de uma venda já fechada.
+   *
+   * Chama `POST /api/v1/crm/vendas-sem-valor`, que existia, tinha contrato e
+   * NENHUMA tela do corretor chamava — só o painel de liderança da sala de
+   * comando. Quem fecha a venda é quem sabe o número, e ele não tinha onde
+   * informá-lo depois do fechamento.
+   *
+   * Recarrega a ficha ao gravar: o valor precisa VOLTAR na tela, senão isto
+   * seria mais um lugar que cobra o dado e não devolve.
+   */
+  async function informarValorDaVenda() {
+    if (!lead) return;
+    setGravandoValor(true);
+    setErroDoValor(null);
+    try {
+      await api("/api/v1/crm/vendas-sem-valor", {
+        method: "POST",
+        body: JSON.stringify({ leadId: lead.id, valor: valorDaVenda }),
+      });
+      setValorDaVenda("");
+      await load();
+    } catch (cause) {
+      setErroDoValor(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível registrar o valor.",
+      );
+    } finally {
+      setGravandoValor(false);
+    }
   }
 
   async function load() {
@@ -819,6 +883,13 @@ export default function LeadDetailPage() {
     );
 
   // Derivações determinísticas do strip de sinais (zero fetch novo).
+  /* Em que pé está o fechamento. A decisão vem do módulo puro — o mesmo que a
+     tela de Vendas usa — para que a ficha e o VGV nunca discordem sobre o que
+     conta como venda apurada. */
+  const fechamento = estadoDoFechamento({
+    status: lead.status,
+    sale_value_brl: lead.sale_value_brl ?? null,
+  });
   const leadAgeDays = daysSince(lead.created_at);
   const lastTouchAt = contactBriefing?.lastInteractionAt ?? null;
   const lastTouchDays = daysSince(lastTouchAt);
@@ -1340,9 +1411,40 @@ export default function LeadDetailPage() {
                 value:
                   relationshipContext.campaign?.name ||
                   relationshipContext.origin.source,
-                detail: relationshipContext.campaign
-                  ? `${relationshipContext.campaign.channel || "Canal não informado"} · ${relationshipContext.origin.campaignEvents} sinais`
-                  : `${relationshipContext.origin.historicalMemories} memórias históricas`,
+                /* ── A CONTAGEM DE SINAIS ERA INALCANÇÁVEL ──────────────────
+                   `origin.campaignEvents` só aparecia no ramo
+                   `relationshipContext.campaign ? … : …`, e a rota devolve
+                   `campaign: null` CRAVADO (a tabela `campaigns` está vazia
+                   nesta base). Ou seja: o ramo que mostra os sinais nunca era
+                   alcançado, e a lead caía sempre no texto das memórias
+                   históricas.
+
+                   Medido no banco vivo em 02/08/2026: `campaign_events` tem 54
+                   linhas com `lead_id`; a lead de teste (Danilo Ferreira) tem 3
+                   sinais e o painel dizia "0 memórias históricas". A rota
+                   passou a BUSCAR os eventos e a ficha continuava sem lugar
+                   para mostrá-los.
+
+                   Ausência de leitura não vira zero: quando a leitura falha, a
+                   frase diz que não foi medido. */
+                detail: (() => {
+                  if (unifiedProfile?.campaignEventsMensuraveis === false) {
+                    return "sinais de campanha não medidos";
+                  }
+                  const partes = [
+                    relationshipContext.campaign
+                      ? relationshipContext.campaign.channel ||
+                        "Canal não informado"
+                      : null,
+                    relationshipContext.origin.campaignEvents
+                      ? `${relationshipContext.origin.campaignEvents} sinais de campanha`
+                      : null,
+                    relationshipContext.origin.historicalMemories
+                      ? `${relationshipContext.origin.historicalMemories} memórias históricas`
+                      : null,
+                  ].filter((parte): parte is string => Boolean(parte));
+                  return partes.join(" · ") || "Sem sinais registrados";
+                })(),
                 href: "#commercial-context",
               },
               {
@@ -1749,132 +1851,56 @@ export default function LeadDetailPage() {
             Dados e qualificação
           </h2>
           <form onSubmit={saveLead} className="mt-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <input
-                className={inputClass}
-                value={lead.name ?? ""}
-                placeholder="Nome"
-                aria-label="Nome"
-                onChange={(e) => setLead({ ...lead, name: e.target.value })}
-              />
-              <input
-                className={inputClass}
-                value={lead.phone ?? ""}
-                placeholder="Telefone"
-                aria-label="Telefone"
-                onChange={(e) => setLead({ ...lead, phone: e.target.value })}
-              />
-              <input
-                className={inputClass}
-                value={lead.email ?? ""}
-                placeholder="E-mail"
-                aria-label="E-mail"
-                onChange={(e) => setLead({ ...lead, email: e.target.value })}
-              />
-              <select
-                className={inputClass}
-                value={lead.status ?? "novo"}
-                aria-label="Etapa do lead"
-                onChange={(e) => setLead({ ...lead, status: e.target.value })}
-              >
-                {/* ── AS TRES ETAPAS DE FECHAMENTO SAIRAM DAQUI ──────────────
-                    Este seletor gravava `leads.status` pela rota da lead — sem
-                    exigir motivo e sem registrar movimento em
-                    `pipeline_stage_moves`. O proprio codigo da rota admite:
-                    "A Lead 360 nao coleta motivo estruturado de descarte."
+            {/* ── A GRADE PLANA DE NOVE CAMPOS SAIU DAQUI ────────────────────
+                Ela identificava cada campo só pelo `placeholder`, que some ao
+                digitar: campo preenchido virava valor sem nome, e quem revisava
+                a ficha de outra pessoa não sabia se "3" era dormitórios ou
+                prazo. E não tinha input nenhum para forma de pagamento, prazo
+                de compra, renda e "precisa financiar" — os quatro campos que,
+                medidos em 03/08/2026, estavam vazios em 613 de 613 leads.
 
-                    Ou seja: fechar por aqui fazia a lead sumir do funil sem
-                    deixar rastro. Medido em 01/08/2026: dos 144 descartes
-                    registrados, os que passaram por este caminho nao aparecem
-                    em lugar nenhum — nao ha como saber quantos foram.
+                Etapa e temperatura continuam FORA da ficha do comprador: elas
+                não são dado do cliente, são estado do atendimento, e a etapa
+                tem caminho próprio (o seletor abaixo) porque mover funil grava
+                no ledger. ── */}
+            <FichaDoComprador
+              lead={lead as unknown as Record<string, unknown>}
+              aoMudar={(campo, valor) => setLead({ ...lead, [campo]: valor })}
+            />
 
-                    So dava para tirar porque a alternativa passou a existir no
-                    mesmo dia: descarte com motivo na LINHA da lista, alem do
-                    Kanban. Fechar sem oferecer onde seria trocar perda de dado
-                    por corretor sem saida. ── */}
-                {(() => {
-                  const abertas = ["novo", "contato", "qualificacao", "visita", "proposta", "contrato"];
-                  /* Se a lead JA esta fechada, a etapa dela precisa aparecer —
-                     senao o <select> exibiria "novo" para uma lead perdida e
-                     mentiria sobre o estado. Ela entra so para ser LIDA: mudar
-                     para outra coisa daqui continua possivel, o que nao ha e
-                     como fechar por este caminho. */
-                  const atual = lead.status ?? "novo";
-                  return abertas.includes(atual) ? abertas : [...abertas, atual];
-                })().map((status) => (
-                  <option key={status} value={status}>
-                    {status === "comprou_outro"
-                      ? "Comprou em outro lugar"
-                      : status}
-                  </option>
-                ))}
-              </select>
-              <select
-                className={inputClass}
-                value={lead.temperature ?? "frio"}
-                aria-label="Temperatura do lead"
-                onChange={(e) =>
-                  setLead({ ...lead, temperature: e.target.value })
-                }
-              >
-                <option>frio</option>
-                <option>morno</option>
-                <option>quente</option>
-              </select>
-              <input
-                className={inputClass}
-                type="number"
-                value={lead.budget_min ?? ""}
-                placeholder="Orçamento mínimo"
-                aria-label="Orçamento mínimo"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    budget_min: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-              />
-              <input
-                className={inputClass}
-                type="number"
-                value={lead.budget_max ?? ""}
-                placeholder="Orçamento máximo"
-                aria-label="Orçamento máximo"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    budget_max: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-              />
-              <input
-                className={inputClass}
-                type="number"
-                value={lead.bedrooms ?? ""}
-                placeholder="Dormitórios"
-                aria-label="Dormitórios"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    bedrooms: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-              />
-              <input
-                className={inputClass}
-                value={(lead.preferred_regions ?? []).join(", ")}
-                placeholder="Regiões preferidas"
-                aria-label="Regiões preferidas"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    preferred_regions: e.target.value
-                      .split(",")
-                      .map((item) => item.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label htmlFor="ficha-status" className="block text-rotulo text-[var(--atlas-texto-fraco)]">Etapa</label>
+                <select
+                  id="ficha-status"
+                  className={`${inputClass} mt-1`}
+                  value={lead.status ?? "novo"}
+                  onChange={(e) => setLead({ ...lead, status: e.target.value })}
+                >
+                  {(() => {
+                    const abertas = ["novo", "contato", "qualificacao", "visita", "proposta", "contrato"];
+                    const atual = lead.status ?? "novo";
+                    return abertas.includes(atual) ? abertas : [...abertas, atual];
+                  })().map((status) => (
+                    <option key={status} value={status}>
+                      {status === "comprou_outro" ? "Comprou em outro lugar" : status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="min-w-0">
+                <label htmlFor="ficha-temperatura" className="block text-rotulo text-[var(--atlas-texto-fraco)]">Temperatura</label>
+                <select
+                  id="ficha-temperatura"
+                  className={`${inputClass} mt-1`}
+                  value={lead.temperature ?? "frio"}
+                  onChange={(e) => setLead({ ...lead, temperature: e.target.value })}
+                >
+                  <option>frio</option>
+                  <option>morno</option>
+                  <option>quente</option>
+                </select>
+              </div>
             </div>
             <textarea
               className={`${inputClass} mt-3 min-h-32`}
@@ -1896,6 +1922,74 @@ export default function LeadDetailPage() {
               </button>
             </div>
           </form>
+          {/* ── O VALOR DA VENDA, DE VOLTA NA FICHA ────────────────────────────
+              Fica FORA do <form> de propósito: um <button> dentro dele nasce
+              `type="submit"` e informar o valor salvaria a lead inteira junto.
+
+              O painel só aparece para venda fechada. "Aguardando" é estado
+              declarado, não erro: o corretor fecha em pé, na obra, e nem sempre
+              tem o número final na hora — o que não pode é a ausência ficar
+              muda, como ficou na venda de 28/07 que segue sem valor até hoje. */}
+          {fechamento.estado !== "nao_e_venda" && (
+            <div className="mt-4 rounded-xl border border-[var(--atlas-border)] p-4">
+              {fechamento.estado === "apurado" ? (
+                <>
+                  <p className="text-rotulo uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
+                    Valor da venda
+                  </p>
+                  {/* `text-numero` (20px) é o degrau "o número que se compara"
+                      da escala de `globals.css`. Escrever `text-titulo` aqui
+                      não pintaria nada: esse degrau não existe no tema. */}
+                  <p className="cc6-num mt-1 text-numero font-medium text-[var(--atlas-texto-forte)]">
+                    {brl.format(fechamento.valor)}
+                  </p>
+                  <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
+                    {lead.sale_value_recorded_at
+                      ? `Informado em ${new Date(lead.sale_value_recorded_at).toLocaleDateString("pt-BR")}.`
+                      : "Informado no fechamento."}{" "}
+                    Este é o número que sustenta o VGV e a comissão — orçamento
+                    declarado não entra aqui.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-rotulo uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
+                    Venda fechada, valor não informado
+                  </p>
+                  <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
+                    Sem o valor, esta venda não entra no VGV, não vira evento
+                    Purchase na Meta e não conta como receita para nenhuma
+                    métrica.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={valorDaVenda}
+                      placeholder="Valor da venda (R$)"
+                      aria-label="Valor da venda em reais"
+                      onChange={(e) => setValorDaVenda(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      disabled={gravandoValor || valorDaVenda.trim() === ""}
+                      className="atlas-button-primary disabled:opacity-50"
+                      onClick={() => void informarValorDaVenda()}
+                    >
+                      {gravandoValor ? "Registrando..." : "Registrar valor"}
+                    </button>
+                  </div>
+                  {erroDoValor && (
+                    <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-estado-perigo)]">
+                      {erroDoValor}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </section>
 
         <div className="space-y-4">
@@ -2021,7 +2115,15 @@ export default function LeadDetailPage() {
               {([
                 ["Conversas", unifiedProfile.conversations.length],
                 ["Tarefas", unifiedProfile.tasks.length],
-                ["Sinais de campanha", unifiedProfile.campaignEvents.length],
+                /* Leitura que falhou não vira "0 sinais": a rota já diz qual
+                   dos dois é, e este número é o único lugar da ficha que
+                   publica a contagem de `campaign_events`. */
+                [
+                  "Sinais de campanha",
+                  unifiedProfile.campaignEventsMensuraveis === false
+                    ? "—"
+                    : unifiedProfile.campaignEvents.length,
+                ],
               ] as const).map(([label, value]) => (
                 <div key={label} className="cc6-panel-quiet p-3 text-center">
                   <span className="cc6-metric-value text-lg">{value}</span>
@@ -2051,7 +2153,27 @@ export default function LeadDetailPage() {
         </details>
       ) : null}
 
-      {lead.source === "Meta Lead Ads" ? (
+      {/* ── O BLOCO OLHAVA PARA O RÓTULO DA FONTE, NÃO PARA O DADO ────────
+          A condição era `lead.source === "Meta Lead Ads"`. Medido no banco vivo
+          em 02/08/2026, sobre 490 leads:
+
+            source = "Meta Lead Ads" ..........   9   (todas com campaignId)
+            source = "meta_ads" ............... 195, das quais 20 têm
+              campaignId, adsetId, adId, formId — e ainda campaignName,
+              adsetName, adName e formName
+
+          Ou seja: 20 leads carregam a atribuição inteira da Meta e este bloco
+          nunca abria para elas, porque a ingestão gravou o rótulo da fonte com
+          outro nome. Ninguém escreveu um dado errado; o gatilho é que olhava
+          para a etiqueta em vez de olhar para o conteúdo.
+
+          A pergunta certa é "esta lead TEM atribuição da Meta?", e ela se
+          responde no próprio metadata. Fonte que não tem nada continua sem o
+          bloco — inclusive as 270 do relatório importado, cujo `metadata.meta`
+          só guarda consentimento. */}
+      {lead.metadata?.meta?.campaignId ||
+      lead.metadata?.meta?.adId ||
+      lead.metadata?.meta?.formId ? (
         <details className="cc6-panel-quiet group">
           <summary className={summaryClass}>
             <span className="cc6-eyebrow">
@@ -2066,28 +2188,56 @@ export default function LeadDetailPage() {
           </summary>
           <div className="cc6-hairline p-4 sm:p-5">
             <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {/* O NOME NA FRENTE, O ID NO `title`. A ingestão grava os dois;
+                  a ficha só lia o id, então o corretor via "120219…" onde o
+                  banco tem o nome da campanha. O id continua alcançável — é o
+                  que se usa para conferir no Gerenciador — mas deixa de ser a
+                  única coisa legível. */}
               {[
-                ["Origem", lead.metadata?.meta?.sourceName || "Meta Lead Ads"],
-                [
-                  "Campanha",
-                  lead.metadata?.meta?.campaignId || "Não identificada",
-                ],
-                [
-                  "Conjunto",
-                  lead.metadata?.meta?.adsetId || "Não identificado",
-                ],
-                ["Anúncio", lead.metadata?.meta?.adId || "Não identificado"],
-                [
-                  "Aprendizado",
-                  lead.metadata?.meta?.dataSharingConsent
+                {
+                  label: "Origem",
+                  value: lead.metadata?.meta?.sourceName || "Meta Lead Ads",
+                  id: null,
+                },
+                {
+                  label: "Campanha",
+                  value:
+                    lead.metadata?.meta?.campaignName ||
+                    lead.metadata?.meta?.campaignId ||
+                    "Não identificada",
+                  id: lead.metadata?.meta?.campaignId || null,
+                },
+                {
+                  label: "Conjunto",
+                  value:
+                    lead.metadata?.meta?.adsetName ||
+                    lead.metadata?.meta?.adsetId ||
+                    "Não identificado",
+                  id: lead.metadata?.meta?.adsetId || null,
+                },
+                {
+                  label: "Anúncio",
+                  value:
+                    lead.metadata?.meta?.adName ||
+                    lead.metadata?.meta?.adId ||
+                    "Não identificado",
+                  id: lead.metadata?.meta?.adId || null,
+                },
+                {
+                  label: "Aprendizado",
+                  value: lead.metadata?.meta?.dataSharingConsent
                     ? "Autorizado"
                     : "Sem autorização",
-                ],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt className="cc6-eyebrow text-micro">{label}</dt>
-                  <dd className="cc6-num mt-1.5 break-all text-sm text-[var(--atlas-texto-forte)]">
-                    {value}
+                  id: null,
+                },
+              ].map((item) => (
+                <div key={item.label}>
+                  <dt className="cc6-eyebrow text-micro">{item.label}</dt>
+                  <dd
+                    className="cc6-num mt-1.5 break-all text-sm text-[var(--atlas-texto-forte)]"
+                    title={item.id && item.id !== item.value ? `ID ${item.id}` : undefined}
+                  >
+                    {item.value}
                   </dd>
                 </div>
               ))}

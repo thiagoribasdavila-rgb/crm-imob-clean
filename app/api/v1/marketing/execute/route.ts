@@ -29,7 +29,7 @@ import {
   executeSteps, validateExecutionPlan, type ExecutionStep,
 } from "@/lib/meta/marketing/campaign-executor";
 import { invalidateMetaReads } from "@/lib/meta/marketing/insights-cache";
-import { findPriorExecution, recordExecution } from "@/lib/meta/marketing/idempotency";
+import { findPriorExecution, recordExecution, tryReserve, releaseReservation } from "@/lib/meta/marketing/idempotency";
 import { canDecideMetaCampaign, META_CAMPAIGN_AUTHORITY_MESSAGE } from "@/lib/meta/marketing/approval-authority";
 
 export const dynamic = "force-dynamic";
@@ -197,6 +197,34 @@ export async function POST(request: NextRequest) {
       if (prior) {
         return apiSuccess({ executed: true, dryRun: false, results: prior, governance: `campanha desta proposta já foi criada (idempotência) — não recriamos. ${proposalId}` }, identity.meta, { headers: limited.headers });
       }
+      /**
+       * ── A JANELA ENTRE PERGUNTAR E REGISTRAR ──────────────────────────────
+       *
+       * `findPriorExecution` (acima) LÊ se a chave já foi usada; `recordExecution`
+       * só GRAVA depois de `executeSteps` voltar. Entre uma e outra cabe a
+       * criação inteira da campanha na Meta.
+       *
+       * Dois pedidos nessa janela passam OS DOIS pela leitura — nada foi
+       * registrado ainda — e criam DUAS campanhas de verdade, com verba de
+       * verdade. É a mesma corrida que a fila de decisões pagou em 02/08/2026,
+       * agora do lado que gasta dinheiro.
+       *
+       * A rota irmã já resolvia isto: `campaign-intake` reserva a chave ANTES de
+       * subir mídia e libera em toda saída sem sucesso. Esta porta não
+       * reservava — e foi justamente ela que a Caixa de Aprovações passou a
+       * chamar quando o botão ATIVAR ganhou tela. Porta irmã aberta, de novo.
+       *
+       * `tryReserve` é síncrono: não há `await` entre testar e escrever, então
+       * dois pedidos não atravessam juntos.
+       */
+      if (!tryReserve(idemKey)) {
+        return apiError(
+          "IN_PROGRESS",
+          "Esta campanha já está sendo criada agora. Aguarde o resultado — repetir criaria uma segunda campanha com verba real.",
+          identity.meta,
+          { status: 409, headers: limited.headers },
+        );
+      }
       const plannedDaily = plannedCampaignDailyBudget(steps);
       const audit = await openAudit(admin, {
         organizationId: identity.access.organization.id,
@@ -210,6 +238,9 @@ export async function POST(request: NextRequest) {
         note: plannedDaily == null ? "verba diária do plano não identificada nos steps" : null,
       });
       if (!audit.ok) {
+        // Saída sem sucesso devolve a chave: reserva presa impediria a próxima
+        // tentativa legítima de criar esta campanha.
+        releaseReservation(idemKey);
         return apiError("AUDIT_UNAVAILABLE", `Sem registro de auditoria (meta_execution_audit) não há execução real: ${audit.reason}`, identity.meta, { status: 503 });
       }
       auditId = audit.id;
@@ -220,6 +251,9 @@ export async function POST(request: NextRequest) {
       const failed = results.find((r) => !r.ok);
       if (failed) {
         if (auditId && admin) await closeAudit(admin, auditId, { outcome: "failed", stepResults: results, errorMessage: failed.error ?? null });
+        // Saída sem sucesso devolve a chave: reserva presa impediria a próxima
+        // tentativa legítima de criar esta campanha.
+        releaseReservation(idemKey);
         return apiError("EXECUTION_FAILED", `Meta recusou: ${failed.error ?? "erro desconhecido"}`, identity.meta, { status: 502 });
       }
       if (!dryRun) await recordExecution(admin, idemKey, identity.access.organization.id, results);
@@ -234,6 +268,7 @@ export async function POST(request: NextRequest) {
       }, identity.meta, { headers: limited.headers });
     } catch (err) {
       if (auditId) await closeAudit(admin, auditId, { outcome: "failed", stepResults: [], errorMessage: err instanceof Error ? err.message : "plano inválido" });
+      releaseReservation(idemKey);
       return apiError("PLAN_INVALID", err instanceof Error ? err.message : "Plano de criação inválido.", identity.meta, { status: 422 });
     }
   }

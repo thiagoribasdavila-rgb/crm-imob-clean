@@ -119,11 +119,27 @@ function argumento(nome) {
  * dentro dele. Agora a função devolve o ESTADO junto com o carimbo, e quem
  * chama não pode mais confundir os três.
  */
-async function ultimoRastro(tabela, coluna) {
+/**
+ * ── TABELA COMPARTILHADA DÁ FALSO VERDE (02/08/2026) ────────────────────────
+ *
+ * `sombra-do-atendimento` declara evidência em `ai_shadow_decisions`. Essa
+ * tabela JÁ TINHA 20 linhas, todas do agente `sla-primeiro-contato`, gravadas em
+ * 31/07 — antes de o vigia novo existir.
+ *
+ * Sem recorte, este portão leria o carimbo daquelas linhas e diria VIVO sobre um
+ * vigia que nunca rodou. É a mesma família de defeito que ele foi escrito para
+ * caçar, e por isso a cura é o portão medir MAIS FINO, não abrir exceção.
+ *
+ * `filtro` é um predicado do PostgREST declarado junto com a evidência
+ * (`agent=eq.sombra-do-atendimento`). Quem não declara nada continua medindo
+ * exatamente como antes — nenhum dos 13 anteriores muda de leitura.
+ */
+async function ultimoRastro(tabela, coluna, filtro) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !chave) return { estado: "sem-credencial" };
-  const alvo = `${url}/rest/v1/${tabela}?select=${coluna}&order=${coluna}.desc&limit=1`;
+  const recorte = filtro ? `&${filtro}` : "";
+  const alvo = `${url}/rest/v1/${tabela}?select=${coluna}&order=${coluna}.desc&limit=1${recorte}`;
   let r;
   try {
     r = await fetch(alvo, { headers: { apikey: chave, Authorization: `Bearer ${chave}` } });
@@ -169,9 +185,13 @@ for (const w of AGENDA.workers) {
     mortos.push(`${w.nome}: sem evidência declarada — impossível saber se rodou`);
     continue;
   }
+  // No modo simulado a chave é a TABELA MAIS O FILTRO quando há filtro: dois
+  // vigias que compartilham tabela precisam poder receber carimbos diferentes,
+  // senão o modo que existe para provar a lógica reproduz o falso verde.
+  const chaveSimulada = ev.filtro ? `${ev.tabela}?${ev.filtro}` : ev.tabela;
   const leitura = carimbos
-    ? { estado: "medido", carimbo: carimbos[ev.tabela] ?? null }
-    : await ultimoRastro(ev.tabela, ev.coluna);
+    ? { estado: "medido", carimbo: carimbos[chaveSimulada] ?? null }
+    : await ultimoRastro(ev.tabela, ev.coluna, ev.filtro);
   const limite = intervaloEmMinutos(w.cadencia) * FOLGA_EM_CICLOS;
 
   if (leitura.estado !== "medido") {

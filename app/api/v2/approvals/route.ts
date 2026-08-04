@@ -9,6 +9,7 @@ import {
   type ProposalContext,
   type ProposalSignalKind,
 } from "@/lib/ai/action-proposals";
+import { pendenciasDeAtivacao } from "@/lib/marketing/pendencias-de-ativacao";
 
 // SALTO V4.1 — cria uma proposta de ação (Copiloto que executa). A proposta é
 // determinística, nunca executa sozinha: entra na Caixa de Aprovações e a
@@ -106,7 +107,14 @@ export async function GET(request: NextRequest) {
   const items = (approvals ?? []).flatMap((approval) => { if (approval.entity_type === "meta_campaign") {
       // Campanha Meta — org-level, sem corretor/lead: preview vem do payload determinístico (sem JOIN).
       const proposal = approval.payload as { title?: string; kind?: string; governance?: { note?: string } } | null;
-      return [{ ...approval, payload: undefined, leadName: proposal?.title || "Campanha", brokerName: "Marketing", channel: proposal?.kind || "campanha", preview: [proposal?.title, proposal?.governance?.note].filter(Boolean).join(" · ").slice(0, 300) }];
+      // O que ainda falta para ESTA proposta ir ao ar, medido no plano que o
+      // aprovador vai assinar — peça visual, Página e formulário. A régua da
+      // Meta deixa propor sem eles (o artefato aparece depois, por outra mão);
+      // sem esta linha, a proposta sem mídia chegaria ao botão de aprovar com a
+      // mesma cara de uma proposta completa. O payload continua saindo undefined
+      // daqui: a Caixa mostra o veredito, não o plano inteiro.
+      const ativacao = pendenciasDeAtivacao(approval.payload);
+      return [{ ...approval, payload: undefined, ativacao, leadName: proposal?.title || "Campanha", brokerName: "Marketing", channel: proposal?.kind || "campanha", preview: [proposal?.title, proposal?.governance?.note].filter(Boolean).join(" · ").slice(0, 300) }];
     }
     if (approval.entity_type === "lead_action") {
       // SALTO V4.1: proposta de ação — preview vem do próprio payload determinístico.

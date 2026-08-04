@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { temAlvoDeToque, mediaAlcanca } from "./lib/css-propriedade.mjs";
+import { assinaRealtime, buscaDados, corposDeEfeito, efeitosQueTocamRede, semRede } from "./lib/jsx-estrutura.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-039-agenda-time-workspace.json", "utf8"));
 const phaseThirtyEight = JSON.parse(fs.readFileSync("config/evolution-phase-038-task-execution-workspace.json", "utf8"));
@@ -10,15 +11,13 @@ const liveRepositories = fs.readFileSync("lib/atlas/core-v2/live-repositories.ts
 const styles = fs.readFileSync("app/globals.css", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_039_AGENDA_TIME_WORKSPACE.md", "utf8");
 
-// O CORPO do efeito que encaminha a intenção da URL, recortado para ser
-// inspecionado sozinho: é ele que precisa provar que NÃO busca dados. Contar
-// `fetch(` na página inteira não distinguiria o efeito novo do `load()` que
-// sempre existiu.
-const inicioDoEfeito = calendar.indexOf("if (!pedeCriar(lerIntencaoDaJanela())");
-const fimDoEfeito = calendar.indexOf("}, [router]);", inicioDoEfeito);
-const efeitoDaIntencao = inicioDoEfeito >= 0 && fimDoEfeito > inicioDoEfeito
-  ? calendar.slice(inicioDoEfeito, fimDoEfeito)
-  : "EFEITO-DE-INTENCAO-NAO-ENCONTRADO fetch(";
+// Os corpos de efeito, recortados pela ÁRVORE e não por `indexOf` de uma
+// frase: o recorte antigo dependia de a linha `}, [router]);` existir com essa
+// pontuação exata e virava a string-sentinela "EFEITO-NAO-ENCONTRADO fetch("
+// — que reprova — a cada reformatação do Prettier.
+const efeitos = corposDeEfeito(calendar);
+const efeitoDaIntencao = efeitos.find((corpo) => corpo.includes("pedeCriar(lerIntencaoDaJanela())")) ?? "";
+const efeitosComRede = efeitosQueTocamRede(calendar);
 
 const checks = [
   ["Fase 039 concluída sem mutação estrutural", config.status === "completed" && config.productionDataModified === false && config.databaseSchemaChanged === false && config.dataFetchingChanged === false],
@@ -52,31 +51,47 @@ const checks = [
   ["Realtime e atualização manual foram preservados", calendar.includes('supabase.channel("commercial-calendar")') && calendar.includes("removeChannel") && calendar.includes("Atualizar") && config.calendarContract.existingRealtimePreserved === true],
   ["API mantém autenticação, organização e três tipos de agenda", calendarApi.includes("requireAccessContext") && calendarApi.includes("readCompatibleTasks") && calendarApi.includes("readCompatibleLeads") && liveRepositories.includes('.eq("organization_id", organizationId)') && calendarApi.includes('kind: "task"') && calendarApi.includes('kind: "visit"') && calendarApi.includes('kind: "follow_up"')],
   ["Deduplicação de visita e follow-up permanece ativa", calendarApi.includes("activeVisitKeys") && calendarApi.includes("next_action_at") && config.calendarContract.visitFollowUpDeduplicationPreserved === true],
-  // ── POR QUE ESTE NÚMERO MUDOU (2026-07-29) ─────────────────────────────────
+  // ── REAPONTADA EM 02/08/2026 — CONTAR ESTADO NÃO É MEDIR REDE ─────────────
+  //
   // A garantia desta fase é que a Agenda NÃO PASSOU A BUSCAR MAIS DADOS: ela é
-  // fase de apresentação (`dataFetchingChanged: false`). Quem carrega essa
-  // garantia é `fetch(` === 1, e esse número está INTOCADO.
+  // fase de apresentação (`dataFetchingChanged: false`). Quem carregava essa
+  // garantia junto com `fetch(` === 1 eram duas contagens que não têm nada a
+  // ver com rede:
   //
-  // Estado e efeito subiram (5 → 6 e 2 → 3), com causa medida: o catálogo
-  // declara a ação primária deste destino como `/calendar?create=1` ("Novo
-  // compromisso") e a tela ignorava o parâmetro — quem clicava chegava na linha
-  // do tempo com nada aberto. O acréscimo é UM estado (`encaminhandoCriacao`) e
-  // UM efeito que lê a intenção pelo módulo compartilhado e faz
-  // `router.replace("/tasks?create=1")`: NAVEGAÇÃO, não rede.
+  //     (calendar.match(/useState/g)||[]).length === config.postPhaseAdditions.useStateOccurrences
+  //     (calendar.match(/useEffect\(/g)||[]).length === config.postPhaseAdditions.useEffectOccurrences
   //
-  // O número novo não foi fixado às cegas. A asserção NOMEIA o acréscimo e
-  // prova a propriedade que importa: o efeito novo é o encaminhamento da
-  // intenção e não contém nenhuma chamada de rede.
+  // CAUSA MEDIDA DO VERMELHO: `useState` foi a 8, contra 7 declarados. O
+  // acréscimo é `lidoEm` — um carimbo do instante da leitura, gravado dentro
+  // do `load`, criado para tirar `Date.now()` de dentro de um `useMemo` (o
+  // `react-hooks/purity` reprova, e com razão prática: "há 2d" virava "há 3d"
+  // a cada re-render, sem nenhum dado ter mudado). Uma correção de pureza
+  // acendeu o portão da REDE. Estado não é rede.
+  //
+  // O que ficou no lugar mede rede de verdade, pela árvore (`corposDeEfeito`),
+  // não por contagem de texto:
+  //   · o arquivo inteiro tem UMA chamada `fetch(`;
+  //   · UM único efeito toca rede, e é a assinatura realtime nomeada
+  //     `commercial-calendar` — o `fetch` mora no `load` (useCallback), não em
+  //     efeito;
+  //   · o efeito do encaminhamento da intenção existe, navega
+  //     (`router.replace`) e não contém rede.
+  //
+  // Isto é ESTRITAMENTE mais forte que as contagens: um efeito novo que
+  // buscasse dados reprova aqui e passava lá, desde que alguém atualizasse o
+  // número no config. Prova de que reprova:
+  // `tests/contracts/estrutura-jsx-reprova.test.mjs`.
   ["Nenhuma nova chamada de rede; o estado e o efeito novos são o encaminhamento da intenção",
     (calendar.match(/fetch\(/g) || []).length === 1
     && config.postPhaseAdditions.networkRequests === 1
     && config.structuralBaseline.newNetworkRequestAdded === false
-    && (calendar.match(/useState/g) || []).length === config.postPhaseAdditions.useStateOccurrences
-    && (calendar.match(/useEffect\(/g) || []).length === config.postPhaseAdditions.useEffectOccurrences
+    && efeitosComRede.length === 1
+    && efeitosComRede[0].includes('supabase.channel("commercial-calendar")')
+    && assinaRealtime(efeitosComRede[0])
+    && !buscaDados(efeitosComRede[0])
     && calendar.includes("const [encaminhandoCriacao, setEncaminhandoCriacao] = useState(false)")
-    && calendar.includes("pedeCriar(lerIntencaoDaJanela())")
-    && calendar.includes('router.replace("/tasks?create=1")')
-    && !efeitoDaIntencao.includes("fetch(")
+    && efeitoDaIntencao.includes('router.replace("/tasks?create=1")')
+    && semRede(efeitoDaIntencao)
     && config.postPhaseAdditions.addedEffectFetches === false],
   // Reconciliação CC-6: o Prettier quebrou "nenhum cliente é" entre linhas; a asserção aponta para
   // "nenhuma ação é concluída" + "contatado automaticamente", que seguem no aviso de não-automação.

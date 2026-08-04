@@ -26,11 +26,15 @@
     "app/api/v2/ai/baseline-de-conversao/process/route.ts",
     "app/api/v2/ai/nightly-handoff/route.ts",
     "app/api/v2/ai/nightly-sales/route.ts",
+    "app/api/v2/ai/sombra-do-atendimento/process/route.ts",
     "app/api/v2/crm/first-contact-sla/process/route.ts",
     "app/api/v2/developers/weekly-reports/process/route.ts",
     "app/api/v2/distribution/reservations/process/route.ts",
+    "app/api/v2/integrations/carta-morta/vigia/route.ts",
+    "app/api/v2/integrations/ingestao/vigia/route.ts",
     "app/api/v2/marketing/capi-feedback/process/route.ts",
     "app/api/v2/marketing/investimento/process/route.ts",
+    "app/api/v2/marketing/meta-backfill/process/route.ts",
     "app/api/v2/marketing/meta-sem-destino/process/route.ts",
     "app/api/v2/meta/daily-report/route.ts",
     "app/api/v2/outbox/process/route.ts",
@@ -39,7 +43,8 @@
     "app/api/v3/agents/process/route.ts",
     "app/api/v3/decisions/generate/route.ts",
     "app/api/v3/status/route.ts",
-    "app/api/v3/twins/rebuild/route.ts"
+    "app/api/v3/twins/rebuild/route.ts",
+    "app/api/v2/crm/aviso-ao-corretor/process/route.ts"
   ],
   "noBodyMutationRoutes": [
     "app/api/ai/cost-routing-test/route.ts",

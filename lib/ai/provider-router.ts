@@ -6,6 +6,7 @@ import { assessAIComplexity } from "@/lib/ai/complexity";
 import { planCommercialAI, type AIExecutionPlan, type RoutedProvider } from "@/lib/ai/commercial-orchestrator";
 import { AI_GUARD_SYSTEM_POLICY, assessAIInput, inspectAndSanitizeAIOutput } from "@/lib/ai/instruction-output-guard";
 import { pedirPermissaoDeIA, agenteDaFeature } from "@/lib/ai/limitador-de-ia";
+import { tentativaFalhaDe, type TentativaFalha } from "@/lib/ai/falha-de-ia";
 
 export type AITask = "fast" | "commercial" | "reasoning" | "research";
 export type GenerateInput = {
@@ -51,6 +52,15 @@ export type AIProviderResult = {
     pricingSource: string;
   };
   guardrail?: { risk: "low" | "medium" | "high"; blocked: boolean; humanReviewRequired: boolean; findingCodes: string[] };
+  /**
+   * Provedores que falharam ANTES do que respondeu, em ordem de tentativa.
+   *
+   * Vazio (ou ausente) significa "nenhuma falha no caminho". Não-vazio com
+   * `provider: "local"` é o caso caro: a IA não atendeu e isto é a única
+   * resposta a "por que?" — antes ela existia apenas no PM2 da Hostinger.
+   * Presente mesmo em sucesso: failover que dá certo escondia a falha do meio.
+   */
+  falhas?: TentativaFalha[];
 };
 
 export type EconomyProvider =
@@ -366,7 +376,52 @@ async function recordUsage(input: GenerateInput, result: AIProviderResult) {
   return { ...result, cost };
 }
 
-async function recordOrchestration(input:GenerateInput,plan:AIExecutionPlan,result:AIProviderResult){try{await getSupabaseAdmin().from("ai_orchestration_decisions").insert({organization_id:input.organizationId,user_id:input.userId||null,feature:input.feature,requested_task:plan.requestedTask,resolved_task:plan.resolvedTask,data_class:plan.dataClass,risk_level:plan.riskLevel,provider_order:plan.providerOrder,selected_provider:result.provider,selected_model:result.model,token_budget:plan.tokenBudget,routing_reasons:plan.routingReasons,human_review_required:plan.humanReviewRequired,fallback_used:result.provider==="local",status:result.provider==="local"?"fallback":"completed",latency_ms:result.latencyMs,total_tokens:result.usage.totalTokens,estimated_cost_usd:usageCost(result.provider,result.model,result.usage).estimatedUsd,completed_at:new Date().toISOString()})}catch{/* Auditoria indisponível não derruba o atendimento. */}}
+// ── O DESFECHO, INCLUSIVE QUANDO É FALHA ──────────────────────────────────────
+//
+// Enquanto a migration 20260802140000 não é aplicada, o insert com as colunas de
+// causa falha UMA vez, avisa UMA vez, e as chamadas seguintes já vão direto ao
+// payload base — mesmo padrão de `usageCacheColumnsMissing`, e pela mesma razão:
+// telemetria não pode gastar round-trip por chamada nem sumir por completo.
+let orchestrationErrorColumnsMissing = false;
+
+/**
+ * Grava a decisão de roteamento COM o desfecho.
+ *
+ * `tentativas` são os provedores que falharam no caminho. Sem elas, um failover
+ * bem-sucedido apagava a falha: a Perplexity respondia, a linha saía como
+ * `completed`, e as 48 falhas de OpenAI medidas em 02/08/2026 não deixavam
+ * rastro nenhum no banco.
+ *
+ * `status` agora distingue o que 'fallback' confundia:
+ *   · 'failed'   — havia provedor externo na ordem, TODOS falharam, sobrou o local;
+ *   · 'fallback' — o plano escolheu o local sem que nada falhasse (operação normal);
+ *   · 'completed'— um provedor externo atendeu (mesmo que outro tenha falhado antes).
+ */
+async function recordOrchestration(input:GenerateInput,plan:AIExecutionPlan,result:AIProviderResult,tentativas:TentativaFalha[]=[],nadaFoiServido=false){
+  const caiuNoLocal=result.provider==="local";
+  const status=caiuNoLocal?(tentativas.length?"failed":"fallback"):"completed";
+  const principal=tentativas[0]??null;
+  // `nadaFoiServido` separa dois casos que a coluna `selected_provider` confundiria:
+  //   · roteador: todos falharam, mas o texto determinístico FOI entregue ao
+  //     corretor — 'local' é verdade, alguém serviu;
+  //   · homologação: o erro subiu para a rota e NINGUÉM serviu — gravar 'local'
+  //     ali afirmaria uma entrega que não houve.
+  // A coluna é nulável exatamente para poder dizer "nada foi selecionado".
+  const servidoPor=nadaFoiServido?null:result.provider;
+  const base={organization_id:input.organizationId,user_id:input.userId||null,feature:input.feature,requested_task:plan.requestedTask,resolved_task:plan.resolvedTask,data_class:plan.dataClass,risk_level:plan.riskLevel,provider_order:plan.providerOrder,selected_provider:servidoPor,selected_model:nadaFoiServido?null:result.model,token_budget:plan.tokenBudget,routing_reasons:plan.routingReasons,human_review_required:plan.humanReviewRequired,fallback_used:caiuNoLocal&&!nadaFoiServido,status,latency_ms:result.latencyMs,total_tokens:result.usage.totalTokens,estimated_cost_usd:usageCost(result.provider,result.model,result.usage).estimatedUsd,completed_at:new Date().toISOString()};
+  try{
+    const admin=getSupabaseAdmin();
+    if(orchestrationErrorColumnsMissing||!tentativas.length){await admin.from("ai_orchestration_decisions").insert(base);return}
+    const {error}=await admin.from("ai_orchestration_decisions").insert({...base,error_class:principal?.classe??null,error_code:principal?.codigo??null,error_message:principal?.mensagem??null,who_resolves:principal?.quemResolve??null,provider_attempts:tentativas});
+    if(error){
+      // Só aposenta a captura quando o erro é de ESQUEMA; falha transitória não
+      // pode desligar o registro de causa até o próximo deploy.
+      if(/column|schema cache|PGRST204/i.test(`${error.code||""} ${error.message||""}`))orchestrationErrorColumnsMissing=true;
+      logger.warn("ai.orchestration_error_columns_missing",{reason:error.message,migration:"20260802140000_causa_da_falha_de_ia.sql"});
+      await admin.from("ai_orchestration_decisions").insert(base);
+    }
+  }catch{/* Auditoria indisponível não derruba o atendimento. */}
+}
 
 function openAIText(output: unknown) {
   if (!output || typeof output !== "object") return "";
@@ -758,6 +813,10 @@ export async function generateAIText(
     }
   }
   result = localFallback(input);
+  // As falhas do caminho. Antes elas viviam SÓ na linha `ai.provider_failover` do
+  // PM2 da Hostinger — fora do alcance de quem opera. Medido em 02/08/2026: 48
+  // tentativas de OpenAI, 0 respostas, e nenhuma linha no banco dizendo por quê.
+  const falhas: TentativaFalha[] = [];
   for (const provider of plan.providerOrder) {
     if(provider==="local"){result=localFallback(input);break}
     try {
@@ -769,16 +828,93 @@ export async function generateAIText(
           ? input.signal.reason
           : new DOMException("Solicitação cancelada.", "AbortError");
       }
+      const falha = tentativaFalhaDe(error, provider);
+      falhas.push(falha);
       logger.warn("ai.provider_failover", {
         provider,
         task: input.task,
         feature: input.feature,
         containsPersonalData: Boolean(input.containsPersonalData),
-        reason: error instanceof Error ? error.message : String(error),
+        // A classe é o que torna a linha de log acionável sem abrir o texto:
+        // credencial e cota são do dono da conta, configuração é do time técnico.
+        classe: falha.classe,
+        codigo: falha.codigo,
+        quemResolve: falha.quemResolve,
+        // `reason` continua sendo a frase do provedor, agora com segredo redigido
+        // na origem — não dependendo só da redação genérica do logger.
+        reason: falha.mensagem,
       });
     }
   }
-  const inspected=inspectAndSanitizeAIOutput(result.text);result.text=inspected.text;result.guardrail={risk:inspected.assessment.risk,blocked:inspected.assessment.blocked,humanReviewRequired:inputGuard.humanReviewRequired||inspected.assessment.humanReviewRequired,findingCodes:[...inputGuard.findings,...inspected.assessment.findings].map(f=>f.code)};await recordGuard("output",inspected.assessment,result.provider,result.model);await recordOrchestration(input,plan,result);return recordUsage(input, result);
+  const inspected=inspectAndSanitizeAIOutput(result.text);result.text=inspected.text;result.guardrail={risk:inspected.assessment.risk,blocked:inspected.assessment.blocked,humanReviewRequired:inputGuard.humanReviewRequired||inspected.assessment.humanReviewRequired,findingCodes:[...inputGuard.findings,...inspected.assessment.findings].map(f=>f.code)};await recordGuard("output",inspected.assessment,result.provider,result.model);await recordOrchestration(input,plan,result,falhas);
+  // `falhas` sobe junto da resposta: quem chamou consegue dizer ao operador POR QUE
+  // veio o texto determinístico, em vez de mostrar "IA indisponível" sem causa.
+  return { ...(await recordUsage(input, result)), falhas };
+}
+
+/**
+ * ── O INSTRUMENTO DE TESTE PRECISA REGISTRAR A FALHA, NÃO SÓ O SUCESSO ───────
+ *
+ * `recordUsage(request, await generateOpenAI(request))` só grava quando a chamada
+ * DÁ CERTO: se `generateOpenAI` lança, o `await` interrompe a expressão e
+ * `recordUsage` nunca é alcançado. O teste que existe para diagnosticar falha era
+ * justamente o que não deixava rastro dela.
+ *
+ * Medido em 02/08/2026: `perplexity-homologation` tem 8 linhas em ai_usage_events
+ * e `openai-homologation` tem ZERO. A Perplexity respondeu e foi gravada; a
+ * OpenAI, tentada 48 vezes pelo roteador sem nunca atender, não deixou uma linha
+ * sequer — nem no teste feito para investigá-la.
+ *
+ * `registrarFalhaDeTeste` fecha isso: a tentativa falha vira uma linha em
+ * ai_orchestration_decisions com a CAUSA classificada, e o erro segue subindo
+ * para quem chamou. Gravar não engole a falha.
+ */
+async function registrarFalhaDeTeste(
+  request: GenerateInput,
+  provedor: string,
+  erro: unknown,
+): Promise<TentativaFalha> {
+  const falha = tentativaFalhaDe(erro, provedor);
+  logger.warn("ai.homologacao_falhou", {
+    feature: request.feature,
+    provider: provedor,
+    classe: falha.classe,
+    codigo: falha.codigo,
+    quemResolve: falha.quemResolve,
+    reason: falha.mensagem,
+  });
+  // O teste de conexão não passa pelo planejador, então não há plano real a
+  // gravar: a ordem é o provedor único que ele existe para exercitar. Os campos
+  // obrigatórios da tabela recebem o que de fato foi pedido, e `status` sai
+  // 'failed' — o valor que o CHECK já aceitava e que o código nunca escreveu.
+  await recordOrchestration(
+    request,
+    {
+      requestedTask: request.task,
+      resolvedTask: request.task,
+      dataClass: "internal",
+      riskLevel: "low",
+      providerOrder: [provedor as RoutedProvider],
+      tokenBudget: 600,
+      routingReasons: ["homologacao-de-conexao"],
+      humanReviewRequired: false,
+    } as AIExecutionPlan,
+    { ...localFallback(request), text: "" },
+    [falha],
+    // Nada foi servido: o erro sobe para a rota. Ver `nadaFoiServido`.
+    true,
+  );
+  return falha;
+}
+
+/** Erro de homologação que carrega a causa já classificada até a rota. */
+export class FalhaDeHomologacao extends Error {
+  readonly falha: TentativaFalha;
+  constructor(falha: TentativaFalha) {
+    super(falha.mensagem);
+    this.name = "FalhaDeHomologacao";
+    this.falha = falha;
+  }
 }
 
 export async function testOpenAIConnection(
@@ -794,7 +930,11 @@ export async function testOpenAIConnection(
       "Você é o teste técnico do Atlas. Não execute ações e não solicite dados pessoais.",
     prompt: "Responda somente ATLAS_OPENAI_OK para confirmar a conexão.",
   };
-  return recordUsage(request, await generateOpenAI(request));
+  try {
+    return await recordUsage(request, await generateOpenAI(request));
+  } catch (error) {
+    throw new FalhaDeHomologacao(await registrarFalhaDeTeste(request, "openai", error));
+  }
 }
 
 export async function testPerplexityConnection(
@@ -811,7 +951,11 @@ export async function testPerplexityConnection(
     prompt:
       "Indique dois indicadores públicos úteis para analisar o mercado imobiliário brasileiro e cite as fontes.",
   };
-  return recordUsage(request, await generatePerplexity(request));
+  try {
+    return await recordUsage(request, await generatePerplexity(request));
+  } catch (error) {
+    throw new FalhaDeHomologacao(await registrarFalhaDeTeste(request, "perplexity", error));
+  }
 }
 
 export async function testEconomyProviderConnection(
@@ -829,8 +973,11 @@ export async function testEconomyProviderConnection(
       "Você é um teste técnico de conectividade do Atlas. Não use ferramentas, não execute ações e não solicite dados pessoais.",
     prompt: `Responda somente ${expected} para confirmar a conexão.`,
   };
-  const result = await generateEconomyProvider(request, provider);
-  return recordUsage(request, result);
+  try {
+    return await recordUsage(request, await generateEconomyProvider(request, provider));
+  } catch (error) {
+    throw new FalhaDeHomologacao(await registrarFalhaDeTeste(request, provider, error));
+  }
 }
 
 export async function testAICostRouting(
@@ -869,10 +1016,14 @@ export async function testAICostRouting(
           "Você testa o roteamento técnico do Atlas. Não execute ações, não use ferramentas e não solicite dados pessoais.",
         prompt: definition.prompt,
       };
-      return {
-        task: definition.task,
-        ...(await recordUsage(request, await generateOpenAI(request))),
-      };
+      try {
+        return {
+          task: definition.task,
+          ...(await recordUsage(request, await generateOpenAI(request))),
+        };
+      } catch (error) {
+        throw new FalhaDeHomologacao(await registrarFalhaDeTeste(request, "openai", error));
+      }
     }),
   );
 }

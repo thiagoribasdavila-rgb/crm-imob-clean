@@ -7,6 +7,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { LIVE_LEAD_SELECT, mapLegacyLead } from "@/lib/compat/legacy-v2";
 import { chaveDaCampanhaDoGoogle, lerAtribuicaoDoGoogle, nomeDaCampanhaDoGoogle } from "@/lib/marketing/google-attribution";
 import { recordLiveLeadEvent } from "@/lib/compat/live-writes";
+import { abrirJornadaEmSombra } from "@/lib/ai/jornada-em-sombra";
 
 export const dynamic = "force-dynamic";
 
@@ -182,7 +183,8 @@ export async function POST(request: Request) {
       .select(LIVE_LEAD_SELECT)
       .single();
     if (leadError || !storedLead) throw leadError || new Error("Não foi possível criar o lead.");
-    const lead = mapLegacyLead(storedLead as unknown as Record<string, unknown>);
+    const linhaCrua = storedLead as unknown as Record<string, unknown>;
+    const lead = mapLegacyLead(linhaCrua);
 
     const eventResult = await recordLiveLeadEvent(admin, {
       organizationId: identity.organizationId,
@@ -195,6 +197,40 @@ export async function POST(request: Request) {
     });
     if (eventResult.error) logger.warn("v1.lead_event_write_failed", { leadId: lead.id, message: eventResult.error.message });
 
+    // ── O SORTEIO ACONTECE NA ENTRADA, E É CEGO ─────────────────────────────
+    //
+    // §3 de docs/design/ATENDIMENTO_AUTONOMO_MODELO.md. Aqui é a porta de
+    // entrada por API/formulário; a da Meta está em `app/api/v2/outbox/process`
+    // e a rede de recuperação, no vigia de SLA. As três chamam o MESMO módulo —
+    // três sorteios escritos em três lugares divergiriam, e o experimento
+    // morreria sem ninguém perceber.
+    //
+    // A jornada nasce em SOMBRA: nada é enviado a ninguém. Ela é a unidade do
+    // experimento, e até hoje só existia como efeito colateral de uma mensagem
+    // de WhatsApp que depende de template aprovado pelo dono — por isso
+    // `ai_sales_journeys` estava em ZERO em 02/08/2026.
+    //
+    // A falha NÃO derruba a criação da lead: perder a jornada é ruim, perder a
+    // lead do corretor seria muito pior. Mas ela também não some — vai para o
+    // log e para a resposta, porque "não criei" e "não precisava criar" são
+    // desfechos diferentes.
+    const jornada = await abrirJornadaEmSombra({
+      id: String(lead.id),
+      organizacaoId: identity.organizationId,
+      corretorId: identity.userId,
+      status: "novo",
+      entradaEm: typeof linhaCrua.created_at === "string" ? linhaCrua.created_at : new Date().toISOString(),
+      // `project` desta rota vem de `crm_projects`, e a FK da jornada aponta
+      // para `developments` — as duas tabelas têm os mesmos empreendimentos com
+      // IDs DIFERENTES. Passar o id daqui derrubaria o insert com 23503.
+      empreendimentoId: null,
+      nome: typeof lead.name === "string" ? lead.name : null,
+      origem: typeof lead.source === "string" ? lead.source : null,
+    });
+    if (jornada.desfecho === "falhou") {
+      logger.warn("v1.jornada_em_sombra_falhou", { leadId: String(lead.id), code: jornada.code, motivo: jornada.motivo });
+    }
+
     logger.info("v1.lead_created", {
       leadId: String(lead.id),
       organizationId: identity.organizationId,
@@ -202,7 +238,24 @@ export async function POST(request: Request) {
       score: Number(lead.score || 0),
     });
 
-    return NextResponse.json({ lead }, { status: 201 });
+    return NextResponse.json(
+      {
+        lead,
+        // O braço vai na resposta para que ele seja CONFERÍVEL de fora: quem
+        // duvidar do sorteio refaz o hash com o id e a semente e chega no mesmo
+        // valor. Sorteio que só o servidor consegue ver não é auditável.
+        jornadaEmSombra: {
+          desfecho: jornada.desfecho,
+          braco: jornada.braco,
+          faixa: jornada.faixa,
+          coorte: jornada.coorte,
+          motivo: jornada.motivo,
+          quemResolve: jornada.quemResolve,
+          enviouMensagem: false,
+        },
+      },
+      { status: 201 },
+    );
   } catch (error) {
     logger.error("v1.lead_create_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao criar lead.";

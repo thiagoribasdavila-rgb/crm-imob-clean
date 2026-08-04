@@ -9,7 +9,9 @@ import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCa
 import { DEFAULT_PIPELINE_STAGES, type PipelineStageDefinition, type PipelineStageKey } from "@/lib/atlas/pipeline-stages";
 import { DISCARD_REASONS } from "@/lib/atlas/discard-reasons";
 import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
+import { HOT_SCORE_THRESHOLD, isHotLead } from "@/lib/atlas/temperatura-do-lead";
 import { conhecimentoDaEtapa, extrairRecusa } from "@/lib/crm/pipeline-guidance";
+import { NextActionQuickSet } from "@/components/crm/next-action-quick-set";
 
 /**
  * ── AS ETAPAS DE FECHAMENTO VOLTAM A SER COLUNA ─────────────────────────────
@@ -116,6 +118,8 @@ type Lead = {
   purpose: string | null;
   last_interaction_at: string | null;
   next_action_at: string | null;
+  /** O QUÊ do compromisso. Sem ele o cartão diria só a data, e "algo às 14h30" não é combinado. */
+  next_action: string | null;
   first_contact_due_at: string | null;
   first_contacted_at: string | null;
   first_contact_sla_minutes: number | null;
@@ -128,6 +132,46 @@ type Lead = {
 };
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+/**
+ * ── ESTA TELA PARA DE ESCOLHER O PRÓPRIO 70 ─────────────────────────────────
+ *
+ * SETE lugares aqui escreviam `lead.temperature === "quente" ||
+ * Number(lead.score ?? 0) >= 70`: a sugestão de ação do corretor, o sinal
+ * "quente sem toque", o filtro da aba "Leads quentes", a fila de "Minha
+ * prioridade" (no filtro E na contagem da aba), o contador do cartão e a
+ * contagem da aba quente. Sete cópias do mesmo número, cada uma livre para
+ * divergir das outras e da definição do produto.
+ *
+ * CONFERIDO um a um: todas as sete respondem a MESMA pergunta — "esta lead é
+ * quente?". Duas delas (fila de prioridade) apenas somam essa resposta a
+ * outros sinais (SLA, atraso, sem próxima ação, risco alto) com OR; a
+ * fronteira de quente dentro delas é a mesma. Nenhuma quis dizer outra coisa,
+ * e nenhuma tinha licença para responder diferente das outras.
+ *
+ * O 70 mora em `lib/atlas/temperatura-do-lead.ts` — é a MESMA fronteira em que
+ * o scorer passa a gravar `temperature: "quente"`. Aqui ele só é aplicado.
+ *
+ * O eixo numérico NÃO muda: a tela continua lendo `lead.score`. A ORDEM das
+ * colunas por trás dele inverteu em 03/08/2026 (commit b6528fa1): `mapLegacyLead`
+ * passou a preencher de `score_ia`, com `score` de reserva — porque a consulta
+ * FILTRA e ORDENA por `score_ia`, e devolver a outra fazia 8 leads que o filtro
+ * chamava de morna chegarem pintadas de fria. Este comentário dizia o inverso e
+ * virou mentira no mesmo dia em que a correção subiu.
+ * `isHotLead` chama o parâmetro de `score_ia` porque nasceu no leitor de
+ * qualidade de campanha; é o mesmo eixo 0–100 do scorer.
+ *
+ * MEDIDO na produção em 2026-08-02 (490 leads): nenhuma lead troca de lado.
+ * `score >= 70` = 0 leads (máximo 67); `score_ia >= 70` = 0 leads (máximo 63);
+ * `temperature = 'quente'` = 3 leads, as mesmas 3 na comparação literal e na
+ * normalizada — não existe "QUENTE" maiúsculo hoje. A normalização que vem
+ * junto (a base tem "MORNO" e "FRIO" maiúsculos convivendo com minúsculos) é
+ * seguro para o dia em que existir, não mudança de recorte agora.
+ */
+function leadEstaQuente(lead: Lead) {
+  return isHotLead({ score_ia: lead.score, temperature: lead.temperature });
+}
+
 /**
  * v2 porque o SIGNIFICADO do padrão mudou, não só o valor: na v1 o quadro
  * nascia escondendo etapas (vazias + fechamento) e a preferência gravada
@@ -210,7 +254,7 @@ function brokerGuidance(lead: Lead) {
   if (!lead.next_action_at) return { action: "Definir a próxima ação", reason: "A oportunidade está sem compromisso futuro registrado.", tone: "warning" as const };
   if ((lead.status ?? "novo") === "proposta") return { action: "Validar proposta e objeções", reason: "Confirme preço, fluxo, prazo e quem participa da decisão.", tone: "info" as const };
   if ((lead.status ?? "novo") === "visita") return { action: "Preparar a visita", reason: "Reconfirme horário, interesse principal e unidade disponível.", tone: "info" as const };
-  if (lead.temperature === "quente" || Number(lead.score ?? 0) >= 70) return { action: "Avançar a oportunidade", reason: "A lead combina intenção e sinais comerciais fortes.", tone: "success" as const };
+  if (leadEstaQuente(lead)) return { action: "Avançar a oportunidade", reason: "A lead combina intenção e sinais comerciais fortes.", tone: "success" as const };
   return { action: "Manter o acompanhamento", reason: `Próxima ação em ${dateLabel(lead.next_action_at)}.`, tone: "info" as const };
 }
 
@@ -246,7 +290,7 @@ function proactiveSignal(lead: Lead): ProactiveSignal | null {
     days,
     basis: hasActivity ? "atividade" : "criacao",
     level: days >= 7 ? "rose" : "amber",
-    hot: lead.temperature === "quente" || Number(lead.score ?? 0) >= 70,
+    hot: leadEstaQuente(lead),
   };
 }
 
@@ -475,6 +519,33 @@ export default function PipelinePage() {
 
   useEffect(() => { void loadDiscardReport(); }, []);
 
+  /**
+   * ── O QUADRO COBRAVA E NÃO OFERECIA ────────────────────────────────────────
+   *
+   * O Kanban tinha um recorte "Sem próxima ação" com contador, e
+   * `brokerGuidance` mandava textualmente "Definir a próxima ação" no cartão —
+   * mas não existia um único lugar nesta tela para definir. O escritor
+   * (`NextActionQuickSet`) só era montado no cartão MOBILE da lista de leads,
+   * escondido pelo CSS a partir de 1180px. Medido em produção: das 67 leads
+   * abertas, ZERO tinham próxima ação.
+   *
+   * O patch é local e cirúrgico, como o de `moveLead`: `visibleLeads` ordena
+   * por `priorityWeight`, que soma +80 justamente quando `next_action_at` é
+   * nulo. Trocar o campo no estado faz o cartão MUDAR DE POSIÇÃO na coluna e o
+   * contador do recorte cair, sem recarregar o quadro — recarregar aqui
+   * perderia filtro, busca e a rolagem horizontal da pessoa.
+   *
+   * `quando` é gravado como veio: `null` significa LIMPOU, e cair de volta no
+   * valor antigo deixaria o cartão mentindo até a próxima carga.
+   */
+  function aplicarProximaAcao(id: string, quando: string | null, descricao: string | null) {
+    setLeads((current) =>
+      current.map((lead) =>
+        lead.id === id ? { ...lead, next_action_at: quando, next_action: descricao } : lead,
+      ),
+    );
+  }
+
   async function moveLead(id: string, stage: StageKey, reversalOf?: string, discard?: { key: string; notes: string }, followUp?: string, saleValue?: number) {
     if (savingId) {
       setError("Aguarde a movimentação atual ser confirmada antes de mover outra lead.");
@@ -632,8 +703,8 @@ export default function PipelinePage() {
       if (focus === "sla") return Boolean(firstContactSla(lead)?.overdue);
       if (focus === "atrasadas") return isNextActionOverdue(lead);
       if (focus === "sem_acao") return !lead.next_action_at;
-      if (focus === "quentes") return lead.temperature === "quente" || Number(lead.score ?? 0) >= 70;
-      return Boolean(firstContactSla(lead)?.overdue) || isNextActionOverdue(lead) || !lead.next_action_at || lead.temperature === "quente" || Number(lead.score ?? 0) >= 70 || leadRisk(lead) === "alto";
+      if (focus === "quentes") return leadEstaQuente(lead);
+      return Boolean(firstContactSla(lead)?.overdue) || isNextActionOverdue(lead) || !lead.next_action_at || leadEstaQuente(lead) || leadRisk(lead) === "alto";
     });
     return [...filtered].sort((a, b) => {
       if (sort === "score") return Number(b.score ?? 0) - Number(a.score ?? 0);
@@ -681,7 +752,7 @@ export default function PipelinePage() {
         }, 0)
       : null;
 
-    const hot = open.filter((lead) => lead.temperature === "quente" || Number(lead.score ?? 0) >= 70).length;
+    const hot = open.filter(leadEstaQuente).length;
     const highRisk = open.filter((lead) => leadRisk(lead) === "alto").length;
     // Somava `budget_max` — o orçamento DECLARADO pelo cliente — e chamava isso
     // de valor ganho. Intenção apresentada como fato. Agora soma o valor
@@ -864,11 +935,11 @@ export default function PipelinePage() {
   const focusOptions = useMemo(() => {
     const open = leads.filter(isOpenLead);
     return [
-      { key: "prioridade" as const, label: "Minha prioridade", count: open.filter((lead) => firstContactSla(lead)?.overdue || isNextActionOverdue(lead) || !lead.next_action_at || lead.temperature === "quente" || Number(lead.score ?? 0) >= 70 || leadRisk(lead) === "alto").length },
+      { key: "prioridade" as const, label: "Minha prioridade", count: open.filter((lead) => firstContactSla(lead)?.overdue || isNextActionOverdue(lead) || !lead.next_action_at || leadEstaQuente(lead) || leadRisk(lead) === "alto").length },
       { key: "sla" as const, label: "SLA vencido", count: open.filter((lead) => firstContactSla(lead)?.overdue).length },
       { key: "atrasadas" as const, label: "Ações atrasadas", count: open.filter(isNextActionOverdue).length },
       { key: "sem_acao" as const, label: "Sem próxima ação", count: open.filter((lead) => !lead.next_action_at).length },
-      { key: "quentes" as const, label: "Leads quentes", count: open.filter((lead) => lead.temperature === "quente" || Number(lead.score ?? 0) >= 70).length },
+      { key: "quentes" as const, label: "Leads quentes", count: open.filter(leadEstaQuente).length },
       { key: "todas" as const, label: "Todos", count: leads.length },
     ];
   }, [leads]);
@@ -876,7 +947,13 @@ export default function PipelinePage() {
   const executionLanes = useMemo(() => [
     { key: "sla", label: "Responder agora", value: metrics.firstContactOverdue, detail: "SLA inicial vencido", action: "Ver SLAs", tone: "danger", focus: "sla" as FocusKey, sort: "prioridade" as SortKey },
     { key: "sem_acao", label: "Agendar próximo passo", value: metrics.noNextAction, detail: "Sem compromisso futuro", action: "Organizar agenda", tone: "warning", focus: "sem_acao" as FocusKey, sort: "prioridade" as SortKey },
-    { key: "quentes", label: "Atacar quentes", value: metrics.hot, detail: "Score ≥ 70 ou temperatura quente", action: "Avançar hoje", tone: "success", focus: "quentes" as FocusKey, sort: "score" as SortKey },
+    // O rótulo também escolhia o número ("Score ≥ 70"), com "≥" em vez de ">=",
+    // e por isso escapava da varredura que achou os outros sete. Agora o 70 sai
+    // da mesma constante que o filtro aplica: o texto não pode mais discordar do
+    // recorte que ele descreve. A frase mudou junto porque "score alto OU
+    // temperatura quente" vendia dois critérios independentes — é UM fato com
+    // duas proveniências (ver `lib/atlas/temperatura-do-lead.ts`).
+    { key: "quentes", label: "Atacar quentes", value: metrics.hot, detail: `Quente: temperatura declarada ou score ≥ ${HOT_SCORE_THRESHOLD}`, action: "Avançar hoje", tone: "success", focus: "quentes" as FocusKey, sort: "score" as SortKey },
     { key: "risco", label: "Reduzir risco", value: metrics.highRisk + metrics.stalled, detail: "Parados, atrasados ou críticos", action: "Revisar gargalos", tone: "info", focus: "prioridade" as FocusKey, sort: "prioridade" as SortKey },
   ], [metrics.firstContactOverdue, metrics.highRisk, metrics.hot, metrics.noNextAction, metrics.stalled]);
 
@@ -1234,6 +1311,18 @@ export default function PipelinePage() {
                         {signalView ? <span className={`cc6-num mt-2.5 block w-fit max-w-full overflow-hidden rounded-full border border-[color:var(--atlas-border-strong)] px-2 py-1 text-micro leading-none text-ellipsis whitespace-nowrap ${signalView.critical ? "text-[var(--atlas-estado-perigo)]!" : "text-[var(--atlas-estado-atencao)]!"}`} title={signalView.title}>{signalView.label}</span> : null}
                         {contactSla ? <div className="mt-3"><AtlasBadge tone={contactSla.tone}>{contactSla.label}</AtlasBadge></div> : null}
                         <div className="atlas-card-guidance"><span>Próxima melhor ação</span><strong>{guidance.action}</strong></div>
+                        {/* LOGO ABAIXO DA ORIENTAÇÃO, e não escondido no "Ver
+                            contexto": quando o cartão diz "Definir a próxima
+                            ação", o lugar de fazê-lo tem que ser a linha
+                            seguinte. Enfiá-lo dentro do <details> repetiria o
+                            defeito que isto corrige — a instrução visível e a
+                            porta fechada. */}
+                        <NextActionQuickSet
+                          leadId={lead.id}
+                          proximaAcaoEm={lead.next_action_at}
+                          descricaoAtual={lead.next_action}
+                          aoMarcar={(quando, descricao) => aplicarProximaAcao(lead.id, quando, descricao)}
+                        />
                         <div className="atlas-kanban-primary-actions" role="group" aria-label="Ações rápidas">
                           <Link href={`/leads/${lead.id}`} title="Abrir Lead 360" aria-label="Abrir Lead 360">👁️</Link>
                           {contact ? <a href={contact.call} title="Ligar" aria-label="Ligar para a lead">📞</a> : null}

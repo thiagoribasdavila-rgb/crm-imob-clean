@@ -1581,6 +1581,34 @@ with (security_invoker = true) as`,
     de: `  if (arredondarPct(soma) > 100) {`,
     para: `  if (arredondarPct(soma + (finito(entrada.premioValor) ? entrada.premioValor : 0)) > 100) {`,
   },
+  {
+    id: "M180", arquivo: "lib/meta/marketing/prontidao-para-publicar.ts",
+    quebra: "comparar NADA volta a valer como 'nenhuma divergencia'",
+    dor: "E o caso que apaga o item mais caro da lista justamente quando ele para de ser visto. Medido em 02/08/2026: 21 anuncios ATIVOS publicam numa Pagina que o CRM nao conhece. No dia em que a Graph devolver lista vazia — rate limit, token de outra conta, campanha pausada — o numero de paginas desconhecidas cai para zero sozinho, o painel pinta de verde, e a lead paga continua caindo em meta_leads_sem_destino sem ninguem acusar nada.",
+    de: `  if (comparados <= 0) {`,
+    para: `  if (false) {`,
+  },
+  {
+    id: "M181", arquivo: "lib/meta/marketing/prontidao-para-publicar.ts",
+    quebra: "o criterio de divergencia passa a aceitar qualquer numero de desacordos",
+    dor: "As 3 propostas pendentes apontando para uma conta que o token nao alcanca virariam item verde. O dono aprova, a execucao falha DEPOIS do clique, e a descoberta acontece com a verba ja comprometida — o unico item da lista que falha do outro lado do botao.",
+    de: `  if (item.criterio === "sem_divergencia") return medida.valor === 0 ? "pronto" : "bloqueia";`,
+    para: `  if (item.criterio === "sem_divergencia") return "pronto";`,
+  },
+  {
+    id: "M182", arquivo: "lib/meta/marketing/prontidao-para-publicar.ts",
+    quebra: "falha de leitura de lista volta a virar contagem zero",
+    dor: "`Array.isArray` trocado por `?? 0` transforma 'a Graph nao respondeu' em 'a biblioteca da conta esta vazia'. Sao 25 imagens ACTIVE na conta real: o painel mandaria o dono produzir uma peca que esta pronta ha semanas, e no dia do token expirado mostraria quinze zeros calmos com cara de tudo medido.",
+    de: `  if (!Array.isArray(lista)) {`,
+    para: `  if (false) {`,
+  },
+  {
+    id: "M183", arquivo: "lib/meta/marketing/prontidao-para-publicar.ts",
+    quebra: "`podePublicar` passa a ignorar item nao medido",
+    dor: "Trocar `estado === 'pronta'` por 'nenhum bloqueio' libera o botao com metade da lista no escuro. 'Nao sei' viraria 'sim' exatamente no dia em que o banco ou a Meta pararem de responder — que e o dia em que ninguem deveria gastar.",
+    de: `    podePublicar: estado === "pronta",`,
+    para: `    podePublicar: bloqueios === 0,`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

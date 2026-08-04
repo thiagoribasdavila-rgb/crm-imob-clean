@@ -137,3 +137,61 @@ export function descreverProximaAcao(acao: ChaveDeAcao, observacao?: string): st
   const extra = (observacao ?? "").trim().slice(0, 120);
   return extra ? `${base} — ${extra}` : base;
 }
+
+/**
+ * ── "NÃO DEU ERRO" NUNCA FOI "GRAVOU" ───────────────────────────────────────
+ *
+ * A tela só pode desenhar a marcação que o SERVIDOR devolveu. Um `response.ok`
+ * sozinho não prova escrita nenhuma: no PostgREST um `update` que não casa com
+ * linha alguma volta 200, sem erro e sem linha — e a rota que não pede `select`
+ * de volta não tem como distinguir os dois casos. Se um dia isso acontecer aqui,
+ * o corretor veria "✓ terça, 14h30" numa lead que continua sem compromisso, e a
+ * próxima auditoria concluiria de novo que ninguém agenda.
+ *
+ * Por isso a confirmação é o ECO: a resposta precisa dizer o que ficou gravado.
+ * Marcação exige uma data que o `Date` consiga ler; limpeza exige o `null`
+ * explícito. Qualquer outra forma é recusa — e recusa aparece para quem clicou,
+ * porque marcação que some em silêncio é pior que erro.
+ *
+ * Função PURA e exportada para ser exercitável sem navegador: a regra que
+ * separa "gravou" de "respondeu" é justamente a que nenhum teste de render
+ * pegaria.
+ */
+export type LeituraDaMarcacao =
+  | { confirmado: true; quando: string | null; descricao: string | null }
+  | { confirmado: false; motivo: string };
+
+export function lerRespostaDaMarcacao(
+  intencao: "marcar" | "limpar",
+  ok: boolean,
+  corpo: unknown,
+): LeituraDaMarcacao {
+  const raiz = (corpo && typeof corpo === "object" ? corpo : {}) as Record<string, unknown>;
+
+  if (!ok) {
+    const erro = (raiz.error && typeof raiz.error === "object" ? raiz.error : {}) as Record<string, unknown>;
+    const mensagem = typeof erro.message === "string" && erro.message.trim() ? erro.message.trim() : "";
+    return { confirmado: false, motivo: mensagem || "Não foi possível marcar." };
+  }
+
+  const dados = (raiz.data && typeof raiz.data === "object" ? raiz.data : null) as Record<string, unknown> | null;
+  if (!dados) {
+    return { confirmado: false, motivo: "O servidor respondeu sem dizer o que gravou." };
+  }
+
+  const eco = dados.proximaAcaoEm;
+  const descricao = typeof dados.descricao === "string" && dados.descricao.trim() ? dados.descricao.trim() : null;
+
+  if (intencao === "limpar") {
+    // `null` explícito é a confirmação da limpeza. `undefined` é ausência de
+    // resposta — e ausência não pode virar "limpou", senão a tela apaga um
+    // compromisso que continua no banco.
+    if (eco !== null) return { confirmado: false, motivo: "O servidor não confirmou a limpeza." };
+    return { confirmado: true, quando: null, descricao: null };
+  }
+
+  if (typeof eco !== "string" || Number.isNaN(new Date(eco).getTime())) {
+    return { confirmado: false, motivo: "O servidor não devolveu a data gravada." };
+  }
+  return { confirmado: true, quando: eco, descricao };
+}

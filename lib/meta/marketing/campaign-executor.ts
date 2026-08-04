@@ -139,6 +139,32 @@ function collectAllStrings(value: unknown, out: string[] = []): string[] {
 }
 
 /**
+ * Chaves que REFERENCIAM uma peça visual, em qualquer profundidade do criativo.
+ *
+ * A busca é por chave e não por caminho (`asset_feed_spec.images`) de propósito:
+ * um criativo pode carregar a peça no `object_story_spec.link_data.image_hash`
+ * (link ad clássico), e um gate que só olhasse o caminho de um produtor gritaria
+ * "sem mídia" num plano que tem mídia. Alarme que erra ensina a ignorar alarme.
+ *
+ * Espelha CHAVES_DE_MIDIA de lib/marketing/pendencias-de-ativacao.ts pela mesma
+ * regra de "zero import de valor" já declarada neste arquivo — e o acordo entre
+ * os dois é EXECUTADO no contrato (tests/contracts/pendencias-de-ativacao.test.mjs),
+ * não conferido por grep.
+ */
+const MEDIA_KEYS = new Set(["hash", "image_hash", "video_id", "image_url"]);
+
+function hasMediaReference(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some((item) => hasMediaReference(item));
+  const rec = asRecord(value);
+  if (!rec) return false;
+  for (const [k, v] of Object.entries(rec)) {
+    if (MEDIA_KEYS.has(k) && typeof v === "string" && v.trim() && !CONFIG_PLACEHOLDER_RE.test(v)) return true;
+    if (hasMediaReference(v)) return true;
+  }
+  return false;
+}
+
+/**
  * Travas da categoria especial HOUSING sobre um targeting arbitrário — espelho
  * de validateHousingTargeting (lib/meta/marketing/housing-audience.ts), repetido
  * aqui pela regra de "zero import de valor" declarada acima.
@@ -413,6 +439,20 @@ export function validateExecutionPlan(steps: ExecutionStep[], limits?: PlanLimit
             `(${lifetimeFactor}× o teto diário) — confirme o valor ou calibre o teto da organização`,
         );
       }
+    }
+
+    // Peça visual ausente. É a ÚNICA falta de artefato que o gate de
+    // placeholder logo abaixo não pega: Página e formulário deixam `<<PAGE_ID>>`
+    // para trás quando faltam, e a mídia não deixa nada — o criativo sai
+    // silenciosamente sem imagem. A régua da Meta passou a deixar PROPOR sem
+    // peça (o artefato aparece depois, por outra mão: subir imagem é escrita na
+    // conta do dono). O que ela não pode é deixar ATIVAR — e ativar atravessa
+    // exatamente aqui, na porta da escrita.
+    if (step.kind === "create_creative" && !hasMediaReference(clean)) {
+      problems.push(
+        `step ${i} (create_creative): sem peça visual — nenhum hash de imagem nem video_id no criativo; ` +
+          "anexe a mídia antes de executar (a Meta recusa o anúncio sem criativo)",
+      );
     }
 
     // Placeholder de configuração não resolvido: o step 0 (campanha, que não

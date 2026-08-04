@@ -3,6 +3,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_PIPELINE_STAGES } from "@/lib/atlas/pipeline-stages";
 import { avaliarNuncaContatado, NEVER_CONTACTED_CRITICAL_HOURS } from "@/lib/atlas/regra-nunca-contatado";
+import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
+import { tarefaVencida } from "@/lib/atlas/tarefa-em-aberto";
 
 /**
  * Fase 100 · Sinais de atenção proativos
@@ -14,18 +16,51 @@ import { avaliarNuncaContatado, NEVER_CONTACTED_CRITICAL_HOURS } from "@/lib/atl
  * alerta em `detail`.
  *
  * Usa apenas tabelas já vivas no banco: `leads` (dados já carregados pelo
- * chamador — nenhuma leitura própria aqui), `pipeline_history`, `followups`,
+ * chamador — nenhuma leitura própria aqui), `pipeline_stage_moves`, `tasks`,
  * `lead_events` e `lead_objections`. Nenhuma tabela nova, nenhuma migration.
  *
  * Cinco sinais, cada um com sua própria regra:
  *  1. stale_stage            — lead parado além do tempo tolerado na etapa atual.
- *  2. follow_up_overdue      — followups.scheduled_at no passado com completed=false.
+ *  2. follow_up_overdue      — tasks.due_date no passado com status ainda em aberto.
  *  3. high_score_no_contact  — score_ia alto (ou temperatura "quente") sem
  *                              nenhuma linha em lead_events nos últimos N dias úteis.
  *  4. objection_open         — objeção registrada (lead_objections.status="OPEN")
  *                              sem resposta há mais tempo do que o tolerável.
  *  5. never_contacted        — leads.first_contacted_at nulo com o prazo de SLA
  *                              (first_contact_due_at) já vencido.
+ *
+ * ── DUAS FONTES ESTAVAM MORTAS, E O ALERTA LIA AS MORTAS ─────────────────────
+ *
+ * Medido em produção (490 leads, org 7c8c71c1): `pipeline_history` 0 linhas,
+ * `followups` 0 linhas, `lead_objections` 0 linhas. Um alerta que lê tabela
+ * vazia nunca acende — e sinal que nunca acende é INDISTINGUÍVEL de operação
+ * saudável. Essa é a mentira: a tela dizia "nada a fazer" porque não tinha onde
+ * olhar, não porque não havia o que fazer.
+ *
+ * As três estavam vazias por três motivos DIFERENTES, e por isso levaram três
+ * tratamentos diferentes:
+ *
+ *  · `pipeline_history` é espelho MORTO de um fato vivo. Quem grava movimentação
+ *    é a RPC `move_pipeline_lead`, em `pipeline_stage_moves` (478 linhas, 444
+ *    leads). A escrita em `pipeline_history` só acontece no caminho
+ *    compensatório, que não roda. O sinal 1 foi REAPONTADO para a canônica.
+ *    Antes do reaponte os 66 leads vivos recebiam `stale_stage` contado desde
+ *    `created_at`, e todos os 66 afirmavam "Nenhuma movimentação registrada
+ *    desde a criação do lead" — afirmação FALSA para 29 deles, que tinham
+ *    movimentação gravada. O sinal não estava só mudo: estava mentindo.
+ *
+ *  · `followups` nunca teve caminho de INSERT em lugar nenhum do repositório.
+ *    O fato equivalente vivo é `tasks` (13 linhas), que a própria broker-daily
+ *    já lia para `overdueByLead`. O sinal 2 foi REAPONTADO para `tasks`, com o
+ *    predicado compartilhado em `tarefa-em-aberto.ts` para as duas leituras não
+ *    divergirem.
+ *
+ *  · `lead_objections` está vazia mas NÃO está morta: a rota
+ *    `app/api/v1/leads/[id]/objections/route.ts` insere e atualiza normalmente.
+ *    Está vazia porque ninguém registrou objeção ainda. Não há para onde
+ *    reapontar — e o candidato óbvio foi REFUTADO com medição, ver
+ *    `medirFontesDosSinais` abaixo. Como não dá para reapontar, o sinal 4
+ *    passou a DECLARAR que não pode ser medido, em vez de calar.
  *
  * ── POR QUE O SINAL 5 EXISTE ─────────────────────────────────────────────────
  *
@@ -119,7 +154,14 @@ const STAGE_LABEL: Record<string, string> = Object.fromEntries(
 
 // Mesmo corte de "lead quente" já usado em broker-daily, team-sla,
 // manager-daily e director-daily — não inventamos um novo critério de score.
-export const HOT_SCORE_THRESHOLD = 70;
+//
+// Era `= 70` aqui, um literal próprio. O problema não é o valor: é ele ser
+// ESCOLHIDO aqui. 70 é a fronteira em que `calculateLeadScore` grava
+// temperature "quente"; se este arquivo a movesse sozinho, "quente por score"
+// e "quente na coluna" passariam a ser fatos diferentes com o mesmo nome.
+// A fronteira mora em `temperatura-do-lead.ts`; aqui só é reexportada, porque
+// as rotas já importam os limiares deste módulo.
+export { HOT_SCORE_THRESHOLD };
 
 // Dias úteis sem nenhum lead_event antes de um lead quente virar sinal.
 export const HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS = 3;
@@ -237,6 +279,14 @@ function plural(count: number, singular: string, pluralForm: string) {
   return count === 1 ? singular : pluralForm;
 }
 
+/**
+ * Última movimentação de etapa por lead, lida da tabela CANÔNICA.
+ *
+ * Era `pipeline_history` — 0 linhas em produção. A movimentação real é gravada
+ * pela RPC `move_pipeline_lead` em `pipeline_stage_moves`, cuja coluna de tempo
+ * é `occurred_at` (não `created_at`) e cujas colunas de etapa são
+ * `from_stage`/`to_stage` (não `old_status`/`new_status`).
+ */
 async function latestPipelineStageEnteredAt(
   supabase: SupabaseClient,
   organizationId: string,
@@ -245,23 +295,23 @@ async function latestPipelineStageEnteredAt(
   const map = new Map<string, number>();
   const batches = await Promise.all(
     chunk(leadIds, 200).map((ids) =>
-      fetchAllRows<{ lead_id: string; created_at: string }>(
+      fetchAllRows<{ lead_id: string; occurred_at: string }>(
         (from, to) =>
           supabase
-            .from("pipeline_history")
-            .select("lead_id,created_at")
+            .from("pipeline_stage_moves")
+            .select("lead_id,occurred_at")
             .eq("organization_id", organizationId)
             .in("lead_id", ids)
-            .order("created_at", { ascending: false })
+            .order("occurred_at", { ascending: false })
             .range(from, to),
-        "pipeline_history",
+        "pipeline_stage_moves",
       ),
     ),
   );
   for (const data of batches) {
     for (const row of data) {
       if (map.has(row.lead_id)) continue;
-      const parsed = toMs(row.created_at);
+      const parsed = toMs(row.occurred_at);
       if (parsed !== null) map.set(row.lead_id, parsed);
     }
   }
@@ -270,6 +320,18 @@ async function latestPipelineStageEnteredAt(
 
 type OverdueFollowUp = { scheduledAt: number; action: string | null; extraCount: number };
 
+/**
+ * Tarefa vencida mais antiga por lead, lida da tabela VIVA.
+ *
+ * Era `followups` — 0 linhas, e sem caminho de INSERT em lugar nenhum. O fato
+ * equivalente vivo é `tasks.due_date` com status ainda em aberto.
+ *
+ * O filtro de "em aberto" NÃO vai no SQL: os status vivos em produção são
+ * `pendente` e `OPEN`, e a comparação canônica é sobre o texto normalizado
+ * (sem acento, minúsculo), o que o PostgREST não faz. Filtrar aqui, com o mesmo
+ * predicado que a broker-daily usa, é o que impede as duas leituras de
+ * divergirem — ver `tarefa-em-aberto.ts`.
+ */
 async function earliestOverdueFollowUp(
   supabase: SupabaseClient,
   organizationId: string,
@@ -280,28 +342,28 @@ async function earliestOverdueFollowUp(
   const nowIso = new Date(now).toISOString();
   const batches = await Promise.all(
     chunk(leadIds, 200).map((ids) =>
-      fetchAllRows<{ lead_id: string; scheduled_at: string; action: string | null; message: string | null }>(
+      fetchAllRows<{ lead_id: string; due_date: string; status: string | null; title: string | null; description: string | null }>(
         (from, to) =>
           supabase
-            .from("followups")
-            .select("lead_id,scheduled_at,action,message")
+            .from("tasks")
+            .select("lead_id,due_date,status,title,description")
             .eq("organization_id", organizationId)
-            .eq("completed", false)
             .in("lead_id", ids)
-            .lt("scheduled_at", nowIso)
-            .order("scheduled_at", { ascending: true })
+            .lt("due_date", nowIso)
+            .order("due_date", { ascending: true })
             .range(from, to),
-        "followups",
+        "tasks",
       ),
     ),
   );
   for (const data of batches) {
     for (const row of data) {
-      const scheduledAt = toMs(row.scheduled_at);
+      const scheduledAt = toMs(row.due_date);
       if (scheduledAt === null) continue;
+      if (!tarefaVencida(row.status, scheduledAt, now)) continue;
       const existing = map.get(row.lead_id);
       if (!existing) {
-        map.set(row.lead_id, { scheduledAt, action: row.action || row.message || null, extraCount: 0 });
+        map.set(row.lead_id, { scheduledAt, action: row.title || row.description || null, extraCount: 0 });
       } else {
         existing.extraCount += 1;
       }
@@ -386,6 +448,114 @@ function isHot(lead: AttentionSignalLeadInput) {
 }
 
 /**
+ * Estado da FONTE de um sinal — não do sinal.
+ *
+ * `mensuravel: false` quer dizer "a tabela que este alerta lê não tem nenhuma
+ * linha nesta organização", ou seja: zero sinais aqui não é notícia boa, é
+ * ausência de notícia. Sem isso, o zero de uma fonte vazia é byte a byte igual
+ * ao zero de uma operação impecável.
+ */
+export type AttentionSourceHealth = {
+  kind: AttentionSignalKind;
+  /** Tabela realmente consultada por este sinal. */
+  fonte: string;
+  mensuravel: boolean;
+  /** Linhas encontradas na fonte para esta organização (null se a consulta falhou). */
+  linhas: number | null;
+  /** Frase pronta para a tela ocupar o lugar do silêncio. */
+  declaracao: string;
+};
+
+async function contarLinhas(
+  supabase: SupabaseClient,
+  table: string,
+  organizationId: string,
+): Promise<number | null> {
+  const { count, error } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId);
+  if (error) {
+    console.warn(JSON.stringify({ level: "warn", event: "attention_signals.coverage_failed", context: table, error: error.message || "unknown" }));
+    return null;
+  }
+  return count ?? 0;
+}
+
+/**
+ * Mede se cada sinal TEM COMO acender, olhando a fonte que ele de fato lê.
+ *
+ * ── POR QUE `objection_open` NÃO FOI REAPONTADO ──────────────────────────────
+ *
+ * O candidato natural era `pipeline_stage_moves.discard_reason_key` (273
+ * linhas preenchidas): motivo declarado pelo corretor, parecido com objeção.
+ * Refutado com medição, não com opinião — em produção os 273 descartes estão
+ * TODOS em leads com status "perdido":
+ *
+ *     select l.status, count(*) from pipeline_stage_moves m
+ *       join leads l on l.id = m.lead_id
+ *      where m.discard_reason_key is not null group by 1;
+ *     -- perdido | 273
+ *
+ * "perdido" está em TERMINAL_STAGES, e `computeAttentionSignals` descarta
+ * etapas terminais em `openLeads` antes de qualquer sinal ser calculado. Ou
+ * seja: apontar o sinal para lá daria ZERO por construção — trocaria uma fonte
+ * vazia por uma fonte filtrada a vazio, e o alerta continuaria mudo, agora com
+ * aparência de conserto. Semanticamente também são fatos diferentes: descarte
+ * é laudo de óbito, objeção em aberto é cliente vivo esperando resposta.
+ *
+ * `lead_objections` está vazia mas NÃO está morta — a rota
+ * `app/api/v1/leads/[id]/objections/route.ts` insere e resolve normalmente.
+ * Então o correto não é inventar fonte: é dizer que ninguém registrou objeção
+ * ainda, e que por isso este alerta não tem o que ler.
+ */
+export async function medirFontesDosSinais(
+  supabase: SupabaseClient,
+  organizationId: string,
+): Promise<AttentionSourceHealth[]> {
+  if (!organizationId) return [];
+  const [movimentacoes, tarefas, objecoes, eventos] = await Promise.all([
+    contarLinhas(supabase, "pipeline_stage_moves", organizationId),
+    contarLinhas(supabase, "tasks", organizationId),
+    contarLinhas(supabase, "lead_objections", organizationId),
+    contarLinhas(supabase, "lead_events", organizationId),
+  ]);
+
+  const avaliar = (
+    kind: AttentionSignalKind,
+    fonte: string,
+    linhas: number | null,
+    vivo: string,
+    vazio: string,
+  ): AttentionSourceHealth => ({
+    kind,
+    fonte,
+    mensuravel: linhas !== null && linhas > 0,
+    linhas,
+    declaracao: linhas === null
+      ? `Não medido: a consulta a ${fonte} falhou. O zero deste alerta não significa que está tudo em ordem.`
+      : linhas > 0
+        ? vivo
+        : vazio,
+  });
+
+  return [
+    avaliar("stale_stage", "pipeline_stage_moves", movimentacoes,
+      `Medindo movimentação de etapa em pipeline_stage_moves (${movimentacoes} registros).`,
+      "Não medido: nenhuma movimentação de etapa foi registrada nesta organização, então o tempo parado é contado desde a criação do lead."),
+    avaliar("follow_up_overdue", "tasks", tarefas,
+      `Medindo tarefas vencidas em tasks (${tarefas} registros).`,
+      "Não medido: nenhuma tarefa foi criada nesta organização. Zero follow-ups vencidos aqui significa que não há agenda, não que a agenda está em dia."),
+    avaliar("objection_open", "lead_objections", objecoes,
+      `Medindo objeções em aberto em lead_objections (${objecoes} registros).`,
+      "Não medido: nenhuma objeção foi registrada nesta organização. Zero objeções em aberto aqui significa que ninguém anotou objeção, não que os clientes não têm nenhuma."),
+    avaliar("high_score_no_contact", "lead_events", eventos,
+      `Medindo interações em lead_events (${eventos} registros).`,
+      "Não medido: nenhuma interação foi registrada em lead_events, então todo lead quente pareceria abandonado desde a criação."),
+  ];
+}
+
+/**
  * Calcula os sinais de atenção para um conjunto de leads já carregado pelo
  * chamador (broker-daily, Lead 360, Copilot). Não busca `leads` — recebe os
  * campos mínimos já normalizados para evitar uma segunda leitura da tabela.
@@ -435,7 +605,7 @@ export async function computeAttentionSignals(
             kind: "stale_stage",
             severity: daysInStage >= threshold * 2 ? "critical" : "warning",
             reason: `Parado em "${stageLabel}" há ${daysInStage} ${plural(daysInStage, "dia", "dias")}`,
-            detail: `pipeline_history não registra mudança de etapa há ${daysInStage} ${plural(daysInStage, "dia", "dias")} (limite recomendado para "${stageLabel}": ${threshold} ${plural(threshold, "dia", "dias")}).${hasHistory ? "" : " Nenhuma movimentação registrada desde a criação do lead."}`,
+            detail: `pipeline_stage_moves não registra mudança de etapa há ${daysInStage} ${plural(daysInStage, "dia", "dias")} (limite recomendado para "${stageLabel}": ${threshold} ${plural(threshold, "dia", "dias")}).${hasHistory ? "" : " Nenhuma movimentação registrada desde a criação do lead."}`,
             since: new Date(stageEnteredAt).toISOString(),
             metric: daysInStage,
           });
@@ -457,7 +627,7 @@ export async function computeAttentionSignals(
         kind: "follow_up_overdue",
         severity: overdueMinutes >= 1_440 ? "critical" : "warning",
         reason: `Follow-up vencido há ${overdueLabel}`,
-        detail: `followups.scheduled_at (${new Date(overdue.scheduledAt).toLocaleString("pt-BR", { timeZone: DISPLAY_TIME_ZONE })}) já passou e completed ainda é false${overdue.action ? `: "${overdue.action}"` : ""}.${overdue.extraCount ? ` Há mais ${overdue.extraCount} ${plural(overdue.extraCount, "follow-up vencido", "follow-ups vencidos")} para este lead.` : ""}`,
+        detail: `tasks.due_date (${new Date(overdue.scheduledAt).toLocaleString("pt-BR", { timeZone: DISPLAY_TIME_ZONE })}) já passou e a tarefa continua em aberto${overdue.action ? `: "${overdue.action}"` : ""}.${overdue.extraCount ? ` Há mais ${overdue.extraCount} ${plural(overdue.extraCount, "tarefa vencida", "tarefas vencidas")} para este lead.` : ""}`,
         since: new Date(overdue.scheduledAt).toISOString(),
         metric: overdueMinutes,
       });

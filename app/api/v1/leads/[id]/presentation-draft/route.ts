@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { generateAIText } from "@/lib/ai/provider-router";
+import { tentativaFalhaDe, type TentativaFalha } from "@/lib/ai/falha-de-ia";
 import { auditPropertyPresentation, fallbackPropertyPresentation } from "@/lib/ai/property-presentation";
 import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
@@ -46,6 +47,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const fallback = fallbackPropertyPresentation(firstName, orderedProperties);
     let content = fallback;
     let mode: "generative" | "local-fallback" = "generative";
+    // Ver a nota em message-draft: `generateAIText` devolve o determinístico em
+    // vez de lançar, então sem esta variável o rascunho local se apresentava
+    // como generativo.
+    let causaDaFalha: TentativaFalha | null = null;
 
     try {
       const result = await generateAIText({
@@ -65,13 +70,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
         prompt: JSON.stringify({ client: { firstName, budgetMax: lead.budget_max, regions: lead.preferred_regions, bedrooms: lead.bedrooms, purpose: lead.purpose }, properties: orderedProperties }),
       });
       content = result.text.trim();
-    } catch {
+      if (result.provider === "local") {
+        mode = "local-fallback";
+        causaDaFalha = result.falhas?.[0] ?? null;
+      }
+    } catch (error) {
       mode = "local-fallback";
+      causaDaFalha = tentativaFalhaDe(error, "desconhecido");
     }
 
     const audit = auditPropertyPresentation(content);
     if (!audit.safe) { content = fallback; mode = "local-fallback"; }
-    return NextResponse.json({ draft: { content, mode, warnings: audit.warnings, requiresHumanApproval: true }, propertyCount: orderedProperties.length });
+    return NextResponse.json({ draft: { content, mode, warnings: audit.warnings, requiresHumanApproval: true, motivoDoFallback: causaDaFalha ? { classe: causaDaFalha.classe, mensagem: causaDaFalha.mensagem, quemResolve: causaDaFalha.quemResolve } : null }, propertyCount: orderedProperties.length });
   } catch (error) {
     // Mesma régua do rascunho de mensagem: recusa é 403, não 500.
     if (ehLeadForaDaCarteira(error)) {

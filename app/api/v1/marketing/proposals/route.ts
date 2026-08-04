@@ -24,6 +24,8 @@ import {
   type ProposalProjection,
   type ProposalProjectionBasis,
 } from "@/lib/marketing/campaign-proposals";
+import { conferirPlanoNaMeta } from "@/lib/marketing/regua-no-plano";
+import type { ExecutionStep } from "@/lib/meta/marketing/campaign-executor";
 import { simulateMove } from "@/lib/ai/decision-simulator";
 import { lastroDaProposta, linhaDeProjecao, semanaIso } from "@/lib/ai/ledger-de-projecao";
 import { aggregate } from "@/lib/marketing/cost-report";
@@ -199,6 +201,40 @@ export async function POST(request: NextRequest) {
   const problems = validateProposal(input);
   if (problems.length) {
     return apiError("PROPOSAL_INVALID", `Proposta recusada: ${problems.join("; ")}`, identity.meta, { status: 422 });
+  }
+
+  // ── A RÉGUA DA META, NO GARGALO ─────────────────────────────────────────
+  //
+  // Esta rota é onde TODAS as composições desembocam: a tela de compor, o painel
+  // da Sala de Comando (que reenvia os `steps` de /ready-campaigns sem remontar
+  // nada) e qualquer chamada feita à mão com um token de liderança. O que
+  // `validateProposal` conferia num plano `create` era, literalmente, duas
+  // coisas: `accountId` presente e `steps` não vazio. Nunca o que está DENTRO
+  // dos passos.
+  //
+  // Enquanto a conferência morava em cada composição, fechar uma porta deixava a
+  // irmã aberta — foi exatamente isso que aconteceu com `ready-campaigns`. Aqui
+  // a régua roda sobre o plano que vai ser GRAVADO, e o plano gravado é o que
+  // `/api/v1/marketing/execute` executa depois contra a Meta. Fechar aqui fecha
+  // as portas que existem e as que ainda não foram escritas.
+  //
+  // Só bloqueio de PROPOR barra: peça errada que nenhuma revisão conserta
+  // (política, limite de texto, público ilegal, plano que não declara campanha
+  // nem conjunto). Falta de mídia/Página/formulário NÃO barra — é artefato que
+  // aparece depois e por outra mão, e a proposta pendente é justamente o que faz
+  // o dono resolver. Essa separação é da régua (`impede: propor | ativar`), não
+  // desta rota, para não existirem dois critérios.
+  if (kind === "create") {
+    const plano = body.payload as { steps?: unknown };
+    const veredito = conferirPlanoNaMeta(Array.isArray(plano?.steps) ? (plano.steps as ExecutionStep[]) : []);
+    if (!veredito.podePropor) {
+      return apiError(
+        "META_POLICY_BLOCK",
+        `A Meta recusaria esta publicação — proposta não registrada: ${veredito.motivos.join(" · ")}`,
+        identity.meta,
+        { status: 422, details: veredito.itens.filter((i) => i.estado === "reprovado") },
+      );
+    }
   }
 
   // Projeção calculada aqui, depois da validação e antes do insert: falha de

@@ -60,18 +60,22 @@ on:
     - cron: '*/5 * * * *'    # curto: SLA de primeiro contato, outbox, lembretes
     - cron: '*/10 * * * *'   # reservas de lead
     - cron: '17 * * * *'     # leads da Meta sem destino
+    - cron: '47 * * * *'     # carta morta: cresceu ou envelheceu
+    - cron: '53 * * * *'     # ingestão parada: entrada da Meta calou ou está morrendo
+    - cron: '33 * * * *'     # backfill da Meta: Página sem webhook depende dele
     - cron: '17 */4 * * *'   # feedback de conversão (CAPI)
     - cron: '10 3 * * *'     # recorrência de tarefas        — 00h10 em São Paulo
     - cron: '0 6 * * *'      # vendas noturnas               — 03h00 em São Paulo
     - cron: '25 7 * * *'     # baseline de conversão         — 04h25 em São Paulo
     - cron: '40 7 * * *'     # investimento de mídia         — 04h40 em São Paulo
+    - cron: '10 11 * * *'    # sombra do atendimento         — 08h10 em São Paulo
     - cron: '30 10 * * *'    # entrega matinal ao corretor   — 07h30 em São Paulo
     - cron: '0 10 * * *'     # relatório diário da Meta      — 07h00 em São Paulo
     - cron: '0 10 * * 0'     # relatório semanal (domingo)   — 07h00 em São Paulo
   workflow_dispatch:
     inputs:
       grupo:
-        description: 'Grupo a executar agora (curto, dez, hora, quatro_horas, diario_0010, diario_0300, diario_0330, diario_0425, diario_0440, diario_0700, semanal)'
+        description: 'Grupo a executar agora (curto, dez, hora, hora_backfill, hora_ingestao, quatro_horas, diario_0010, diario_0300, diario_0330, diario_0425, diario_0440, diario_0700, diario_0810, semanal)'
         required: true
         default: curto
 
@@ -100,28 +104,35 @@ jobs:
           fi
 
           case "${QUANDO:-}" in
-            '*/5 * * * *')  ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process" ;;
+            '*/5 * * * *')  ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process crm/aviso-ao-corretor/process" ;;
             '*/10 * * * *') ROTAS="distribution/reservations/process" ;;
             '17 * * * *')   ROTAS="marketing/meta-sem-destino/process" ;;
+            '47 * * * *')   ROTAS="integrations/carta-morta/vigia" ;;
+            '53 * * * *')   ROTAS="integrations/ingestao/vigia" ;;
+            '33 * * * *')   ROTAS="marketing/meta-backfill/process" ;;
             '17 */4 * * *') ROTAS="marketing/capi-feedback/process" ;;
             '10 3 * * *')   ROTAS="tasks/recurrences/process" ;;
             '0 6 * * *')    ROTAS="ai/nightly-sales" ;;
             '30 10 * * *')  ROTAS="ai/nightly-handoff" ;;
             '25 7 * * *')   ROTAS="ai/baseline-de-conversao/process" ;;
             '40 7 * * *')   ROTAS="marketing/investimento/process" ;;
+            '10 11 * * *')  ROTAS="ai/sombra-do-atendimento/process" ;;
             '0 10 * * *')   ROTAS="meta/daily-report" ;;
             '0 10 * * 0')   ROTAS="developers/weekly-reports/process" ;;
             *)
               case "${GRUPO:-curto}" in
-                curto)        ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process" ;;
+                curto)        ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process crm/aviso-ao-corretor/process" ;;
                 dez)          ROTAS="distribution/reservations/process" ;;
                 hora)         ROTAS="marketing/meta-sem-destino/process" ;;
+                hora_backfill) ROTAS="marketing/meta-backfill/process" ;;
+                hora_ingestao) ROTAS="integrations/ingestao/vigia" ;;
                 quatro_horas) ROTAS="marketing/capi-feedback/process" ;;
                 diario_0010)  ROTAS="tasks/recurrences/process" ;;
                 diario_0300)  ROTAS="ai/nightly-sales" ;;
                 diario_0330)  ROTAS="ai/nightly-handoff" ;;
                 diario_0425)  ROTAS="ai/baseline-de-conversao/process" ;;
                 diario_0440)  ROTAS="marketing/investimento/process" ;;
+                diario_0810)  ROTAS="ai/sombra-do-atendimento/process" ;;
                 diario_0700)  ROTAS="meta/daily-report" ;;
                 semanal)      ROTAS="developers/weekly-reports/process" ;;
                 *) echo "Grupo desconhecido: ${GRUPO}"; exit 1 ;;

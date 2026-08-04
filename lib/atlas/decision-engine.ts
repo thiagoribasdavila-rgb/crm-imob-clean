@@ -1,3 +1,16 @@
+// A fronteira de quente/morno vem do modulo canonico — este arquivo escolhia
+// o proprio numero para a MESMA pergunta.
+import { HOT_SCORE_THRESHOLD } from "./temperatura-do-lead";
+
+/**
+ * Dentro do quente, o corte de URGÊNCIA — outro conceito, outro número.
+ *
+ * Não é a fronteira de temperatura (70) nem a de morno (35): é onde a mesma
+ * lead quente passa a merecer 15 minutos em vez de 60. Estava cravado duas
+ * vezes neste arquivo, e dois literais iguais para uma regra só é como as
+ * regras divergem quando alguém ajusta um deles.
+ */
+const CORTE_DE_URGENCIA_CRITICA = 85;
 export type DecisionCandidate = {
   key: string;
   sourceType: string;
@@ -22,17 +35,17 @@ export function leadDecision(lead: Record<string, unknown>): DecisionCandidate |
   const score = Number(lead.score ?? 0);
   const temperature = String(lead.temperature ?? "").toLowerCase();
   const status = String(lead.status ?? "novo");
-  if (!id || (score < 70 && !["quente", "hot"].includes(temperature))) return null;
+  if (!id || (score < HOT_SCORE_THRESHOLD && !["quente", "hot"].includes(temperature))) return null;
 
   return {
     key: `lead-priority:${id}:${status}`,
     sourceType: "lead",
     sourceId: id,
     decisionType: "prioritize_lead",
-    priority: score >= 85 ? "critical" : "high",
+    priority: score >= CORTE_DE_URGENCIA_CRITICA ? "critical" : "high",
     title: `Priorizar atendimento de ${String(lead.name ?? "lead")}`,
     rationale: `Lead com score ${score} e temperatura ${temperature || "não informada"}. A velocidade de contato influencia a conversão.`,
-    recommendedAction: { action: "create_follow_up", dueInMinutes: score >= 85 ? 15 : 60, ownerStrategy: "assigned_broker_or_round_robin" },
+    recommendedAction: { action: "create_follow_up", dueInMinutes: score >= CORTE_DE_URGENCIA_CRITICA ? 15 : 60, ownerStrategy: "assigned_broker_or_round_robin" },
     evidence: [{ metric: "lead_score", value: score }, { metric: "temperature", value: temperature }, { metric: "stage", value: status }],
     confidence: Math.min(98, Math.max(70, score)),
     requiresApproval: false,
@@ -42,7 +55,8 @@ export function leadDecision(lead: Record<string, unknown>): DecisionCandidate |
 
 export function overdueTaskDecision(task: Record<string, unknown>): DecisionCandidate | null {
   const id = String(task.id ?? "");
-  const dueAt = task.due_at ? new Date(String(task.due_at)) : null;
+  // `due_date` é o nome real da coluna em `public.tasks`; `due_at` nunca existiu.
+  const dueAt = task.due_date ? new Date(String(task.due_date)) : null;
   const status = String(task.status ?? "").toLowerCase();
   if (!id || !dueAt || dueAt >= new Date() || ["done", "concluida", "completed"].includes(status)) return null;
 
@@ -56,7 +70,7 @@ export function overdueTaskDecision(task: Record<string, unknown>): DecisionCand
     title: `Recuperar tarefa atrasada: ${String(task.title ?? "follow-up")}`,
     rationale: `Tarefa vencida há aproximadamente ${overdueHours} hora(s), criando risco de perda de SLA e conversão.`,
     recommendedAction: { action: "escalate_task", overdueHours, notify: ["assignee", "manager"] },
-    evidence: [{ metric: "due_at", value: dueAt.toISOString() }, { metric: "overdue_hours", value: overdueHours }],
+    evidence: [{ metric: "due_date", value: dueAt.toISOString() }, { metric: "overdue_hours", value: overdueHours }],
     confidence: 96,
     requiresApproval: false,
     expiresAt: expires(12),

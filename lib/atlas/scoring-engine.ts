@@ -19,10 +19,13 @@
 
 import type { AtlasLead } from "@/types/atlas";
 import {
+// A fronteira de quente/morno vem do modulo canonico — este arquivo escolhia
+// o proprio numero para a MESMA pergunta.
   predictConversionDetailed,
   type ConversionPrediction,
   type ConversionSignals,
 } from "@/lib/ai/conversion-predictor";
+import { HOT_SCORE_THRESHOLD, WARM_SCORE_THRESHOLD } from "./temperatura-do-lead";
 
 /** Versão do motor unificado. Grave junto do score para rastreabilidade. */
 export const LEAD_SCORE_ENGINE_VERSION = "atlas-scoring-v3.0" as const;
@@ -91,7 +94,7 @@ export function computeDeterministic(lead: Partial<AtlasLead>): DeterministicSco
     }
   }
   score = Math.min(100, score);
-  const temperature: LeadTemperature = score >= 70 ? "quente" : score >= 35 ? "morno" : "frio";
+  const temperature: LeadTemperature = score >= HOT_SCORE_THRESHOLD ? "quente" : score >= WARM_SCORE_THRESHOLD ? "morno" : "frio";
   return { score, temperature, components, reasons: components.map((c) => c.label) };
 }
 

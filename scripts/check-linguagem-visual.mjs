@@ -37,7 +37,23 @@ const CSS = "app/globals.css";
    Medidas em 01/08/2026, depois de 757 conversões. Só podem CAIR.
    Quem baixar o número, baixe também a catraca — é o que transforma a
    limpeza em progresso irreversível. */
-const TETO_ARBITRARIOS_TSX = 52;
+/* 52 → 27 → 16, em 03/08/2026, nos dois passos abaixo. Só conversões EXATAS:
+   `--text-corpo` É 13px e `--text-rotulo` É 11px (globals.css:7356-7357), então
+   nenhum pixel mudou na tela.
+
+     52 → 27  os 18 `text-[13px]` da tela de templates do WhatsApp
+     27 → 16  os 13px e 11px de /conversations, conversa-estado-do-canal
+              e conversa-lista
+
+   Os 16 que RESTAM não são esquecimento: 12px×11, 15px×2, 32px e 40px não têm
+   degrau equivalente. Convertê-los MUDA tamanho na tela — é decisão de desenho,
+   não conversão mecânica, e por isso ficam medidos e visíveis em vez de
+   arredondados no escuro.
+
+   A catraca desce no MESMO commit que produz o ganho. Folga guardada não é
+   margem de segurança: é permissão silenciosa para regredir até o teto velho
+   sem nenhum portão reclamar. */
+const TETO_ARBITRARIOS_TSX = 16;
 const TETO_FONT_SIZE_CSS = 355;
 
 /** Os degraus, nomeados pelo PAPEL. Nome de tamanho convidaria a inventar o 11.5 de novo. */
@@ -327,6 +343,93 @@ if (/font-size|letter-spacing|text-transform|font-weight|color/.test(empty)) {
   );
 } else {
   ok.push("`.atlas-empty-eyebrow` declara só o que chega à tela");
+}
+
+// ── 9. A SUPERFÍCIE TEM UM RAIO, E ELE MORA NUM LUGAR SÓ ────────────────────
+/* Havia 12 classes de painel com CINCO raios (10, 12, 16, 20, 24, 28px), cada
+   um escolhido no lugar de uso. A pergunta "qual é o raio do produto?" não
+   tinha resposta. Agora tem, e é um token — trocar o raio do v3 é trocar uma
+   linha, não caçar doze.
+
+   O portão cobra o TOKEN, não o número: se alguém recravar `16px` aqui, o
+   valor continua o mesmo e a propriedade que importa (haver um só lugar de
+   decisão) morre em silêncio. */
+const bloco = (re) => css.match(re)?.[1] ?? "";
+const superficie = bloco(/^\.cc6-panel,\n\.atlas-superficie \{([^}]*)\}/m);
+const superficieQuieta = bloco(/^\.cc6-panel-quiet,\n\.atlas-superficie--quiet \{([^}]*)\}/m);
+if (!superficie) {
+  falhas.push("a primitiva de superfície perdeu o apelido oficial (`.cc6-panel, .atlas-superficie`) — o v3 volta a não ter nome para a superfície");
+} else if (!/border-radius:\s*var\(--atlas-superficie-raio\)/.test(superficie)) {
+  falhas.push("`.cc6-panel` voltou a cravar o raio em vez de consultar `--atlas-superficie-raio` — o raio volta a ser decidido em cada painel");
+} else if (!/border-radius:\s*var\(--atlas-superficie-raio-quieto\)/.test(superficieQuieta)) {
+  falhas.push("`.cc6-panel-quiet` voltou a cravar o raio — a superfície de dentro volta a divergir da de fora");
+} else {
+  ok.push("a superfície tem um raio só, e ele vem de token");
+}
+
+// ── 10. NENHUMA CLASSE É BAIXADA PARA SER SOBRESCRITA ───────────────────────
+/* `status-badge.tsx` aplicava `atlas-badge atlas-badge-<tom>` e anulava, no
+   mesmo className, as TRÊS propriedades que a variante existe para dar. 219
+   instâncias carregando 6 variantes para descartar 100% delas.
+
+   O portão procura o `!` — que é a assinatura exata do problema: só se usa
+   `!important` num utilitário quando se está brigando com uma regra sem
+   camada deste arquivo. Se a briga voltar, o `!` volta junto. */
+const SELO = "components/atlas/status-badge.tsx";
+const selo = fs.existsSync(SELO) ? fs.readFileSync(SELO, "utf8") : "";
+if (!selo) {
+  falhas.push(`não achei ${SELO} — o portão não pode afirmar nada sobre a guerra de classes do selo`);
+} else {
+  const marcaDeGuerra = selo.match(/className=[^>]*?[\w)\]]!/s);
+  if (marcaDeGuerra) {
+    falhas.push(
+      "o selo de estado voltou a sobrescrever com `!` a classe que ele mesmo baixa. " +
+        "Ou a classe serve, ou sai: declare a aparência em `.cc6-badge-*` e não anule nada",
+    );
+  } else if (!/cc6-badge/.test(selo)) {
+    falhas.push("o selo de estado não usa mais `.cc6-badge` — se mudou de primitiva, aponte este portão para a nova e diga por quê");
+  } else {
+    ok.push("o selo de estado usa a classe que serve, sem anular nada");
+  }
+}
+
+// ── 11. A DENSIDADE ALCANÇA O ESPAÇO — E NÃO ALCANÇA O ALVO DE TOQUE ────────
+/* A densidade atuava em 8 seletores e não tocava onde a página gasta altura.
+   Agora escala padding, gap e margem dos utilitários que o produto usa.
+
+   A SEGUNDA METADE DESTA ASSERÇÃO É A QUE IMPORTA. A implementação óbvia era
+   redefinir `--spacing` (uma linha, alcança tudo). Ela teria rebaixado
+   `min-h-11` — 117 usos, os 44px de alvo de toque do v3 — para 35,2px, e
+   nenhum portão pegaria: os 44px conferidos acima são os das primitivas
+   declaradas neste arquivo, em px literal, não os de `min-h-11`.
+
+   Por isso o portão cobra a FRONTEIRA: a densidade pode encolher espaço
+   ENTRE coisas, nunca o TAMANHO das coisas. */
+const regrasDensidade = [
+  ...css.matchAll(/\.atlas-app-shell\[data-desktop-density="compact"\] \.([a-z0-9\\.-]+) \{\s*([a-z-]+):/g),
+];
+const alvosDensidade = new Set(regrasDensidade.map((m) => m[1].replace(/\\/g, "")));
+const DOMINANTES = ["p-5", "p-4", "gap-3", "gap-2", "px-5", "py-3", "mt-4"];
+const faltando = DOMINANTES.filter((c) => !alvosDensidade.has(c));
+const proibidos = [...alvosDensidade].filter((c) => /^(min-h|min-w|max-h|max-w|h|w|size)-\d/.test(c));
+
+if (regrasDensidade.length < 100) {
+  falhas.push(
+    `a densidade voltou a atuar em ${regrasDensidade.length} utilitários (mínimo 100). ` +
+      `Ela existe para mudar a altura da página, não um atributo`,
+  );
+} else if (faltando.length) {
+  falhas.push(
+    `a densidade parou de alcançar ${faltando.join(", ")} — são os utilitários de espaço mais usados do produto`,
+  );
+} else if (proibidos.length) {
+  falhas.push(
+    `a densidade passou a encolher TAMANHO, não só espaço: ${proibidos.slice(0, 5).join(", ")}. ` +
+      `Entre eles mora \`min-h-11\` (117 usos), que é o alvo de toque de 44px — ` +
+      `encolher isso rebaixa acessibilidade sem nenhum portão perceber`,
+  );
+} else {
+  ok.push(`densidade: ${regrasDensidade.length} utilitários de espaço, e nenhum de tamanho`);
 }
 
 // ── SAÍDA ───────────────────────────────────────────────────────────────────

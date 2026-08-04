@@ -142,13 +142,43 @@ execFileSync("zip", ["-Xq", zipPath, "-@"], {
 const entries = execFileSync("unzip", ["-Z1", zipPath], { encoding: "utf8" })
   .split(/\r?\n/)
   .filter(Boolean);
+/**
+ * ── QUALQUER `.env` REAL, E NÃO UMA LISTA DE NOMES CONHECIDOS ────────────────
+ *
+ * O padrão anterior enumerava `\.env` e `\.env\.local` e fechava com
+ * `(?:\/|$)`. Essa âncora exige que o nome TERMINE ali — então bastava um
+ * sufixo para escapar. MEDIDO em 03/08/2026, com os arquivos que existem hoje
+ * no disco deste projeto:
+ *
+ *     .env                      BLOQUEADO
+ *     .env.local                BLOQUEADO
+ *     .env.hostinger            PASSAVA   ← valores de produção
+ *     .env.hostinger-template   PASSAVA
+ *     atlas/.env.hostinger      PASSAVA   (aninhado, mesmo para `.env.local`)
+ *
+ * Lista de nomes conhecidos é a forma errada de escrever esta regra: ela
+ * protege contra os arquivos que existiam quando alguém a escreveu, e o
+ * próximo `.env.` qualquer entra calado. A inversão é o conserto — proíbe-se
+ * TUDO que comece com `.env`, e abrem-se exceções DECLARADAS para os dois
+ * exemplos que o pacote precisa levar.
+ *
+ * Assim um arquivo novo nasce bloqueado, e liberá-lo exige um gesto explícito
+ * aqui — que é exatamente onde a decisão deve ser tomada.
+ */
+const EXEMPLOS_QUE_PODEM_IR = new Set([".env.example", ".env.production.example"]);
+const ehEnvProibido = (entry) => {
+  const nome = entry.split("/").filter(Boolean).pop() ?? "";
+  const pareceEnv = nome.startsWith(".env") || nome === "hostinger.env";
+  return pareceEnv && !EXEMPLOS_QUE_PODEM_IR.has(nome);
+};
+
 const forbidden = entries.filter(
   (entry) =>
+    ehEnvProibido(entry) ||
     // Sessões de WhatsApp são credencial de acesso total à conta do corretor.
     // O lugar delas é ATLAS_WHATSAPP_SESSION_DIR, fora do repositório — esta
     // linha existe para o caso de alguém apontar o diretório para cá.
-    // `.env` sem sufixo também entra: o padrão anterior só pegava `.env.local`.
-    /(^|\/)(?:\.env|\.env\.local|hostinger\.env|node_modules|\.next|tmp|outputs|dist|\.git|whatsapp-sessions|\.whatsapp-sessions|logs)(?:\/|$)/.test(
+    /(^|\/)(?:node_modules|\.next|tmp|outputs|dist|\.git|whatsapp-sessions|\.whatsapp-sessions|logs)(?:\/|$)/.test(
       entry,
     ) || /\.(?:xlsx?|csv|pdf)$/i.test(entry) || /(^|\/)qr-[^/]*\.png$/i.test(entry),
 );

@@ -40,7 +40,14 @@
  */
 import { readFileSync, existsSync } from "node:fs";
 
-/** As 13 rotas que .github/workflows/atlas-vigias.yml chama. */
+/**
+ * As 14 rotas que .github/workflows/atlas-vigias.yml chama.
+ *
+ * `ai/sombra-do-atendimento/process` entrou em 02/08/2026 e entrou COM o teto em
+ * ZERO: um vigia novo que engolisse um erro sequer deixaria este portão
+ * vermelho no mesmo commit. É o oposto de somar a rota depois de ela estar
+ * limpa — assim a régua vale desde a primeira linha dela.
+ */
 const VIGIAS = [
   "crm/first-contact-sla/process",
   "outbox/process",
@@ -51,6 +58,7 @@ const VIGIAS = [
   "tasks/recurrences/process",
   "ai/nightly-sales",
   "ai/nightly-handoff",
+  "ai/sombra-do-atendimento/process",
   "ai/baseline-de-conversao/process",
   "marketing/investimento/process",
   "meta/daily-report",
@@ -96,7 +104,23 @@ const VIGIAS = [
  *
  * Ele só desce.
  */
-const TETO = 17;
+// 02/08/2026: 17 → 0. As 13 rotas de vigia não engolem mais nenhum erro.
+//
+// Os 17 estavam todos em `outbox/process`, e foram fechados assim: 6 leituras
+// passaram a capturar `error` e a avisar com código próprio (sem isso, "não
+// consegui ler" e "não existe" produziam o MESMO valor nulo), e 10 escritas de
+// transição de estado passaram pelo `gravar()` local, que conta a falha e a
+// devolve no corpo e no livro de execuções em vez de derrubar o laço — a fila
+// tem `attempts` e `dead_letter`, então lançar abandonaria o resto do lote com
+// o lease preso.
+//
+// O 17º era FALSO POSITIVO do próprio instrumento, e ele foi corrigido junto
+// (ver o corte da janela em `contar`): a escrita ternária de `leads` capturava
+// o retorno e mesmo assim era contada.
+//
+// Zero é teto legítimo AGORA porque foi medido, não porque é um número bonito.
+// Se subir, subiu de verdade: qualquer erro engolido novo deixa isto vermelho.
+const TETO = 0;
 
 /**
  * Conta as duas formas de engolir erro num fonte de rota.
@@ -113,12 +137,29 @@ function contar(src) {
   // 2. escrita cujo retorno não é capturado. Olha para trás a partir do
   //    `await` até o delimitador de statement mais próximo; se não houver `=`
   //    no meio, ninguém está segurando o resultado.
+  //
+  // ── O `{` SAIU DO CORTE EM 02/08/2026, e o motivo é medido ────────────────
+  //
+  // O corte incluía `{`, e por isso acusava esta linha de outbox/process:
+  //
+  //   const leadInsert = existingLead ? { data: existingLead, error: null }
+  //                                   : await admin.from("leads").insert(...)
+  //
+  // O retorno ESTÁ capturado (em `leadInsert`), mas a busca para trás parava na
+  // chave do objeto do ternário — depois dela não há `=`, e a escrita virava
+  // "muda". Um portão que acusa o que já está certo manda consertar o que não
+  // está quebrado, e quem apanha dele duas vezes passa a ignorá-lo.
+  //
+  // Sem o `{`, o corte cai no `;` ou na quebra de linha. Isso NÃO afrouxa:
+  // `if (x) { await admin.from(...).update(...) }` numa linha só continua sendo
+  // contado, porque o trecho `if (x) {` não tem `=`. Conferido nas 13 rotas: o
+  // único caso que muda de lado é o ternário acima.
   let gravacoesMudas = 0;
   const escrita = /await\s+(?:admin|supabase)[^;]*?\.(?:insert|upsert|update)\(/g;
   let m;
   while ((m = escrita.exec(src))) {
     const ini = m.index;
-    const corte = Math.max(src.lastIndexOf(";", ini), src.lastIndexOf("{", ini), src.lastIndexOf("\n", ini));
+    const corte = Math.max(src.lastIndexOf(";", ini), src.lastIndexOf("\n", ini));
     if (!src.slice(corte + 1, ini).includes("=")) gravacoesMudas += 1;
   }
   return { errosDescartados, gravacoesMudas };

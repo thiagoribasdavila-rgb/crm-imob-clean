@@ -31,6 +31,7 @@ import { contasAlcancaveis } from "@/app/api/v1/marketing/ad-accounts/route";
 import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { buildAdCopy, toAssetFeedSpec, leadCampaignSkeleton, isCreativeAngle, type CreativeAngle, type FlexibleAdCopy } from "@/lib/ai/creative-strategist";
 import { housingTargetingSpec, validateHousingTargeting } from "@/lib/meta/marketing/housing-audience";
+import { conferirPecaNaMeta, type MidiaMedida } from "@/lib/marketing/regua-da-meta";
 import { planFullPublication } from "@/lib/meta/marketing/publication-plan";
 import { chaveDaCidade, pareceChave } from "@/lib/meta/marketing/geo-resolver";
 import {
@@ -301,6 +302,10 @@ export async function POST(request: NextRequest) {
   let steps: ReturnType<typeof planFullPublication> = [];
   let planoIndisponivel: string | null = null;
   let violacoesDePublico: ReturnType<typeof validateHousingTargeting> = [];
+  // Sobe de escopo para a régua conferir o MESMO targeting que o plano usou.
+  // Remontá-lo aqui embaixo criaria um segundo público para divergir do
+  // primeiro — a régua tem de medir o que vai ser publicado, não um parente.
+  let targeting: Record<string, unknown> | null = null;
 
   if (!empreendimento) {
     planoIndisponivel = "sem empreendimento escolhido não há produto para anunciar";
@@ -323,7 +328,7 @@ export async function POST(request: NextRequest) {
     // Geo: a CHAVE quando resolvida; senão cai para o país inteiro. Nunca o
     // nome da cidade — mandar "São Paulo" onde a Meta espera "269969" faz a
     // campanha nascer e o CONJUNTO ser recusado (ver geo-resolver).
-    const targeting = chaveCidade
+    targeting = chaveCidade
       ? housingTargetingSpec({ countries: ["BR"], cities: [chaveCidade] })
       : housingTargetingSpec({ countries: ["BR"] });
     violacoesDePublico = validateHousingTargeting(targeting);
@@ -353,6 +358,47 @@ export async function POST(request: NextRequest) {
 
   const plano = resumoDoPlano(steps);
 
+  // ── A régua da Meta ────────────────────────────────────────────────────
+  //
+  // Roda AQUI, antes de `propostaPronta` existir, porque uma proposta que a
+  // Meta recusaria não é uma proposta — e o dono só descobriria isso na hora
+  // de publicar, que é tarde.
+  //
+  // Duas coisas que esta rota não fazia e agora faz:
+  //
+  //   · confere o TEXTO EDITADO NA TELA contra a política. `buildAdCopy` limpa
+  //     o que ele mesmo gera, mas o texto digitado pelo usuário chegava ao
+  //     plano sem passar por `validateCopy` — o caminho seguro e o caminho
+  //     real tinham divergido;
+  //   · trata reprovação de público como BLOQUEIO. `violacoesDePublico` já era
+  //     calculado e pintado de vermelho na tela, e o botão de propor seguia
+  //     habilitado. Reprovar sem bloquear é decorar o problema.
+  //
+  // `special_ad_categories` é lido do PLANO (não remontado): é o valor que
+  // seria enviado à Meta. Sem plano, fica `null` = não medido.
+  const categoriasEspeciais = (() => {
+    const passo = steps.find((p) => p.kind === "create_campaign");
+    if (!passo) return null;
+    const cats = (passo.payload as Record<string, unknown>).special_ad_categories;
+    return Array.isArray(cats) ? cats.map((c) => String(c)) : [];
+  })();
+
+  // Hash/ID sem medida: a régua devolve "não medido" para a geometria, que é a
+  // verdade — largura de uma imagem não existe dentro de um hash.
+  const midias: MidiaMedida[] = [
+    ...imageHashes.map((h) => ({ referencia: `imagem ${h.slice(0, 12)}` })),
+    ...videoIds.map((v) => ({ referencia: `vídeo ${v}` })),
+  ];
+
+  const regua = conferirPecaNaMeta({
+    titulos,
+    textos,
+    descricoes,
+    targeting,
+    categoriasEspeciais,
+    midias,
+  });
+
   return apiSuccess({
     previa,
     itens,
@@ -361,6 +407,7 @@ export async function POST(request: NextRequest) {
     steps,
     planoIndisponivel,
     violacoesDePublico,
+    regua,
     // Título que a Caixa de Aprovações vai mostrar — o mesmo do plano.
     titulo: empreendimento
       ? `[Atlas] Leads — ${empreendimento.nome}${empreendimento.cidade ? ` — ${empreendimento.cidade}` : ""}`
@@ -369,8 +416,21 @@ export async function POST(request: NextRequest) {
      * O corpo pronto para `POST /api/v1/marketing/proposals`. A tela reenvia
      * isto sem remontar nada — se ela remontasse, o que o aprovador assina
      * poderia divergir do que a prévia mostrou.
+     *
+     * `null` quando a régua acha bloqueio DE PROPOR. Repare na assimetria
+     * deliberada: FALTAR artefato — Página, formulário ou a peça visual — deixa
+     * propor e bloqueia a ATIVAÇÃO (a Caixa de Aprovações mostra o que falta,
+     * com onde resolver); REPROVAR na política não deixa. A diferença é o que
+     * acontece com o item pendente — uma Página aparece depois, uma imagem é
+     * subida na conta do dono depois, e um texto discriminatório não conserta
+     * sozinho: mandá-lo para aprovação convida alguém a aprová-lo.
+     *
+     * A mídia era a exceção que quebrava a própria assimetria: até 02/08/2026
+     * ela derrubava `propostaPronta`, e como `creative_assets` tem 0 linhas no
+     * banco isso zerava a emissão de propostas — a tela não conseguia emitir
+     * nenhuma. Ver o bloco "DUAS perguntas" em lib/marketing/regua-da-meta.ts.
      */
-    propostaPronta: steps.length > 0 && contaId
+    propostaPronta: steps.length > 0 && contaId && regua.podePropor
       ? {
           kind: "create" as const,
           title: empreendimento

@@ -10,6 +10,12 @@ import { simulatePlan } from "@/lib/ai/decision-simulator";
 import { fetchCampaignInsights, insightsToCostRows } from "@/lib/meta/marketing/campaign-read";
 import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { matchCampaign } from "@/lib/atlas/developer-portfolio";
+import {
+  carregarCatalogoDeProdutos,
+  resolverProduto,
+  BASE_DO_ROTULO,
+  type CatalogoDeProdutos,
+} from "@/lib/marketing/catalogo-de-produtos";
 import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +24,35 @@ function roleOf(access: { profile: { commercialRole?: string | null; role: strin
   return access.profile.commercialRole || (access.profile.role === "admin" ? "director" : access.profile.role);
 }
 const isDirector = (role: string) => ["director", "superintendent"].includes(role);
+
+// ── A CORRENTE QUE NOMEIA O INCORPORADOR, E ONDE ELA ESTAVA PARTIDA ─────────
+//
+// 2º elo (corrigido antes): `public.developers` não tem coluna `name` — tem
+// `legal_name` e `trade_name`. Pedir `name` devolve 42703.
+//
+// 1º elo (esta correção): `marketing_campaigns` não tem coluna `development_id`
+// — a coluna real é `project_id`, e ela aponta `crm_projects`, não
+// `developments`. O `select` pedia a coluna inexistente, o erro caía num
+// fallback SEM LOG que devolvia só `id,name`, e a partir daí:
+//   · `devIds` saía vazio SEMPRE → o bloco que nomeia a incorporadora (o 2º
+//     elo, já corrigido) NUNCA executava no caminho que a tela usa;
+//   · `external_campaign_id` ia junto → `leadsUnlinked` virava null em TODAS
+//     as campanhas, e a IA recusava qualquer decisão de verba por "não medido".
+// Duas telas mentindo por causa de uma coluna que não existe, sem uma linha de
+// erro em lugar nenhum.
+//
+// A resolução de produto/incorporadora agora mora em
+// `lib/marketing/catalogo-de-produtos` — uma fonte só para o caminho do banco e
+// para o da Meta ao vivo (regra dobrada é divergência esperando acontecer).
+
+/** Registra as falhas do catálogo. Silêncio fechado: nenhuma leitura morre calada. */
+function registrarFalhasDoCatalogo(catalogo: CatalogoDeProdutos, org: string, source: "database" | "meta_live") {
+  for (const falha of catalogo.falhas) {
+    logger.error("marketing.cost_report.catalogo_de_produtos_falhou", {
+      organizationId: org, source, etapa: falha.etapa, code: falha.code, message: falha.message, truncado: falha.truncado,
+    });
+  }
+}
 
 // GET — relatório de custo: semanal por campanha / projeto / incorporador + a
 // visão de verba por produto (planejado × real). Liderança comercial.
@@ -41,15 +76,34 @@ export async function GET(request: NextRequest) {
   // campanha que vende. Paginação exaustiva com ordem determinística
   // (spend_date+id / created_at+id): sem .order() estável, o range pode repetir
   // e pular linhas entre páginas, trocando truncamento por erro não reprodutível.
-  const spendFetch = await fetchAllRows<{ campaign_id: string; spend_date: string; amount: number | string }>(
-    (from, to) => admin
-      .from("marketing_spend")
-      .select("campaign_id,spend_date,amount")
-      .eq("organization_id", org)
-      .order("spend_date", { ascending: true })
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
+  //
+  // O catálogo de produtos (empreendimentos + incorporadoras + ponte de
+  // projetos) vem em paralelo: nenhum dos dois depende do outro, e os DOIS
+  // caminhos de resposta (banco e Meta ao vivo) precisam dele para nomear.
+  const [spendFetch, catalogo] = await Promise.all([
+    // `leads_count` é o DENOMINADOR do CPL, e ele não estava no select.
+    //
+    // Medido em 03/08/2026: as sete campanhas "[Cia360] Inside Smart" somam
+    // R$ 4.355,83 e geraram 119 leads segundo a Meta. O CRM tem 4 ligadas a
+    // elas. Sem esta coluna, `leadsNaOrigem` chegava indefinido em `aggregate` e
+    // a divisão caía sobre as 4 que ENTRARAM: R$ 1.089 por lead, contra os
+    // ~R$ 37 reais. Um erro de 30 vezes, em verde, na tela que decide onde
+    // colocar verba.
+    //
+    // `aggregate` já sabia fazer a conta certa desde a manhã do mesmo dia — o
+    // que faltava era alguém passar o número. É a mesma classe do `escopo` que
+    // nenhum chamador da cascata passava: os dois lados prontos, o fio no chão.
+    fetchAllRows<{ campaign_id: string; spend_date: string; amount: number | string; leads_count: number | null }>(
+      (from, to) => admin
+        .from("marketing_spend")
+        .select("campaign_id,spend_date,amount,leads_count")
+        .eq("organization_id", org)
+        .order("spend_date", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    carregarCatalogoDeProdutos(admin, org),
+  ]);
   const spend = spendFetch.rows;
   const spendErr = spendFetch.error;
   if (spendErr || wantMeta) {
@@ -61,19 +115,23 @@ export async function GET(request: NextRequest) {
         () => fetchCampaignInsights(account, token, { datePreset: "last_30d", timeIncrement: 7 }),
       );
       if (Array.isArray(insights)) {
-        // enriquecimento produto/incorporador best-effort pelo nome do empreendimento no nome da campanha
-        // (developments e verbas em paralelo — independentes)
-        const devPairs: Array<{ name: string; developer: string | null }> = [];
-        const [dvs, budgetsResult] = await Promise.all([
-          admin.from("developments").select("name,developer_id").eq("organization_id", org),
-          admin.from("product_budgets").select("product,developer,weekly_budget,target_cac,active").eq("organization_id", org).eq("active", true),
-        ]);
-        if (!dvs.error && dvs.data?.length) {
-          const ids = [...new Set(dvs.data.map((d) => d.developer_id).filter(Boolean))] as string[];
-          const drs = ids.length ? await admin.from("developers").select("id,name").in("id", ids) : { data: [] };
-          const drMap = new Map((drs.data ?? []).map((d) => [d.id, d.name]));
-          for (const d of dvs.data) devPairs.push({ name: d.name, developer: d.developer_id ? drMap.get(d.developer_id) ?? null : null });
-        }
+        // Enriquecimento produto/incorporador best-effort pelo nome do
+        // empreendimento no nome da campanha. Aqui NÃO existe id: a Meta só
+        // devolve o nome da campanha, então casar por nome é o único caminho —
+        // e é por isso que ele vive só neste ramo. Os NOMES, porém, saem do
+        // mesmo catálogo do caminho do banco.
+        registrarFalhasDoCatalogo(catalogo, org, "meta_live");
+        const devPairs = [...catalogo.empreendimentos.values()]
+          .filter((d): d is { nome: string; incorporadoraId: string | null } => Boolean(d.nome))
+          .map((d) => ({
+            name: d.nome,
+            developer: d.incorporadoraId ? catalogo.incorporadoras.get(d.incorporadoraId) ?? null : null,
+          }));
+        const budgetsResult = await admin
+          .from("product_budgets")
+          .select("product,developer,weekly_budget,target_cac,active")
+          .eq("organization_id", org)
+          .eq("active", true);
         const rows = insightsToCostRows(insights, (_id, name) => {
           // 1º banco (developments), 2º o rol de incorporadoras em código
           const hit = devPairs.find((d) => name.toLowerCase().includes(d.name.toLowerCase()));
@@ -100,6 +158,10 @@ export async function GET(request: NextRequest) {
           byCampaign: { aggregate: agg, weekly: weekly(rows, "campaign") },
           byProject: { aggregate: aggregate(rows, "product"), weekly: weekly(rows, "product") },
           byDeveloper: { aggregate: aggregate(rows, "developer"), weekly: weekly(rows, "developer") },
+          developerLabels: {
+            resolved: catalogo.resolvido,
+            basis: BASE_DO_ROTULO,
+          },
           budget: bud,
           plan: livePlan,
           // projeção de cada movimento ANTES de aprovar (dado 30d → semanal)
@@ -110,19 +172,32 @@ export async function GET(request: NextRequest) {
     if (spendErr) return apiError("REPORT_UNAVAILABLE", "Relatório indisponível: banco sem marketing_spend e Meta não configurada/legível.", identity.meta, { status: 503 });
   }
 
-  // campanhas + mapeamento projeto/incorporador (tolerante a colunas ausentes).
-  // Também paginado: acima de 1000 campanhas o campMap ficava incompleto e a
-  // linha aparecia com o uuid no lugar do nome, em silêncio.
-  type CampaignRow = { id: string; name?: string; development_id?: string | null; external_campaign_id?: string | null };
+  registrarFalhasDoCatalogo(catalogo, org, "database");
+
+  // Campanhas. `project_id` é a coluna REAL (a antiga `development_id` nunca
+  // existiu nesta tabela) e ela aponta `crm_projects`, traduzida pela ponte do
+  // catálogo. Também paginado: acima de 1000 campanhas o campMap ficava
+  // incompleto e a linha aparecia com o uuid no lugar do nome, em silêncio.
+  type CampaignRow = { id: string; name?: string; project_id?: string | null; external_campaign_id?: string | null };
   let campaigns: CampaignRow[] = [];
   const withDev = await fetchAllRows<CampaignRow>((from, to) => admin
     .from("marketing_campaigns")
-    .select("id,name,development_id,external_campaign_id")
+    .select("id,name,project_id,external_campaign_id")
     .eq("organization_id", org)
     .order("id", { ascending: true })
     .range(from, to));
   let campaignsTruncated = withDev.truncated;
+  // Degradação DECLARADA. O fallback continua (banco antigo sem as colunas de
+  // vínculo ainda rende um relatório de gasto), mas ele nunca mais é mudo: sem
+  // `project_id` não há produto e sem `external_campaign_id` não há atribuição,
+  // e a tela precisa saber que o vazio é cegueira, não ausência de dado.
+  let campaignColumnsDegraded = false;
   if (withDev.error) {
+    campaignColumnsDegraded = true;
+    logger.error("marketing.cost_report.campaign_columns_unavailable", {
+      organizationId: org, code: withDev.error.code, message: withDev.error.message,
+      efeito: "sem project_id (produto/incorporador) e sem external_campaign_id (atribuição de leads órfãos)",
+    });
     const basic = await fetchAllRows<CampaignRow>((from, to) => admin
       .from("marketing_campaigns")
       .select("id,name")
@@ -136,22 +211,17 @@ export async function GET(request: NextRequest) {
   }
   const campMap = new Map(campaigns.map((c) => [c.id, c]));
 
-  // developments (produto) → developers (incorporador), best-effort.
-  // Perf: developments (por campanha), leads e verbas são independentes entre
-  // si — buscam em paralelo. Só developers depende de developments (chain).
-  const devIds = [...new Set(campaigns.map((c) => c.development_id).filter(Boolean))] as string[];
-  const prodMap = new Map<string, { name: string; developerId?: string | null }>();
-  const devrMap = new Map<string, string>();
-  const [dvs, leadsResult, budgetsResult] = await Promise.all([
-    devIds.length
-      ? admin.from("developments").select("id,name,developer_id").in("id", devIds).eq("organization_id", org)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string; developer_id: string | null }> }),
+  const [leadsResult, budgetsResult] = await Promise.all([
     // leads/vendas por campanha (venda = status 'ganho') — sem recorte de data,
     // igual ao gasto acima: janela assimétrica (gasto histórico contra vendas de
     // 7 dias) faria campanha boa parecer cara, que é pior que o truncamento.
-    fetchAllRows<{ campaign_id: string; status: string | null }>((from, to) => admin
+    //
+    // `development_id` entra aqui porque é a GAVETA CANÔNICA do vínculo com o
+    // empreendimento: a ingestão grava ele e `campaign_id` na MESMA transação.
+    // Sem ele, o relatório perguntava à campanha algo que só a lead sabe.
+    fetchAllRows<{ campaign_id: string; status: string | null; development_id: string | null }>((from, to) => admin
       .from("leads")
-      .select("campaign_id,status")
+      .select("campaign_id,status,development_id")
       .eq("organization_id", org)
       .not("campaign_id", "is", null)
       .order("created_at", { ascending: true })
@@ -160,26 +230,30 @@ export async function GET(request: NextRequest) {
     // verba por produto
     admin.from("product_budgets").select("product,developer,weekly_budget,target_cac,active").eq("organization_id", org).eq("active", true),
   ]);
-  for (const d of dvs.data ?? []) prodMap.set(d.id, { name: d.name, developerId: d.developer_id });
-  const developerIds = [...new Set((dvs.data ?? []).map((d) => d.developer_id).filter(Boolean))] as string[];
-  if (developerIds.length) {
-    const drs = await admin.from("developers").select("id,name").in("id", developerIds).eq("organization_id", org);
-    for (const dr of drs.data ?? []) devrMap.set(dr.id, dr.name);
-  }
-  const productOf = (campaignId: string) => {
-    const c = campMap.get(campaignId);
-    const dev = c?.development_id ? prodMap.get(c.development_id) : undefined;
-    return { product: dev?.name ?? null, developer: dev?.developerId ? devrMap.get(dev.developerId) ?? null : null };
-  };
+
+  /** Produto/incorporador de uma linha: a lead manda; sem lead, o cadastro da campanha. */
+  const productOf = (campaignId: string, developmentId?: string | null) =>
+    resolverProduto(catalogo, { developmentId, projectId: campMap.get(campaignId)?.project_id ?? null });
 
   const leads = leadsResult.rows;
 
   const spendRows: SpendRow[] = (spend ?? []).map((s) => {
     const pd = productOf(s.campaign_id);
-    return { campaignId: s.campaign_id, campaignName: campMap.get(s.campaign_id)?.name ?? s.campaign_id, product: pd.product, developer: pd.developer, date: s.spend_date, spend: Number(s.amount) || 0, leads: 0, sales: 0 };
+    return {
+      campaignId: s.campaign_id, campaignName: campMap.get(s.campaign_id)?.name ?? s.campaign_id,
+      product: pd.product, developer: pd.developer, date: s.spend_date,
+      spend: Number(s.amount) || 0,
+      // `leads: 0` continua sendo "esta linha é de GASTO, não de lead" — as que
+      // chegaram vêm de `leadRows`, abaixo. Já `leadsNaOrigem` é o que a Meta
+      // contou no formulário: `null` quando a linha não trouxe o número, nunca
+      // zero. Zero aqui afirmaria que a campanha não gerou lead nenhuma, e a
+      // diferença entre "não gerou" e "não perguntei" é o defeito inteiro.
+      leadsNaOrigem: s.leads_count == null ? null : Number(s.leads_count),
+      sales: 0,
+    };
   });
   const leadRows: SpendRow[] = (leads ?? []).map((l) => {
-    const pd = productOf(l.campaign_id);
+    const pd = productOf(l.campaign_id, l.development_id);
     return { campaignId: l.campaign_id, campaignName: campMap.get(l.campaign_id)?.name ?? l.campaign_id, product: pd.product, developer: pd.developer, spend: 0, leads: 1, sales: String(l.status).toLowerCase() === "ganho" ? 1 : 0 };
   });
   const all = [...spendRows, ...leadRows];
@@ -230,19 +304,34 @@ export async function GET(request: NextRequest) {
       truncated: raw.truncated,
     };
   }
-  const attributionMeasurable = !orphanFetch.error && !orphanFetch.truncated;
   const orphansByExternalId = new Map<string, number>();
-  if (attributionMeasurable) {
-    for (const row of orphanFetch.rows) {
-      const ext = String(row.ext ?? "").trim();
-      if (!ext) continue;
-      orphansByExternalId.set(ext, (orphansByExternalId.get(ext) ?? 0) + 1);
-    }
-  } else {
+  for (const row of orphanFetch.rows) {
+    const ext = String(row.ext ?? "").trim();
+    if (!ext) continue;
+    orphansByExternalId.set(ext, (orphansByExternalId.get(ext) ?? 0) + 1);
+  }
+  const orphanLeads = orphanFetch.rows.length;
+  const orphansWithExternalId = [...orphansByExternalId.values()].reduce((s, n) => s + n, 0);
+  // A CONSULTA RESPONDER NÃO É A MESMA COISA QUE A GAVETA ESTAR CHEIA.
+  //
+  // Enquanto `external_campaign_id` não vinha (1º elo partido), leadsUnlinked
+  // era null por acidente. Consertar o elo faria a resposta virar "0" — e um
+  // zero aqui é PERMISSÃO: com 0 órfãos e 0 vendas, o motor propõe PAUSAR
+  // verba. Medido em 02/08/2026: 465 leads sem campaign_id e NENHUMA carrega
+  // `metadata.meta.campaignId`. Ou seja, a gaveta do id externo está vazia — o
+  // zero seria a mesma cegueira, agora vestida de número.
+  // Regra: sem órfão nenhum, zero é fato; havendo órfãos e nenhum com id
+  // externo, a gaveta é ilegível neste banco e a resposta continua NÃO MEDIDO.
+  const externalIdDrawerReadable = orphanLeads === 0 || orphansWithExternalId > 0;
+  const attributionMeasurable = !orphanFetch.error && !orphanFetch.truncated && externalIdDrawerReadable;
+  if (!attributionMeasurable) {
     logger.warn("marketing.cost_report.orphan_leads_unmeasurable", {
       organizationId: org,
       code: orphanFetch.error?.code,
       truncated: orphanFetch.truncated,
+      orphanLeads,
+      orphansWithExternalId,
+      motivo: orphanFetch.error ? "leitura_falhou" : orphanFetch.truncated ? "leitura_truncada" : "gaveta_de_id_externo_vazia",
     });
   }
   const linkedByCampaign = new Map<string, number>();
@@ -272,7 +361,23 @@ export async function GET(request: NextRequest) {
     spendTruncated: spendFetch.truncated,
     leadsTruncated: leadsResult.truncated,
     campaignsTruncated,
-    complete: !spendFetch.truncated && !leadsResult.truncated && !campaignsTruncated,
+    // true = o banco não entregou as colunas de vínculo da campanha; produto e
+    // atribuição saem vazios por CEGUEIRA, não por ausência de dado.
+    campaignColumnsDegraded,
+    complete: !spendFetch.truncated && !leadsResult.truncated && !campaignsTruncated && !campaignColumnsDegraded,
+  };
+
+  // Quanto do gasto tem empreendimento declarado. Sem este número, "Sem
+  // produto" na tabela por projeto passa por categoria — e ele é, na verdade, o
+  // tamanho do que ninguém amarrou: medido em 02/08/2026, 0 de 8 campanhas têm
+  // `project_id`, então R$ 3.612,19 (100% do gasto) caem aí.
+  const spendWithoutProduct = spendRows.reduce((soma, linha) => (linha.product ? soma : soma + linha.spend), 0);
+  const productLabels = {
+    resolved: catalogo.resolvido,
+    basis: BASE_DO_ROTULO,
+    spendWithoutProduct: Math.round(spendWithoutProduct * 100) / 100,
+    campaignsWithProject: campaigns.filter((c) => c.project_id).length,
+    campaigns: campaigns.length,
   };
 
   return apiSuccess({
@@ -282,13 +387,21 @@ export async function GET(request: NextRequest) {
     attribution: {
       measurable: attributionMeasurable,
       basis:
-        "leadsUnlinked = leads da organização SEM campaign_id cujo metadata.meta.campaignId é o id externo desta campanha. null = não medido neste banco (leads.metadata ausente ou leitura truncada) — nunca leia null como zero.",
+        "leadsUnlinked = leads da organização SEM campaign_id cujo metadata.meta.campaignId é o id externo desta campanha. null = não medido neste banco (leitura falhou/truncou, ou nenhum lead órfão carrega id externo — gaveta vazia não vira zero). Nunca leia null como zero.",
+      // Os dois números que separam "não há órfão" de "não consigo ver órfão".
+      orphanLeads,
+      orphansWithExternalId,
       byCampaign: attributionByCampaign,
     },
     totals: { spend: byCampaignAgg.reduce((s, b) => s + b.spend, 0), campaigns: campaigns.length },
     byCampaign: { aggregate: byCampaignAgg, weekly: weekly(spendRows, "campaign") },
     byProject: { aggregate: aggregate(all, "product"), weekly: weekly(spendRows, "product") },
     byDeveloper: { aggregate: aggregate(all, "developer"), weekly: weekly(spendRows, "developer") },
+    developerLabels: {
+      resolved: catalogo.resolvido,
+      basis: BASE_DO_ROTULO,
+    },
+    productLabels,
     budget,
     // IA de marketing (eficiência) — propostas de escalar/pausar/realocar verba
     plan: dbPlan,

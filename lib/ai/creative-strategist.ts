@@ -30,6 +30,17 @@ export type ProductBrief = {
   developer?: string | null;
   neighborhood?: string;
   city?: string;
+  /**
+   * CHAVE de geolocalização da Meta para `city` (numérica, ex.: "269969").
+   *
+   * Existe porque `city` é o NOME e a Meta espera a chave. Resolver o nome pede
+   * uma leitura na Graph (geo-resolver), e há caminhos de composição que são
+   * puros por contrato — `ready-campaigns` tem portão que falha se a rota tocar
+   * a rede. Guardar a chave ao lado do nome deixa esses caminhos montarem um
+   * público VÁLIDO sem rede; quem não tiver a chave cai para o país, nunca para
+   * o nome no lugar dela.
+   */
+  cityKey?: string;
   metroDistanceM?: number;
   areaM2?: string;          // ex.: "25 a 40 m²"
   priceFrom?: number;       // R$ (a partir de)
@@ -129,8 +140,15 @@ const SAFE_DESCRIPTION = "Fale com a incorporadora";
 // Helpers puros
 // ---------------------------------------------------------------------------
 
-/** Formata inteiro como moeda BRL simples (sem depender de Intl/locale). */
-function brl(n: number): string {
+/**
+ * Formata inteiro como moeda BRL simples (sem depender de Intl/locale).
+ *
+ * Exportado porque a ficha de fatos (`fatos-do-empreendimento.ts`) precisa
+ * mostrar o preço ao modelo NO MESMO formato que o anúncio usa. Sem separador,
+ * o modelo copia "R$ 337782" para a peça — número certo, escrito de um jeito
+ * que nenhum anúncio brasileiro usa.
+ */
+export function brl(n: number): string {
   return `R$ ${String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 

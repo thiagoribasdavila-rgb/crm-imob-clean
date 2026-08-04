@@ -491,7 +491,7 @@ export default function MetaIntegration() {
         body: JSON.stringify({ action: "conversion_config", ...conversion }),
       });
       setNotice(
-        "Conversions API ativada em ambiente de teste. Produção continua bloqueada.",
+        "Conversions API ativada em ambiente de teste. Em teste a Meta recebe o evento e NÃO o usa para otimizar entrega — promover para produção é decisão da diretoria.",
       );
       await load();
     } catch (cause) {
@@ -1053,8 +1053,8 @@ export default function MetaIntegration() {
           </li>
           <li className="flex gap-2">
             <span aria-hidden="true" className="cc6-ok">✓</span>
-            Conversions API restrita ao dataset de teste; produção tecnicamente
-            bloqueada até homologação e aceite explícito.
+            Conversions API nasce no dataset de teste; ir para produção é ato
+            exclusivo da diretoria, e só depois do dataset provado em teste.
           </li>
           <li className="flex gap-2">
             <span aria-hidden="true" className="cc6-ok">✓</span>

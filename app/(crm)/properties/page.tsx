@@ -1,22 +1,49 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { supabase } from "@/lib/supabase";
 
+/* 2026-08-02: a tela pedia a coluna "location" de properties, que NUNCA existiu.
+   O PostgREST devolvia 42703, a lista vinha vazia e o corretor via o erro cru do
+   banco com os quatro contadores zerados — 30 unidades e R$ 9.205.000 de VGV
+   invisíveis. Conferido em information_schema.columns: a localização mora em
+   neighborhood + city + state. Se um dia isso mudar de novo, o catch abaixo
+   avisa em português e os contadores viram "—" em vez de zero confiante. */
 type Property = {
   id: string;
   title: string | null;
-  location: string | null;
+  neighborhood: string | null;
   city: string | null;
+  state: string | null;
   price: number | null;
   bedrooms: number | null;
   area: number | null;
   status: string | null;
 };
+
+const COLUNAS_ESTOQUE = "id, title, neighborhood, city, state, price, bedrooms, area, status";
+
+function localizacao(item: Property) {
+  const praca = [item.city, item.state].map((parte) => (parte || "").trim()).filter(Boolean).join("/");
+  const partes = [(item.neighborhood || "").trim(), praca].filter(Boolean);
+  return partes.length ? partes.join(" · ") : "";
+}
+
+/* Silêncio fechado: o detalhe técnico vai para o console (quem investiga precisa
+   dele), e o corretor recebe uma frase que diz o que aconteceu e o que fazer. */
+function mensagemDeFalha(codigo: string) {
+  if (codigo === "42703" || codigo === "42P01") {
+    return `O Atlas pediu ao banco um campo que não existe mais no cadastro de imóveis, então o estoque não pôde ser lido. Os números acima ficam indisponíveis até a correção — avise o suporte citando o código ${codigo}.`;
+  }
+  if (codigo === "42501" || codigo === "PGRST301" || codigo === "PGRST116") {
+    return "Seu acesso não permite ler o estoque desta empresa. Confira com o administrador se o seu perfil está ativo.";
+  }
+  return `Não foi possível carregar o estoque agora. Tente novamente; se continuar assim, avise o suporte${codigo ? ` citando o código ${codigo}` : ""}.`;
+}
 
 /* CC-6: fonte única de rótulo e tom por status do estoque — antes toda unidade
    ganhava pill esmeralda, inclusive reservada ou vendida. Status desconhecido
@@ -41,20 +68,49 @@ export default function PropertiesPage() {
   const [items, setItems] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /* falhou ≠ vazio: sem essa distinção, uma leitura quebrada vira "0 imóveis"
+     e "Nenhum imóvel cadastrado" — ausência de evidência virando ausência de
+     dado, exatamente o que escondeu este defeito. */
+  const [falhou, setFalhou] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      const { data, error } = await supabase
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error: erroLeitura } = await supabase
         .from("properties")
-        .select("id, title, location, city, price, bedrooms, area, status")
+        .select(COLUNAS_ESTOQUE)
         .order("updated_at", { ascending: false });
 
-      if (error) setError(error.message);
+      if (erroLeitura) {
+        console.error("[/properties] leitura do estoque falhou", {
+          code: erroLeitura.code,
+          message: erroLeitura.message,
+          details: erroLeitura.details,
+          hint: erroLeitura.hint,
+          colunas: COLUNAS_ESTOQUE,
+        });
+        setError(mensagemDeFalha((erroLeitura.code || "").trim()));
+        setFalhou(true);
+        setItems([]);
+        return;
+      }
+
       setItems((data as Property[]) ?? []);
+      setError(null);
+      setFalhou(false);
+    } catch (excecao) {
+      console.error("[/properties] leitura do estoque lançou exceção", excecao);
+      setError(mensagemDeFalha(""));
+      setFalhou(true);
+      setItems([]);
+    } finally {
       setLoading(false);
     }
-    load();
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
   const available = items.filter((item) => statusInfo(item.status).tone === "success").length;
@@ -89,7 +145,7 @@ export default function PropertiesPage() {
           <div className="flex flex-wrap gap-x-10 gap-y-4" aria-busy={loading}>
             {decisive.map((metric) => (
               <div key={metric.label}>
-                <p className={`cc6-metric-value text-2xl leading-none sm:text-3xl ${loading ? "" : metric.ink}`}>{loading ? "—" : metric.value}</p>
+                <p className={`cc6-metric-value text-2xl leading-none sm:text-3xl ${loading || falhou ? "" : metric.ink}`}>{loading || falhou ? "—" : metric.value}</p>
                 <p className="cc6-metric-label mt-1.5">{metric.label}</p>
               </div>
             ))}
@@ -98,19 +154,30 @@ export default function PropertiesPage() {
       </section>
 
       {error ? (
-        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[var(--atlas-estado-perigo)]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div>
+        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[var(--atlas-estado-perigo)]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={() => { void load(); }}
+            disabled={loading}
+            className="cc6-interativo mt-2 rounded-md px-2.5 py-1 text-xs font-semibold text-[var(--atlas-texto-forte)] underline underline-offset-4 disabled:opacity-60"
+          >
+            {loading ? "Tentando…" : "Tentar novamente"}
+          </button>
+        </div>
       ) : null}
 
       {loading ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-busy="true">
           {[1, 2, 3, 4, 5, 6].map((row) => <AtlasSkeleton key={row} className="h-36" />)}
         </div>
-      ) : items.length === 0 ? (
+      ) : falhou ? null : items.length === 0 ? (
         <p className="cc6-reveal text-xs leading-5 text-[var(--atlas-texto-fraco)]" style={{ animationDelay: "60ms" }}>Nenhum imóvel cadastrado — o estoque publicado aparece aqui e alimenta o matching.</p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {items.map((item, index) => {
             const status = statusInfo(item.status);
+            const onde = localizacao(item);
             return (
               <article
                 key={item.id}
@@ -120,7 +187,7 @@ export default function PropertiesPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{item.title || "Imóvel sem título"}</h2>
-                    <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">{item.location || item.city || "Localização não informada"}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]" title={onde || undefined}>{onde || "Localização não informada"}</p>
                   </div>
                   <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
                 </div>

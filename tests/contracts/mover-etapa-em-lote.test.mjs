@@ -86,18 +86,83 @@ test("a etapa passa pelo vocabulário canônico", () => {
   assert.match(rota, /STAGE_INVALID/);
 });
 
-test("a ação em lote faz UMA coisa", () => {
+test("a ação em lote faz UMA coisa — e a faz DENTRO da transação", () => {
   // Uma ação em lote que mexe em dono, tarefa e consentimento junto é uma ação
   // que ninguém consegue prever.
   //
-  // A versão anterior proibia as colunas de dono em QUALQUER posição — e o
-  // filtro de carteira do corretor precisa LÊ-las no WHERE. O invariante real
-  // sempre foi sobre o que a ação ESCREVE: o payload do update muda etapa e
-  // carimbo, e nada mais. Dono no filtro restringe; dono no payload transfere.
-  assert.match(rotaSemComentarios, /\.update\(\{ status: stage, updated_at: agora \}\)/,
-    "o payload é exatamente etapa + carimbo — qualquer campo a mais é uma segunda ação");
+  // ── POR QUE ESTA ASSERÇÃO MUDOU DE ALVO (2026-08-02) ──────────────────────
+  //
+  // Ela exigia, literalmente, `.update({ status: stage, updated_at: agora })` e
+  // EXATAMENTE um `.update(` na rota. Fechada assim, ela não protegia o
+  // invariante — ela congelava o defeito: obrigava o lote a mudar a etapa por
+  // um update solto, fora de qualquer transação, e foi esse update que produziu
+  // leads movidas sem nenhuma linha em `pipeline_stage_moves`.
+  //
+  // Medido na produção em 2026-08-02: 456 leads fora de "novo", 12 sem NENHUMA
+  // linha no razão do funil (2,63%) — a fonte canônica de velocidade,
+  // envelhecimento, tempo por etapa e taxa de passagem.
+  //
+  // O invariante real nunca foi "existe um update". Era, e continua sendo: o
+  // lote muda ETAPA e nada mais — não mexe em dono, tarefa nem consentimento.
+  // Ele agora é conferido no payload da transação, que é onde a escrita passou
+  // a acontecer. Zero updates soltos é mais forte que um update conferido: não
+  // existe mais lugar na rota onde a etapa possa mudar sem rastro.
+  assert.equal([...rotaSemComentarios.matchAll(/\.update\(/g)].length, 0,
+    "o lote não pode ter update próprio de lead: mudar a etapa fora da transação é exatamente o que produziu as 12 leads sem rastro");
+  assert.match(rotaSemComentarios, /admin\.rpc\("move_pipeline_lead", \{/,
+    "a etapa muda pela MESMA função que a rota de movimento individual chama — não por uma segunda forma");
+
+  const inicio = rotaSemComentarios.indexOf('admin.rpc("move_pipeline_lead"');
+  const chamada = rotaSemComentarios.slice(inicio, rotaSemComentarios.indexOf("});", inicio));
+  // Dono no FILTRO restringe; dono no PAYLOAD transfere. O payload da transação
+  // não tem como carregar dono, tarefa ou consentimento.
+  for (const proibido of ["assigned_to", "assigned_user_id", "metadata", "consent", "owner"]) {
+    assert.ok(!new RegExp(proibido).test(chamada),
+      `"${proibido}" no payload da movimentação seria uma segunda ação escondida no lote`);
+  }
+  assert.match(chamada, /p_to_stage: stage/, "o destino é a etapa pedida");
+  assert.match(chamada, /p_expected_from_stage: lead\.status \?\? "novo"/,
+    "a origem é lida da lead: o razão guarda a TRANSIÇÃO, não o efeito colateral 'agora está em X'");
   assert.ok(!/metadata/.test(rotaSemComentarios), "consentimento e formulário ficam intocados");
-  assert.equal([...rotaSemComentarios.matchAll(/\.update\(/g)].length, 1);
+});
+
+test("toda lead contada como movida tem linha no razão do funil", () => {
+  // `pipeline_stage_moves` é a fonte canônica de tudo que mede funil. Escrita
+  // muda — a que não devolve prova nenhuma — é o que produziu as 12 leads sem
+  // rastro medidas em produção. Aqui a prova é conferida lead a lead.
+  assert.match(rotaSemComentarios, /const moveId = typeof dados\.moveId === "string" \? dados\.moveId : null;/,
+    "o id da linha do razão é lido do retorno de CADA escrita");
+  assert.ok(
+    rotaSemComentarios.indexOf("movidasIds.push") > rotaSemComentarios.indexOf("if (!moveId)"),
+    "a lead só entra na conta de movidas DEPOIS da prova de que a linha do razão existe",
+  );
+  assert.match(rotaSemComentarios, /semRazao = "resposta_sem_rastro"/,
+    "resposta sem o id do razão para o lote — seguir seria fabricar movimento invisível");
+
+  // A falha ao gravar o razão não pode ser confundida com recusa de regra: são
+  // a mesma resposta para o operador ("não moveu") e problemas opostos. A
+  // separação vem de uma lista FECHADA dos nomes que a função levanta — não de
+  // um prefixo. Medido: a mensagem da inserção que falha cita a própria tabela
+  // `pipeline_stage_moves`, então classificar por prefixo `pipeline_` chamava a
+  // falha do razão de regra de negócio e a escondia do operador.
+  assert.match(rotaSemComentarios, /const recusasTecnicas = recusas\.filter\(\(r\) => !RECUSAS_DE_REGRA\.has\(r\.motivo\)\)\.length;/,
+    "o que separa recusa de regra de falha técnica é a lista fechada, não o prefixo do nome");
+  for (const nome of ["pipeline_move_out_of_scope", "pipeline_stage_conflict", "pipeline_lead_not_found"]) {
+    assert.ok(new RegExp(`"${nome}"`).test(rota), `"${nome}" é levantado pela função e precisa estar na lista de recusas de regra`);
+  }
+  assert.match(rota, /recusasTecnicas \?/, "o aviso ao operador nomeia a falha de histórico quando ela acontece");
+});
+
+test("banco sem a transação não move nada pela metade", () => {
+  // A rota de movimento individual mantém uma escrita compensatória para bancos
+  // sem a função: muda a etapa, tenta auditar, desfaz se falhar. Repetir isso
+  // 200 vezes por chamada é multiplicar o defeito que esta correção apaga.
+  assert.match(rotaSemComentarios, /RPC_AUSENTE\.has\(codigo\)/,
+    "função ausente no banco é reconhecida (42883 do Postgres, PGRST202 do PostgREST)");
+  assert.match(rotaSemComentarios, /semRazao = "sem_transacao"/);
+  assert.match(rota, /BULK_STAGE_NO_LEDGER/, "o lote recusa em vez de mover sem histórico");
+  assert.ok(!/pipeline_history/.test(rota),
+    "nenhuma escrita compensatória de reserva: falhar é melhor que mover sem rastro");
 });
 
 test("a tela dá o lote ao corretor sem lhe dar a transferência", () => {

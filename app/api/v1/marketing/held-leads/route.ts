@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { validarPageId } from "@/lib/meta/identificadores";
+import { paginasDaOrganizacao } from "@/lib/meta/pagina-da-organizacao";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -44,18 +46,34 @@ async function tokenDaPagina(pageId: string, systemToken: string, versao: string
   return corpo.access_token ?? null;
 }
 
+/**
+ * Lista os formulários da Página e DIZ quando falhou.
+ *
+ * Antes: `corpo.data ?? []`, e erro da Graph virava lista vazia. Como a rota
+ * calcula represa a partir dessa lista, qualquer falha — token expirado, cota
+ * estourada, permissão revogada — produzia "0 leads represadas" com 200 OK.
+ * Nenhuma tela do produto conseguiria distinguir "não há represa" de "não
+ * consegui olhar", e as duas frases levam a decisões opostas.
+ */
 async function formulariosDaPagina(pageId: string, pageToken: string, versao: string) {
   const formularios: FormularioDaMeta[] = [];
   let after: string | null = null;
   for (let volta = 0; volta < 20; volta += 1) {
     const url = `${GRAPH}/${versao}/${encodeURIComponent(pageId)}/leadgen_forms?fields=id,name,leads_count&limit=50${after ? `&after=${encodeURIComponent(after)}` : ""}`;
     const resposta = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(20_000), headers: { Authorization: `Bearer ${pageToken}` } });
-    const corpo = await resposta.json().catch(() => ({})) as { data?: FormularioDaMeta[]; paging?: { cursors?: { after?: string } } };
+    const corpo = await resposta.json().catch(() => ({})) as {
+      data?: FormularioDaMeta[];
+      paging?: { cursors?: { after?: string } };
+      error?: { message?: string };
+    };
+    if (!resposta.ok || corpo.error) {
+      return { formularios, erro: corpo.error?.message ?? `HTTP ${resposta.status}` };
+    }
     formularios.push(...(corpo.data ?? []));
     after = corpo.paging?.cursors?.after ?? null;
     if (!after || !(corpo.data ?? []).length) break;
   }
-  return formularios;
+  return { formularios, erro: null as string | null };
 }
 
 function podeLiberar(papel: string) {
@@ -77,9 +95,37 @@ export async function GET(request: NextRequest) {
 
   const systemToken = process.env.META_LEAD_ACCESS_TOKEN;
   const versao = process.env.META_GRAPH_API_VERSION || "v23.0";
-  const pageId = String(process.env.META_PAGE_ID || "").trim();
   const organizationId = access.access.organization.id;
   const admin = getSupabaseAdmin();
+
+  /**
+   * ── TODAS AS PÁGINAS, NÃO A ELEITA ────────────────────────────────────────
+   *
+   * Duas correções, no mesmo dia, no mesmo lugar.
+   *
+   * De manhã: a rota lia `process.env.META_PAGE_ID`, ausente no servidor, e
+   * respondia 200 OK com `totalRepresado: 0` enquanto 103 leads pagas
+   * esperavam. Passei a eleger a Página pelas fontes registradas.
+   *
+   * À tarde, conectada a Página da Inside, o produto passou a ter DUAS — e a
+   * rota devolveu zero DE NOVO, agora com 198 leads esperando lá. Ela já
+   * respondia `paginasRegistradas: 2, ambigua: true`: sabia da segunda e olhava
+   * só para a primeira. Eu tinha construído o aviso e não a cobertura.
+   *
+   * Represa não é uma pergunta sobre UMA Página. É sobre tudo que a operação
+   * pagou e não recebeu.
+   */
+  const { paginas, falhou: falhouAoLerPaginas } = await paginasDaOrganizacao(admin, organizationId);
+
+  // META_PAGE_ID sobrevive como compatibilidade — mas agora SOMA em vez de
+  // substituir. Uma variável de ambiente não pode apagar Páginas que a
+  // operação cadastrou pelo produto.
+  const paginasAlvo = paginas.map((p) => p.pageId);
+  const doAmbiente = String(process.env.META_PAGE_ID || "").trim();
+  if (doAmbiente && !paginasAlvo.includes(doAmbiente)) {
+    const veredito = validarPageId(doAmbiente);
+    if (veredito.ok) paginasAlvo.push(veredito.valor);
+  }
 
   const fontes = await admin
     .from("meta_lead_sources")
@@ -102,54 +148,114 @@ export async function GET(request: NextRequest) {
     if (chave) jaEntraram.set(chave, (jaEntraram.get(chave) ?? 0) + 1);
   }
 
-  if (!systemToken || !pageId) {
+  // Causas independentes, frases independentes. "TOKEN ou PAGE_ID ausente"
+  // obrigava quem lia a testar as duas hipóteses.
+  if (!systemToken) {
     return apiSuccess({
       disponivel: false,
-      motivo: "META_LEAD_ACCESS_TOKEN ou META_PAGE_ID ausente — sem eles não dá para saber o que está represado na Meta.",
-      represadas: [], totalRepresado: 0,
+      motivo: "META_LEAD_ACCESS_TOKEN ausente no servidor — sem o token não dá para consultar a Meta.",
+      represadas: [], totalRepresado: 0, paginas: [],
+    }, access.meta, { headers: rate.headers });
+  }
+  // Falha de LEITURA nunca vira "não tem Página": é 503, para a tela poder
+  // dizer "não consegui olhar" em vez de "não há represa".
+  if (falhouAoLerPaginas) {
+    return apiError("META_FONTES_INDISPONIVEIS", "Não consegui ler as fontes Meta desta organização.", access.meta, { status: 503, headers: rate.headers });
+  }
+  if (!paginasAlvo.length) {
+    return apiSuccess({
+      disponivel: false,
+      motivo: "Nenhuma Página Meta com formulário ATIVO nesta organização. Cadastre e ative em Marketing → Formulários da Meta.",
+      represadas: [], totalRepresado: 0, paginas: [],
     }, access.meta, { headers: rate.headers });
   }
 
-  const pageToken = await tokenDaPagina(pageId, systemToken, versao);
-  if (!pageToken) {
-    return apiError("META_PAGE_TOKEN_INDISPONIVEL", "Não foi possível derivar o token da página.", access.meta, { status: 502, headers: rate.headers });
+  // Uma Página que falha NÃO pode zerar as outras. Cada uma responde por si, e
+  // o que não deu para olhar é dito em voz alta — silenciar uma Página aqui
+  // reproduziria, em escala menor, o defeito que esta rota já teve duas vezes.
+  const represadas: Array<{
+    pageId: string; formId: string; nome: string | null; leadsNaMeta: number;
+    jaEntraram: number; represadas: number; registrada: boolean; ativa: boolean; descartaLeadNova: boolean;
+  }> = [];
+  const paginasLidas: Array<{ pageId: string; formularios: number; represado: number }> = [];
+  const paginasComFalha: Array<{ pageId: string; motivo: string }> = [];
+
+  for (const paginaAlvo of paginasAlvo) {
+    const pageToken = await tokenDaPagina(paginaAlvo, systemToken, versao);
+    if (!pageToken) {
+      paginasComFalha.push({ pageId: paginaAlvo, motivo: "não foi possível derivar o token da Página" });
+      continue;
+    }
+    const { formularios, erro } = await formulariosDaPagina(paginaAlvo, pageToken, versao);
+    if (erro) {
+      paginasComFalha.push({ pageId: paginaAlvo, motivo: erro });
+      continue;
+    }
+
+    const linhasDaPagina = formularios
+      .map((f) => {
+        const id = String(f.id);
+        const fonte = porFormulario.get(id);
+        const naMeta = Number(f.leads_count ?? 0);
+        const entraram = jaEntraram.get(id) ?? 0;
+        return {
+          pageId: paginaAlvo,
+          formId: id,
+          nome: f.name ?? null,
+          leadsNaMeta: naMeta,
+          jaEntraram: entraram,
+          // O que a Meta tem e o CRM não. Nunca negativo: lead pode entrar por
+          // webhook e sumir do leads_count depois dos 90 dias de retenção.
+          represadas: Math.max(0, naMeta - entraram),
+          registrada: Boolean(fonte),
+          ativa: Boolean(fonte?.active),
+          // Formulário sem fonte registrada descarta lead nova em silêncio.
+          descartaLeadNova: !fonte || !fonte.active,
+        };
+      })
+      .filter((linha) => linha.represadas > 0);
+
+    represadas.push(...linhasDaPagina);
+    paginasLidas.push({
+      pageId: paginaAlvo,
+      formularios: formularios.length,
+      represado: linhasDaPagina.reduce((s, l) => s + l.represadas, 0),
+    });
   }
-  const formularios = await formulariosDaPagina(pageId, pageToken, versao);
 
-  const represadas = formularios
-    .map((f) => {
-      const id = String(f.id);
-      const fonte = porFormulario.get(id);
-      const naMeta = Number(f.leads_count ?? 0);
-      const entraram = jaEntraram.get(id) ?? 0;
-      return {
-        formId: id,
-        nome: f.name ?? null,
-        leadsNaMeta: naMeta,
-        jaEntraram: entraram,
-        // O que a Meta tem e o CRM não. Nunca negativo: lead pode entrar por
-        // webhook e sumir do leads_count depois dos 90 dias de retenção.
-        represadas: Math.max(0, naMeta - entraram),
-        registrada: Boolean(fonte),
-        ativa: Boolean(fonte?.active),
-        // Formulário sem fonte registrada descarta lead nova em silêncio.
-        descartaLeadNova: !fonte || !fonte.active,
-      };
-    })
-    .filter((linha) => linha.represadas > 0)
-    .sort((a, b) => b.represadas - a.represadas);
+  // Nenhuma Página respondeu: isto é cegueira, não ausência de represa.
+  if (!paginasLidas.length && paginasComFalha.length) {
+    return apiError(
+      "META_FORMULARIOS_INDISPONIVEIS",
+      `Nenhuma das ${paginasComFalha.length} Página(s) respondeu: ${paginasComFalha.map((p) => `${p.pageId} (${p.motivo})`).join("; ")}`,
+      access.meta, { status: 502, headers: rate.headers },
+    );
+  }
 
+  represadas.sort((a, b) => b.represadas - a.represadas);
   const total = represadas.reduce((soma, l) => soma + l.represadas, 0);
+
   return apiSuccess({
     disponivel: true,
+    // Quais Páginas foram olhadas, e quais não. Sem isto o total é um número
+    // sem procedência: "0" com uma Página muda e "0" com todas lidas são
+    // afirmações diferentes.
+    paginas: paginasLidas,
+    paginasComFalha,
+    parcial: paginasComFalha.length > 0,
     totalRepresado: total,
     formulariosComRepresa: represadas.length,
     tetoPorLiberacao: TETO_POR_LIBERACAO,
     podeLiberar: podeLiberar(papel),
     represadas,
-    aviso: total
-      ? `${total} lead(s) já pagas e fora do CRM. Cada uma liberada nasce com o relógio de primeiro contato correndo — libere em ondas que a equipe consiga atender.`
-      : null,
+    aviso: [
+      total
+        ? `${total} lead(s) já pagas e fora do CRM. Cada uma liberada nasce com o relógio de primeiro contato correndo — libere em ondas que a equipe consiga atender.`
+        : null,
+      paginasComFalha.length
+        ? `${paginasComFalha.length} Página(s) não puderam ser consultadas — o total acima está INCOMPLETO.`
+        : null,
+    ].filter(Boolean).join(" "),
   }, access.meta, { headers: rate.headers });
 }
 

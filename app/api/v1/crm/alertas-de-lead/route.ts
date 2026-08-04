@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { leLiderancaInteira } from "@/lib/crm/escopo-de-leitura";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { triarAlertasParaMarcar } from "@/lib/crm/alerta-que-nao-se-apaga";
 
 export const dynamic = "force-dynamic";
 
@@ -70,10 +71,56 @@ export async function GET(request: NextRequest) {
   }
 
   const pendentes = data ?? [];
+
+  /**
+   * QUEM CHEGOU — e por que o nome pode sair daqui.
+   *
+   * Até aqui esta rota devolvia só `leadIds`: a pastilha dizia "3" e o corretor
+   * tinha que abrir a lista e procurar quais. Com SLA de primeiro contato de 5
+   * minutos, o caminho "vejo um número → abro a lista → descubro quais → abro a
+   * ficha" gasta o orçamento em navegação.
+   *
+   * O nome não é exposição nova: a consulta acima já filtra por
+   * `destinatario_id = eu` (ou, para liderança, as órfãs, que ela enxerga no
+   * funil inteiro de qualquer jeito). São leads da PRÓPRIA carteira de quem
+   * pergunta — a mesma pessoa vê o nome, o telefone e o histórico inteiro ao
+   * abrir a ficha.
+   *
+   * Telefone e e-mail continuam FORA: o aviso precisa identificar, não
+   * qualificar. Menos dado no caminho quente é menos dado para vazar.
+   */
+  let chegadas: Array<{ leadId: string; nome: string; origem: string; esperaMinutos: number; motivo: string }> = [];
+  if (pendentes.length) {
+    const { data: leads } = await admin
+      .from("leads")
+      .select("id,name,source,created_at")
+      .eq("organization_id", organizationId)
+      .in("id", pendentes.slice(0, 20).map((linha) => String(linha.lead_id)))
+      .limit(20);
+    const porId = new Map((leads ?? []).map((lead) => [String(lead.id), lead]));
+    chegadas = pendentes
+      .slice(0, 20)
+      .map((linha) => {
+        const lead = porId.get(String(linha.lead_id));
+        if (!lead) return null;
+        const criadaEm = Date.parse(String(lead.created_at));
+        return {
+          leadId: String(lead.id),
+          nome: String(lead.name || "Lead sem nome").slice(0, 60),
+          origem: String(lead.source || "não informada").slice(0, 40),
+          esperaMinutos: Number.isFinite(criadaEm) ? Math.max(0, Math.floor((Date.now() - criadaEm) / 60_000)) : 0,
+          motivo: String(linha.motivo),
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }
+
   return apiSuccess(
     {
       escopo: lideranca ? "organizacao" : "carteira",
       novas: count ?? pendentes.length,
+      // A lista que permite ir direto à ficha, sem passar pela lista de leads.
+      chegadas,
       // Distinguir as duas origens importa para a frase da tela: "chegou" e
       // "passou a ser sua" são eventos diferentes para quem lê.
       porMotivo: {
@@ -92,9 +139,25 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Marca como vistas. Chamado quando a pessoa abre a lista de leads — abrir a
- * lista É o ato de olhar; exigir um clique a mais em "marcar como lido" só
- * criaria uma pendência sobre a pendência.
+ * Marca como vistas — MENOS as que continuam de pé.
+ *
+ * ── O defeito que este bloco corrige, e ele era desta rota ────────────────
+ *
+ * Abrir a lista carimbava TUDO. Medido em 03/08/2026: quatro leads da Inside
+ * entraram às 15:31:03, :04, :06 e :07, e as quatro foram marcadas como vistas
+ * às 16:41:49 — no mesmo segundo, 70 minutos depois. Não foram quatro pessoas
+ * percebendo quatro leads: foi uma chamada a este POST. Três horas depois, as
+ * quatro seguiam SEM DONO e o painel mostrava zero.
+ *
+ * O cabeçalho desta rota já dizia a regra certa sobre o GET: devolver zero sem
+ * ter conseguido ler "confirma a falsa tranquilidade de uma fila parada". Este
+ * POST fabricava a mesma tranquilidade pelo outro lado, e passou porque zero
+ * parece bom.
+ *
+ * A distinção que faltava (em lib/crm/alerta-que-nao-se-apaga.ts): aviso de
+ * FATO ("passou a ser sua") encerra-se ao ser lido; aviso de CONDIÇÃO ("chegou
+ * e não tem dono") não, porque a condição continua. Ele só some quando alguém
+ * assume a lead.
  */
 export async function POST(request: NextRequest) {
   const rate = enforceRateLimit(request, { limit: 60, windowMs: 60_000, scope: "crm.lead-alerts.seen" });
@@ -111,25 +174,81 @@ export async function POST(request: NextRequest) {
   const lideranca = leLiderancaInteira(identity.access.profile);
   const agora = new Date().toISOString();
 
-  let consulta = admin
+  // O MESMO recorte da leitura, aplicado na consulta abaixo. Se divergisse,
+  // alguém marcaria como visto o aviso de outra pessoa — a classe de defeito
+  // que este repositório mais pagou: a mesma regra escrita duas vezes.
+  let pendentes = admin
     .from("lead_alerts")
-    .update({ visto_em: agora })
+    .select("id,lead_id,motivo,destinatario_id")
     .eq("organization_id", organizationId)
-    .is("visto_em", null);
+    .is("visto_em", null)
+    .limit(1000);
+  pendentes = lideranca
+    ? pendentes.or(`destinatario_id.eq.${perfilId},destinatario_id.is.null`)
+    : pendentes.eq("destinatario_id", perfilId);
 
-  // O MESMO recorte da leitura. Se divergisse, alguém marcaria como visto o
-  // aviso de outra pessoa — a classe de defeito que este repositório mais
-  // pagou: a mesma regra escrita duas vezes.
-  consulta = lideranca
-    ? consulta.or(`destinatario_id.eq.${perfilId},destinatario_id.is.null`)
-    : consulta.eq("destinatario_id", perfilId);
-
-  const { error } = await consulta;
-  if (error) {
+  const { data: abertos, error: erroDaLeitura } = await pendentes;
+  if (erroDaLeitura) {
     return apiError("LEAD_ALERTS_ACK_FAILED", "Não foi possível registrar a leitura.", identity.meta, {
       status: 503,
       headers: rate.headers,
     });
   }
-  return apiSuccess({ vistoEm: agora }, identity.meta, { headers: rate.headers });
+  if (!abertos?.length) return apiSuccess({ vistoEm: agora, marcados: 0, persistentes: 0, motivo: null }, identity.meta, { headers: rate.headers });
+
+  // Quais dessas leads AINDA estão sem dono. É esta pergunta — e não o texto do
+  // aviso — que decide se a condição acabou.
+  const leadIds = [...new Set(abertos.map((a) => String(a.lead_id)).filter(Boolean))];
+  const { data: donos, error: erroDosDonos } = await admin
+    .from("leads")
+    .select("id,assigned_to")
+    .eq("organization_id", organizationId)
+    .in("id", leadIds)
+    .limit(1000);
+  if (erroDosDonos) {
+    // Não conseguir saber quem tem dono NÃO pode virar "marque tudo": seria
+    // exatamente o defeito de volta, agora por falha de leitura.
+    return apiError("LEAD_ALERTS_ACK_FAILED", "Não consegui conferir quais leads já têm responsável.", identity.meta, {
+      status: 503,
+      headers: rate.headers,
+    });
+  }
+  const semDono = new Set((donos ?? []).filter((l) => !l.assigned_to).map((l) => String(l.id)));
+
+  const triagem = triarAlertasParaMarcar(
+    abertos.map((a) => ({
+      id: String(a.id),
+      leadId: String(a.lead_id),
+      motivo: String(a.motivo),
+      destinatarioId: a.destinatario_id ? String(a.destinatario_id) : null,
+      leadSemDono: semDono.has(String(a.lead_id)),
+    })),
+  );
+
+  if (triagem.paraMarcar.length) {
+    const { error } = await admin
+      .from("lead_alerts")
+      .update({ visto_em: agora })
+      .eq("organization_id", organizationId)
+      .is("visto_em", null)
+      .in("id", triagem.paraMarcar);
+    if (error) {
+      return apiError("LEAD_ALERTS_ACK_FAILED", "Não foi possível registrar a leitura.", identity.meta, {
+        status: 503,
+        headers: rate.headers,
+      });
+    }
+  }
+
+  return apiSuccess(
+    {
+      vistoEm: agora,
+      marcados: triagem.paraMarcar.length,
+      // A tela precisa poder dizer por que o contador não zerou.
+      persistentes: triagem.persistentes.length,
+      motivo: triagem.motivoDaPersistencia,
+    },
+    identity.meta,
+    { headers: rate.headers },
+  );
 }

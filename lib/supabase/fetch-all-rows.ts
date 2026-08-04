@@ -11,28 +11,16 @@ import "server-only";
  * Este é o helper canônico para rotas de agregação: devolve as linhas, o
  * primeiro erro encontrado (para o chamador decidir 503 vs degradação) e a
  * flag honesta de truncamento quando o teto de páginas é atingido.
+ *
+ * ── POR QUE O CORPO MORA EM OUTRO ARQUIVO ──────────────────────────────────
+ *
+ * O `server-only` no topo é o que garante que uma rota não vaze a chave de
+ * serviço para o bundle do cliente. Mas ele também tornava esta regra
+ * INALCANÇÁVEL para as telas de cliente — e foram exatamente elas que ficaram
+ * com `.limit(5000)` sem paginação e sem sentinela (medido em
+ * `app/(crm)/reports/page.tsx`, a tela canônica de relatório do diretor).
+ *
+ * O corpo vive em `paginacao-exaustiva.ts`, sem `server-only`; este arquivo
+ * continua sendo a porta do servidor e reexporta. Nenhum chamador muda.
  */
-export type PagedRows<T> = {
-  rows: T[];
-  error: { code?: string; message?: string } | null;
-  truncated: boolean;
-};
-
-const PAGE_SIZE = 1000;
-
-export async function fetchAllRows<T>(
-  buildPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { code?: string; message?: string } | null }>,
-  options: { maxPages?: number } = {},
-): Promise<PagedRows<T>> {
-  const maxPages = options.maxPages ?? 30;
-  const rows: T[] = [];
-  for (let page = 0; page < maxPages; page += 1) {
-    const from = page * PAGE_SIZE;
-    const { data, error } = await buildPage(from, from + PAGE_SIZE - 1);
-    if (error) return { rows, error, truncated: false };
-    if (!data?.length) return { rows, error: null, truncated: false };
-    rows.push(...data);
-    if (data.length < PAGE_SIZE) return { rows, error: null, truncated: false };
-  }
-  return { rows, error: null, truncated: true };
-}
+export { fetchAllRowsPure as fetchAllRows, type PagedRows } from "./paginacao-exaustiva.ts";

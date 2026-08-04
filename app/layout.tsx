@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import Providers from "./providers";
+import { ResgateDoLinkDeRecuperacao } from "@/components/auth/resgate-do-link-de-recuperacao";
 
 export const metadata: Metadata = {
   title: {
@@ -45,6 +46,10 @@ export default function RootLayout({
         />
       </head>
       <body>
+        {/* Fica ANTES do resto e fora dos Providers: o link de recuperação
+            precisa ser resgatado antes de qualquer tela decidir o que mostrar,
+            e ele não depende de sessão nenhuma. */}
+        <ResgateDoLinkDeRecuperacao />
         <Providers>{children}</Providers>
       </body>
     </html>

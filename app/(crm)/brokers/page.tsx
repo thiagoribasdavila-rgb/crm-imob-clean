@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AcompanhamentoCorretorMovimentacaoPorPessoa } from "@/components/crm/acompanhamento-corretor-movimentacao-por-pessoa";
+import { AcompanhamentoCorretorCadencia } from "@/components/crm/acompanhamento-corretor-cadencia";
 
 type Member = { id: string; fullName: string; role: string; reportsTo: string | null; active: boolean; portfolio: number; hotLeads: number; overdue: number; withoutNextAction: number; hotWithoutNextAction: number; won: number };
 type Payload = { members: Member[]; supportQueue: Member[]; summary: { activePeople: number; brokers: number; portfolio: number; overdue: number }; method: { peopleRanking: boolean } };
@@ -189,6 +190,18 @@ export default function BrokersPage() {
       {!error ? (
         <div className="cc6-reveal" style={{ animationDelay: "90ms" }}>
           <AcompanhamentoCorretorMovimentacaoPorPessoa />
+        </div>
+      ) : null}
+
+      {/* ── QUANTO, COM QUE INTERVALO, E ISSO CONVERTE? ─────────────────────
+          O bloco acima diz O QUE cada carteira moveu. Este diz QUANTO trabalho
+          foi, com QUE CADÊNCIA, e se dá para ligar isso a venda — as três
+          perguntas que o dono fez. A ordem importa: volume sem cadência vira
+          placar, e cadência sem o denominador vira acusação. Fica depois da
+          movimentação e antes da estrutura, que é consulta. ── */}
+      {!error ? (
+        <div className="cc6-reveal" style={{ animationDelay: "105ms" }}>
+          <AcompanhamentoCorretorCadencia />
         </div>
       ) : null}
 

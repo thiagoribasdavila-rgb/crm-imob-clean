@@ -2,9 +2,11 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { derivarPraca, ehChaveDeFaixa, fragmentoDaFaixa } from "@/lib/atlas/triagem-da-fila";
+import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { filtroDaCarteiraDaPessoa, filtroDaMinhaCarteira, leSoAPropriaCarteira } from "@/lib/crm/escopo-de-leitura";
 import { ehVinculoValido, STATUS_DO_VINCULO, statusForaDoAtendimento } from "@/lib/crm/vinculo-do-cliente";
+import { STATUS_QUE_ENCERRAM } from "@/lib/crm/recorte-operacional";
 import {
   canonicalCommercialRole,
   compatibleLeadStatuses,
@@ -20,6 +22,33 @@ import {
 } from "@/lib/compat/legacy-v2";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * ── A LISTA LÊ `metadata`, E POR ISSO PEDE `metadata` ───────────────────────
+ *
+ * A tela (`app/(crm)/leads/page.tsx`) lê `lead.metadata?.meta?.dataSharingConsent`
+ * para o selo de consentimento e `lead.metadata?.meta?.campaignId` para dizer de
+ * onde a lead veio. `mapLegacyLead` resolve chave ausente para `{}`, então sem a
+ * coluna a lista recebia `{}` em todas — sem erro, sem log.
+ *
+ * Medido em 02/08/2026 na base viva: `metadata` não vazio em 487 das 490,
+ * `metadata.meta` em 474, `meta.dataSharingConsent` em 473. O selo de
+ * consentimento estava desligado para 473 leads que TÊM o consentimento
+ * registrado.
+ *
+ * Fica AQUI, e não no select compartilhado, por custo medido: `metadata` pesa
+ * 509 B por lead (`pg_column_size`, 243 KB na base inteira). `distribution` e
+ * `director-daily` varrem até 20.000 leads com o select compartilhado e não leem
+ * o conteúdo — somá-la lá custaria ~10 MB por chamada. Aqui a página traz no
+ * máximo 100 leads: 51 KB. Mesmo desenho já usado pela ficha em
+ * `app/api/v1/leads/[id]/route.ts`.
+ *
+ * As DUAS escadas carregam a coluna: a degradação por 42703 troca o select
+ * inteiro, e se só a de cima a tivesse, um banco sem as colunas de SLA perderia
+ * o `metadata` junto — que nada tem a ver com SLA.
+ */
+const COLUNAS_DA_LISTA = `${LIVE_LEAD_SELECT_WITH_SLA},metadata`;
+const COLUNAS_DA_LISTA_SEM_SLA = `${LIVE_LEAD_SELECT},metadata`;
 
 const allowedSorts = new Set(["created_at", "updated_at", "score", "name", "first_contact_sla"]);
 const allowedDirections = new Set(["asc", "desc"]);
@@ -54,7 +83,18 @@ function campaignFilters(raw: string | null) {
     .slice(0, 50);
 }
 const uuidPattern = /^[0-9a-f-]{36}$/i;
-const terminalStorageStatuses = ["ganho", "GANHO", "venda", "VENDA", "vendido", "VENDIDO", "perdido", "PERDIDO", "comprou_outro", "COMPROU_OUTRO"];
+/**
+ * A lista saiu daqui e virou `lib/crm/recorte-operacional.ts`.
+ *
+ * Ela estava declarada NOVE vezes em SETE arquivos, com conteúdos diferentes —
+ * inclusive uma divergência semântica (o acervo de resgate trata `contrato` e
+ * `proposta` como encerrados; esta rota não). E o recorte muda o número em até
+ * 9x: 463 leads sem primeiro contato na base inteira contra 50 em jogo.
+ *
+ * Um cartão que conte com uma lista e leve a uma tela que filtra com outra não
+ * mostra um número velho — mostra OUTRA PERGUNTA.
+ */
+const terminalStorageStatuses: string[] = [...STATUS_QUE_ENCERRAM];
 
 type CompatibleProfile = Record<string, unknown> & {
   id: string;
@@ -352,7 +392,12 @@ export async function GET(request: NextRequest) {
           .order("first_contact_due_at", { ascending: false, nullsFirst: false })
           .order("id", { ascending: true })
       : query
-          .order(storageSort, { ascending: direction === "asc" })
+          // `comSla=false` é o degrau de baixo: banco que não correu a ponte V3
+          // (20260717213001). `updated_at` nasceu LÁ, junto de `next_action_at`
+          // e das colunas de atividade — ordenar por ela ali devolveria 42703 e
+          // trocaria "lista sem SLA" por lista nenhuma. `created_at` é a única
+          // data presente em qualquer banco, e é para ela que o degrau recua.
+          .order(comSla || storageSort !== "updated_at" ? storageSort : "created_at", { ascending: direction === "asc" })
           .order("id", { ascending: direction === "asc" });
 
     query = usePagePagination
@@ -420,7 +465,10 @@ export async function GET(request: NextRequest) {
         // dizendo "sem ação" para quem acabou de agendar uma.
         query = query.is("next_action_at", null).is("next_contact", null);
       }
-      if (attention === "hot") query = query.or("temperature.ilike.quente,score_ia.gte.70");
+      // O 70 aqui é a MESMA fronteira de "quente" do scorer, e por isso sai da
+      // constante — não de um literal digitado dentro da string do PostgREST,
+      // onde nenhuma busca por `>= 70` jamais o encontraria.
+      if (attention === "hot") query = query.or(`temperature.ilike.quente,score_ia.gte.${HOT_SCORE_THRESHOLD}`);
       if (attention === "unassigned") query = query.is("assigned_user_id", null);
       // Mesmo predicado por coluna que a central usa para contar. Se a base
       // não tem a coluna (comSla falso), NÃO aplicamos o filtro: devolver a
@@ -482,7 +530,7 @@ export async function GET(request: NextRequest) {
   };
 
   let comSla = true;
-  let resultado = await montarConsulta(LIVE_LEAD_SELECT_WITH_SLA, true);
+  let resultado = await montarConsulta(COLUNAS_DA_LISTA, true);
   if (resultado.error && isMissingColumn(resultado.error)) {
     if (faixa) {
       // O degrau de baixo não tem `first_contacted_at`, `phone_normalized` nem
@@ -499,7 +547,7 @@ export async function GET(request: NextRequest) {
     // Banco sem a fase 34: a lista continua funcionando, apenas sem prazo — e a
     // resposta diz isso, para a tela não confundir "sem medição" com "no prazo".
     comSla = false;
-    resultado = await montarConsulta(LIVE_LEAD_SELECT, false);
+    resultado = await montarConsulta(COLUNAS_DA_LISTA_SEM_SLA, false);
   }
   const { data, error, count } = resultado;
 

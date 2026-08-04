@@ -71,7 +71,12 @@ function normalizar(texto: string): string {
 }
 
 /** Padrões vistos nos formulários reais da conta. */
-const PADRAO_INTENCAO = /procura.*imovel para|intencao da compra|finalidade|para (morar|investir)/;
+// `objetivo ... imovel` entrou por MEDIÇÃO, não por precaução: na base viva de
+// 02/08/2026 as 96 leads que têm resposta de formulário guardada trazem uma
+// única pergunta — `qual_o_seu_objetivo_com_o_imovel?` — e ela não casava com
+// nenhum padrão. A régua estava escrita, documentada e testada para perguntas
+// que a conta não faz, enquanto a única que ela faz caía em `naoMapeadas`.
+const PADRAO_INTENCAO = /procura.*imovel para|intencao da compra|finalidade|objetivo (com|do|de|para).*imovel|para (morar|investir)/;
 const PADRAO_FAIXA = /faixa de investimento|faixa de preco|quanto pretende|orcamento|valor do imovel/;
 const PADRAO_PAGAMENTO = /como pretende adquirir|forma de pagamento|pretende pagar|financiamento/;
 

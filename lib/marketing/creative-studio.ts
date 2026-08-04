@@ -85,7 +85,13 @@ export async function carregarEmpreendimento(organizationId: string, development
   };
 }
 
-const SISTEMA = `Você é estrategista de performance de uma incorporadora brasileira.
+/**
+ * Exportado para que o gerador com lastro (`gerador-de-criativos.ts`) use O
+ * MESMO sistema. Duplicar este texto criaria duas políticas de anúncio
+ * divergindo em silêncio — a classe "caminhos divergentes" que já mordeu este
+ * repositório.
+ */
+export const SISTEMA_CRIATIVO = `Você é estrategista de performance de uma incorporadora brasileira.
 Escreve em português do Brasil, direto e sem jargão de agência.
 
 REGRAS INEGOCIÁVEIS:
@@ -97,6 +103,13 @@ REGRAS INEGOCIÁVEIS:
 - Respeite as regras de anúncio imobiliário: nada de segmentação ou linguagem
   que exclua pessoas por origem, religião, estado civil, deficiência ou família.
 - Responda SOMENTE com JSON válido, sem cercas de código e sem comentários.`;
+
+/**
+ * O nome interno de sempre, preservado de propósito: outra frente edita este
+ * arquivo agora, e trocar o identificador que ela já usa quebraria o build dela.
+ * O alias custa uma linha; a renomeação custaria um conflito.
+ */
+const SISTEMA = SISTEMA_CRIATIVO;
 
 function fichaTecnica(b: BriefingEmpreendimento) {
   const linhas = [
@@ -227,7 +240,14 @@ export async function salvarCriativos(
   const linhas = copies.conceitos.flatMap((conceito, i) =>
     (copies.titulos[i] ? [copies.titulos[i]] : []).map((titulo) => ({
       organization_id: organizationId,
-      campaign_id: campaignId,
+      // NULO de propósito. `creative_assets.campaign_id` referencia
+      // `campaigns(id)` — tabela com 0 linhas — e NÃO `marketing_campaigns(id)`,
+      // que é de onde `campaignId` vem. Gravar o id da segunda aqui devolve
+      // SQLSTATE 23503 e derruba a gravação inteira: é por isso que
+      // `creative_assets` tinha ZERO linhas enquanto `marketing_campaigns` tinha
+      // 8. Medido por ensaio a seco na produção em 02/08/2026. O vínculo real
+      // vai para metadata, onde nenhuma FK o rejeita.
+      campaign_id: null,
       name: `${conceito.nome} · variação ${i + 1}`,
       format: "single_image",
       channel: "meta",
@@ -238,6 +258,7 @@ export async function salvarCriativos(
       status: "draft",
       created_by: createdBy,
       metadata: {
+        marketingCampaignId: campaignId,
         conceito: conceito.nome,
         angulo: conceito.angulo,
         publicoAlvo: conceito.publicoAlvo,

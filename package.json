@@ -176,7 +176,7 @@
     "prepare:test": "node scripts/prepare-real-test.mjs",
     "routes:real": "node --env-file=.env.local scripts/test-real-routes.mjs",
     "preflight:production": "node scripts/preflight-production.mjs",
-    "package:hostinger": "node scripts/package-hostinger.mjs && node scripts/verify-hostinger-package.mjs",
+    "package:hostinger": "npm run package:portao && node scripts/package-hostinger.mjs && node scripts/verify-hostinger-package.mjs",
     "package:evolution-checkpoint": "node scripts/package-evolution-checkpoint.mjs",
     "package:auth-rbac": "ATLAS_PACKAGE_NAME=atlas-v3-auth-rbac-final.zip node scripts/package-hostinger.mjs && ATLAS_PACKAGE_NAME=atlas-v3-auth-rbac-final.zip node scripts/verify-hostinger-package.mjs",
     "package:auth-login-fix": "ATLAS_PACKAGE_NAME=atlas-v3-auth-login-fix.zip node scripts/package-hostinger.mjs && ATLAS_PACKAGE_NAME=atlas-v3-auth-login-fix.zip node scripts/verify-hostinger-package.mjs",
@@ -303,6 +303,7 @@
     "ai:pricing:check": "node --env-file-if-exists=.env.local scripts/check-ai-pricing.mjs",
     "auth-provisioning:check": "node scripts/check-auth-provisioning-safety.mjs",
     "workers:schedule:check": "node scripts/check-workers-schedule.mjs",
+    "agendador-dispara:check": "node scripts/check-agendador-dispara.mjs",
     "workers:crontab": "node scripts/run-workers.mjs --crontab",
     "free-ai:check": "node scripts/check-free-ai-tier.mjs",
     "smoke:ciclo": "node scripts/smoke-ciclo-operacional.mjs",
@@ -344,7 +345,9 @@
     "linguagem-visual:check": "node scripts/check-linguagem-visual.mjs",
     "asercao-fraca:check": "node scripts/check-asercao-fraca.mjs",
     "caminho-descarte:check": "node scripts/check-caminho-do-descarte.mjs",
-    "cobertura-schema:check": "node --env-file-if-exists=.env.local scripts/check-cobertura-de-schema.mjs"
+    "cobertura-schema:check": "node --env-file-if-exists=.env.local scripts/check-cobertura-de-schema.mjs",
+    "package:portao": "node scripts/scan-secrets.mjs && node scripts/check-secret-governance.mjs && node --experimental-strip-types --test \"tests/contracts/*.test.mjs\"",
+    "regra-sem-chamador:check": "node scripts/check-regra-sem-chamador.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1089.0",
