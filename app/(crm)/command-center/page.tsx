@@ -534,12 +534,14 @@ type CommandCenterPreferences = {
 };
 
 
-// Profundidade 3D sutil: perspective própria no transform (autocontida) e tudo
-// condicionado a motion-safe — sob prefers-reduced-motion nada se move.
+// Profundidade 3D sutil: perspective própria no transform (autocontida) e
+// portão DUPLO — pointer:fine E motion-safe — o mesmo que .cc23-lift já exige
+// (globals.css) para o hover nunca "grudar" em toque. Faltava o primeiro
+// portão aqui; só motion-safe não basta em telas sensíveis ao toque.
 const depthShell =
-  "motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:[transform:perspective(1200px)_translateZ(12px)_rotateX(1deg)]";
+  "[@media(pointer:fine)]:motion-safe:transition-transform [@media(pointer:fine)]:motion-safe:duration-300 [@media(pointer:fine)]:motion-safe:ease-out [@media(pointer:fine)]:motion-safe:hover:[transform:perspective(1200px)_translateZ(12px)_rotateX(1deg)]";
 const depthShellSoft =
-  "motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:[transform:perspective(1200px)_translateZ(8px)]";
+  "[@media(pointer:fine)]:motion-safe:transition-transform [@media(pointer:fine)]:motion-safe:duration-300 [@media(pointer:fine)]:motion-safe:ease-out [@media(pointer:fine)]:motion-safe:hover:[transform:perspective(1200px)_translateZ(8px)]";
 const quickActionClass =
   "grid h-11 w-11 place-items-center rounded-xl border border-white/[.07] bg-white/[.02] text-sm text-slate-300 transition-colors hover:border-white/[.12] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 
@@ -962,8 +964,12 @@ function Sparkline({ points, label }: { points: number[]; label: string }) {
 // sensação de espessura (transform/tinta, nunca glow/blur). O arco anima até o
 // valor com rAF ~500ms; sob reduced-motion pinta direto. Redesenha só quando o
 // valor muda (dependência do useEffect).
-const RING_SIZE = 64;
-const RING_STROKE = 5;
+// 64px→36px: o único DepthRing que sobrou (o de módulos já virou par
+// textual, ver comentário perto de `moduleRing`) dominava visualmente a
+// faixa de Telemetria — a camada explicitamente mais silenciosa da tela,
+// com texto de 11px ao redor. O traço acompanha a proporção.
+const RING_SIZE = 36;
+const RING_STROKE = 3;
 
 function DepthRing({
   fraction,
@@ -1044,7 +1050,7 @@ function DepthRing({
       title={detail}
       className="relative inline-grid place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
     >
-      <canvas ref={canvasRef} aria-hidden="true" className="h-16 w-16" />
+      <canvas ref={canvasRef} aria-hidden="true" className="h-9 w-9" />
       <span
         aria-hidden="true"
         className="pointer-events-none absolute font-mono text-rotulo font-semibold tabular-nums text-slate-200"
@@ -4397,23 +4403,10 @@ export default function CommandCenterPage() {
         <>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <span
-            className={`inline-flex items-center gap-2 text-rotulo font-medium ${
-              liveConnected ? "text-slate-300" : "text-[var(--atlas-warning)]"
-            }`}
-          >
-            <span aria-hidden="true" className="relative inline-flex h-1.5 w-1.5">
-              {liveConnected ? (
-                <span className="absolute inline-flex h-full w-full rounded-full bg-[var(--atlas-success)] opacity-60 motion-safe:animate-ping" />
-              ) : null}
-              <span
-                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${
-                  liveConnected ? "bg-[var(--atlas-success)]" : "bg-[var(--atlas-warning)]"
-                }`}
-              />
-            </span>
-            {liveConnected ? "canal ao vivo" : "canal reconectando"}
-          </span>
+          {/* O par ponto+texto do status de conexão saiu daqui: a mesma
+              informação (liveConnected) já é o badge "TEMPO REAL" /
+              "ATUALIZAÇÃO SEGURA" no cabeçalho de "Agora", na mesma dobra —
+              dois vocabulários visuais para um fato só. */}
           <span className="font-mono text-rotulo tabular-nums text-slate-500">
             {latencyEntries.length ? latencyEntries.join(" · ") : "medindo latência…"}
           </span>
