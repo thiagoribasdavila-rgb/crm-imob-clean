@@ -37,6 +37,18 @@ export type EscopoDeDistribuicao = {
   projetoId?: string | null;
   /** Campanha de origem (Meta, portal, etc.). */
   campanhaId?: string | null;
+  /**
+   * A FONTE (formulário Meta, fonte de portal) por onde a lead entrou.
+   *
+   * Mora aqui, e não num parâmetro solto, de propósito: `escopo` já é o objeto
+   * que os três chamadores montam e passam. Um argumento a mais seria mais um
+   * `escopo` para ninguém passar — o defeito que esta entrega encontrou quatro
+   * vezes. Campo novo no objeto existente viaja de carona no que já é passado.
+   *
+   * Serve ao rodízio POR FONTE (`lib/distribution/rodizio-da-fonte.ts`), que
+   * substitui o dono único de `meta_lead_sources.default_owner_id`.
+   */
+  fonteId?: string | null;
 };
 
 export type MembroDoElenco = {

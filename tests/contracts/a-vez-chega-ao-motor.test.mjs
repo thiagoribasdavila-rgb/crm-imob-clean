@@ -51,6 +51,7 @@ function supabaseDeMentira(cenario) {
     profiles: cenario.perfis ?? [],
     whatsapp_broker_sessions: (cenario.conectados ?? []).map((profile_id) => ({ profile_id, status: "conectado" })),
     distribution_roster: cenario.elenco ?? [],
+    source_round_robin: cenario.rodizioDaFonte ?? [],
     lead_distribution_history: cenario.historico ?? [],
     leads: cenario.leadsDoEscopo ?? [],
   };
@@ -224,6 +225,102 @@ test("elenco existe e ninguém dele pode atender: sobe para o gerente", async ()
   );
   assert.equal(resultado.ownerId, "gerente", "a lead NÃO cai para quem foi deixado de fora");
   assert.equal(resultado.tier, "manager");
+});
+
+// ── O RODÍZIO DA FONTE ──────────────────────────────────────────────────────
+
+test("com rodízio na fonte, o dono único NÃO decide mais", async () => {
+  // Medido em 03/08/2026: oito fontes ativas apontavam para o mesmo
+  // `default_owner_id`, que sozinho segurava 485 das 613 leads. O degrau do
+  // dono único passa na frente de tudo — inclusive da fila de atendimento.
+  const resultado = await resolveLeadOwner(
+    supabaseDeMentira({
+      perfis: [GERENTE, perfil("ana"), perfil("bru")],
+      conectados: ["ana", "bru", "gerente"],
+      carga: { ana: 0, bru: 0 },
+      rodizioDaFonte: [
+        { profile_id: "ana", posicao: 1, active: true },
+        { profile_id: "bru", posicao: 2, active: true },
+      ],
+    }),
+    ORG,
+    "gerente",                       // dono único da fonte
+    { fonteId: "fonte-1" },
+  );
+  assert.equal(resultado.tier, "source_default");
+  assert.ok(["ana", "bru"].includes(resultado.ownerId), "quem recebe sai do rodízio, não do dono único");
+  assert.match(resultado.reason, /Rodízio da fonte/);
+});
+
+test("fonte SEM rodízio configurado não muda de comportamento", async () => {
+  // Tabela vazia para esta fonte: o dono único continua valendo, exatamente
+  // como antes. Ligar o rodízio não pode mexer em quem não o configurou.
+  const resultado = await resolveLeadOwner(
+    supabaseDeMentira({
+      perfis: [GERENTE, perfil("ana")],
+      conectados: ["ana", "gerente"],
+      carga: { ana: 0 },
+      rodizioDaFonte: [],
+    }),
+    ORG,
+    "ana",
+    { fonteId: "fonte-sem-rodizio" },
+  );
+  assert.equal(resultado.ownerId, "ana");
+  assert.match(resultado.reason, /Dono padrão da fonte/);
+});
+
+test("sem `fonteId` no escopo, o rodízio nem é consultado", async () => {
+  // O campo viaja dentro de `escopo` de propósito: um argumento solto seria
+  // mais um parâmetro para ninguém passar.
+  const resultado = await resolveLeadOwner(
+    supabaseDeMentira({
+      perfis: [GERENTE, perfil("ana"), perfil("bru")],
+      conectados: ["ana", "bru", "gerente"],
+      carga: { ana: 0, bru: 0 },
+      rodizioDaFonte: [{ profile_id: "bru", posicao: 1, active: true }],
+    }),
+    ORG,
+    "ana",
+    {},
+  );
+  assert.equal(resultado.ownerId, "ana", "sem fonte declarada, quem manda é o dono único");
+});
+
+test("membro do rodízio sem WhatsApp é pulado, e o motivo fica escrito", async () => {
+  const resultado = await resolveLeadOwner(
+    supabaseDeMentira({
+      perfis: [GERENTE, perfil("ana"), perfil("bru")],
+      conectados: ["bru", "gerente"],          // ana sem canal
+      carga: { ana: 0, bru: 0 },
+      rodizioDaFonte: [
+        { profile_id: "ana", posicao: 1, active: true },
+        { profile_id: "bru", posicao: 2, active: true },
+      ],
+    }),
+    ORG,
+    null,
+    { fonteId: "fonte-1" },
+  );
+  assert.equal(resultado.ownerId, "bru");
+  assert.match(resultado.reason, /Rodízio da fonte/);
+});
+
+test("rodízio inteiro indisponível cai para a cascata, não trava a lead", async () => {
+  const resultado = await resolveLeadOwner(
+    supabaseDeMentira({
+      perfis: [GERENTE, perfil("ana"), perfil("bru")],
+      conectados: ["bru", "gerente"],
+      carga: { ana: 0, bru: 0 },
+      rodizioDaFonte: [{ profile_id: "ana", posicao: 1, active: true }],
+    }),
+    ORG,
+    null,
+    { fonteId: "fonte-1" },
+  );
+  // `bru` está conectada e fora do rodízio: a cascata segue e a lead tem dono.
+  assert.equal(resultado.ownerId, "bru");
+  assert.equal(resultado.tier, "broker");
 });
 
 // ── OS CHAMADORES ───────────────────────────────────────────────────────────

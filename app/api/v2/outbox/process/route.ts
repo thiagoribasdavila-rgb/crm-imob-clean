@@ -810,7 +810,17 @@ export async function POST(request: Request) {
               admin,
               metaEvent.organization_id,
               sourceResult.data?.default_owner_id || null,
-              { projetoId: developmentIdDaPonte, campanhaId: campaignLink?.campaignId ?? null },
+              {
+                projetoId: developmentIdDaPonte,
+                campanhaId: campaignLink?.campaignId ?? null,
+                // A fonte entra para o rodízio poder existir. Medido em
+                // 03/08/2026: OITO fontes ativas apontavam para o mesmo dono
+                // padrão, que segura 485 das 613 leads — e o degrau do dono
+                // único passa na frente da fila de atendimento. Sem o `fonteId`
+                // aqui, `source_round_robin` continuaria sendo tabela sem
+                // leitor.
+                fonteId: metaEvent.source_id ?? null,
+              },
             );
 
           const leadPayload = {

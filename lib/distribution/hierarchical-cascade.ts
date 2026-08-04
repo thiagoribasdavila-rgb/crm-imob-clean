@@ -9,6 +9,7 @@ import {
   // mesmo defeito de novo.
 } from "./elenco-por-escopo.ts";
 import { montarFila } from "./fila-de-atendimento.ts";
+import { escolherDoRodizio, type CandidatoDoRodizio } from "./rodizio-da-fonte.ts";
 
 /**
  * O elenco com o que a FILA precisa a mais: a ordem escolhida pela liderança e
@@ -163,6 +164,34 @@ export async function resolveLeadOwner(
       .eq("status", "conectado");
     for (const linha of data ?? []) {
       if (typeof linha.profile_id === "string") conectados.add(linha.profile_id);
+    }
+  }
+
+  // ── 1a) O RODÍZIO DA FONTE, ANTES DO DONO ÚNICO ──────────────────────────
+  //
+  // `meta_lead_sources.default_owner_id` aceita UM dono, e o degrau 1 passa na
+  // frente de tudo — inclusive da fila de atendimento. Medido em 03/08/2026:
+  // OITO fontes ativas da Meta apontavam para o mesmo perfil, que sozinho
+  // segura 485 das 613 leads da base. Enquanto for assim, toda lead de anúncio
+  // tem um destino só e o rodízio por empreendimento nunca chega a ser
+  // consultado.
+  //
+  // `source_round_robin` e `escolherDoRodizio` existiam para resolver isso: a
+  // tabela criada, a regra escrita e testada, e NENHUM leitor — a quinta
+  // ocorrência da mesma classe, encontrada pelo portão que a caça.
+  //
+  // A vez é derivada de quem tem MENOS leads daquela fonte, nunca de um
+  // ponteiro guardado: ponteiro desatualiza quando alguém entra, sai ou é
+  // desativado, e duas leads simultâneas leem o mesmo valor antes de qualquer
+  // uma escrever.
+  if (escopo?.fonteId) {
+    const rodizio = await escolherPeloRodizioDaFonte(admin, organizationId, escopo.fonteId, active, conectados);
+    if (rodizio) {
+      return {
+        ownerId: rodizio.profileId,
+        tier: "source_default",
+        reason: `Rodízio da fonte: ${rodizio.porque}`,
+      };
     }
   }
 
@@ -388,6 +417,81 @@ async function carregarElenco(
     posicao: r.posicao === null || r.posicao === undefined ? null : Number(r.posicao),
     entrouEm: r.created_at ? String(r.created_at) : null,
   }));
+}
+
+/**
+ * O RODÍZIO DESTA FONTE.
+ *
+ * Devolve `null` quando a fonte não tem rodízio configurado — e aí o degrau do
+ * dono único assume, exatamente como antes. Fonte sem linha em
+ * `source_round_robin` não muda de comportamento por causa desta função.
+ *
+ * A contagem de "leads desta fonte" sai de `meta_lead_events`, que é quem
+ * guarda a ligação entre a lead e o formulário por onde ela entrou. Contar
+ * leads do corretor no geral daria a vez a quem tem carteira pequena mesmo que
+ * ele já tenha recebido todas as desta fonte — e o rodízio existe justamente
+ * para equilibrar DENTRO da fonte.
+ */
+async function escolherPeloRodizioDaFonte(
+  admin: SupabaseClient,
+  organizationId: string,
+  fonteId: string,
+  ativos: readonly ProfileRow[],
+  conectados: ReadonlySet<string>,
+): Promise<{ profileId: string; porque: string } | null> {
+  const { data: membros, error } = await admin
+    .from("source_round_robin")
+    .select("profile_id,posicao,active")
+    .eq("organization_id", organizationId)
+    .eq("source_id", fonteId)
+    .eq("active", true);
+  if (error || !membros?.length) return null;
+
+  // Uma consulta para a fonte inteira: perguntar por corretor faria N idas ao
+  // banco no caminho mais quente do produto.
+  const { data: eventos } = await admin
+    .from("meta_lead_events")
+    .select("lead_id")
+    .eq("organization_id", organizationId)
+    .eq("source_id", fonteId)
+    .not("lead_id", "is", null)
+    .limit(5000);
+  const leadIds = [...new Set((eventos ?? []).map((e) => String(e.lead_id)).filter(Boolean))];
+  const recebidasPor = new Map<string, number>();
+  if (leadIds.length) {
+    const { data: leads } = await admin
+      .from("leads")
+      .select("assigned_to")
+      .eq("organization_id", organizationId)
+      .in("id", leadIds.slice(0, 1000));
+    for (const lead of leads ?? []) {
+      const dono = String(lead.assigned_to || "");
+      if (dono) recebidasPor.set(dono, (recebidasPor.get(dono) ?? 0) + 1);
+    }
+  }
+
+  const porId = new Map(ativos.map((p) => [p.id, p]));
+  const candidatos: CandidatoDoRodizio[] = membros.map((m) => {
+    const profileId = String(m.profile_id);
+    const perfil = porId.get(profileId);
+    // Cada exclusão sai NOMEADA: o histórico precisa dizer por que a vez pulou
+    // alguém, senão o corretor conclui que o rodízio é fachada.
+    const motivo = !perfil ? "perfil inativo ou de outra organização"
+      : normalizedRole(perfil) !== "broker" ? "não é corretor"
+      : !conectados.has(profileId) ? "sem WhatsApp conectado"
+      : null;
+    return {
+      profileId,
+      posicao: Number(m.posicao ?? 0),
+      leadsRecebidas: recebidasPor.get(profileId) ?? 0,
+      indisponivel: motivo !== null,
+      motivoDaIndisponibilidade: motivo,
+    };
+  });
+
+  const escolha = escolherDoRodizio(candidatos);
+  if (!escolha.profileId) return null;
+  return { profileId: escolha.profileId, porque: escolha.porque };
 }
 
 /**

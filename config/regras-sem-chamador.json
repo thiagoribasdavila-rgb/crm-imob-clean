@@ -6,7 +6,6 @@
     "lib/atlas/prontidao-do-catalogo.ts",
     "lib/crm/traduz-status-de-planilha.ts",
     "lib/deploy/autorizacao-de-instalacao.ts",
-    "lib/distribution/rodizio-da-fonte.ts",
     "lib/whatsapp/pool-de-numeros.ts"
   ]
 }
