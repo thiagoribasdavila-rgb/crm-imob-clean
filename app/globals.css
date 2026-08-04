@@ -9098,6 +9098,149 @@ button.cc6-chip::after {
   outline-offset: 2px;
 }
 
+/* --- 6. Identidade da lead -------------------------------------------------
+   Nasceu de uma medição concreta em app/(crm)/leads/page.tsx — a linha da
+   tabela e o cartão mobile empilhavam até QUATRO selos coloridos por lead
+   (status, "META", responsável/"sem responsável", mais dois botões de copiar
+   telefone/e-mail) — e o card mobile usava emoji como ícone de ação (👁️ 📞
+   💬 ✦ 🗑️), o oposto do princípio 2 (número como voz) deste mesmo bloco: aqui
+   a cor decorava, não significava. Subseção do CC23, e não banner próprio —
+   um banner aqui cortaria a REGIÃO do CC23 no lugar errado (contrato em
+   tests/contracts/regiao-do-cc23.test.mjs).
+
+   Três peças, reaproveitando os tokens já declarados acima (nenhum hex novo):
+   identidade compacta (avatar + nome + linha secundária), sinal único de
+   texto (substitui as pílulas empilhadas) e botão de ícone Lucide (substitui
+   o emoji, que renderiza diferente por SO/navegador). */
+.cc23-lead-identity {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--cc23-unit) * 2.5);
+  min-width: 0;
+}
+.cc23-lead-identity-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+.cc23-lead-identity-text strong {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--atlas-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.cc23-lead-identity-text small {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--atlas-text-secondary);
+  font-size: 11px;
+}
+
+/* Sinal único de estado: texto, não pílula. `data-tone` decide a cor — o
+   padrão (sem atributo) fica em `--atlas-text-secondary`, neutro. Só as
+   duas tonalidades que pedem ação (falta responsável, atrasado) recebem cor,
+   e a MESMA regra de par fundo/cor do resto do CC23: nunca cor sozinha. */
+.cc23-lead-signal {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--cc23-unit) * 1.5);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--atlas-text-secondary);
+}
+.cc23-lead-signal[data-tone="warning"] {
+  color: var(--atlas-estado-atencao, var(--atlas-warning));
+}
+.cc23-lead-signal[data-tone="danger"] {
+  color: var(--atlas-estado-perigo, var(--atlas-danger));
+}
+/* Ponto separador entre dois sinais na mesma linha — não é bolinha decorativa,
+   é pontuação: substitui o "·" que ficaria preso a `white-space` incerto. */
+.cc23-lead-signal-sep {
+  color: var(--atlas-text-tertiary, var(--atlas-text-secondary));
+  opacity: 0.55;
+}
+
+/* Botão de ícone: mesma família de movimento do CC23 (só ponteiro fino, só
+   sem prefers-reduced-motion), mesmo anel de foco, 44px de alvo garantido
+   mesmo com o ícone visual menor. */
+.cc23-icon-btn {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-inline: 10px;
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius-md, 10px);
+  color: var(--atlas-text-secondary);
+  background: var(--atlas-surface);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.cc23-icon-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+/* A ação primária da linha (abrir a lead) recebe o acento — é a única cor
+   funcional aqui, o resto fica neutro para não competir com ela. */
+.cc23-icon-btn[data-emphasis="accent"] {
+  border-color: color-mix(in srgb, var(--atlas-accent) 32%, var(--atlas-border));
+  color: var(--atlas-accent);
+  background: color-mix(in srgb, var(--atlas-accent) 7%, var(--atlas-surface));
+}
+.cc23-icon-btn[data-emphasis="danger"] {
+  border-color: color-mix(in srgb, var(--atlas-estado-perigo, var(--atlas-danger)) 28%, var(--atlas-border));
+  color: var(--atlas-estado-perigo, var(--atlas-danger));
+}
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .cc23-icon-btn {
+    transition: border-color var(--atlas-transition, 180ms) ease,
+      background var(--atlas-transition, 180ms) ease,
+      color var(--atlas-transition, 180ms) ease;
+  }
+  .cc23-icon-btn:hover {
+    border-color: var(--atlas-border-strong);
+    background: var(--atlas-surface-subtle, var(--atlas-surface));
+  }
+  .cc23-icon-btn[data-emphasis="accent"]:hover {
+    background: color-mix(in srgb, var(--atlas-accent) 12%, var(--atlas-surface));
+  }
+}
+.cc23-icon-btn:focus-visible {
+  outline: 2px solid var(--atlas-focus-ring, var(--atlas-accent));
+  outline-offset: 2px;
+}
+.cc23-icon-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Score tabular: o número é o conteúdo, na mesma face mono do CC23. */
+.cc23-lead-score {
+  font-family: var(--cc23-font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atlas-text-primary);
+}
+.cc23-lead-score[data-tone="danger"] {
+  color: var(--atlas-estado-perigo, var(--atlas-danger));
+}
+.cc23-lead-score[data-tone="warning"] {
+  color: var(--atlas-estado-atencao, var(--atlas-warning));
+}
+
 /* ==========================================================================
    TEMA CLARO — opt-in por [data-theme="light"] no <html>
    ==========================================================================

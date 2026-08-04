@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+// Ícone real em vez de emoji: emoji renderiza diferente por SO/navegador (é
+// decoração instável, não um ícone) e competia em cor com os sinais que de
+// fato significam algo. lucide-react já era dependência do projeto — CC23-LEAD
+// só passou a usá-la (ver app/globals.css).
+import { Copy, Eye, MessageCircle, Phone, Sparkles, Trash2 } from "lucide-react";
 import {
   ROTULO_DO_VINCULO,
   VINCULOS,
@@ -225,6 +230,16 @@ function statusTone(value: string | null) {
   if (["visita", "proposta", "negociacao"].includes(normalized))
     return "violet";
   if (["contato", "qualificacao"].includes(normalized)) return "warning";
+  // ── "NOVO" NÃO É AVISO, É ROTINA ────────────────────────────────────────
+  // O fallback devolvia "info" — cor de aviso suave, mas cor — para QUALQUER
+  // status fora da lista, o que inclui "novo": a origem de toda lead recém-
+  // chegada, que não pede nenhuma decisão por si só. Como toda linha da lista
+  // tem status, e a maioria delas nasce "novo", 100% das linhas saíam com
+  // badge colorido — a cor deixava de separar o que exige olhar do que é
+  // rotina, porque tudo era colorido igual. `StatusBadge` já tem `tone`
+  // "neutral" (é o próprio default do componente); só faltava este chamador
+  // usá-lo. Achado pela varredura de ruído visual em 04/08/2026.
+  if (normalized === "novo" || !normalized) return "neutral";
   return "info";
 }
 
@@ -2460,14 +2475,22 @@ export default function LeadsPage() {
                             </td>
                           ) : null}
                           <td>
+                            {/* ── SEM AVATAR AQUI ────────────────────────────
+                                O avatar de duas letras nunca dizia nada que o
+                                nome, escrito 8px depois na mesma linha, já não
+                                dissesse — mais um retângulo colorido em cada
+                                uma das 100 linhas da página sem carregar
+                                informação nova. Continua existindo no cartão
+                                mobile, onde ajuda a escanear rápido; aqui, na
+                                tabela, com espaço horizontal já apertado (ela
+                                rola de lado), ele só empurrava o nome.
+                                Achado pela varredura de ruído visual em
+                                04/08/2026. */}
                             <Link
                               href={`/leads/${lead.id}`}
-                              className={`rounded-lg ${focusRing}`}
+                              className={`cc23-lead-identity rounded-lg ${focusRing}`}
                             >
-                              <span className="atlas-lead-avatar">
-                                {(lead.name || "L").slice(0, 2).toUpperCase()}
-                              </span>
-                              <span>
+                              <span className="cc23-lead-identity-text">
                                 <strong>{lead.name || "Lead sem nome"}</strong>
                                 <small>
                                   {lead.phone ||
@@ -2476,30 +2499,43 @@ export default function LeadsPage() {
                                 </small>
                               </span>
                             </Link>
-                            {/* Copiar contato em um clique — a outra função
-                                que só existia em "Clientes 360". Fica FORA do
+                            {/* Copiar contato em um clique. Fica FORA do
                                 Link: aninhar botão dentro de âncora é inválido
-                                e o clique abriria a ficha em vez de copiar. */}
+                                e o clique abriria a ficha em vez de copiar.
+                                Os dois botões de "copiar tel"/"copiar e-mail"
+                                viravam mais dois chips coloridos na mesma
+                                forma visual do chip de severidade — agora é
+                                um único botão de ícone neutro por contato. */}
                             {lead.phone || lead.email ? (
-                              <span className="mt-1 flex flex-wrap gap-1">
+                              <span className="mt-1 cc23-icon-row">
                                 {lead.phone ? (
                                   <button
                                     type="button"
                                     onClick={() => copiarContato(`${lead.id}:tel`, String(lead.phone))}
- className={`cc6-chip cc6-interativo-acento cursor-pointer text-micro ${focusRing}`}
+                                    className={`cc23-icon-btn ${focusRing}`}
                                     title="Copiar telefone"
                                   >
-                                    {copiado === `${lead.id}:tel` ? "copiado ✓" : "copiar tel"}
+                                    {copiado === `${lead.id}:tel` ? "copiado ✓" : (
+                                      <>
+                                        <Copy aria-hidden="true" />
+                                        tel
+                                      </>
+                                    )}
                                   </button>
                                 ) : null}
                                 {lead.email ? (
                                   <button
                                     type="button"
                                     onClick={() => copiarContato(`${lead.id}:mail`, String(lead.email))}
- className={`cc6-chip cc6-interativo-acento cursor-pointer text-micro ${focusRing}`}
+                                    className={`cc23-icon-btn ${focusRing}`}
                                     title="Copiar e-mail"
                                   >
-                                    {copiado === `${lead.id}:mail` ? "copiado ✓" : "copiar e-mail"}
+                                    {copiado === `${lead.id}:mail` ? "copiado ✓" : (
+                                      <>
+                                        <Copy aria-hidden="true" />
+                                        e-mail
+                                      </>
+                                    )}
                                   </button>
                                 ) : null}
                               </span>
@@ -2510,28 +2546,21 @@ export default function LeadsPage() {
                             <small>
                               {lead.source || "Origem não informada"}
                             </small>
+                            {/* Meta virou sinal de texto, não uma quinta
+                                pílula colorida na linha — a varredura contou
+                                até 6 tratamentos de "pill" diferentes
+                                competindo na mesma linha. */}
                             {lead.source === "Meta Lead Ads" ? (
-                              <span className="mt-1 flex flex-wrap gap-1">
-                                <StatusBadge
-                                  tone={
-                                    lead.metadata?.meta?.dataSharingConsent
-                                      ? "success"
-                                      : "info"
-                                  }
-                                >
-                                  <span
-                                    title={`${
-                                      lead.metadata?.meta?.dataSharingConsent
-                                        ? "Sinal de aprendizado ativo"
-                                        : "Sem sinal de aprendizado"
-                                    } · Campanha ${
-                                      lead.metadata?.meta?.campaignId ||
-                                      "não identificada"
-                                    }`}
-                                  >
-                                    META
-                                  </span>
-                                </StatusBadge>
+                              <span
+                                className="mt-1 cc23-lead-signal"
+                                data-tone={lead.metadata?.meta?.dataSharingConsent ? undefined : "warning"}
+                                title={`${
+                                  lead.metadata?.meta?.dataSharingConsent
+                                    ? "Sinal de aprendizado ativo"
+                                    : "Sem sinal de aprendizado"
+                                } · Campanha ${lead.metadata?.meta?.campaignId || "não identificada"}`}
+                              >
+                                Meta{lead.metadata?.meta?.dataSharingConsent ? "" : " · sem sinal"}
                               </span>
                             ) : null}
                           </td>
@@ -2542,7 +2571,7 @@ export default function LeadsPage() {
                           </td>
                           <td>
                             <span
-                              className="atlas-score-cell"
+                              className="cc23-lead-score"
                               data-tone={hot ? "danger" : scoreTone(lead.score)}
                               title={
                                 hot
@@ -2559,15 +2588,20 @@ export default function LeadsPage() {
                             </span>
                           </td>
                           <td>
+                            {/* Texto, não pílula — a mesma consolidação do
+                                cartão mobile. "Sem responsável" continua
+                                exigindo cor (é um vazio de verdade), só não
+                                é mais um badge cheio competindo com o de
+                                status na mesma linha. */}
                             {lead.assigned_to ? (
-                              <span className="atlas-broker-name">
+                              <span className="cc23-lead-signal">
                                 {profileMap.get(lead.assigned_to) ||
                                   "Responsável vinculado"}
                               </span>
                             ) : (
-                              <StatusBadge tone="warning">
+                              <span className="cc23-lead-signal" data-tone="warning">
                                 Sem responsável
-                              </StatusBadge>
+                              </span>
                             )}
                           </td>
                           <td>
@@ -2640,8 +2674,13 @@ export default function LeadsPage() {
                             />
                           </td>
                           <td>
+                            {/* Ícone real + rótulo curto e VISÍVEL, não só
+                                title/aria-label — a varredura achou emoji sem
+                                rótulo (exige hover ou memorização) e o mesmo
+                                ✦ significando três ações diferentes na
+                                mesma tela. Aqui cada ícone é usado uma vez só. */}
                             <div
-                              className="atlas-kanban-primary-actions pointer-events-none min-w-max opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 motion-safe:transition-opacity motion-safe:duration-150"
+                              className="cc23-icon-row pointer-events-none min-w-max opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 motion-safe:transition-opacity motion-safe:duration-150"
                               style={{ marginTop: 0 }}
                               role="group"
                               aria-label={`Ações rápidas para ${lead.name || "lead"}`}
@@ -2649,19 +2688,20 @@ export default function LeadsPage() {
                               <Link
                                 href={`/leads/${lead.id}`}
                                 title="Abrir Lead 360"
-                                className={`atlas-filtro-controle ${focusRing}`}
+                                data-emphasis="accent"
+                                className={`cc23-icon-btn ${focusRing}`}
                                 aria-label={`Abrir Lead 360 de ${lead.name || "lead"}`}
                               >
-                                👁️
+                                <Eye aria-hidden="true" />
                               </Link>
                               {contact ? (
                                 <a
                                   href={contact.call}
                                   title="Ligar"
-                                  className={`atlas-filtro-controle ${focusRing}`}
+                                  className={`cc23-icon-btn ${focusRing}`}
                                   aria-label={`Ligar para ${lead.name || "lead"}`}
                                 >
-                                  📞
+                                  <Phone aria-hidden="true" />
                                 </a>
                               ) : null}
                               {contact ? (
@@ -2670,19 +2710,20 @@ export default function LeadsPage() {
                                   target="_blank"
                                   rel="noreferrer"
                                   title="WhatsApp"
-                                  className={`atlas-filtro-controle ${focusRing}`}
+                                  className={`cc23-icon-btn ${focusRing}`}
                                   aria-label={`Abrir WhatsApp com ${lead.name || "lead"}`}
                                 >
-                                  💬
+                                  <MessageCircle aria-hidden="true" />
                                 </a>
                               ) : null}
                               <Link
                                 href={`/leads/${lead.id}/messages`}
-                                title="Abordagem com IA"
-                                className={`atlas-filtro-controle ${focusRing}`}
+                                title="Preparar abordagem com IA"
+                                className={`cc23-icon-btn ${focusRing}`}
                                 aria-label={`Preparar abordagem com IA para ${lead.name || "lead"}`}
                               >
-                                ✦
+                                <Sparkles aria-hidden="true" />
+                                IA
                               </Link>
                             </div>
                           </td>
@@ -2724,7 +2765,7 @@ export default function LeadsPage() {
                           <small>{projectName(lead)}</small>
                         </span>
                         <span
-                          className="atlas-score-cell"
+                          className="cc23-lead-score"
                           data-tone={hot ? "danger" : scoreTone(lead.score)}
                           title={
                             hot
@@ -2735,33 +2776,40 @@ export default function LeadsPage() {
                           {lead.score ?? 0}
                         </span>
                       </Link>
+                      {/* ── UM SINAL SÓ, NÃO TRÊS PÍLULAS ──────────────────
+                          Chegava a empilhar status + "META · APRENDENDO" +
+                          "Sem responsável" — três selos coloridos competindo
+                          por atenção na mesma linha, quando só o status é
+                          decisão de funil. Meta e responsável viram UMA frase
+                          de texto (CC23: cor só quando exige olhar). */}
                       <div className="atlas-mobile-lead-meta">
                         <StatusBadge tone={statusTone(lead.status)}>
                           {lead.status || "novo"}
                         </StatusBadge>
-                        {lead.source === "Meta Lead Ads" ? (
-                          <StatusBadge
-                            tone={
-                              lead.metadata?.meta?.dataSharingConsent
-                                ? "success"
-                                : "warning"
-                            }
-                          >
-                            {lead.metadata?.meta?.dataSharingConsent
-                              ? "META · APRENDENDO"
-                              : "META · SEM SINAL"}
-                          </StatusBadge>
-                        ) : null}
-                        {lead.assigned_to ? (
-                          <span>
-                            {profileMap.get(lead.assigned_to) ||
-                              "Responsável vinculado"}
-                          </span>
-                        ) : (
-                          <StatusBadge tone="warning">
-                            Sem responsável
-                          </StatusBadge>
-                        )}
+                        <span className="cc23-lead-signal">
+                          {lead.source === "Meta Lead Ads" ? (
+                            <span
+                              data-tone={lead.metadata?.meta?.dataSharingConsent ? undefined : "warning"}
+                              title={
+                                lead.metadata?.meta?.dataSharingConsent
+                                  ? "Sinal de aprendizado ativo"
+                                  : "Sem sinal de aprendizado enviado à Meta"
+                              }
+                            >
+                              Meta{lead.metadata?.meta?.dataSharingConsent ? "" : " · sem sinal"}
+                            </span>
+                          ) : null}
+                          {lead.source === "Meta Lead Ads" ? (
+                            <span className="cc23-lead-signal-sep" aria-hidden="true">·</span>
+                          ) : null}
+                          {lead.assigned_to ? (
+                            <span>
+                              {profileMap.get(lead.assigned_to) || "Responsável vinculado"}
+                            </span>
+                          ) : (
+                            <span data-tone="warning">Sem responsável</span>
+                          )}
+                        </span>
                       </div>
                       <div className="atlas-mobile-lead-footer">
                         {stallView ? (
@@ -2786,23 +2834,32 @@ export default function LeadsPage() {
                           {due.label}
                         </span>
                       </div>
+                      {/* Ícone Lucide + rótulo visível no lugar do emoji: o
+                          emoji renderiza diferente por SO/navegador (não é um
+                          ícone, é decoração instável) — achado pela varredura
+                          de ruído visual em 04/08/2026. */}
                       <div
-                        className="atlas-leads-action-buttons"
+                        className="cc23-icon-row"
                         role="group"
                         aria-label={`Ações rápidas para ${lead.name || "lead"}`}
                       >
                         <Link
                           href={`/leads/${lead.id}`}
+                          data-emphasis="accent"
+                          className="cc23-icon-btn"
                           aria-label={`Abrir Lead 360 de ${lead.name || "lead"}`}
                         >
-                          👁️ Lead 360
+                          <Eye aria-hidden="true" />
+                          Lead 360
                         </Link>
                         {contact ? (
                           <a
                             href={contact.call}
+                            className="cc23-icon-btn"
                             aria-label={`Ligar para ${lead.name || "lead"}`}
                           >
-                            📞 Ligar
+                            <Phone aria-hidden="true" />
+                            Ligar
                           </a>
                         ) : null}
                         {contact ? (
@@ -2810,16 +2867,20 @@ export default function LeadsPage() {
                             href={contact.whatsapp}
                             target="_blank"
                             rel="noreferrer"
+                            className="cc23-icon-btn"
                             aria-label={`Abrir WhatsApp com ${lead.name || "lead"}`}
                           >
-                            💬 WhatsApp
+                            <MessageCircle aria-hidden="true" />
+                            WhatsApp
                           </a>
                         ) : null}
                         <Link
                           href={`/leads/${lead.id}/messages`}
+                          className="cc23-icon-btn"
                           aria-label={`Preparar abordagem com IA para ${lead.name || "lead"}`}
                         >
-                          ✦ IA
+                          <Sparkles aria-hidden="true" />
+                          IA
                         </Link>
                         {/* Só para lead ABERTA: oferecer descarte a quem já
                             saiu do funil convida ao clique que não faz nada. */}
@@ -2835,9 +2896,12 @@ export default function LeadsPage() {
                                 notes: "",
                               })
                             }
+                            data-emphasis="danger"
+                            className="cc23-icon-btn"
                             aria-label={`Descartar ${lead.name || "lead"} com motivo classificado`}
                           >
-                            🗑️ Descartar
+                            <Trash2 aria-hidden="true" />
+                            Descartar
                           </button>
                         ) : null}
                       </div>
