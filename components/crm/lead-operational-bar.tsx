@@ -1,16 +1,17 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { caminhoDoGesto, type ProximaAcao } from "@/lib/crm/gesto-da-proxima-acao";
+import { normalizePhoneE164 } from "@/lib/atlas/data-contracts";
 
-// Mesma regra de leads/page.tsx, pipeline/page.tsx e command-center/page.tsx:
-// 10+ dígitos, DDI 55 implícito quando ausente. Sem link de WhatsApp aqui, a
-// ficha do cliente era a única tela do produto sem um clique para abrir o
-// WhatsApp — justo a que o corretor mais abre para atender.
+// `digits.startsWith("55")` (a regra que leads/pipeline/command-center ainda
+// usam) confunde DDI 55 com DDD 55 — Rio Grande do Sul: "55991234567" (DDD 55
+// + celular, 11 dígitos) cairia nesse `startsWith` e NÃO ganharia o DDI,
+// virando um link inválido. `normalizePhoneE164` decide só pelo COMPRIMENTO
+// (10/11 dígitos = DDD+número, sem DDI ainda), o mesmo critério que
+// lib/import/lead-import-pipeline.ts já usa para o mesmo problema.
 function linkDoWhatsapp(phone: string | null) {
-  const digits = String(phone || "").replace(/\D/g, "");
-  if (digits.length < 10) return null;
-  const international = digits.startsWith("55") ? digits : `55${digits}`;
-  return `https://wa.me/${international}`;
+  const e164 = normalizePhoneE164(phone);
+  return e164 ? `https://wa.me/${e164}` : null;
 }
 
 type LeadOperationalBarProps = {
