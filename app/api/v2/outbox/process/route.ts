@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { calculateLeadScore } from "@/lib/atlas/scoring";
+import { mapearQualificacao } from "@/lib/crm/lead-qualification-fields";
 import { chaveDaCampanhaDoGoogle, lerAtribuicaoDoGoogle, nomeDaCampanhaDoGoogle } from "@/lib/marketing/google-attribution";
 import { logger } from "@/lib/observability/logger";
 import { hashMetaValue, queueMetaConversion } from "@/lib/meta/conversions";
@@ -172,6 +173,17 @@ function respostasDeQualificacao(
       resposta: (f.values ?? []).map((v) => String(v).trim()).filter(Boolean).join(" | "),
     }))
     .filter((r) => r.resposta.length > 0);
+}
+
+// A intenção lida do formulário fala "morar"/"investir"
+// (lib/crm/lead-qualification-fields.ts); a coluna `leads.purpose` já tem seis
+// grafias medidas para os mesmos dois conceitos (morar, Moradia, moradia,
+// investir, Investimento, investimento — ficha-do-comprador.ts:22-25).
+// Gravar direto na forma canônica na ingestão não acrescenta uma sétima.
+function finalidadeCanonicaDoFormulario(intencao: "morar" | "investir" | null): string | null {
+  if (intencao === "morar") return "moradia";
+  if (intencao === "investir") return "investimento";
+  return null;
 }
 
 function metaField(fields: Array<{ name: string; values?: string[] }> | undefined, ...names: string[]) {
@@ -696,6 +708,12 @@ export async function POST(request: Request) {
           ]);
           const fields = leadData.field_data;
           const respostas = respostasDeQualificacao(fields);
+          // Mesmo mapeador puro que a Ficha do Comprador e a rota de detalhe da
+          // lead já usam (lib/crm/lead-qualification-fields.ts): intenção,
+          // faixa de investimento e forma de pagamento, quando o formulário
+          // perguntou. Score e temperatura abaixo passam a refletir o que a
+          // pessoa já disse no anúncio, em vez de só e-mail/telefone.
+          const camposDoFormulario = mapearQualificacao(respostas);
           const name = metaField(fields, "full_name", "name") || [metaField(fields, "first_name"), metaField(fields, "last_name")].filter(Boolean).join(" ") || "Lead Meta";
           const email = metaField(fields, "email");
           const phone = metaField(fields, "phone_number", "phone");
@@ -823,6 +841,36 @@ export async function POST(request: Request) {
               },
             );
 
+          // Finalidade declarada no PRÓPRIO formulário, na forma canônica que
+          // `leads.purpose` já entende noutros pontos do produto (ficha do
+          // comprador, tela conversacional). `null` quando o formulário não
+          // perguntou ou a resposta não casou com nenhum padrão — a régua de
+          // pontuação já distingue "não sei" de "zero", e aqui não é diferente.
+          const finalidadeDeclarada = finalidadeCanonicaDoFormulario(camposDoFormulario.intencao);
+          // ── SCORE ZERO FIXO ERA CEGUEIRA NA ENTRADA ─────────────────────
+          //
+          // A criação por API sempre pontuou; esta ingestão gravava 0 no
+          // literal. Medido em 2026-07-28: 190 das 195 leads de anúncio com
+          // score 0 — a fila do corretor ordena por score, então toda lead
+          // de campanha nascia empatada com todas as outras.
+          //
+          // Nada é inventado: a régua é determinística e só soma o que a
+          // lead TEM (e-mail, telefone, etapa, e agora finalidade — quando o
+          // PRÓPRIO formulário perguntou e a pessoa respondeu, não um chute).
+          //
+          // `temperature` gravava "frio" cravado mesmo quando esta MESMA
+          // chamada já calculava uma temperatura melhor — a régua existia e o
+          // literal ao lado a ignorava. `budgetMax` fica de fora: a faixa
+          // livre declarada ("R$ 400 a 600 mil") não é um número, e inventar
+          // um é a inferência que qualificacao-canonica.ts já se recusa a
+          // fazer para este mesmo dado.
+          const pontuacao = calculateLeadScore({
+            email,
+            phone,
+            source: "Meta Lead Ads",
+            status: "novo",
+            purpose: finalidadeDeclarada,
+          });
           const leadPayload = {
             organization_id: metaEvent.organization_id,
             name,
@@ -830,19 +878,9 @@ export async function POST(request: Request) {
             phone,
             source: "Meta Lead Ads",
             status: "novo",
-            temperature: "frio",
-            // ── SCORE ZERO FIXO ERA CEGUEIRA NA ENTRADA ───────────────────
-            //
-            // A criação por API sempre pontuou; esta ingestão gravava 0 no
-            // literal. Medido em 2026-07-28: 190 das 195 leads de anúncio com
-            // score 0 — a fila do corretor ordena por score, então toda lead
-            // de campanha nascia empatada com todas as outras.
-            //
-            // Nada é inventado: a régua é determinística e só soma o que a
-            // lead TEM (e-mail, telefone, etapa...). Uma lead de formulário
-            // com e-mail e telefone vale 25, não zero — e 25 com lastro
-            // ordena melhor do que zero por omissão.
-            score: calculateLeadScore({ email, phone, source: "Meta Lead Ads", status: "novo" }).score,
+            temperature: pontuacao.temperature,
+            score: pontuacao.score,
+            purpose: finalidadeDeclarada,
             assigned_to: ownership?.ownerId ?? null,
             // MESMO dono nas duas colunas. `assigned_to` é a canônica da fase V3;
             // `assigned_user_id` é a que a aplicação de fato consulta — fila do
