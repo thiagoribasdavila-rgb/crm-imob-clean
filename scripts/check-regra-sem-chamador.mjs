@@ -64,9 +64,36 @@ const achados = [];
 for (const modulo of comContrato) {
   if (!existsSync(modulo)) continue;
   const fonte = readFileSync(modulo, "utf8");
+  /**
+   * ── UMA REGRA TAMBÉM PODE SER UMA LISTA ──────────────────────────────────
+   *
+   * A primeira versão só reconhecia export de FUNÇÃO — `export const NOME = (`
+   * ou `= async`. Uma constante de dados (`export const AGENTES = [...] as
+   * const`) não casava, e o efeito foi o pior possível para um portão: falso
+   * positivo.
+   *
+   * Medido em 03/08/2026: `lib/ai/quem-espera-uma-pessoa.ts` estava na linha de
+   * base como "sem chamador" enquanto DUAS rotas de produção importavam
+   * `AGENTES_QUE_ESPERAM_PESSOA` — o recorte que impede o ensaio da sombra de
+   * expulsar as decisões reais da fila do gestor. O fio estava ligado; o portão
+   * é que não enxergava aquela forma de export.
+   *
+   * Acusar quem está certo é como um portão morre: ninguém lê a lista de novo.
+   *
+   * O conserto corta para os dois lados, e é por isso que ele é honesto:
+   *   · módulo cuja única ligação é uma constante SAI da lista (era falso);
+   *   · módulo que exporta SÓ constantes e ninguém lê passa a ENTRAR — antes
+   *     `exportados` ficava vazio e o `continue` o descartava sem olhar. Regra
+   *     inteira escrita como tabela de dados, com contrato e sem leitor, é
+   *     exatamente a classe que este portão persegue.
+   *
+   * `export type` e `export interface` continuam de fora: tipo não sobrevive ao
+   * build, e cobrar chamador de algo que não existe em tempo de execução seria
+   * ruído garantido.
+   */
   const exportados = [
     ...[...fonte.matchAll(/^export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)/gm)].map((m) => m[1]),
-    ...[...fonte.matchAll(/^export\s+const\s+([A-Za-z0-9_]+)\s*=\s*(?:\(|async)/gm)].map((m) => m[1]),
+    ...[...fonte.matchAll(/^export\s+(?:const|let)\s+([A-Za-z0-9_]+)\s*[:=]/gm)].map((m) => m[1]),
   ];
   if (!exportados.length) continue;
   const ligados = exportados.filter((nome) => {
