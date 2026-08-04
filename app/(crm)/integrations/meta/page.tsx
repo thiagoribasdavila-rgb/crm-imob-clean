@@ -41,7 +41,9 @@ type Source = {
   default_owner_id: string | null;
   conversion_sharing_enabled: boolean;
   consent_basis: string | null;
+  development_id: string | null;
 };
+type Project = { id: string; name: string; developer_name: string | null };
 type ConversionConfig = {
   dataset_id: string;
   mode: "test";
@@ -159,6 +161,7 @@ type DispatchPreflight = {
 };
 type Payload = {
   sources: Source[];
+  projects: Project[];
   summary: Record<string, number>;
   conversionConfig: ConversionConfig;
   conversionCandidates: Array<{
@@ -371,6 +374,9 @@ export default function MetaIntegration() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  /** Id da fonte com o vínculo de empreendimento em gravação — só ela mostra
+   *  o `<select>` ocupado; as outras linhas continuam clicáveis. */
+  const [linkingSourceId, setLinkingSourceId] = useState<string | null>(null);
   const [testErrors, setTestErrors] = useState<{
     webhook?: string;
     capi?: string;
@@ -521,6 +527,35 @@ export default function MetaIntegration() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  // A coluna `meta_lead_sources.development_id` existe desde 26/07 e nunca
+  // teve caminho de tela — só SQL direto. `developmentId: null` desvincula,
+  // de propósito: a migration que criou a coluna já dizia "o sistema NÃO
+  // adivinha por nome", e desfazer um vínculo errado precisa do mesmo
+  // caminho que o criou, não de um caso especial escondido.
+  async function linkDevelopment(sourceId: string, developmentId: string | null) {
+    setLinkingSourceId(sourceId);
+    setError("");
+    setNotice("");
+    try {
+      await request({
+        method: "POST",
+        body: JSON.stringify({ action: "link_development", sourceId, developmentId }),
+      });
+      setNotice(
+        developmentId
+          ? "Empreendimento vinculado. A próxima lead desta fonte já herda o vínculo."
+          : "Vínculo removido. Leads futuras desta fonte entram sem empreendimento até um novo vínculo.",
+      );
+      await load();
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Falha ao vincular empreendimento.",
+      );
+    } finally {
+      setLinkingSourceId(null);
     }
   }
 
@@ -1261,6 +1296,45 @@ export default function MetaIntegration() {
                   <StatusBadge tone={source.active ? "success" : "warning"}>
                     {source.active ? "Ativa" : "Pausada"}
                   </StatusBadge>
+                  {/* ── VÍNCULO COM EMPREENDIMENTO — 26/07 A 04/08 SÓ EM SQL ──
+                      `meta_lead_sources.development_id` existe desde a
+                      migration 20260726080000, cujo próprio comentário diz "o
+                      vínculo é decisão humana, feita na tela". Nenhuma tela
+                      jamais leu nem escreveu este campo — este `<select>` é o
+                      primeiro caminho de fato. Aponta para `crm_projects`
+                      (mesma FK da migration); a ponte para `developments`
+                      acontece na ingestão, não aqui. */}
+                  <div className="min-w-0 shrink-0 basis-48">
+                    <label
+                      htmlFor={`ficha-empreendimento-${source.id}`}
+                      className="block text-micro text-[var(--atlas-texto-fraco)]"
+                    >
+                      Empreendimento
+                    </label>
+                    {data.canManage ? (
+                      <select
+                        id={`ficha-empreendimento-${source.id}`}
+                        className="mt-0.5 min-h-9 w-full rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-subtle)] px-2 text-rotulo text-[var(--atlas-texto-forte)] outline-none focus:border-[color:var(--atlas-accent)]"
+                        value={source.development_id ?? ""}
+                        disabled={linkingSourceId === source.id}
+                        onChange={(event) =>
+                          void linkDevelopment(source.id, event.target.value || null)
+                        }
+                      >
+                        <option value="">— sem vínculo —</option>
+                        {data.projects.map((project) => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="mt-0.5 text-rotulo text-[var(--atlas-texto-medio)]">
+                        {data.projects.find((project) => project.id === source.development_id)?.name ??
+                          "— sem vínculo —"}
+                      </p>
+                    )}
+                  </div>
                 </article>
               ))
             )}

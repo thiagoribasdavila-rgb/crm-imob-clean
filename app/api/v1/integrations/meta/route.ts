@@ -18,8 +18,13 @@ export async function GET(request: NextRequest) {
   if (!limited.ok) return limited.response;
   const access = await requireAccessContext(request);
   if (!access.ok) return access.response;
-  const [{ data: sources, error }, { data: events }, { data: conversionConfig }, { data: conversionEvents }, { data: learningEvents }, { data: metaLeads }, { data: dailyReports }, { data: matchingRows }, { data: attributionTouches }] = await Promise.all([
-    access.supabase.from("meta_lead_sources").select("id,page_id,form_id,name,active,default_owner_id,conversion_sharing_enabled,consent_basis,created_at,updated_at").order("created_at", { ascending: false }),
+  const [{ data: sources, error }, { data: events }, { data: conversionConfig }, { data: conversionEvents }, { data: learningEvents }, { data: metaLeads }, { data: dailyReports }, { data: matchingRows }, { data: attributionTouches }, { data: projects }] = await Promise.all([
+    // `development_id` aqui, e não noutra rota: "o vínculo é decisão humana,
+    // feita na tela" (comentário da própria migration que criou a coluna,
+    // 20260726080000) — só que nenhuma tela jamais leu nem escreveu este
+    // campo. Aponta para crm_projects, não developments — mesma FK que a
+    // migration declarou (a ponte para developments acontece na ingestão).
+    access.supabase.from("meta_lead_sources").select("id,page_id,form_id,name,active,default_owner_id,conversion_sharing_enabled,consent_basis,development_id,created_at,updated_at").order("created_at", { ascending: false }),
     access.supabase.from("meta_lead_events").select("id,status,received_at,processed_at,last_error").order("received_at", { ascending: false }).limit(100),
     access.supabase.from("meta_conversion_configs").select("dataset_id,mode,enabled,test_event_code,consent_required").maybeSingle(),
     access.supabase.from("meta_conversion_events").select("lead_id,status,event_name,delivered_at,created_at").order("created_at", { ascending: false }).limit(1000),
@@ -28,6 +33,7 @@ export async function GET(request: NextRequest) {
     access.supabase.from("meta_daily_reports").select("id,report_date,status,payload,created_at,updated_at").in("status", ["ready", "reviewed"]).order("report_date", { ascending: false }).limit(7),
     access.supabase.from("leads").select("id,email,phone,metadata").eq("source", "Meta Lead Ads").order("created_at", { ascending: false }).limit(2000),
     access.supabase.from("lead_attribution_touches").select("lead_id").eq("organization_id", access.access.organization.id).order("occurred_at", { ascending: false }).limit(5000),
+    access.supabase.from("crm_projects").select("id,name,developer_name").eq("organization_id", access.access.organization.id).order("name", { ascending: true }),
   ]);
   if (error) return NextResponse.json({ error: "Aplique a migração Meta Lead Ads para configurar fontes." }, { status: 503 });
   const summary = (events ?? []).reduce((total, event) => ({ ...total, [event.status]: (total[event.status] || 0) + 1 }), {} as Record<string, number>);
@@ -83,14 +89,14 @@ export async function GET(request: NextRequest) {
     const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as Record<string, unknown> : {};
     return meta.dataSharingConsent === true && Boolean(lead.email || lead.phone);
   }).slice(0, 20).map((lead) => ({ id: lead.id, name: lead.name || "Lead Meta", hasEmail: Boolean(lead.email), hasPhone: Boolean(lead.phone) }));
-  return NextResponse.json({ scope: { viewerRole: access.access.profile.commercialRole || access.access.profile.role, hierarchicalRls: true, directorDecisionOnly: true }, sources: sources ?? [], summary, conversionConfig, conversionCandidates, conversionSummary, conversionFunnel, internalFunnel, funnelInsights, audienceRecommendations, campaignIntelligence, dailyReports: dailyReports ?? [], andromedaReadiness: { score: andromedaAssessment.score, readiness: andromedaAssessment.readiness, eligibleLeads: matchEligible.length, deliveryRate: andromedaAssessment.metrics.deliveryRate, dualIdentifierRate: andromedaAssessment.metrics.identityQuality, feedbackCoverage: andromedaAssessment.metrics.feedbackCoverage, attributionCoverage: andromedaAssessment.metrics.attributionCoverage, duplicateRate: andromedaAssessment.metrics.duplicateRate, freshnessScore: andromedaAssessment.metrics.freshnessScore, freshnessHours, gates: andromedaAssessment.gates, blockers: andromedaAssessment.blockers, recommendations: andromedaAssessment.recommendations, governance: andromedaAssessment.governance, privacy: "identificadores normalizados e protegidos; sinais agregados no painel" }, readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), adsInsights: Boolean(process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role), canDecide }, { headers: limited.headers });
+  return NextResponse.json({ scope: { viewerRole: access.access.profile.commercialRole || access.access.profile.role, hierarchicalRls: true, directorDecisionOnly: true }, sources: sources ?? [], projects: projects ?? [], summary, conversionConfig, conversionCandidates, conversionSummary, conversionFunnel, internalFunnel, funnelInsights, audienceRecommendations, campaignIntelligence, dailyReports: dailyReports ?? [], andromedaReadiness: { score: andromedaAssessment.score, readiness: andromedaAssessment.readiness, eligibleLeads: matchEligible.length, deliveryRate: andromedaAssessment.metrics.deliveryRate, dualIdentifierRate: andromedaAssessment.metrics.identityQuality, feedbackCoverage: andromedaAssessment.metrics.feedbackCoverage, attributionCoverage: andromedaAssessment.metrics.attributionCoverage, duplicateRate: andromedaAssessment.metrics.duplicateRate, freshnessScore: andromedaAssessment.metrics.freshnessScore, freshnessHours, gates: andromedaAssessment.gates, blockers: andromedaAssessment.blockers, recommendations: andromedaAssessment.recommendations, governance: andromedaAssessment.governance, privacy: "identificadores normalizados e protegidos; sinais agregados no painel" }, readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), adsInsights: Boolean(process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role), canDecide }, { headers: limited.headers });
 }
 
 export async function POST(request: NextRequest) {
   const access = await requireAccessContext(request);
   if (!access.ok) return access.response;
   if (!canManage(access.access.profile.commercialRole, access.access.profile.role)) return NextResponse.json({ error: "Permissão insuficiente para configurar a Meta." }, { status: 403 });
-  const body = await request.json() as { action?: string; pageId?: string; formId?: string; name?: string; defaultOwnerId?: string; conversionSharingEnabled?: boolean; consentBasis?: string; datasetId?: string; testEventCode?: string };
+  const body = await request.json() as { action?: string; pageId?: string; formId?: string; name?: string; defaultOwnerId?: string; conversionSharingEnabled?: boolean; consentBasis?: string; datasetId?: string; testEventCode?: string; sourceId?: string; developmentId?: string | null };
   if ((body.action === "conversion_config" || body.action === "conversion_go_live" || body.action === "review_daily_report") && !isDirector(access.access.profile.commercialRole, access.access.profile.role)) return NextResponse.json({ error: "Somente o diretor pode decidir sobre otimização de campanhas." }, { status: 403 });
   if (body.action === "review_daily_report") {
     const reportId = String((body as { reportId?: string }).reportId || "");
@@ -207,6 +213,49 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: "Não foi possível ativar o modo de teste." }, { status: 400 });
     return NextResponse.json({ conversionConfig: data });
   }
+
+  /**
+   * VINCULAR FONTE A EMPREENDIMENTO — "decisão humana, feita na tela", como a
+   * própria migration que criou `meta_lead_sources.development_id` já dizia
+   * (20260726080000_projetos_e_origem_por_empreendimento.sql). A coluna
+   * existia desde 26/07; nenhuma rota lia nem escrevia nela, e o único
+   * caminho era SQL direto.
+   *
+   * Aponta para `crm_projects`, não `developments` — a mesma FK que a
+   * migration declarou. A ponte para `developments` acontece depois, na
+   * ingestão (outbox/process/route.ts), e não muda aqui.
+   *
+   * `developmentId: null` desvincula — de propósito, não um caso especial: a
+   * mesma migration documenta "Nulo = não declarado; o sistema NÃO adivinha
+   * por nome", e desfazer um vínculo errado precisa do mesmo caminho que o
+   * criou.
+   */
+  if (body.action === "link_development") {
+    const sourceId = String(body.sourceId || "").trim();
+    if (!/^[0-9a-f-]{36}$/i.test(sourceId)) return NextResponse.json({ error: "Fonte inválida." }, { status: 400 });
+    const admin = getSupabaseAdmin();
+    let developmentId: string | null = null;
+    if (body.developmentId) {
+      if (!/^[0-9a-f-]{36}$/i.test(body.developmentId)) return NextResponse.json({ error: "Empreendimento inválido." }, { status: 400 });
+      // Confere que o projeto é da MESMA organização antes de gravar — sem
+      // isto, um id de outra organização gravaria sem erro nenhum e a lead
+      // herdaria vínculo cruzado no primeiro lead que chegasse.
+      const { data: project } = await admin.from("crm_projects").select("id").eq("id", body.developmentId).eq("organization_id", access.access.organization.id).maybeSingle();
+      if (!project) return NextResponse.json({ error: "Empreendimento fora da organização." }, { status: 400 });
+      developmentId = project.id;
+    }
+    const { data, error } = await admin
+      .from("meta_lead_sources")
+      .update({ development_id: developmentId, updated_at: new Date().toISOString() })
+      .eq("id", sourceId)
+      .eq("organization_id", access.access.organization.id)
+      .select("id,page_id,form_id,name,active,default_owner_id,conversion_sharing_enabled,consent_basis,development_id")
+      .maybeSingle();
+    if (error) return NextResponse.json({ error: "Não foi possível vincular o empreendimento." }, { status: 400 });
+    if (!data) return NextResponse.json({ error: "Fonte não encontrada nesta organização." }, { status: 404 });
+    return NextResponse.json({ source: data });
+  }
+
   const pageId = String(body.pageId || "").trim();
   const formId = String(body.formId || "").trim() || null;
   const name = String(body.name || "").trim().slice(0, 120);
