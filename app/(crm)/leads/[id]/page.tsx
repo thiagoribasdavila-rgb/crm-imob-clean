@@ -1041,13 +1041,17 @@ export default function LeadDetailPage() {
                 </Link>
               </p>
             </div>
+            {/* Número-herói na primitiva do CC23 (já existe em globals.css,
+                usada no command-center) em vez de cc6-metric-value com
+                tamanho cravado inline: mesma face tabular do resto do
+                produto, sem inventar escala nova para este único número. */}
             <div className="shrink-0 text-right">
               <p className="cc6-eyebrow">Score</p>
               <p className="mt-1">
-                <span className="cc6-metric-value text-[40px] leading-none">
+                <span className="cc23-display">
                   {lead.score ?? 0}
+                  <span className="cc23-unit-label">/100</span>
                 </span>
-                <span className="cc6-num ml-1 text-sm text-[var(--atlas-texto-fraco)]">/100</span>
               </p>
               <p className="cc6-metric-label mt-2">
                 prontidão{" "}
@@ -1094,71 +1098,70 @@ export default function LeadDetailPage() {
               <span aria-hidden="true">{moreActionsOpen ? "−" : "+"}</span>
             </button>
           </div>
+          {/* ── TRÊS GRUPOS, NÃO DEZ BOTÕES DO MESMO PESO ──────────────────
+              Os dez cabiam soltos, em ordem alfabética de fato — a mesma
+              largura visual para "Criar oportunidade" (avança a venda) e
+              "Memória segura" (administrativo, raro). Achado pela varredura
+              de ruído visual em 04/08/2026: "ao abrir Mais ações, o corretor
+              recebe uma parede de 10 pílulas idênticas... no meio de uma
+              ligação". Agrupar por FASE não muda nenhum destino nem handler —
+              só a ordem de leitura. */}
           {moreActionsOpen ? (
-            <div
-              id="atlas-lead-more-actions"
-              className="mt-3 flex flex-wrap gap-2"
-            >
-              <Link
-                href={`/leads/${lead.id}/simulation`}
-                className="cc6-ghost-btn"
-              >
-                Simular condições
-              </Link>
-              <Link
-                href={`/leads/${lead.id}/visit-assistant`}
-                className="cc6-ghost-btn"
-              >
-                Visita e proposta
-              </Link>
-              <button
-                type="button"
-                onClick={() => void qualifyLead()}
-                disabled={qualifying}
-                className="cc6-ghost-btn disabled:opacity-50"
-              >
-                {qualifying ? "Recalibrando..." : "Recalibrar com IA"}
-              </button>
-              <Link
-                href={`/leads/${lead.id}/prediction`}
-                className="cc6-ghost-btn"
-              >
-                Previsão explicada
-              </Link>
-              <Link href={`/leads/${lead.id}/memory`} className="cc6-ghost-btn">
-                Memória segura
-              </Link>
-              <Link
-                href={`/leads/${lead.id}/behavior`}
-                className="cc6-ghost-btn"
-              >
-                Jornada inteligente
-              </Link>
-              <Link
-                href={`/leads/${lead.id}/attribution`}
-                className="cc6-ghost-btn"
-              >
-                Origem e atribuição
-              </Link>
-              <Link
-                href={`/leads/${lead.id}/contact-preferences`}
-                className="cc6-ghost-btn"
-              >
-                Consentimento
-              </Link>
-              <Link
-                href={`/leads/${lead.id}/objections`}
-                className="cc6-ghost-btn"
-              >
-                Objeções de venda
-              </Link>
-              <button
-                type="button"
-                onClick={() => void createOpportunity()}
-                className="cc6-ghost-btn"
-              >
-                Criar oportunidade
-              </button>
+            <div id="atlas-lead-more-actions" className="mt-3 space-y-3">
+              <div>
+                <p className="cc6-eyebrow text-micro mb-1.5">Avançar a venda</p>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={`/leads/${lead.id}/simulation`} className="cc6-ghost-btn">
+                    Simular condições
+                  </Link>
+                  <Link href={`/leads/${lead.id}/visit-assistant`} className="cc6-ghost-btn">
+                    Visita e proposta
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => void createOpportunity()}
+                    className="cc6-ghost-btn"
+                  >
+                    Criar oportunidade
+                  </button>
+                </div>
+              </div>
+              <div>
+                <p className="cc6-eyebrow text-micro mb-1.5">Entender a lead</p>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={`/leads/${lead.id}/prediction`} className="cc6-ghost-btn">
+                    Previsão explicada
+                  </Link>
+                  <Link href={`/leads/${lead.id}/behavior`} className="cc6-ghost-btn">
+                    Jornada inteligente
+                  </Link>
+                  <Link href={`/leads/${lead.id}/attribution`} className="cc6-ghost-btn">
+                    Origem e atribuição
+                  </Link>
+                  <Link href={`/leads/${lead.id}/objections`} className="cc6-ghost-btn">
+                    Objeções de venda
+                  </Link>
+                </div>
+              </div>
+              <div>
+                <p className="cc6-eyebrow text-micro mb-1.5">Governança</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void qualifyLead()}
+                    disabled={qualifying}
+                    className="cc6-ghost-btn disabled:opacity-50"
+                  >
+                    {qualifying ? "Recalibrando..." : "Recalibrar com IA"}
+                  </button>
+                  <Link href={`/leads/${lead.id}/memory`} className="cc6-ghost-btn">
+                    Memória segura
+                  </Link>
+                  <Link href={`/leads/${lead.id}/contact-preferences`} className="cc6-ghost-btn">
+                    Consentimento
+                  </Link>
+                </div>
+              </div>
             </div>
           ) : null}
 
