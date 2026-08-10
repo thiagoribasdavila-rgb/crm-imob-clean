@@ -1,7 +1,7 @@
 // Import RELATIVO com extensão .ts, mesma razão de `lib/atlas/scoring.ts`:
 // `temperatura-do-lead.ts` é módulo puro e este scorer precisa continuar
 // carregável por `node --test`, que não conhece os `paths` do tsconfig.
-import { HOT_SCORE_THRESHOLD } from "../atlas/temperatura-do-lead.ts";
+import { HOT_SCORE_THRESHOLD, WARM_SCORE_THRESHOLD } from "../atlas/temperatura-do-lead.ts";
 
 type QualificationLead = {
   email?: string | null;
@@ -82,7 +82,11 @@ export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, p
   if (lead.bedrooms) profile += 4; else missingData.push("Tipologia desejada");
   if (lead.purpose) profile += 4; else missingData.push("Objetivo da compra");
   if (answers.financing) { profile += 3; strengths.push("Forma de pagamento conhecida"); } else missingData.push("Forma de pagamento");
-  dimensions.push({ key: "profile", label: "Perfil e capacidade", score: profile, maximum: 35, reasons: strengths.slice() });
+  // maximum é o teto REAL da soma (7+4+10+6+4+4+3=38), não um 35 aspiracional:
+  // a dimensão reportava score acima do próprio maximum para leads completas.
+  // Não clampamos a soma a 35 de propósito — clampar tiraria 3 pontos das leads
+  // mais qualificadas, e o score só pode subir (aditividade). Corrige-se o rótulo.
+  dimensions.push({ key: "profile", label: "Perfil e capacidade", score: profile, maximum: 38, reasons: strengths.slice() });
 
   const interactionDays = daysSince(lead.last_interaction_at, now);
   let engagement = 0;
@@ -91,7 +95,17 @@ export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, p
   if (interactionDays !== null && interactionDays <= 2) { engagement += 10; engagementReasons.push("Interação muito recente"); }
   else if (interactionDays !== null && interactionDays <= 7) { engagement += 6; engagementReasons.push("Interação na última semana"); }
   else if (interactionDays !== null && interactionDays > 14) risks.push(`Sem interação recente há ${interactionDays} dias`);
-  if (lead.next_action_at) { engagement += 5; engagementReasons.push("Próxima ação agendada"); }
+  // ── AGENDAR E ATRASAR NÃO PODE FICAR ABAIXO DE NUNCA AGENDAR ─────────────
+  //
+  // Uma próxima ação agendada credita engajamento — mas SÓ enquanto está no
+  // futuro. Antes, a ação vencida recebia o +5 aqui e um -6 lá no fim; o saldo
+  // (-1) deixava a lead com follow-up atrasado ABAIXO da que nunca agendou nada
+  // (0). Era uma inversão perversa: punia o corretor por ter agendado. Agora o
+  // prazo vencido apenas NÃO credita (empata com "sem ação") e vira risco — a
+  // urgência real fica no nextBestAction, não num score que afunda pelo agendar.
+  const acaoVencida = lead.next_action_at != null && new Date(lead.next_action_at).getTime() < now;
+  if (lead.next_action_at && !acaoVencida) { engagement += 5; engagementReasons.push("Próxima ação agendada"); }
+  else if (acaoVencida) risks.push("Próxima ação atrasada");
   else risks.push("Sem próxima ação agendada");
   dimensions.push({ key: "engagement", label: "Engajamento e cadência", score: Math.min(25, engagement), maximum: 25, reasons: engagementReasons });
 
@@ -148,16 +162,20 @@ export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, p
   let score = dimensions.reduce((sum, dimension) => sum + dimension.score, 0) + historicalAdjustment;
   const createdDays = daysSince(lead.created_at, now);
   if (createdDays !== null && createdDays > 30 && activityCount === 0) { score -= 12; risks.push("Lead antigo sem interação registrada"); }
-  if (lead.next_action_at && new Date(lead.next_action_at).getTime() < now) { score -= 6; risks.push("Próxima ação atrasada"); }
+  // A ação vencida já deixou de creditar engajamento e virou risco lá em cima;
+  // não há mais penalidade separada aqui — era ela que afundava o score abaixo
+  // de "sem ação". O risco "Próxima ação atrasada" continua guiando o nextBestAction.
   if (["perdido", "lost"].includes(normalizedStatus)) score = Math.min(score, 20);
   score = Math.max(0, Math.min(100, Math.round(score)));
 
   const confidence = Math.max(20, Math.min(100, Math.round(100 - missingData.length * 9 + Math.min(activityCount, 5) * 3)));
-  // Mesma fronteira de "quente" do scorer de cadastro e do leitor de qualidade
-  // de campanha — uma constante só (`lib/atlas/temperatura-do-lead.ts`). Era um
-  // `70` literal aqui também: quatro cópias do mesmo número, e o cartão do
-  // diretor anunciando as duas metades como se fossem testes independentes.
-  const temperature = score >= HOT_SCORE_THRESHOLD ? "quente" : score >= 40 ? "morno" : "frio";
+  // AS DUAS fronteiras vêm da mesma constante (`lib/atlas/temperatura-do-lead.ts`),
+  // não de literais locais. "Quente" já importava HOT_SCORE_THRESHOLD, mas "morno"
+  // ainda cravava um `40` — enquanto scoring.ts e outros três módulos derivam
+  // "morno" de WARM_SCORE_THRESHOLD (35). Era a mesma fronteira com dois nomes: uma
+  // lead de score 37 saía "morno" no scorer de cadastro e "frio" aqui, sem erro na
+  // tela. Alinhar ao 35 canônico só AQUECE leads em [35,40) — nenhuma esfria.
+  const temperature = score >= HOT_SCORE_THRESHOLD ? "quente" : score >= WARM_SCORE_THRESHOLD ? "morno" : "frio";
   const nextBestAction = risks.includes("Próxima ação atrasada")
     ? "Executar o follow-up atrasado hoje e registrar o resultado."
     : !lead.phone && !lead.email
