@@ -10,13 +10,45 @@ export interface LeadScoreResult {
   reasons: string[];
 }
 
-export function calculateLeadScore(lead: Partial<AtlasLead>): LeadScoreResult {
+/**
+ * Entrada do score. Além do lead canônico, aceita dois sinais CATEGÓRICOS de
+ * comprador que o formulário do anúncio captura e o produto exibia sem pontuar:
+ *
+ * - paymentMethod: forma de pagamento declarada. "a_vista" é o sinal mais forte
+ *   de comprador (dinheiro na mão, pronto para fechar); qualquer forma declarada
+ *   já indica alguém que pensou em COMO vai comprar.
+ * - declaredBudgetRange: a faixa como o cliente a escolheu ("R$ 400 a 600 mil").
+ *   NÃO vira número — converter inventaria precisão que a resposta não tem, a
+ *   mesma recusa de qualificacao-canonica.ts. Pontuamos a PRESENÇA do sinal, e
+ *   ela vale menos que um orçamento numérico exato (10 contra 20).
+ *
+ * Ambos são estritamente ADITIVOS: um lead sem esses campos pontua exatamente
+ * como antes desta mudança.
+ */
+type LeadScoreInput = Partial<AtlasLead> & {
+  paymentMethod?: string | null;
+  declaredBudgetRange?: string | null;
+};
+
+export function calculateLeadScore(lead: LeadScoreInput): LeadScoreResult {
   let score = 0;
   const reasons: string[] = [];
 
   if (lead.email) { score += 10; reasons.push("E-mail informado"); }
   if (lead.phone) { score += 15; reasons.push("Telefone informado"); }
-  if (lead.budgetMax && lead.budgetMax > 0) { score += 20; reasons.push("Orçamento definido"); }
+  // Orçamento: o número exato vale mais que a faixa declarada, mas nunca os dois
+  // ao mesmo tempo — senão o mesmo sinal contaria em dobro.
+  if (lead.budgetMax && lead.budgetMax > 0) {
+    score += 20; reasons.push("Orçamento definido");
+  } else if (lead.declaredBudgetRange && lead.declaredBudgetRange.trim()) {
+    score += 10; reasons.push("Faixa de investimento declarada");
+  }
+  // Forma de pagamento: à vista é o comprador mais quente; as demais formas
+  // (financiamento, FGTS, consórcio) ainda são intenção real de compra.
+  if (lead.paymentMethod) {
+    if (lead.paymentMethod === "a_vista") { score += 15; reasons.push("Compra à vista"); }
+    else { score += 8; reasons.push("Forma de pagamento declarada"); }
+  }
   if (lead.preferredRegions?.length) { score += 10; reasons.push("Região de interesse definida"); }
   if (lead.bedrooms) { score += 5; reasons.push("Tipologia definida"); }
   if (lead.purpose) { score += 10; reasons.push("Objetivo de compra definido"); }

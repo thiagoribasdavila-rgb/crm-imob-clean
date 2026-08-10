@@ -860,16 +860,20 @@ export async function POST(request: Request) {
           //
           // `temperature` gravava "frio" cravado mesmo quando esta MESMA
           // chamada já calculava uma temperatura melhor — a régua existia e o
-          // literal ao lado a ignorava. `budgetMax` fica de fora: a faixa
-          // livre declarada ("R$ 400 a 600 mil") não é um número, e inventar
-          // um é a inferência que qualificacao-canonica.ts já se recusa a
-          // fazer para este mesmo dado.
+          // literal ao lado a ignorava. `budgetMax` (número) continua de fora:
+          // a faixa livre ("R$ 400 a 600 mil") não é um número, e inventar um é
+          // a inferência que qualificacao-canonica.ts se recusa a fazer. Mas os
+          // sinais CATEGÓRICOS que o formulário captura — a presença da faixa e
+          // a forma de pagamento (à vista é o comprador mais forte) — eram
+          // exibidos e ignorados no score; agora pontuam, sem virar número.
           const pontuacao = calculateLeadScore({
             email,
             phone,
             source: "Meta Lead Ads",
             status: "novo",
             purpose: finalidadeDeclarada,
+            paymentMethod: camposDoFormulario.formaPagamento,
+            declaredBudgetRange: camposDoFormulario.faixaInvestimento,
           });
           const leadPayload = {
             organization_id: metaEvent.organization_id,
