@@ -1,0 +1,62 @@
+{
+  "phase": 193,
+  "name": "Conversion Core Supabase Named Remote Capture Receipt Ledger Checkpoint Chain Proof Custody Index",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Manter um índice local privado e append-only dos registros de custódia, encadeado por SHA-256 e sem copiar revisor, finalidade, chave, pseudônimos, credenciais ou dados pessoais.",
+  "evidenceLevel": "local_private_cryptographic_custody_index_contract_tested_remote_capture_not_performed",
+  "runtimeHomologated": false,
+  "currentState": {
+    "custodyIndexSchemaPrepared": true,
+    "appendOnlyChain": true,
+    "sourceCustodyBinding": true,
+    "sourceProofBinding": true,
+    "duplicateCustodyRefused": true,
+    "reviewerIncluded": false,
+    "purposeIncluded": false,
+    "pseudonymizationKeyIncluded": false,
+    "pseudonymsIncluded": false,
+    "credentialsIncluded": false,
+    "personalDataIncluded": false,
+    "privateDirectoryModeEnforced": true,
+    "privateFileModeEnforced": true,
+    "remoteExecutorAvailable": false,
+    "indexEntryCreatedInAssessment": false,
+    "currentNamedRemoteEvidenceCollected": false
+  },
+  "safety": {
+    "localIndexEntryWritten": false,
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "databaseWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationPushExecuted": false,
+    "migrationHistoryRepaired": false,
+    "migrationFileRenamed": false,
+    "databaseReset": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "secretsPersisted": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "authorizationRecorded": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "procedureExecuted": false,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "limitations": [
+    "A escrita exige explicitamente diretório privado, head coerente e um registro de custódia íntegro; a avaliação padrão apenas demonstra o bloqueio fail-closed.",
+    "A cadeia content-addressed comprova integridade e ordem local, mas não substitui carimbo de tempo externo, assinatura digital ou notarização independente.",
+    "Esta fase não coleta evidência remota, não altera o Supabase operacional e não executa migration, build, ZIP ou deploy."
+  ],
+  "nextAction": "Na fase 194, criar um snapshot portátil e compacto do índice completo, contendo apenas hashes e metadados estruturais, sem registros brutos nem pseudônimos."
+}

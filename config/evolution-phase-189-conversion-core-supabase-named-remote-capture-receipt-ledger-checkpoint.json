@@ -1,0 +1,57 @@
+{
+  "phase": 189,
+  "name": "Conversion Core Supabase Named Remote Capture Receipt Ledger Checkpoint",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Criar e verificar um checkpoint local privado, imutável e auditável do hash determinístico do ledger de recibos, sem contato remoto ou alteração operacional.",
+  "evidenceLevel": "local_immutable_ledger_checkpoint_contract_tested_remote_capture_not_performed",
+  "runtimeHomologated": false,
+  "currentState": {
+    "checkpointSchemaPrepared": true,
+    "exclusiveCreateEnforced": true,
+    "idempotentReplaySupported": true,
+    "privateDirectoryModeEnforced": true,
+    "privateFileModeEnforced": true,
+    "checkpointHashVerified": true,
+    "currentLedgerComparisonSupported": true,
+    "rawReceiptsPersistedInCheckpoint": false,
+    "remoteExecutorAvailable": false,
+    "checkpointCreatedInAssessment": false,
+    "currentNamedRemoteEvidenceCollected": false
+  },
+  "safety": {
+    "localCheckpointWritten": false,
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "databaseWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationPushExecuted": false,
+    "migrationHistoryRepaired": false,
+    "migrationFileRenamed": false,
+    "databaseReset": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "secretsPersisted": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "authorizationRecorded": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "procedureExecuted": false,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "limitations": [
+    "O checkpoint só é criado quando o chamador informa explicitamente diretórios privados dentro da raiz e o ledger atual é íntegro.",
+    "O arquivo contém apenas hashes, contagens e intervalo temporal; não contém recibos brutos, SQL, migrations, credenciais ou dados pessoais.",
+    "Esta fase não coleta evidência remota, não altera o Supabase operacional e não executa build, ZIP ou deploy."
+  ],
+  "nextAction": "Na fase 190, encadear checkpoints locais por hash anterior para detectar remoção ou reordenação histórica, ainda sem contato remoto ou alteração operacional."
+}

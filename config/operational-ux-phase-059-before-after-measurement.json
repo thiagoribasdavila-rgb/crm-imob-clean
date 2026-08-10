@@ -1,0 +1,17 @@
+{
+  "phase": 59,
+  "experienceVersion": "atlas-v30-phase-59",
+  "canonicalEventStore": "atlas_events",
+  "canonicalDecisionLedger": "atlas_decisions",
+  "minimumSamplePerCohort": 10,
+  "dimensions": ["duration", "clicks", "errors", "reading_engagement", "completion", "human_decision_quality"],
+  "readingIsProxy": true,
+  "qualityIsHumanRated": true,
+  "causalClaimAllowed": false,
+  "personallyIdentifiablePayload": false,
+  "organizationIsolationPreserved": true,
+  "migrationCreated": false,
+  "remoteDataChangedDuringPhase": false,
+  "buildExecuted": false,
+  "externalDeliveryDuringPhase": false
+}

@@ -1,0 +1,63 @@
+{
+  "phase": 194,
+  "name": "Conversion Core Supabase Named Remote Capture Receipt Ledger Checkpoint Chain Proof Custody Index Snapshot",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Gerar e verificar um snapshot portátil do índice privado de custódia contendo somente hashes e metadados estruturais, com validação autônoma e comparação entrada por entrada com a origem.",
+  "evidenceLevel": "local_portable_cryptographic_index_snapshot_contract_tested_remote_capture_not_performed",
+  "runtimeHomologated": false,
+  "currentState": {
+    "portableSnapshotSchemaPrepared": true,
+    "standaloneIntegrityVerification": true,
+    "sourceIndexBinding": true,
+    "entryByEntrySourceVerification": true,
+    "contentAddressedFileName": true,
+    "claimsIncluded": false,
+    "reviewerIncluded": false,
+    "purposeIncluded": false,
+    "pseudonymizationKeyIncluded": false,
+    "pseudonymsIncluded": false,
+    "credentialsIncluded": false,
+    "personalDataIncluded": false,
+    "privateDirectoryModeEnforced": true,
+    "privateFileModeEnforced": true,
+    "remoteExecutorAvailable": false,
+    "snapshotCreatedInAssessment": false,
+    "currentNamedRemoteEvidenceCollected": false
+  },
+  "safety": {
+    "localSnapshotWritten": false,
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "databaseWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationPushExecuted": false,
+    "migrationHistoryRepaired": false,
+    "migrationFileRenamed": false,
+    "databaseReset": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "secretsPersisted": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "authorizationRecorded": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "procedureExecuted": false,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "limitations": [
+    "O snapshot comprova a integridade e a ordem dos hashes exportados, mas não inclui os registros brutos nem substitui assinatura digital ou carimbo de tempo independente.",
+    "A criação exige um índice privado íntegro explicitamente informado; a avaliação padrão apenas demonstra o bloqueio fail-closed.",
+    "Esta fase não coleta evidência remota, não altera o Supabase operacional e não executa migration, build, ZIP ou deploy."
+  ],
+  "nextAction": "Na fase 195, definir um manifesto de exportação autorizado para o snapshot, com finalidade, destinatário, expiração e aprovação explícita armazenados separadamente dos hashes portáteis."
+}

@@ -1,0 +1,14 @@
+{
+  "phase": 49,
+  "scope": "lead360_single_decision_flow",
+  "profileOwnsCommercialData": true,
+  "qualificationOwnsEvidence": true,
+  "timelineOwnsOperationalContext": true,
+  "duplicatedRecommendationPanelsRemoved": 2,
+  "evidencePreserved": true,
+  "canonicalRecommendationPreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

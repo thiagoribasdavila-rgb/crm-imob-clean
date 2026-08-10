@@ -6,6 +6,7 @@ const email = process.env.ATLAS_TEST_EMAIL || "";
 const password = process.env.ATLAS_TEST_PASSWORD || "";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const allowPublicOnly = process.env.ATLAS_ALLOW_PUBLIC_ONLY_TEST === "true";
 
 const publicRoutes = [
   ["Home", "/", [200, 307, 308]],
@@ -25,12 +26,12 @@ const protectedPages = [
   "/leads/new",
   "/pipeline",
   "/activity",
-  "/atlas-v3/agents",
   "/ai-dashboard",
   "/approvals",
   "/brokers",
   "/calendar",
   "/conversations",
+  "/customers",
   "/properties",
   "/developments",
   "/distribution",
@@ -43,7 +44,6 @@ const protectedPages = [
   "/tasks",
   "/marketing",
   "/atlas-v2",
-  "/atlas-v3",
   "/atlas-2030",
   "/business-orchestrator",
   "/world-demand-model",
@@ -95,27 +95,6 @@ for (const path of protectedPages) {
   }
 }
 
-/**
- * Telas aposentadas: a URL tem de continuar RESPONDENDO, e responder é
- * redirecionar — não proteger, porque não há mais nada atrás para proteger.
- *
- * /customers ("Clientes 360") foi apagada em 2026-07-29: lia a MESMA tabela
- * `leads` que /leads, sem SLA nem lote, e sem o piso de carteira — um corretor
- * via as 469 leads da imobiliária inteira. O redirect é de servidor e acontece
- * antes de qualquer sessão, então esta rota sai da lista de proteção (onde o
- * Location esperado é /login) e passa a ser verificada aqui. 404 seria pior:
- * a memória de workspace do usuário guarda "/customers" no localStorage.
- */
-const retiredPages = [["/customers", "/leads"]];
-for (const [path, destination] of retiredPages) {
-  const response = await check(`Aposentada ${path}`, path, [307, 308]);
-  const location = response?.headers.get("location") || "";
-  if (response && !location.includes(destination)) {
-    failures += 1;
-    console.log(`❌ Aposentada ${path}: redirecionamento não aponta para ${destination} (${location || "sem Location"})`);
-  }
-}
-
 if (email && password && supabaseUrl && supabaseAnonKey) {
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -137,7 +116,19 @@ if (email && password && supabaseUrl && supabaseAnonKey) {
     await supabase.auth.signOut();
   }
 } else {
-  console.log("⚠️  Login autenticado não executado. Defina ATLAS_TEST_EMAIL, ATLAS_TEST_PASSWORD e variáveis públicas do Supabase.");
+  const missing = [
+    !email && "ATLAS_TEST_EMAIL",
+    !password && "ATLAS_TEST_PASSWORD",
+    !supabaseUrl && "NEXT_PUBLIC_SUPABASE_URL",
+    !supabaseAnonKey && "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  ].filter(Boolean);
+  if (allowPublicOnly) {
+    console.log(`⚠️  Teste autenticado dispensado explicitamente. Ausentes: ${missing.join(", ")}.`);
+  } else {
+    failures += 1;
+    console.log(`❌ Teste autenticado obrigatório não executado. Ausentes: ${missing.join(", ")}.`);
+    console.log("   Use ATLAS_ALLOW_PUBLIC_ONLY_TEST=true somente para uma verificação pública isolada.");
+  }
 }
 
 if (failures > 0) {

@@ -1,0 +1,17 @@
+{
+  "phase": 27,
+  "canonicalSurface": "development-material-hub",
+  "decisionOrder": [
+    "estoque disponível",
+    "preço de entrada",
+    "material vigente",
+    "análises secundárias"
+  ],
+  "sourceOfTruth": {
+    "inventory": "properties",
+    "materials": "project_materials"
+  },
+  "zeroPricePolicy": "never-present-zero-as-valid-price",
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

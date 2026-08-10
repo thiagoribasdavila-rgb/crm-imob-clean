@@ -1,0 +1,31 @@
+{
+  "schema": "atlas.meta-feedback-decision-card.v1",
+  "status": "not_prepared",
+  "eventReference": null,
+  "signal": null,
+  "evidence": {
+    "consentVerified": false,
+    "humanConfirmed": false,
+    "commercialEvidencePresent": false,
+    "duplicateFree": false,
+    "stageConsistent": false,
+    "valueVerified": false
+  },
+  "recommendation": {
+    "action": "hold",
+    "reasonCodes": [],
+    "requiresDirectorApproval": true,
+    "requiresSecurityApproval": true
+  },
+  "execution": {
+    "dispatchAllowed": false,
+    "campaignChangeAllowed": false
+  },
+  "forbidden": {
+    "customerDetails": true,
+    "protectedAttributes": true,
+    "automaticBudgetChange": true,
+    "automaticAudienceChange": true,
+    "automaticDispatch": true
+  }
+}

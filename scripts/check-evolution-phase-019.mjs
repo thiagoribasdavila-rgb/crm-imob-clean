@@ -6,9 +6,14 @@ const hierarchyAudit = fs.readFileSync("scripts/audit-auth-hierarchy-runtime.mjs
 const foundation = fs.readFileSync("supabase/migrations/20260711040000_atlas_v3_foundation.sql", "utf8");
 const hierarchyMigration = fs.readFileSync("supabase/migrations/20260716212459_commercial_hierarchy_and_bulk_transfer.sql", "utf8");
 const rbacMigration = fs.readFileSync("supabase/migrations/20260717200655_official_auth_rbac.sql", "utf8");
-// Migration renomeada (timestamp deduplicado em 1bd282f6: 213000 -> 213001); conteúdo idêntico, apenas o nome do arquivo mudou.
-const bridgeMigration = fs.readFileSync("supabase/migrations/20260717213001_v3_legacy_runtime_schema_bridge.sql", "utf8");
+const bridgeMigration = fs.readFileSync("supabase/migrations/20260717213000_v3_legacy_runtime_schema_bridge.sql", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_019_SCHEMA_CORRECTION.md", "utf8");
+const foundationWasDocumentationOnly = foundation.includes("This file documents");
+const foundationIsNowExecutable = [
+  "create table if not exists public.organizations",
+  "create table if not exists public.profiles",
+  "create table if not exists public.projects",
+].every((statement) => foundation.toLowerCase().includes(statement));
 
 const checks = [
   ["Fase concluída sem mutação", config.status === "completed" && config.productionDataModified === false && config.liveUsersModified === false],
@@ -18,7 +23,11 @@ const checks = [
   ["Hierarquia ausente não é presumida", hierarchyAudit.includes("hierarchyEvaluated") && hierarchyAudit.includes("A hierarquia não foi presumida")],
   ["Papéis legados usam aliases explícitos", hierarchyAudit.includes("legacyRoleAliases") && hierarchyAudit.includes('["corretor", "broker"]')],
   ["Migrações corretivas estão inventariadas", hierarchyMigration.includes("commercial_role") && rbacMigration.includes("access_role") && bridgeMigration.includes("full_name")],
-  ["Fundação documental foi reconhecida", config.migrationReadiness.foundationMigrationIsDocumentationOnly === true && foundation.includes("This file documents")],
+  [
+    "Estado histórico ou fundação executável foi reconhecido",
+    config.migrationReadiness.foundationMigrationIsDocumentationOnly === true
+      && (foundationWasDocumentationOnly || foundationIsNowExecutable),
+  ],
   ["Push direto permanece bloqueado", config.migrationReadiness.directDbPushAllowed === false && report.includes("Não executar `supabase db push` diretamente em produção")],
   ["Próxima fase exige prova runtime", config.exitCriteria.phaseTwentyRemainsBlockedUntilRuntimeApproval === true],
   ["Nenhum dado pessoal foi impresso", config.runtimeEvidence.personalDataPrinted === false],

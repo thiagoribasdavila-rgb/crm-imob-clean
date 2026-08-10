@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-commercial-event-envelope.v1",
+  "status": "template_not_dispatchable",
+  "eventId": null,
+  "signal": null,
+  "occurredAt": null,
+  "organizationReference": null,
+  "leadReference": null,
+  "consent": false,
+  "humanConfirmed": false,
+  "idempotencyKey": null,
+  "value": null,
+  "currency": null,
+  "dispatch": {
+    "enabled": false,
+    "provider": null
+  },
+  "forbidden": {
+    "rawPhone": true,
+    "rawEmail": true,
+    "rawName": true,
+    "tokens": true,
+    "cookies": true,
+    "customerNotes": true
+  }
+}

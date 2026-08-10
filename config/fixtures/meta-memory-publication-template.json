@@ -1,0 +1,25 @@
+{
+  "schema": "atlas.meta-memory-publication.v1",
+  "status": "pending_independent_review",
+  "proposalReference": null,
+  "review": {
+    "reviewerReference": null,
+    "proposerReference": null,
+    "outcome": null,
+    "publicationScope": null,
+    "expiresAt": null,
+    "reason": null
+  },
+  "publication": {
+    "published": false,
+    "availableToCopilot": false,
+    "availableToAutomation": false
+  },
+  "forbidden": {
+    "automaticPublication": true,
+    "automaticAutomationUse": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

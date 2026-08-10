@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-commercial-signal-quality-gate.v1",
+  "status": "not_evaluated",
+  "eventReference": null,
+  "signal": null,
+  "quality": {
+    "consentVerified": false,
+    "humanConfirmed": false,
+    "commercialEvidencePresent": false,
+    "duplicateFree": false,
+    "stageConsistent": false,
+    "valueVerified": false
+  },
+  "decision": {
+    "eligibleForFeedback": false,
+    "requiresHumanReview": true,
+    "automaticPromotionAllowed": false
+  },
+  "forbidden": {
+    "leadRanking": true,
+    "protectedAttributes": true,
+    "personalData": true,
+    "automaticBudgetChange": true,
+    "automaticAudienceChange": true
+  }
+}

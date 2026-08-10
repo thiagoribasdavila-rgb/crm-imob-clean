@@ -1,0 +1,31 @@
+{
+  "phase": 159,
+  "name": "Meta Conversion Feedback Panel",
+  "status": "implemented",
+  "objective": "Separar eventos fracos e fortes de conversão para orientar o feedback que o CRM prepara para Meta/Andromeda.",
+  "businessImpact": [
+    "Diretor entende quais sinais realmente ajudam a Meta aprender público comprador.",
+    "Campanhas deixam de ser avaliadas apenas por volume de leads.",
+    "Marketing e comercial passam a diferenciar captura, qualificação, visita, proposta e venda.",
+    "A operação ganha uma etapa segura antes de qualquer envio real de eventos."
+  ],
+  "technicalScope": [
+    "Adicionar painel de eventos de conversão na página de campanhas.",
+    "Classificar eventos em sinal fraco, médio, forte e ouro.",
+    "Calcular maturidade de feedback usando qualificação e sinais de fundo de funil.",
+    "Não acionar Meta API, não enviar eventos reais, não criar migrations e não expor dados pessoais."
+  ],
+  "validation": [
+    "npm run evolution:phase-159:check",
+    "npm run typecheck",
+    "npm run lint"
+  ],
+  "files": [
+    "app/(crm)/marketing/campaigns/page.tsx",
+    "docs/EVOLUTION_PHASE_159_META_CONVERSION_FEEDBACK_PANEL.md",
+    "scripts/check-evolution-phase-159.mjs",
+    "config/evolution-phase-159-meta-conversion-feedback-panel.json",
+    "config/evolution-program-3000.json",
+    "package.json"
+  ]
+}

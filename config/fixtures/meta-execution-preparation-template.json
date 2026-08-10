@@ -1,0 +1,25 @@
+{
+  "schema": "atlas.meta-execution-preparation.v1",
+  "status": "prepared_for_final_gate",
+  "approvalReference": null,
+  "preparation": {
+    "changeClass": null,
+    "checklistVersion": null,
+    "preparedByReference": null,
+    "preparedAt": null,
+    "approvalExpiresAt": null
+  },
+  "execution": {
+    "authorized": false,
+    "budgetChanged": false,
+    "audienceChanged": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticExecution": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

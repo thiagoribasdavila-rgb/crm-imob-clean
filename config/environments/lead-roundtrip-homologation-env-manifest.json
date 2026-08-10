@@ -1,0 +1,23 @@
+{
+  "schema": "atlas.lead-roundtrip-homologation-env-manifest.v1",
+  "environment": "homologation",
+  "sourceTemplate": ".env.homologation.example",
+  "runtimeFile": ".env.local",
+  "runtimeFileAllowedInRepository": false,
+  "runtimeFileAllowedInReleaseZip": false,
+  "templateValuesMustBePlaceholders": true,
+  "variables": [
+    { "name": "ATLAS_ENV", "scope": "server_config", "required": true, "secret": false },
+    { "name": "ATLAS_DATABASE_ENVIRONMENT", "scope": "server_config", "required": true, "secret": false },
+    { "name": "ATLAS_ENVIRONMENT_ID", "scope": "server_config", "required": true, "secret": false },
+    { "name": "ATLAS_BASE_URL", "scope": "server_config", "required": true, "secret": false },
+    { "name": "NEXT_PUBLIC_APP_URL", "scope": "public_config", "required": true, "secret": false },
+    { "name": "ATLAS_DEFAULT_ORGANIZATION_ID", "scope": "server_config", "required": true, "secret": false },
+    { "name": "ATLAS_TEST_EMAIL", "scope": "server_config", "required": true, "secret": false },
+    { "name": "ATLAS_TEST_PASSWORD", "scope": "server_secret", "required": true, "secret": true },
+    { "name": "NEXT_PUBLIC_SUPABASE_URL", "scope": "public_config", "required": true, "secret": false },
+    { "name": "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "scope": "public_config", "required": true, "secret": false },
+    { "name": "SUPABASE_SERVICE_ROLE_KEY", "scope": "server_secret", "required": true, "secret": true },
+    { "name": "DATABASE_URL", "scope": "server_secret", "required": true, "secret": true }
+  ]
+}

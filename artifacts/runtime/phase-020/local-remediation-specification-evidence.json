@@ -1,0 +1,58 @@
+{
+  "schema_version": "atlas.phase-020.evidence.v1",
+  "phase": "20/24",
+  "status": "local_specification_not_generated",
+  "assessment": {
+    "gates_passed": 11,
+    "gates_total": 50,
+    "mutants_rejected": 41,
+    "mutants_total": 41,
+    "specification_ready": false,
+    "approved_workstreams": null,
+    "approved_findings": null,
+    "migration_files_created": 0
+  },
+  "validation": {
+    "phase_020_checks": "43/43",
+    "phase_019_regression": "45/45",
+    "typecheck": "passed",
+    "lint": "passed",
+    "secret_scan": "passed",
+    "secret_scan_files": 3011,
+    "credentials_detected": 0
+  },
+  "inputs": {
+    "phase_019_plan_ready": false,
+    "approval_exists": false,
+    "approval_parses": false
+  },
+  "decision": {
+    "ready_for_local_migration_authoring": false,
+    "remote_apply_authorized": false,
+    "production_authorized": false,
+    "human_sql_authoring_required": true
+  },
+  "privacy": {
+    "contains_credentials": false,
+    "contains_personal_data": false,
+    "contains_business_data": false,
+    "contains_auth_user_data": false,
+    "contains_object_names": false,
+    "contains_raw_sql": false,
+    "contains_raw_cli_output": false
+  },
+  "safety": {
+    "remote_command_executed": false,
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "migration_generated": false,
+    "migration_applied": false,
+    "branch_mutated": false,
+    "production_touched": false,
+    "main_branch_touched": false,
+    "business_or_auth_data_read": false,
+    "build_executed": false,
+    "release_package_created": false
+  },
+  "next_phase": "Fase 21/24: criar migrations locais via Supabase CLI somente para especificações aprovadas, com testes negativos e sem aplicação remota."
+}

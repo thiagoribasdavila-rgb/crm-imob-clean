@@ -5,22 +5,12 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { evaluateIntegrationHealth } from "@/lib/integrations/operational-health";
 export const dynamic = "force-dynamic";
-// 'meta' e 'meta_marketing' são DUAS integrações, com tokens e escopos
-// diferentes: Lead Ads/CAPI recebe lead e devolve conversão; a Marketing API é
-// a camada que LÊ e GASTA verba. Medi-las na mesma linha fazia o painel ficar
-// verde com a camada do dinheiro morta — o token expirado da Marketing API foi
-// descoberto por um humano escrevendo docs/META_ASSET_INVENTORY.md, não pelo
-// produto.
 const envReady: Record<string, () => boolean> = {
   meta: () =>
     Boolean(
       process.env.META_APP_SECRET &&
       process.env.META_LEAD_ACCESS_TOKEN &&
       process.env.META_CONVERSIONS_ACCESS_TOKEN,
-    ),
-  meta_marketing: () =>
-    Boolean(
-      process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID,
     ),
   whatsapp: () =>
     Boolean(
@@ -30,12 +20,6 @@ const envReady: Record<string, () => boolean> = {
   youtube: () => Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN),
   tiktok_ads: () => Boolean(process.env.TIKTOK_ADS_ACCESS_TOKEN),
   openai: () => Boolean(process.env.OPENAI_API_KEY),
-  // A Anthropic ESTAVA FORA deste mapa enquanto `/api/ready` a publicava como
-  // `configured`: dois painéis de governança, duas listas de provedores, e o
-  // provedor que a ordem de raciocínio usa em segundo lugar não existia em um
-  // deles. Medido em 2026-07-29: HTTP 400 "credit balance is too low" — o
-  // provedor está quebrado, e um painel nem sabia que ele existe.
-  anthropic: () => Boolean(process.env.ANTHROPIC_API_KEY),
   perplexity: () => Boolean(process.env.PERPLEXITY_API_KEY),
   storage: () =>
     Boolean(
@@ -47,14 +31,36 @@ const envReady: Record<string, () => boolean> = {
     /^https:\/\//.test(process.env.ATLAS_BASE_URL || "") &&
     Boolean(process.env.ATLAS_CRON_SECRET),
 };
-// meta_marketing não tem tópico de fila: ela é síncrona (leitura de insights e
-// execução sob aprovação). Fila zero aqui é FATO, não ausência de medição.
 const providerTopic = (p: string, t: string) =>
   p === "meta"
     ? t.startsWith("meta.")
     : p === "whatsapp"
       ? t === "message.send"
       : false;
+
+function operationalFailureReason(topic: string, message: string) {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("consent") || normalized.includes("opt-out"))
+    return "Consentimento ou preferência do contato bloqueou o envio.";
+  if (normalized.includes("token") || normalized.includes("auth") || normalized.includes("permission"))
+    return "A credencial ou permissão da integração precisa ser revisada.";
+  if (normalized.includes("rate") || normalized.includes("limit") || normalized.includes("429"))
+    return "O provedor limitou temporariamente o volume de requisições.";
+  if (normalized.includes("email") || normalized.includes("telefone") || normalized.includes("phone"))
+    return "O evento não possui dados consentidos suficientes para correspondência.";
+  if (topic === "meta.conversion.send")
+    return "A Meta não confirmou o recebimento deste sinal de conversão.";
+  if (topic === "meta.lead.fetch")
+    return "A captura da lead Meta não foi concluída.";
+  return "A integração não concluiu a entrega após as tentativas automáticas.";
+}
+
+function operationalTopic(topic: string) {
+  if (topic === "meta.conversion.send") return "Conversão Meta/CAPI";
+  if (topic === "meta.lead.fetch") return "Lead Ads Meta";
+  if (topic === "message.send") return "Mensagem WhatsApp";
+  return topic.replaceAll(".", " · ");
+}
 async function live(org: string) {
   const admin = getSupabaseAdmin(),
     since = new Date(Date.now() - 30 * 86400000).toISOString();
@@ -62,9 +68,9 @@ async function live(org: string) {
     { data: connections, error },
     { data: outbox },
     { count: dlq },
+    { data: deadLetters },
     { data: metaEvents },
     { data: usage },
-    { data: tokenStuck, error: tokenStuckError },
   ] = await Promise.all([
     admin
       .from("integrations")
@@ -84,6 +90,13 @@ async function live(org: string) {
       .eq("organization_id", org)
       .eq("resolved", false),
     admin
+      .from("dead_letter_events")
+      .select("id,outbox_event_id,topic,error_message,attempts,created_at")
+      .eq("organization_id", org)
+      .eq("resolved", false)
+      .order("created_at", { ascending: false })
+      .limit(25),
+    admin
       .from("meta_lead_events")
       .select("received_at,status")
       .eq("organization_id", org)
@@ -95,33 +108,13 @@ async function live(org: string) {
       .eq("organization_id", org)
       .gte("created_at", since)
       .limit(20000),
-    // Sem janela de 30 dias DE PROPÓSITO: token expirado há mais tempo continua
-    // bloqueando a fila hoje. Consulta separada (e não uma coluna a mais no
-    // SELECT acima) porque `cause` depende da migration 20260722150000: se ela
-    // não estiver aplicada, o erro fica confinado aqui e vira "não medido", em
-    // vez de derrubar o painel inteiro.
-    admin
-      .from("integration_outbox")
-      .select("topic,created_at")
-      .eq("organization_id", org)
-      .eq("cause", "token_unhealthy")
-      .in("status", ["pending", "failed"])
-      .order("created_at", { ascending: true })
-      .limit(5000),
   ]);
   if (error) throw error;
-  const tokenMeasured = !tokenStuckError;
-  const tokenRows = tokenStuck || [];
   const providers = Object.keys(envReady).map((provider) => {
     const aliases =
         provider === "google_ads" || provider === "youtube"
           ? ["google", provider]
-          // A Marketing API não tem cadastro próprio em `integrations`: ela
-          // compartilha a conexão 'meta'. Sem o alias, a linha nova nasceria
-          // "sem cadastro" por artefato de nomenclatura.
-          : provider === "meta_marketing"
-            ? ["meta"]
-            : [provider],
+          : [provider],
       connection = (connections || []).find((c) =>
         aliases.includes(c.provider),
       ),
@@ -131,7 +124,7 @@ async function live(org: string) {
       environmentReady: envReady[provider](),
       registered:
         Boolean(connection) ||
-        ["openai", "anthropic", "perplexity", "storage", "hostinger"].includes(provider),
+        ["openai", "perplexity", "storage", "hostinger"].includes(provider),
       verifiedStatus:
         connection?.status || null,
       lastSyncAt:
@@ -143,9 +136,6 @@ async function live(org: string) {
       ).length,
       failed: topics.filter((e) => ["failed", "dead_letter"].includes(e.status))
         .length,
-      tokenUnhealthy: tokenMeasured
-        ? tokenRows.filter((e) => providerTopic(provider, e.topic)).length
-        : undefined,
     });
   });
   const queues = {
@@ -161,22 +151,18 @@ async function live(org: string) {
         .filter((e) => ["pending", "processing"].includes(e.status))
         .map((e) => e.created_at)
         .sort()[0] || null,
-    // Fila presa por credencial: o worker mantém esses eventos retryable e sem
-    // consumir tentativa, então eles NÃO aparecem em dead letters — o alarme
-    // que existia ficava zero justamente durante o incidente. `measured: false`
-    // é lacuna declarada (migration 20260722150000 pendente), não zero.
-    tokenUnhealthy: tokenMeasured
-      ? {
-          measured: true,
-          count: tokenRows.length,
-          oldestAt: tokenRows[0]?.created_at || null,
-        }
-      : {
-          measured: false,
-          reason:
-            "coluna integration_outbox.cause indisponível (migration 20260722150000 pendente)",
-        },
   };
+  const failureQueue = (deadLetters || []).map((event) => ({
+    id: event.id,
+    topic: event.topic,
+    label: operationalTopic(event.topic),
+    reason: operationalFailureReason(event.topic, event.error_message),
+    attempts: Number(event.attempts || 0),
+    createdAt: event.created_at,
+    provider: event.topic.startsWith("meta.") ? "meta" : event.topic === "message.send" ? "whatsapp" : "other",
+    canRetry: Boolean(event.outbox_event_id),
+    supervisionRequired: true,
+  }));
   const aiCostUsd =
     Math.round(
       (usage || []).reduce((s, u) => s + Number(u.estimated_cost_usd || 0), 0) *
@@ -197,15 +183,12 @@ async function live(org: string) {
         ["meta", "whatsapp", "storage", "hostinger"].includes(p.provider),
       )
       .every((p) => p.healthy),
-    // A lista continua a mesma de antes (a Marketing API entrou como LINHA
-    // nova, não como novo requisito) — mas publicada, para "Produção pronta"
-    // não ser lido como "tudo pronto": o chip nunca falou da camada que gasta.
-    productionReadyCovers: ["meta", "whatsapp", "storage", "hostinger"],
   };
   return {
     summary,
     providers,
     queues,
+    failureQueue,
     runtime: {
       hostingProvider: process.env.ATLAS_HOSTING_PROVIDER || "unknown",
       publicHttps: /^https:\/\//.test(process.env.ATLAS_BASE_URL || ""),

@@ -1,0 +1,93 @@
+{
+  "phase": 32,
+  "program": "meta-andromeda-automation",
+  "mode": "sample_02_fresh_postgres17_compatibility_rehearsal",
+  "status": "pg17_compatibility_runtime_prepared_source_evidence_missing",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-031.json",
+  "compatibilityGate": "config/meta-repeatability-sample-02-pg17-compatibility-gate.json",
+  "evidenceTemplate": "config/fixtures/meta-repeatability-sample-02-pg17-compatibility-template.json",
+  "composeFile": "infra/meta-phase32/compose.pg17.yaml",
+  "pg17VerificationSql": "supabase/tests/database/phase_032_meta_permit_ledger_pg17_verify.sql",
+  "preflight": "scripts/preflight-meta-repeatability-sample-02-pg17-compatibility.mjs",
+  "runner": "scripts/run-meta-repeatability-sample-02-pg17-compatibility.mjs",
+  "staticAudit": "scripts/audit-meta-repeatability-sample-02-pg17-compatibility.mjs",
+  "documentation": "docs/META_REPEATABILITY_SAMPLE_02_PG17_COMPATIBILITY.md",
+  "manualWorkflow": ".github/workflows/atlas-meta-phase30-local-rehearsal.yml",
+  "toolAudit": {
+    "officialDocsVerifiedAt": "2026-07-19",
+    "projectNodeRuntime": 24,
+    "referencePostgresImage": "supabase/postgres:15.14.1.149",
+    "compatibilityPostgresImage": "supabase/postgres:17.6.1.149",
+    "compatibilityPostgresMajor": 17,
+    "containerRuntimeDetectedInCurrentWorkspace": false,
+    "postgres15DataDirectoryReusableByPostgres17": false,
+    "incompatibleExtensionsReviewed": [
+      "timescaledb",
+      "plv8",
+      "plcoffee",
+      "plls"
+    ]
+  },
+  "environmentAudit": {
+    "freshPg17ComposePrepared": true,
+    "localhostBindingEnforced": true,
+    "distinctPortDatabaseAndVolumeEnforced": true,
+    "sourceEvidenceChainRequired": true,
+    "sharedArtifactHashesRequired": true,
+    "negativeMutationSelfTestsPrepared": true,
+    "manualWorkflowPrepared": true,
+    "sourceRuntimeEvidenceReceived": false,
+    "sourceReconciliationReceived": false,
+    "pg17CompatibilityExecuted": false,
+    "databaseMutationExecuted": false,
+    "metaMutationExecuted": false,
+    "buildExecuted": false
+  },
+  "releaseGate": {
+    "staticCompatibilityContractApproved": true,
+    "freshVolumeContractApproved": true,
+    "sourceEvidenceContractApproved": true,
+    "extensionCompatibilityContractApproved": true,
+    "sourceEvidenceReceived": false,
+    "sourceEvidenceApproved": false,
+    "pg17RuntimeAvailable": false,
+    "pg17CompatibilityApproved": false,
+    "securityRehearsalApproved": false,
+    "rollbackRehearsalApproved": false,
+    "nextPhaseAllowed": false
+  },
+  "governance": {
+    "exactHumanApprovalRequired": true,
+    "sourcePhase30EvidenceRequired": true,
+    "sourcePhase31ReceiptRequired": true,
+    "sourceFilesMustRemainInsideWorkspace": true,
+    "symbolicLinksRejected": true,
+    "maximumSourceEvidenceBytes": 1048576,
+    "localhostOnly": true,
+    "freshPg17VolumeRequired": true,
+    "pg15VolumeReuse": false,
+    "volumeDestructionRequired": true,
+    "remoteDatabaseAccess": false,
+    "productionAccess": false,
+    "linkedProjectAccess": false,
+    "permitReservation": false,
+    "permitIssuance": false,
+    "permitConsumption": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 33,
+    "objective": "Reconciliar a evidencia real do ensaio PG17, comparar os resultados PG15/PG17 e manter bloqueadas producao, Meta e permissao ate aprovacao verificavel.",
+    "blockedUntil": [
+      "evidencia real e aprovada da Fase 30",
+      "recibo real e aprovado da Fase 31",
+      "Docker Compose disponivel no workflow manual autorizado",
+      "ensaio PG17 completo com volume novo e destruido",
+      "compatibilidade, seguranca e rollback comprovados por hashes e eventos ordenados"
+    ]
+  }
+}

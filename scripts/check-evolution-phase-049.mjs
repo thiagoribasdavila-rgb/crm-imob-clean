@@ -10,9 +10,15 @@ const release = fs.readFileSync("scripts/release-atlas-ai-os.mjs", "utf8");
 const packageScript = fs.readFileSync("scripts/package-evolution-checkpoint.mjs", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_049_EFFICIENT_CONTINUOUS_DELIVERY.md", "utf8");
 
+const continuousCadenceIsGoverned =
+  program.deliveryCadence === "one-phase-per-day" ||
+  (program.deliveryCadence === "five-phase-value-cycle" &&
+    program.valueCyclePolicy?.phasesPerCycle === 5 &&
+    program.valueCyclePolicy?.releaseArtifactOnlyAtCompletedCycle === true);
+
 const checks = [
   ["Fase 049 concluída sem tocar dados ou schema", phase.status === "completed" && phase.productionDataModified === false && phase.databaseSchemaChanged === false],
-  ["Evolução passa a ter horizonte contínuo", program.horizon === "continuous" && program.deliveryCadence === "one-phase-per-day"],
+  ["Evolução passa a ter horizonte contínuo", program.horizon === "continuous" && continuousCadenceIsGoverned],
   ["Trabalho em andamento fica limitado a uma fase", program.workInProgressLimit === 1 && phase.deliveryContract.dailyWorkInProgressLimit === 1],
   ["Entrega diária não executa build", program.dailyValidation.build === false && phase.deliveryContract.dailyBuilds === 0 && daily.includes("buildExecuted: false") && !daily.includes('["run", "build"]')],
   ["Validação diária usa regressão direcionada", daily.includes("targetedChecks") && daily.includes("changedCode") && daily.includes("scan-secrets")],

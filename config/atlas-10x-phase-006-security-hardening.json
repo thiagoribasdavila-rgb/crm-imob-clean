@@ -1,0 +1,190 @@
+{
+  "schema_version": "atlas.10x.phase-006.v1",
+  "phase": 6,
+  "total_phases": 24,
+  "name": "Hardening de policies, grants e funções privilegiadas",
+  "objective": "Reduzir a superfície do Data API e provar isolamento multi-tenant antes de qualquer provisionamento ou uso real.",
+  "target_environment": "atlas-v3-homologacao",
+  "build_policy": "build_only_on_release_package",
+  "remote_write_policy": "read_only_audit",
+  "execution_policy": {
+    "default_mode": "assessment_only",
+    "remote_execution_enabled": false,
+    "requires_isolated_rehearsal": true,
+    "requires_backup_restore_receipt": true,
+    "requires_human_approval": true,
+    "allows_destructive_ddl": false,
+    "allows_policy_drop_without_replacement": false,
+    "allows_public_default_grants": false
+  },
+  "security_principles": [
+    "grants_define_api_reach",
+    "rls_defines_visible_rows",
+    "default_deny_until_classified",
+    "security_definer_requires_explicit_execute_grants",
+    "trigger_only_functions_are_not_directly_executable",
+    "tenant_identity_comes_from_auth_uid_and_server_resolved_profile",
+    "service_role_never_reaches_the_browser",
+    "every_policy_change_has_cross_tenant_and_rollback_evidence"
+  ],
+  "no_policy_table_review": [
+    {
+      "table": "ai_conversations",
+      "decision": "unresolved",
+      "required_proof": "consumer map, organization binding and conversation ownership"
+    },
+    {
+      "table": "ai_learning_events",
+      "decision": "unresolved",
+      "required_proof": "server-only ingestion or explicit leadership read scope"
+    },
+    {
+      "table": "ai_messages",
+      "decision": "unresolved",
+      "required_proof": "conversation ownership and tenant-safe message visibility"
+    },
+    {
+      "table": "ai_tool_calls",
+      "decision": "unresolved",
+      "required_proof": "server-only audit classification"
+    },
+    {
+      "table": "ai_usage",
+      "decision": "unresolved",
+      "required_proof": "server-only billing source or leadership read scope"
+    },
+    {
+      "table": "api_rate_limit_buckets",
+      "decision": "unresolved",
+      "required_proof": "server-only control-plane classification"
+    },
+    {
+      "table": "knowledge_chunks",
+      "decision": "unresolved",
+      "required_proof": "document tenant binding and approved retrieval path"
+    },
+    {
+      "table": "lead_identity_registry",
+      "decision": "unresolved",
+      "required_proof": "server-only identity and deduplication classification"
+    },
+    {
+      "table": "lead_scores",
+      "decision": "unresolved",
+      "required_proof": "lead visibility contract and score provenance"
+    },
+    {
+      "table": "projects",
+      "decision": "unresolved",
+      "required_proof": "legacy consumer map and organization binding"
+    },
+    {
+      "table": "user_provisioning_failures",
+      "decision": "unresolved",
+      "required_proof": "server-only security incident classification"
+    },
+    {
+      "table": "users",
+      "decision": "unresolved",
+      "required_proof": "legacy compatibility need and non-sensitive column projection"
+    }
+  ],
+  "privileged_function_review": [
+    {
+      "function": "apply_opportunity_commission_sla()",
+      "class": "trigger_only",
+      "target_grantees": ["service_role"],
+      "required_action": "revoke_direct_execute_and_harden_search_path"
+    },
+    {
+      "function": "refresh_commission_status()",
+      "class": "trigger_only",
+      "target_grantees": ["service_role"],
+      "required_action": "revoke_direct_execute_and_harden_search_path"
+    },
+    {
+      "function": "scaffold_project_intelligence()",
+      "class": "trigger_only",
+      "target_grantees": ["service_role"],
+      "required_action": "revoke_direct_execute_and_harden_search_path"
+    },
+    {
+      "function": "create_lead_atomic(uuid,uuid,uuid,text,text,text,text,text,numeric,numeric,integer,text[],text,integer,text,jsonb)",
+      "class": "authenticated_business_rpc",
+      "target_grantees": ["authenticated", "service_role"],
+      "required_action": "prove_auth_uid_tenant_and_owner_checks_then_harden_search_path"
+    },
+    {
+      "function": "distribute_project_leads(uuid,uuid,uuid,integer)",
+      "class": "server_business_rpc",
+      "target_grantees": ["service_role"],
+      "required_action": "restore_remote_grant_to_local_service_only_contract"
+    },
+    {
+      "function": "mutate_crm_project_v1(uuid,text,uuid,jsonb,text,text)",
+      "class": "authenticated_business_rpc",
+      "target_grantees": ["authenticated", "service_role"],
+      "required_action": "retain_only_after_actor_tenant_and_role tests"
+    },
+    {
+      "function": "current_organization_id()",
+      "class": "policy_helper",
+      "target_grantees": ["authenticated", "service_role"],
+      "required_action": "migrate_to_private_schema or document policy dependency"
+    },
+    {
+      "function": "current_user_role()",
+      "class": "policy_helper",
+      "target_grantees": ["authenticated", "service_role"],
+      "required_action": "migrate_to_private_schema or document policy dependency"
+    },
+    {
+      "function": "effective_distribution_rule(uuid,uuid)",
+      "class": "read_helper",
+      "target_grantees": ["service_role"],
+      "required_action": "prove tenant binding before authenticated exposure"
+    },
+    {
+      "function": "search_knowledge_chunks(text,uuid,integer)",
+      "class": "read_helper",
+      "target_grantees": ["service_role"],
+      "required_action": "prove document tenant binding before authenticated exposure"
+    }
+  ],
+  "required_gates": [
+    "advisor_snapshot_current",
+    "catalog_acl_snapshot_available",
+    "all_no_policy_tables_classified",
+    "rls_enabled_without_policy_zero",
+    "anon_security_definer_executable_zero",
+    "authenticated_security_definer_contracts_approved",
+    "trigger_only_direct_execute_revoked",
+    "security_definer_search_paths_hardened",
+    "future_default_privileges_reviewed",
+    "anon_access_denial_passed",
+    "authenticated_role_matrix_passed",
+    "cross_tenant_denial_passed",
+    "rpc_actor_spoofing_denial_passed",
+    "policy_query_plan_reviewed",
+    "backup_restore_receipt_approved",
+    "isolated_rehearsal_passed",
+    "rollback_rehearsal_passed",
+    "security_advisors_clean",
+    "human_execution_approval"
+  ],
+  "forbidden_operations_in_phase_006": [
+    "apply remote migration",
+    "change remote grant",
+    "change remote policy",
+    "create or delete user",
+    "write business data",
+    "drop table",
+    "drop policy without replacement",
+    "build",
+    "create release zip"
+  ],
+  "next_phase": {
+    "phase": 7,
+    "name": "Ensaio isolado de RLS e matriz real de acesso"
+  }
+}

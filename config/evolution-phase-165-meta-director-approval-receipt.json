@@ -1,0 +1,32 @@
+{
+  "phase": 165,
+  "name": "Meta Director Lead Approval Receipt",
+  "status": "implemented",
+  "stream": "meta-andromeda-conversion-automation",
+  "objective": "Transformar a seleção de uma lead Meta elegível em uma aprovação formal, temporária e auditável da diretoria, sem disparar evento externo.",
+  "businessProblem": "A lead real podia ser selecionada com segurança, mas ainda não existia prova persistida de quem aprovou, por qual motivo, com qual evidência e até quando a aprovação permanecia válida.",
+  "implemented": [
+    "Restauração do painel visual de seleção segura da fase 164",
+    "Nova API protegida para registrar e consultar aprovações da diretoria",
+    "Revalidação server-side de origem Meta, consentimento, identificador e projeto",
+    "Recibo interno no atlas_events com validade de 24 horas e fingerprint SHA-256",
+    "Idempotência operacional pela reutilização de aprovação ainda vigente",
+    "Payload de auditoria sem telefone, e-mail, CPF, renda ou documento",
+    "Indicação explícita de que a aprovação não autoriza entrega externa"
+  ],
+  "acceptanceCriteria": [
+    "Apenas admin, diretor decisor ou diretor podem aprovar",
+    "A lead precisa estar 100% pronta e com risco baixo",
+    "A justificativa precisa ter entre 10 e 500 caracteres",
+    "A aprovação expira após 24 horas",
+    "Nenhuma chamada Meta, CAPI ou alteração de campanha ocorre nesta fase",
+    "O recibo persiste em atlas_events com isolamento por organização"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-165:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint",
+    "build": "deferred-to-release-close"
+  },
+  "nextPhaseRecommendation": "Congelar o payload mínimo do ensaio e vincular sua fingerprint ao recibo aprovado antes de qualquer autorização de execução."
+}

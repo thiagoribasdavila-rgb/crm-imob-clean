@@ -1,13 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 import { PageHeader } from "@/components/atlas/page-header";
-import { StatusBadge } from "@/components/atlas/status-badge";
-import { TiltShell } from "@/components/atlas/tilt-shell";
-import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { KanbanHandoffBanner } from "@/components/atlas/kanban-handoff-banner";
+import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
+import { AtlasBadge, AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { isMissingRelation, leadAsOpportunity, mapLegacyLead } from "@/lib/compat/legacy-v2";
 
 type Opportunity = {
@@ -18,26 +18,18 @@ type Opportunity = {
   commission_split_percentage: number | null; commission_received_amount: number;
   leads: { id: string; name: string | null } | null; properties: { title: string | null } | null;
 };
-/* "forecast" é o recorte que faltava: os negócios que ainda podem virar receita
-   — exatamente a base do número "forecast ponderado" exibido no topo. Sem ele o
-   painel afirmava uma previsão que a fila não deixava conferir. */
-type View = "all" | "forecast" | "attention" | "closing" | "won";
-const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-
-/* CC-6: tinta semântica por significado — vencido/urgente em rose, revisão em
-   amber. Rótulos de comissão em pt-BR no lugar do enum técnico. */
-const SEV_INK = { crit: "#fb7185", warn: "var(--atlas-estado-atencao)" } as const;
-const COMMISSION_LABEL: Record<string, string> = {
-  received: "Recebida",
-  partial: "Parcial",
-  divergent: "Divergente",
-  overdue: "Vencida",
-  due_soon: "Vence em 7d",
-  pending: "Pendente",
-  not_applicable: "—",
+type View = "all" | "attention" | "closing" | "won";
+type FinancialEditor = {
+  mode: "configure" | "payment";
+  item: Opportunity;
+  gross: string;
+  net: string;
+  percentage: string;
+  splitPercentage: string;
+  paymentAmount: string;
+  notes: string;
 };
-const TH_CLASS = "px-4 py-2.5 text-left font-mono text-micro font-medium uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]";
-const VIEW_OPTIONS: Array<[View, string]> = [["all", "Todas"], ["forecast", "Forecast"], ["attention", "Atenção"], ["closing", "Fecha em 30d"], ["won", "Ganhas"]];
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
 export default function SalesPage() {
   const [items, setItems] = useState<Opportunity[]>([]);
@@ -48,25 +40,14 @@ export default function SalesPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("all");
-  const [abertoPorLink, setAbertoPorLink] = useState(false);
+  const [financialEditor, setFinancialEditor] = useState<FinancialEditor | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
     const { data, error: loadError } = await supabase.from("opportunities")
       .select("id,stage,value,probability,expected_close_at,won_at,lost_at,commission_sla_days,commission_due_at,commission_received_at,commission_status,commission_gross,commission_percentage,commission_split_percentage,commission_net,commission_received_amount,leads(id,name),properties(title)")
       .order("created_at", { ascending: false });
-    // O recuo vale para tabela AUSENTE **e** para tabela vazia.
-    //
-    // `opportunities` existe nesta base e tem zero linhas — a consulta acima
-    // devolve sucesso com lista vazia, `isMissingRelation` é falso, o recuo
-    // nunca disparava e a tela de Vendas ficava em branco. Enquanto isso há
-    // leads com status `ganho` no banco: vendas reais que a tela não mostrava.
-    //
-    // Tabela vazia e tabela ausente contam a MESMA história para quem olha —
-    // "o dado canônico ainda não chegou aqui" — e merecem o mesmo tratamento.
-    // Se a operação de fato não tiver nem oportunidade nem lead ganha, a tela
-    // continua vazia, que aí é a verdade.
-    if ((loadError && isMissingRelation(loadError)) || (!loadError && (data ?? []).length === 0)) {
+    if (loadError && isMissingRelation(loadError)) {
       const legacy = await supabase.from("leads").select("*").neq("status", "arquivado").order("created_at", { ascending: false }).limit(2000);
       if (legacy.error) setError("Não foi possível carregar as oportunidades.");
       else setItems(((legacy.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead).map(leadAsOpportunity).map((item) => ({
@@ -94,53 +75,63 @@ export default function SalesPage() {
     })();
   }, [load]);
 
-  /**
-   * A URL manda o recorte inicial — antes disso ela era enfeite.
-   *
-   * O catálogo de navegação (`lib/atlas/navigation.ts`) promete "Abrir forecast"
-   * → `/sales?view=forecast`, com o resultado "revisar negócios com impacto
-   * provável na receita". A promessa era DECORATIVA: a tela ignorava o parâmetro
-   * e abria na fila inteira, misturando ganhos e perdidos com o que ainda pode
-   * virar receita — a pessoa tinha que refazer o recorte na mão, ou pior, revia
-   * o histórico achando que revisava a previsão.
-   *
-   * Lemos `window.location.search` na montagem em vez de `useSearchParams`
-   * porque o hook exigiria fronteira <Suspense> nesta página cliente, e o efeito
-   * de montagem já tem a semântica desejada: a URL define o estado inicial e a
-   * pessoa assume a partir daí (mesmo caminho já adotado em /leads).
-   *
-   * Só `forecast` vira comportamento. Qualquer outro alvo é IGNORADO de
-   * propósito: um valor inventado na barra de endereço não pode virar recorte
-   * silencioso, porque uma lista vazia se lê como "não há trabalho".
-   */
-  useEffect(() => {
-    if (alvoDaIntencao(lerIntencaoDaJanela(), "visao") !== "forecast") return;
-    setView("forecast");
-    setAbertoPorLink(true);
-  }, []);
-
   async function updateCommission(id: string, payload: Record<string, unknown>) {
     const { data } = await supabase.auth.getSession();
-    if (!data.session?.access_token) { setError("Sessão expirada. Entre novamente."); return; }
+    if (!data.session?.access_token) { setError("Sessão expirada. Entre novamente."); return false; }
     setSavingId(id); setError("");
     try {
       const response = await fetch(`/api/v1/sales/${id}/commission`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` }, body: JSON.stringify(payload) });
       const body = await response.json(); if (!response.ok) throw new Error(body.error?.message || "Não foi possível atualizar a comissão.");
       await load();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao atualizar comissão."); }
+      return true;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao atualizar comissão.");
+      return false;
+    }
     finally { setSavingId(null); }
   }
   function configureCommission(item: Opportunity) {
-    const gross = window.prompt("Comissão bruta (R$):", String(item.commission_gross ?? "")); if (gross === null) return;
-    const net = window.prompt("Comissão líquida prevista (R$):", String(item.commission_net ?? "")); if (net === null) return;
-    const percentage = window.prompt("Percentual da comissão (%), se houver:", String(item.commission_percentage ?? "")); if (percentage === null) return;
-    const splitPercentage = window.prompt("Percentual destinado ao corretor/time (%), se houver:", String(item.commission_split_percentage ?? "")); if (splitPercentage === null) return;
-    void updateCommission(item.id, { action: "configure", gross, net, percentage: percentage || null, splitPercentage: splitPercentage || null });
+    setFinancialEditor({
+      mode: "configure",
+      item,
+      gross: String(item.commission_gross ?? ""),
+      net: String(item.commission_net ?? ""),
+      percentage: String(item.commission_percentage ?? ""),
+      splitPercentage: String(item.commission_split_percentage ?? ""),
+      paymentAmount: "",
+      notes: "",
+    });
   }
   function registerPayment(item: Opportunity) {
-    const paymentAmount = window.prompt("Valor recebido agora (R$):"); if (paymentAmount === null) return;
-    const notes = window.prompt("Observação ou identificação do pagamento (opcional):") ?? "";
-    void updateCommission(item.id, { action: "payment", paymentAmount, notes });
+    setFinancialEditor({
+      mode: "payment",
+      item,
+      gross: "",
+      net: "",
+      percentage: "",
+      splitPercentage: "",
+      paymentAmount: "",
+      notes: "",
+    });
+  }
+  async function submitFinancialEditor() {
+    if (!financialEditor) return;
+    const payload = financialEditor.mode === "configure"
+      ? {
+        action: "configure",
+        gross: financialEditor.gross,
+        net: financialEditor.net,
+        percentage: financialEditor.percentage || null,
+        splitPercentage: financialEditor.splitPercentage || null,
+        notes: financialEditor.notes,
+      }
+      : {
+        action: "payment",
+        paymentAmount: financialEditor.paymentAmount,
+        notes: financialEditor.notes,
+      };
+    const saved = await updateCommission(financialEditor.item.id, payload);
+    if (saved) setFinancialEditor(null);
   }
   function opportunityRisk(item: Opportunity) {
     if (item.won_at) return { key: "won", label: "Venda ganha", tone: "success" as const };
@@ -167,32 +158,11 @@ export default function SalesPage() {
   const visible = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("pt-BR");
     const weight: Record<string, number> = { overdue: 5, at_risk: 4, incomplete: 3, closing: 2, healthy: 1, won: 0, lost: 0 };
-    /* Impacto provável = valor × probabilidade, o mesmo cálculo do "forecast
-       ponderado" do topo. Devolve null — e NÃO zero — quando não há valor: uma
-       oportunidade sem valor não pesa nada na receita porque ninguém mediu, o
-       que é diferente de valer R$ 0. Ela continua na fila (com o selo "Dados
-       incompletos"), só depois das medidas, porque é justamente ela que trava a
-       previsão. */
-    const impactoProvavel = (item: Opportunity) => (item.value == null ? null : Number(item.value) * item.probability / 100);
     return items.filter((item) => {
       const risk = opportunityRisk(item);
-      const matchesView = view === "all"
-        // Em aberto = nem ganho nem perdido: o que ainda pode virar receita.
-        || (view === "forecast" && !item.won_at && !item.lost_at)
-        || (view === "attention" && ["incomplete", "overdue", "at_risk"].includes(risk.key)) || (view === "closing" && risk.key === "closing") || (view === "won" && Boolean(item.won_at));
+      const matchesView = view === "all" || (view === "attention" && ["incomplete", "overdue", "at_risk"].includes(risk.key)) || (view === "closing" && risk.key === "closing") || (view === "won" && Boolean(item.won_at));
       return matchesView && (!normalized || [item.leads?.name, item.properties?.title, item.stage].some((value) => value?.toLocaleLowerCase("pt-BR").includes(normalized)));
-    }).sort((a, b) => {
-      /* A pergunta muda com o recorte: nas demais visões a ordem é por risco,
-         no forecast é por quanto o negócio pesa na receita provável — que é
-         literalmente o que o botão do catálogo promete revisar. */
-      if (view === "forecast") {
-        const impactoA = impactoProvavel(a);
-        const impactoB = impactoProvavel(b);
-        if (impactoA !== null && impactoB !== null) return impactoB - impactoA;
-        if (impactoA !== impactoB) return impactoA === null ? 1 : -1;
-      }
-      return (weight[opportunityRisk(b).key] - weight[opportunityRisk(a).key]) || Number(b.value || 0) - Number(a.value || 0);
-    });
+    }).sort((a, b) => (weight[opportunityRisk(b).key] - weight[opportunityRisk(a).key]) || Number(b.value || 0) - Number(a.value || 0));
   }, [items, query, referenceTime, view]);
   const revenueDecisionQueue = items.map((item) => {
     const risk = opportunityRisk(item);
@@ -214,269 +184,58 @@ export default function SalesPage() {
     } }));
   }
 
-  const decisive = [
-    { label: "VGV total", value: brl.format(metrics.total), ink: "" },
-    { label: "forecast ponderado", value: brl.format(metrics.weighted), ink: "" },
-    { label: "vendas ganhas", value: brl.format(metrics.won), ink: metrics.won ? "cc6-ok" : "" },
-    { label: "abertas", value: String(metrics.open), ink: "" },
-    { label: "exigem atenção", value: String(attentionCount), ink: attentionCount ? "cc6-crit" : "cc6-ok" },
-  ];
-
-  return (
-    <div className="space-y-4 pb-8" data-evolution-phase="47" data-sales-layout="revenue-decision-first">
-      <PageHeader
-        eyebrow="Revenue engine · Oportunidades"
-        title="Vendas e oportunidades"
-        description="Os negócios de maior risco aparecem primeiro — a previsão orienta a revisão, não garante fechamento."
-        action={{ href: "/atlas-v3/forecast", label: "Abrir forecast", priority: "secondary" }}
-      />
-
-      {/* Números decisivos antes de qualquer lista: base, previsão, ganho e
-          pressão de atenção na mesma régua mono. */}
-      <section aria-label="Números decisivos da receita">
-        <TiltShell className="cc6-panel cc6-reveal p-5 sm:p-6" delayMs={0}>
-          <div className="flex flex-wrap gap-x-10 gap-y-4" aria-busy={loading}>
-            {decisive.map((metric) => (
-              <div key={metric.label}>
-                <p className={`cc6-metric-value text-2xl leading-none sm:text-3xl ${loading ? "" : metric.ink}`}>
-                  {loading ? "—" : metric.value}
-                </p>
-                <p className="cc6-metric-label mt-1.5">{metric.label}</p>
-              </div>
-            ))}
-          </div>
-        </TiltShell>
-      </section>
-
-      {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
-
-      <section data-phase="47-revenue-decision-queue">
-        <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "60ms" }}>
-          <header className="px-5 pt-5 pb-3">
-            <p className="cc6-eyebrow">Fase 47 · Decisões de receita</p>
-            <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">O que precisa de confirmação para avançar</h2>
-          </header>
-          <div aria-busy={loading}>
-            {loading ? (
-              <div className="cc6-hairline space-y-2 p-5">
-                {[1, 2, 3].map((item) => <AtlasSkeleton key={item} className="h-16" />)}
-              </div>
-            ) : revenueDecisionQueue.length ? (
-              revenueDecisionQueue.map((decision, index) => {
-                const crit = decision.urgency >= 6;
-                return (
-                  <article
-                    key={`${decision.item.id}-${decision.title}`}
-                    className="cc6-reveal cc6-hairline cc6-sev-band flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3.5"
-                    style={{ animationDelay: `${100 + index * 60}ms`, "--cc6-sev": crit ? SEV_INK.crit : SEV_INK.warn } as CSSProperties}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-sm font-medium text-[var(--atlas-texto-forte)]">{decision.title}</h3>
-                        <StatusBadge tone={crit ? "danger" : "warning"}>{crit ? "Urgente" : "Revisar"}</StatusBadge>
-                      </div>
-                      <p className="mt-0.5 truncate text-xs text-[var(--atlas-texto-fraco)]">
-                        {decision.item.leads?.name || "Oportunidade"} · {decision.item.stage} · {decision.detail}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      <button type="button" onClick={() => openRevenueCopilot(decision)} className="cc6-ghost-btn">✦ Preparar com IA</button>
-                      {decision.item.leads?.id ? (
-                        <Link href={`/leads/${decision.item.leads.id}`} className="cc6-ghost-btn">Abrir negócio</Link>
-                      ) : null}
-                    </div>
-                  </article>
-                );
-              })
-            ) : (
-              <div className="cc6-hairline px-5 py-5">
-                <AtlasEmpty
-                  reason="no-activity"
-                  eyebrow="Sem confirmações críticas"
-                  title="Nenhuma confirmação crítica neste recorte"
-                  description="Valor, probabilidade, prazo e comissão seguem com evidência humana."
-                />
-              </div>
-            )}
-          </div>
-          <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
-            Até três sinais verificáveis · a IA prepara a revisão, decisão e registro permanecem humanos.
-          </p>
+  return <div className="space-y-6 pb-8" data-evolution-phase="47" data-kanban-context="111-kanban-context-intake" data-sales-layout="revenue-decision-first">
+    <section className="relative overflow-hidden rounded-[28px] border border-white/[.08] bg-white/[.025] p-6 pr-32 sm:p-8 sm:pr-44">
+      <Image src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas" width={84} height={126} className="pointer-events-none absolute -bottom-8 right-5 h-auto w-20 opacity-70" />
+      <PageHeader eyebrow="Revenue engine · Opportunity workspace" title="Vendas e oportunidades" description="Valor, probabilidade, prazo e risco organizados para o time saber quais negócios exigem ação agora." action={{ href: "/reports", label: "Abrir previsão", priority: "secondary" }} />
+    </section>
+    <KanbanHandoffBanner module="sales" />
+    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5"><AtlasMetric label="VGV total" value={brl.format(metrics.total)} detail="Base total visível" trend="VGV" tone="blue"/><AtlasMetric label="Forecast ponderado" value={brl.format(metrics.weighted)} detail="Valor × probabilidade" trend="PREVISÃO" tone="violet"/><AtlasMetric label="Vendas ganhas" value={brl.format(metrics.won)} detail="Receita comercial confirmada" trend="GANHO" tone="green"/><AtlasMetric label="Oportunidades abertas" value={metrics.open} detail="Negócios em andamento" trend="PIPE" tone="blue"/><AtlasMetric label="Exigem atenção" value={attentionCount} detail="Prazo, valor ou previsão" trend="AGIR" tone={attentionCount ? "rose" : "green"}/></section>
+    {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
+    <section data-phase="47-revenue-decision-queue">
+      <AtlasCard>
+        <AtlasCardHeader eyebrow="Fase 47 · Decisões de receita" title="O que precisa de confirmação para avançar" description="Até três sinais verificáveis de fechamento ou recebimento. O forecast orienta a revisão, mas não promete venda nem receita." action={<AtlasBadge tone="violet">APROVAÇÃO HUMANA</AtlasBadge>}/>
+        <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-3">
+          {revenueDecisionQueue.map((decision) => <article key={`${decision.item.id}-${decision.title}`} className="rounded-2xl border border-violet-300/15 bg-violet-300/[.04] p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="text-sm font-semibold text-white">{decision.title}</h2><p className="mt-1 text-xs text-slate-500">{decision.item.leads?.name || "Oportunidade"} · {decision.item.stage}</p></div><AtlasBadge tone={decision.urgency >= 6 ? "danger" : "warning"}>{decision.urgency >= 6 ? "URGENTE" : "REVISAR"}</AtlasBadge></div><p className="mt-3 text-xs leading-5 text-slate-400">{decision.detail}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => openRevenueCopilot(decision)} className="atlas-button-secondary">Preparar decisão com IA</button>{decision.item.leads?.id ? <Link href={`/leads/${decision.item.leads.id}`} className="atlas-button-secondary">Abrir negócio</Link> : null}</div></article>)}
+          {!loading && !revenueDecisionQueue.length ? <div className="lg:col-span-3"><AtlasEmpty reason="completed" eyebrow="Receita sob controle" title="Nenhuma confirmação crítica neste recorte" description="Continue revisando valor, probabilidade, prazo e comissão com evidência humana." /></div> : null}
+          {loading ? [1,2,3].map((item) => <AtlasSkeleton key={item} className="h-44"/>) : null}
         </div>
-      </section>
-
-      <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "120ms" }} aria-labelledby="sales-queue-title">
-        <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
+        <div className="border-t border-white/[.06] px-5 py-3 text-[10px] text-slate-500">IA prepara a revisão · decisão e registro permanecem humanos · previsão não é garantia de fechamento.</div>
+      </AtlasCard>
+    </section>
+    <AtlasCard><AtlasCardHeader eyebrow="Pipeline de receita" title="Fila de oportunidades" description="Os negócios de maior risco aparecem primeiro. A previsão orienta, mas não garante fechamento." action={<AtlasBadge tone="violet">REVISÃO HUMANA</AtlasBadge>}/>
+      <div className="grid gap-3 border-t border-white/[.06] p-4 sm:grid-cols-[1fr_auto] sm:p-5"><input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full px-4" placeholder="Buscar lead, imóvel ou etapa"/><div className="flex gap-2 overflow-x-auto">{([['all','Todas'],['attention',`Atenção ${attentionCount}`],['closing','Fecha em 30d'],['won','Ganhas']] as const).map(([key,label]) => <button key={key} onClick={() => setView(key)} className={`atlas-kanban-toggle shrink-0 ${view === key ? "is-active" : ""}`}>{label}</button>)}</div></div>
+      {loading ? <div className="grid gap-3 p-5">{[1,2,3].map((item) => <AtlasSkeleton key={item} className="h-20"/>)}</div> : visible.length ? <div className="overflow-x-auto"><table className="min-w-[1040px] text-sm"><thead><tr><th>Lead</th><th>Imóvel</th><th>Etapa</th><th>Valor</th><th>Forecast</th><th>Fechamento</th><th>Risco</th>{canManage ? <><th>SLA comissão</th><th>Ações</th></> : null}</tr></thead><tbody>{visible.map((item) => {
+        const risk = opportunityRisk(item); const status = commissionStatus(item); const commissionTone = status === "received" ? "success" : ["overdue", "divergent"].includes(status) ? "danger" : "warning";
+        return <tr key={item.id}><td>{item.leads?.id ? <Link className="font-semibold text-white hover:text-cyan-200" href={`/leads/${item.leads.id}`}>{item.leads.name || "Lead sem nome"} →</Link> : "Sem lead"}</td><td className="text-slate-400">{item.properties?.title || "Sem imóvel"}</td><td><AtlasBadge tone="info">{item.stage}</AtlasBadge></td><td className="font-semibold text-white">{brl.format(Number(item.value || 0))}</td><td><strong className="text-violet-200">{brl.format(Number(item.value || 0) * item.probability / 100)}</strong><span className="mt-1 block text-[10px] text-slate-600">{item.probability}%</span></td><td className="text-slate-400">{item.expected_close_at ? new Date(item.expected_close_at).toLocaleDateString("pt-BR") : "Definir data"}</td><td><AtlasBadge tone={risk.tone}>{risk.label}</AtlasBadge></td>{canManage ? <><td>{item.won_at ? <div><AtlasBadge tone={commissionTone}>{status.replaceAll("_", " ").toUpperCase()}</AtlasBadge><p className="mt-2 text-[10px] text-slate-500">{item.commission_sla_days ?? 30} dias{item.commission_net ? ` · ${brl.format(item.commission_received_amount || 0)} de ${brl.format(item.commission_net)}` : ""}</p></div> : <span className="text-slate-600">Após a venda</span>}</td><td>{item.won_at ? <div className="flex min-w-36 flex-col gap-2"><button disabled={savingId === item.id} onClick={() => configureCommission(item)} className="atlas-button-secondary">Configurar</button><button disabled={savingId === item.id || !item.commission_net} onClick={() => registerPayment(item)} className="atlas-button-primary">Recebimento</button></div> : item.leads?.id ? <Link className="atlas-button-secondary" href={`/leads/${item.leads.id}`}>Abrir negócio</Link> : null}</td></> : null}</tr>;
+      })}</tbody></table></div> : <div className="p-5"><AtlasEmpty reason={items.length ? "no-results" : "first-use"} eyebrow={items.length ? "Fila filtrada" : "Pipeline de receita ainda vazio"} title={items.length ? "Nenhuma oportunidade neste filtro" : "Nenhuma oportunidade registrada"} description={items.length ? "Limpe a busca ou altere o filtro para ampliar a fila." : "As oportunidades aparecerão quando uma lead avançar para um negócio comercial."} action={items.length ? <button type="button" className="atlas-button-secondary" onClick={() => { setQuery(""); setView("all"); }}>Limpar filtros</button> : <Link href="/pipeline" className="atlas-button-primary">Abrir pipeline</Link>}/></div>}
+    </AtlasCard>
+    {financialEditor ? <div className="fixed inset-0 z-[120] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="financial-editor-title">
+      <button type="button" className="absolute inset-0 cursor-default" aria-label="Fechar edição financeira" onClick={() => setFinancialEditor(null)} />
+      <section className="relative w-full max-w-2xl rounded-[28px] border border-white/10 bg-[#090d17] p-6 shadow-2xl sm:p-8">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="cc6-eyebrow">Pipeline de receita</p>
-            <h2 id="sales-queue-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Fila de oportunidades</h2>
+            <p className="atlas-eyebrow">Registro financeiro auditado</p>
+            <h2 id="financial-editor-title" className="mt-2 text-2xl font-bold text-white">{financialEditor.mode === "configure" ? "Configurar comissão" : "Registrar recebimento"}</h2>
+            <p className="mt-2 text-sm text-slate-400">{financialEditor.item.leads?.name || "Venda ganha"} · toda alteração preserva o valor anterior no histórico.</p>
           </div>
-          {!loading ? <span className="cc6-chip">{visible.length} visíveis</span> : null}
-        </header>
-        {/* Quem chega pelo link não escolheu recorte nenhum — se a fila abrir
-            cortada sem dizer, o que falta some sem deixar rastro. */}
-        {view === "forecast" ? (
-          <div className="cc6-hairline mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-2.5">
-            <p className="min-w-56 flex-1 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
-              <strong className="font-medium text-[var(--atlas-texto-forte)]">
-                {/* "Abrir forecast" também é o rótulo do botão do topo, que leva
-                    a OUTRA tela — nomear o link aqui confundiria as duas. */}
-                Recorte de forecast{abertoPorLink ? " · pedido pelo link que abriu esta tela" : ""}
-              </strong>{" "}
-              — apenas negócios em aberto, do maior para o menor impacto provável (valor × probabilidade).
-              Oportunidade sem valor não conta como zero: fica no fim, marcada como dados incompletos.
-            </p>
-            <button type="button" onClick={() => setView("all")} className="cc6-ghost-btn shrink-0">
-              Ver a fila inteira
-            </button>
-          </div>
-        ) : null}
-        <div className="mt-4 flex flex-wrap items-center gap-2 px-5 pb-4">
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="min-w-56 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)]"
-            placeholder="Buscar lead, imóvel ou etapa"
-            aria-label="Buscar oportunidades"
-          />
-          <div className="flex gap-1.5 overflow-x-auto" role="group" aria-label="Filtrar oportunidades">
-            {VIEW_OPTIONS.map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setView(key)}
-                aria-pressed={view === key}
-                className={`cc6-chip shrink-0 cursor-pointer transition-colors ${
-                  view === key
-                    ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!"
-                    : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[var(--atlas-texto-forte)]!"
-                }`}
-              >
-                {label}
-                {key === "attention" ? (
-                  <strong className={`font-semibold ${attentionCount ? "cc6-crit" : ""}`}>{attentionCount}</strong>
-                ) : null}
-              </button>
-            ))}
-          </div>
+          <button type="button" className="atlas-icon-button" aria-label="Fechar" onClick={() => setFinancialEditor(null)}>×</button>
         </div>
-        {loading ? (
-          <div className="cc6-hairline space-y-2 p-5">
-            {[1, 2, 3].map((item) => <AtlasSkeleton key={item} className="h-14" />)}
-          </div>
-        ) : visible.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1040px] text-sm">
-              <thead>
-                <tr className="border-b border-b-[rgba(148,163,184,0.12)]">
-                  <th className={TH_CLASS}>Lead</th>
-                  <th className={TH_CLASS}>Imóvel</th>
-                  <th className={TH_CLASS}>Etapa</th>
-                  <th className={TH_CLASS}>Valor</th>
-                  <th className={TH_CLASS}>Forecast</th>
-                  <th className={TH_CLASS}>Fechamento</th>
-                  <th className={TH_CLASS}>Risco</th>
-                  {canManage ? <><th className={TH_CLASS}>SLA comissão</th><th className={TH_CLASS}>Ações</th></> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((item) => {
-                  const risk = opportunityRisk(item); const status = commissionStatus(item); const commissionTone = status === "received" ? "success" : ["overdue", "divergent"].includes(status) ? "danger" : "warning";
-                  return (
-                    <tr key={item.id} className="border-t border-t-[rgba(148,163,184,0.08)] align-top transition-colors hover:bg-[rgba(75,141,248,0.04)]">
-                      <td className="px-4 py-3">
-                        {item.leads?.id ? (
-                          <Link className="font-medium text-[var(--atlas-texto-forte)] transition-colors hover:text-[color:var(--atlas-accent-hover)]" href={`/leads/${item.leads.id}`}>
-                            {item.leads.name || "Lead sem nome"}
-                          </Link>
-                        ) : (
-                          <span className="text-[var(--atlas-texto-fraco)]">Sem lead</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-[var(--atlas-texto-medio)]">{item.properties?.title || "—"}</td>
-                      <td className="px-4 py-3 text-[var(--atlas-texto-medio)]">{item.stage}</td>
-                      <td className="cc6-num px-4 py-3 font-medium text-[var(--atlas-texto-forte)]">{item.value == null ? "—" : brl.format(Number(item.value))}</td>
-                      <td className="px-4 py-3">
-                        <span className="cc6-num block text-[var(--atlas-texto-forte)]">{item.value == null ? "—" : brl.format(Number(item.value) * item.probability / 100)}</span>
-                        <span className="cc6-num mt-0.5 block text-micro text-[var(--atlas-texto-fraco)]">{item.probability}%</span>
-                      </td>
-                      <td className="cc6-num px-4 py-3 text-[var(--atlas-texto-medio)]">
-                        {item.expected_close_at ? new Date(item.expected_close_at).toLocaleDateString("pt-BR") : <span className="cc6-warn">Definir data</span>}
-                      </td>
-                      <td className="px-4 py-3"><StatusBadge tone={risk.tone}>{risk.label}</StatusBadge></td>
-                      {canManage ? (
-                        <>
-                          <td className="px-4 py-3">
-                            {item.won_at ? (
-                              <div>
-                                <StatusBadge tone={commissionTone}>{COMMISSION_LABEL[status] ?? status}</StatusBadge>
-                                <p className="cc6-num mt-1.5 text-micro text-[var(--atlas-texto-fraco)]">
-                                  {item.commission_sla_days ?? 30} dias{item.commission_net ? ` · ${brl.format(item.commission_received_amount || 0)} de ${brl.format(item.commission_net)}` : ""}
-                                </p>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-[var(--atlas-texto-fraco)]">Após a venda</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            {item.won_at ? (
-                              <div className="flex min-w-36 flex-col gap-2">
-                                <button disabled={savingId === item.id} onClick={() => configureCommission(item)} className="cc6-ghost-btn justify-center disabled:opacity-50">Configurar</button>
-                                <button disabled={savingId === item.id || !item.commission_net} onClick={() => registerPayment(item)} className="atlas-button-primary disabled:opacity-50">Recebimento</button>
-                              </div>
-                            ) : item.leads?.id ? (
-                              <Link className="cc6-ghost-btn" href={`/leads/${item.leads.id}`}>Abrir negócio</Link>
-                            ) : null}
-                          </td>
-                        </>
-                      ) : null}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="cc6-hairline px-5 py-6">
-            <AtlasEmpty
-              reason={items.length ? "no-results" : "first-use"}
-              eyebrow={
-                items.length
-                  ? "Fila filtrada"
-                  : "Pipeline de receita ainda vazio"
-              }
-              title={
-                items.length
-                  ? "Nenhuma oportunidade neste filtro"
-                  : "Nenhuma oportunidade registrada"
-              }
-              description={
-                items.length
-                  ? "Limpe a busca ou altere o filtro para ampliar a fila."
-                  : "As oportunidades aparecem quando uma lead avança para um negócio comercial."
-              }
-              action={
-                items.length ? (
-                  <button
-                    type="button"
-                    className="atlas-button-secondary"
-                    onClick={() => {
-                      setQuery("");
-                      setView("all");
-                    }}
-                  >
-                    Limpar filtros
-                  </button>
-                ) : (
-                  <Link href="/pipeline" className="atlas-button-primary">
-                    Abrir pipeline
-                  </Link>
-                )
-              }
-            />
-          </div>
-        )}
+        {financialEditor.mode === "configure" ? <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <label className="text-xs font-semibold text-slate-400">Comissão bruta (R$)<input autoFocus inputMode="decimal" value={financialEditor.gross} onChange={(event) => setFinancialEditor({ ...financialEditor, gross: event.target.value })} className="mt-2 w-full" placeholder="0,00" /></label>
+          <label className="text-xs font-semibold text-slate-400">Comissão líquida prevista (R$)<input inputMode="decimal" value={financialEditor.net} onChange={(event) => setFinancialEditor({ ...financialEditor, net: event.target.value })} className="mt-2 w-full" placeholder="0,00" /></label>
+          <label className="text-xs font-semibold text-slate-400">Percentual da comissão (%)<input inputMode="decimal" value={financialEditor.percentage} onChange={(event) => setFinancialEditor({ ...financialEditor, percentage: event.target.value })} className="mt-2 w-full" placeholder="Opcional" /></label>
+          <label className="text-xs font-semibold text-slate-400">Percentual do corretor/time (%)<input inputMode="decimal" value={financialEditor.splitPercentage} onChange={(event) => setFinancialEditor({ ...financialEditor, splitPercentage: event.target.value })} className="mt-2 w-full" placeholder="Opcional" /></label>
+        </div> : <div className="mt-6">
+          <label className="text-xs font-semibold text-slate-400">Valor recebido agora (R$)<input autoFocus inputMode="decimal" value={financialEditor.paymentAmount} onChange={(event) => setFinancialEditor({ ...financialEditor, paymentAmount: event.target.value })} className="mt-2 w-full" placeholder="0,00" /></label>
+          <p className="mt-3 text-xs text-slate-500">Recebido até agora: {brl.format(financialEditor.item.commission_received_amount || 0)}{financialEditor.item.commission_net ? ` de ${brl.format(financialEditor.item.commission_net)}` : ""}.</p>
+        </div>}
+        <label className="mt-4 block text-xs font-semibold text-slate-400">Evidência ou observação<textarea value={financialEditor.notes} onChange={(event) => setFinancialEditor({ ...financialEditor, notes: event.target.value })} className="mt-2 min-h-24 w-full resize-y" maxLength={2000} placeholder="Identifique documento, parcela ou responsável pela confirmação." /></label>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button type="button" className="atlas-button-secondary" onClick={() => setFinancialEditor(null)}>Cancelar</button>
+          <button type="button" className="atlas-button-primary" disabled={savingId === financialEditor.item.id || (financialEditor.mode === "configure" ? !financialEditor.gross || !financialEditor.net : !financialEditor.paymentAmount)} onClick={() => void submitFinancialEditor()}>{savingId === financialEditor.item.id ? "Registrando..." : financialEditor.mode === "configure" ? "Confirmar configuração" : "Confirmar recebimento"}</button>
+        </div>
       </section>
-    </div>
-  );
+    </div> : null}
+  </div>;
 }

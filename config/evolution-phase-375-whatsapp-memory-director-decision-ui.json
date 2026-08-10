@@ -1,0 +1,14 @@
+{
+  "phase": 375,
+  "name": "WhatsApp memory director decision UI",
+  "status": "implemented_local",
+  "audience": ["admin", "director"],
+  "server_derived_organization": true,
+  "server_derived_actor": true,
+  "server_recalculated_evidence": true,
+  "client_can_send_evidence": false,
+  "requires_human_reason": true,
+  "requires_two_confirmations": true,
+  "blocked_until_persistence_ready": true,
+  "learning_activated": false
+}

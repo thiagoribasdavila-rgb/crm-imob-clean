@@ -1,0 +1,56 @@
+{
+  "format": "atlas_meta_data_api_access_evidence_v1",
+  "phase": 17,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "projectIdentifiersPersisted": false,
+  "rawLogsPersisted": false,
+  "remoteExecutionPerformed": false,
+  "sourceEvidence": {
+    "phase16": {
+      "format": null,
+      "phase": null,
+      "approved": false,
+      "sha256": null
+    },
+    "catalog": {
+      "format": null,
+      "phase": null,
+      "approved": false,
+      "sha256": null
+    }
+  },
+  "localContract": {
+    "migrationDraftSha256": null,
+    "organizationExplicitGrant": false,
+    "profileNameUpdateGrant": false,
+    "leadLeastPrivilegeGrant": false,
+    "anonymousRevocation": false,
+    "serviceRoleGrant": false,
+    "readOnlyCatalogQuery": false
+  },
+  "reconciliation": {
+    "approved": false,
+    "issueCodes": [
+      "branch_evidence_not_provided"
+    ]
+  },
+  "releaseGates": {
+    "dataApiGrantsRlsApproved": false,
+    "productionAllowed": false,
+    "metaEventDeliveryAllowed": false,
+    "deploymentAllowed": false
+  },
+  "prohibitedActions": {
+    "productionMutation": false,
+    "realMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false
+  },
+  "errorCode": "branch_evidence_not_provided"
+}

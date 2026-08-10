@@ -1,0 +1,12 @@
+{
+  "schema_version": "atlas.phase012.capture_approval.v1",
+  "approved": false,
+  "approver_role": "authorized_operator",
+  "target_kind": "isolated_loopback_pg17",
+  "target_fingerprint": null,
+  "postgres_major": 17,
+  "disposable": true,
+  "data_profile": "schema_only_or_synthetic",
+  "expires_at": null,
+  "notes": "Template fail-closed. Não preencher com URL, senha, project ref, token ou qualquer dado pessoal."
+}

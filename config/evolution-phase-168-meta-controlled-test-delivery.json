@@ -1,0 +1,40 @@
+{
+  "phase": 168,
+  "name": "Meta Controlled Test Delivery",
+  "status": "implemented",
+  "stream": "meta-andromeda-conversion-automation",
+  "objective": "Consumir uma cadeia válida de aprovação, payload congelado e gate para entregar no máximo um evento Lead ao dataset Meta de teste e persistir um recibo técnico sanitizado.",
+  "businessProblem": "A autorização da fase 167 ainda não comprovava a recepção real pelo dataset de teste nem impedia mudanças na lead entre congelamento e disparo.",
+  "implemented": [
+    "Confirmação explícita ENVIAR_TESTE_META_AGORA exigida no servidor",
+    "Revalidação integral da aprovação, payload congelado, gate e contexto atual da lead",
+    "Chave idempotente e event_id determinístico para impedir repetição",
+    "Uso da fila e do worker Hostinger já homologados",
+    "Entrega restrita a configuração Meta mode=test com test_event_code",
+    "Confirmação obrigatória de status delivered e events_received igual a um",
+    "Recibo atlas.meta.delivery-receipt.v1 sem token, telefone ou e-mail",
+    "Aposentadoria do endpoint legado que permitia ensaio direto"
+  ],
+  "acceptanceCriteria": [
+    "Somente admin, diretor decisor ou diretor podem realizar o envio",
+    "O gate deve estar vigente, íntegro e limitado a uma entrega",
+    "A lead atual deve produzir a mesma fingerprint do contexto aprovado",
+    "Credenciais nunca podem ser devolvidas ou persistidas no recibo",
+    "O dataset Meta deve confirmar exatamente um evento",
+    "Repetições devem reutilizar a mesma identidade sem criar novo evento"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-168:check",
+    "contracts": "node --experimental-strip-types --test tests/contracts/meta-test-delivery.test.mjs",
+    "tests": "npm test",
+    "typecheck": "npm run typecheck",
+    "lint": "targeted changed files",
+    "secretScan": "npm run security:secrets",
+    "build": "deferred-to-release-close"
+  },
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": "only-after-explicit-director-action-with-valid-test-credentials",
+  "automatedExternalDelivery": false,
+  "nextPhaseRecommendation": "Na fase 169, consolidar recuperação segura, observabilidade e orientação operacional para falhas ou respostas inconclusivas do teste Meta."
+}

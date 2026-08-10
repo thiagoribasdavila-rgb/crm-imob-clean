@@ -8,7 +8,7 @@
   "sourceBaseline": "config/meta-intelligence-phase-009.json",
   "reconciliationManifest": "config/fixtures/meta-schema-reconciliation-manifest.json",
   "executionEvidenceTemplate": "config/fixtures/meta-schema-reconciliation-evidence-template.json",
-  "bridgeMigrationEvidence": "supabase/migrations/20260717213001_v3_legacy_runtime_schema_bridge.sql",
+  "bridgeMigrationEvidence": "supabase/migrations/20260717213000_v3_legacy_runtime_schema_bridge.sql",
   "compatibilityEvidence": [
     "lib/compat/legacy-v2.ts",
     "lib/compat/live-writes.ts",

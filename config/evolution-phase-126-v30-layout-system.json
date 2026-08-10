@@ -1,0 +1,26 @@
+{
+  "phase": 126,
+  "name": "V30 Layout System foundation",
+  "status": "implemented",
+  "area": "global-experience",
+  "priority": "P5-premium-experience",
+  "objective": "Redesenhar a fundação visual do Atlas para uma experiência V30 mais limpa, decisiva e proativa em todas as páginas, começando pelo shell, sidebar, topbar e padrões globais.",
+  "businessImpact": [
+    "Usuários entendem mais rápido onde estão e qual decisão a tela deve apoiar.",
+    "A barra lateral deixa de ser apenas menu e passa a comunicar resultado comercial por módulo.",
+    "Todas as páginas ganham base premium com menos ruído, mais contraste útil e ações principais mais claras.",
+    "A evolução visual fica centralizada, acelerando próximos refinamentos sem recriar páginas do zero."
+  ],
+  "technicalScope": [
+    "Adiciona data-visual-generation atlas-v30 mantendo compatibilidade com a camada atlas-core-v2.",
+    "Promove navegação outcome-first com microcopy comercial em cada item da sidebar.",
+    "Expõe o businessOutcome da navegação no topbar como bússola da decisão atual.",
+    "Adiciona um padrão global V30 para sidebar, topbar, PageHeader, cards, estados, botões, inputs e tabelas.",
+    "Não altera banco, autenticação, APIs, RBAC ou regras de negócio."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-126:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "phase": 212,
+  "name": "Approved Release Memory Commitment",
+  "status": "implemented",
+  "objective": "Preparar e validar uma memória imutável para registrar somente uma aprovação final verificada, sem inventar decisão, gerar pacote, publicar ou promover.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "approvalPolicyHash": "808518cd61008b5da6eb94a9d506a4544bdf0723c6d60acbf5d7ce8f731610eb",
+    "memoryPolicyHash": "37af76ac19a603949ccb56c1fe127919bc9e595770822df11b4a7e61a54e497a",
+    "memoryHash": "04de684a4dacf1080468bf849fc929f9c7ac007621ce942f59c70bb4046abf76",
+    "trustedApproversConfigured": 0,
+    "verifiedFinalApprovalDecisionAvailable": false,
+    "approvedReleaseCommitted": false,
+    "committedApprovals": 0,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "commitmentRules": {
+    "exactFinalApprovalDecisionBindingRequired": true,
+    "approvedOutcomeRequired": true,
+    "acceptedGateResultsRequired": true,
+    "appendOnly": true,
+    "hashChainRequired": true,
+    "duplicateApprovalDecisionRejected": true,
+    "duplicateApprovalIdRejected": true,
+    "duplicateApprovalNonceRejected": true,
+    "maximumCommitDelaySeconds": 1800
+  },
+  "safety": {
+    "databaseChanged": false,
+    "authChanged": false,
+    "rlsChanged": false,
+    "externalCallExecuted": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 213,
+    "name": "Approved Release Package Authorization",
+    "objective": "Autorizar explicitamente a montagem de um pacote somente a partir de uma aprovação fixada na memória, sem gerar ZIP, publicar ou promover automaticamente."
+  }
+}

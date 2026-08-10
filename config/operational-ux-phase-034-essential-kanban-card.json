@@ -1,0 +1,38 @@
+{
+  "phase": 34,
+  "scope": "essential_kanban_card",
+  "canonicalCard": "34-essential-decision-card",
+  "visibleInformation": [
+    "lead_identity",
+    "urgency",
+    "next_action",
+    "primary_command"
+  ],
+  "onDemandInformation": [
+    "score",
+    "quick_signals",
+    "project_and_value",
+    "preview",
+    "ai_summary",
+    "lead_360",
+    "stage_advance",
+    "playbook",
+    "execution_rail"
+  ],
+  "preservedCapabilities": [
+    "drag_and_drop",
+    "keyboard_movement",
+    "stage_selector",
+    "undo",
+    "primary_contact",
+    "lead_360",
+    "copilot",
+    "tasks",
+    "calendar",
+    "proposal"
+  ],
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

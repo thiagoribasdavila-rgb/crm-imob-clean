@@ -1,0 +1,24 @@
+{
+  "schema": "atlas.meta-simulation-decision.v1",
+  "status": "pending_human_decision",
+  "simulationReference": null,
+  "decision": {
+    "outcome": null,
+    "reviewerReference": null,
+    "reason": null,
+    "decidedAt": null
+  },
+  "execution": {
+    "authorized": false,
+    "budgetChanged": false,
+    "audienceChanged": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticExecution": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

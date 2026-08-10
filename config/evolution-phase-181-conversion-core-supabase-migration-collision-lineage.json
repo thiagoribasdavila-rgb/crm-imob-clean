@@ -1,0 +1,42 @@
+{
+  "phase": 181,
+  "name": "Conversion Core Supabase Migration Collision Lineage",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Catalogar a linhagem local das seis migrations em colisão e cruzá-la com o registro histórico somente como referência, sem inferir o estado remoto atual ou autorizar mutações.",
+  "evidenceLevel": "local_contract_tested_historical_reference_only",
+  "runtimeHomologated": false,
+  "currentState": {
+    "localMigrationFiles": 131,
+    "localUniqueVersions": 128,
+    "duplicateVersions": 3,
+    "collidingFiles": 6,
+    "historicalMappingsObserved": 6,
+    "currentNamedRemoteEvidenceAvailable": false,
+    "currentResolutions": 0,
+    "historicalSnapshotAcceptedAsCurrent": false
+  },
+  "safety": {
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationFileRenamed": false,
+    "migrationHistoryRepaired": false,
+    "databaseReset": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "contractsPassed": true,
+    "historicalLineageCataloged": true,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "directPushAllowed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Obter evidência remota atual com nomes em uma sessão explicitamente autorizada e somente leitura; até lá, os três pares permanecem sem resolução operacional."
+}

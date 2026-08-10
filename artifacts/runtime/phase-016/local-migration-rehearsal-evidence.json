@@ -1,0 +1,58 @@
+{
+  "schema_version": "atlas.local_migration_rehearsal_evidence.v1",
+  "phase": 16,
+  "status": "local_rehearsal_not_started",
+  "inputs": {
+    "phase_015_manifest_available": false,
+    "single_use_permit_available": false,
+    "migration_available": false,
+    "dynamic_test_available": false,
+    "approved_review_available": false,
+    "supabase_config_available": false
+  },
+  "cli": {
+    "local_cli_detected": true,
+    "version": "2.109.1",
+    "migration_list_help_inspected": true,
+    "db_lint_help_inspected": true,
+    "db_advisors_help_inspected": true,
+    "test_db_help_inspected": true,
+    "isolated_home_used": true,
+    "linked_command_used": false,
+    "db_url_used": false,
+    "db_push_used": false,
+    "db_pull_used": false,
+    "migration_repair_used": false
+  },
+  "rehearsal": {
+    "preflight_accepted": false,
+    "local_stack_started": false,
+    "first_reset_executed": false,
+    "migration_history_checked": false,
+    "dynamic_rls_test_executed": false,
+    "lint_executed": false,
+    "security_advisor_executed": false,
+    "performance_advisor_executed": false,
+    "catalog_delta_compared": false,
+    "second_reset_executed": false,
+    "second_dynamic_test_executed": false,
+    "idempotency_proved": false,
+    "migration_applied": false
+  },
+  "privacy": {
+    "contains_secrets": false,
+    "contains_personal_data": false,
+    "contains_database_url": false,
+    "contains_fixture_identifiers": false,
+    "raw_cli_output_persisted": false
+  },
+  "safety": {
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "live_homologation_touched": false,
+    "business_data_read": false,
+    "auth_user_data_read": false,
+    "build_executed": false,
+    "release_package_created": false
+  }
+}

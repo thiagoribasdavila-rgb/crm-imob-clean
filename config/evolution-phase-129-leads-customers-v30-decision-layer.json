@@ -1,0 +1,26 @@
+{
+  "phase": 129,
+  "name": "Leads/Clientes V30 Decision Layer",
+  "status": "implemented",
+  "area": "leads-customers",
+  "priority": "P1-lead-conversion",
+  "objective": "Elevar a tela de Leads para uma camada decisiva de ação comercial: clareza da carteira, sinais de SLA, intenção, cobertura de próxima ação e memória de IA.",
+  "businessImpact": [
+    "O corretor identifica rapidamente o que fazer agora sem interpretar uma lista inteira.",
+    "A gestão enxerga cobertura de responsável, próxima ação e sinais de aprendizagem em uma leitura compacta.",
+    "A IA ganha contexto estruturado para orientar abordagem, cadência e qualidade de memória sem executar ações automaticamente.",
+    "A experiência aproxima Leads e Clientes 360 de um fluxo único: menos ruído, mais decisão e mais conversão."
+  ],
+  "technicalScope": [
+    "Cria leadsV30Signals com score de clareza, cobertura de próxima ação, cobertura de contato, responsável e memória Meta.",
+    "Adiciona a seção atlas-leads-v30-command-strip com quatro sinais de decisão acionáveis.",
+    "Conecta os sinais ao Copilot via evento atlas:open-copilot preservando contexto e sem disparos automáticos.",
+    "Adiciona estilos premium e responsivos para a faixa V30 sem remover os blocos existentes.",
+    "Não altera banco de dados, APIs, autenticação, RBAC, importações ou regras de transferência."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-129:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

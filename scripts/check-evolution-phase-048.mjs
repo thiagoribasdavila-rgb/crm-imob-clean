@@ -10,9 +10,16 @@ const context = fs.readFileSync("lib/auth/atlas-auth-context.ts", "utf8");
 const login = fs.readFileSync("app/(auth)/login/page.tsx", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_048_OPERATIONAL_ACCESS_READINESS.md", "utf8");
 
+const deliveryCadencePreservesEvidence =
+  program.deliveryCadence === "one-phase-per-day" ||
+  (program.deliveryCadence === "five-phase-value-cycle" &&
+    program.valueCyclePolicy?.phasesPerCycle === 5 &&
+    program.valueCyclePolicy?.phaseEvidence !== false &&
+    program.valueCyclePolicy?.releaseArtifactOnlyAtCompletedCycle === true);
+
 const checks = [
   ["Fase 048 concluída sem tocar dados ou schema", config.status === "completed" && config.productionDataModified === false && config.databaseSchemaChanged === false],
-  ["Programa preserva as 3.000 fases como referência sem limitar a evolução", program.referenceBacklogPhases === 3000 && program.horizon === "continuous" && program.deliveryCadence === "one-phase-per-day" && program.truthPolicy.plannedWorkCountsAsProgress === false],
+  ["Programa preserva as 3.000 fases como referência sem limitar a evolução", program.referenceBacklogPhases === 3000 && program.horizon === "continuous" && deliveryCadencePreservesEvidence && program.truthPolicy.plannedWorkCountsAsProgress === false],
   ["ZIP permanece condicionado aos gates de release", program.releasePolicy.mode === "release-gated" && program.releasePolicy.automaticCheckpointPackages === false && config.release.zipCreated === false],
   ["Guard usa o contexto oficial do servidor", guard.includes("fetchAtlasAuthContext") && guard.includes('response.status === 401 || response.status === 403')],
   ["Guard não autoriza por sessão bruta ou profiles no navegador", !guard.includes("getSession(") && !guard.includes('.from("profiles")')],

@@ -1,0 +1,29 @@
+{
+  "phase": 164,
+  "name": "Meta Eligible Lead Selection",
+  "status": "implemented",
+  "stream": "meta-andromeda-conversion-automation",
+  "objective": "Selecionar uma lead real elegível para o primeiro teste oficial Meta/Andromeda sem enviar evento, expor dados sensíveis ou alterar campanhas.",
+  "businessProblem": "A operação tinha ambiente e handoff preparados, mas ainda precisava escolher uma lead real segura, com origem Meta, identificador, consentimento e projeto antes de qualquer ensaio oficial.",
+  "implemented": [
+    "Nova API protegida para listar candidatas Meta com dados mascarados",
+    "Checklist de elegibilidade por origem, consentimento, identificador e projeto",
+    "Painel visual na tela de campanhas para seleção da melhor candidata",
+    "Resumo executivo para o diretor com quantidade lida, elegível, consentida e deduplicável",
+    "Handoff copiável sem disparo CAPI e sem exposição de telefone ou e-mail"
+  ],
+  "acceptanceCriteria": [
+    "A tela de campanhas mostra a seção Lead real elegível para o teste Meta",
+    "A API de candidatas exige usuário autenticado com perfil diretor/admin",
+    "Nenhum evento real é enviado para Meta pela tela de campanhas",
+    "Telefone, e-mail, CPF, renda e documentos não aparecem na resposta visual",
+    "A lead selecionada informa pendências antes do ensaio oficial"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-164:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint",
+    "build": "deferred-to-release-close"
+  },
+  "nextPhaseRecommendation": "Criar recibo interno de aprovação do diretor para a lead selecionada, mantendo gate humano antes do primeiro envio oficial em Integrações Meta."
+}

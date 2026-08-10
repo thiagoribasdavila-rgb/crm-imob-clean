@@ -1,0 +1,29 @@
+{
+  "schema": "atlas.meta-learning-confidence.v1",
+  "status": "not_scored",
+  "lineageReference": null,
+  "evidence": {
+    "quality": null,
+    "sampleClass": null,
+    "recencyClass": null,
+    "contradictionDetected": false
+  },
+  "decision": {
+    "confidenceBand": null,
+    "recommendationMode": "monitor_only",
+    "humanApprovalRequired": true
+  },
+  "execution": {
+    "campaignChanged": false,
+    "audienceChanged": false,
+    "budgetChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "inventedConfidence": true,
+    "automaticOptimization": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

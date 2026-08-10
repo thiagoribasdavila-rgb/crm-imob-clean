@@ -37,6 +37,18 @@ type DlqItem = {
   created_at: string;
 };
 
+type BrokerLineRequest = {
+  id: string;
+  brokerProfileId: string | null;
+  brokerName: string;
+  displayPhone: string | null;
+  phoneNumberIdMasked: string;
+  requestedAt: string | null;
+};
+
+type HealthTask = Record<string, unknown> & { id?: string; title?: string; priority?: string | null; status?: string | null; due_at?: string | null };
+type HealthInsight = Record<string, unknown> & { id?: string; title?: string; content?: string | null; count?: number | null };
+
 function timeLabel(value: string | null | undefined, now: number) {
   if (!value) return "Sem prazo";
   const diff = new Date(value).getTime() - now;
@@ -54,18 +66,29 @@ export default function AtlasNotificationCenter() {
   const [decisions, setDecisions] = useState<DecisionItem[]>([]);
   const [insights, setInsights] = useState<InsightItem[]>([]);
   const [failures, setFailures] = useState<DlqItem[]>([]);
+  const [brokerLineRequests, setBrokerLineRequests] = useState<BrokerLineRequest[]>([]);
   const [referenceTime, setReferenceTime] = useState(0);
 
   async function load() {
     setLoading(true);
     setReferenceTime(Date.now());
-    const [taskRes, decisionRes, insightRes, failureRes] = await Promise.all([
-      supabase
-        .from("tasks")
-        .select("id,title,priority,status,due_at")
-        .not("status", "in", "(done,concluido,concluída)")
-        .order("due_at", { ascending: true, nullsFirst: false })
-        .limit(8),
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) {
+      setTasks([]);
+      setDecisions([]);
+      setInsights([]);
+      setFailures([]);
+      setBrokerLineRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    const [healthResult, decisionResult, failureResult, brokerLineResult] = await Promise.allSettled([
+      fetch("/api/v1/core-v2/module-health", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
       supabase
         .from("atlas_decisions")
         .select("id,title,priority,status,confidence,created_at")
@@ -73,23 +96,50 @@ export default function AtlasNotificationCenter() {
         .order("created_at", { ascending: false })
         .limit(6),
       supabase
-        .from("ai_insights")
-        .select("id,title,recommendation,score,created_at")
-        .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(5),
-      supabase
         .from("dead_letter_events")
         .select("id,topic,error_message,resolved,created_at")
         .eq("resolved", false)
         .order("created_at", { ascending: false })
         .limit(5),
+      fetch("/api/v1/integrations/whatsapp/pending-lines", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
     ]);
 
-    setTasks((taskRes.data ?? []) as TaskItem[]);
-    setDecisions((decisionRes.data ?? []) as DecisionItem[]);
-    setInsights((insightRes.data ?? []) as InsightItem[]);
-    setFailures((failureRes.data ?? []) as DlqItem[]);
+    if (healthResult.status === "fulfilled" && healthResult.value.ok) {
+      const payload = await healthResult.value.json().catch(() => null);
+      const snapshot = payload?.data?.snapshot ?? {};
+      setTasks(((snapshot.tasks ?? []) as HealthTask[]).map((task) => ({
+        id: String(task.id ?? crypto.randomUUID()),
+        title: String(task.title ?? "Tarefa sem título"),
+        priority: task.priority ?? null,
+        status: task.status ?? null,
+        due_at: typeof task.due_at === "string" ? task.due_at : null,
+      })).slice(0, 8));
+      setInsights(((snapshot.insights ?? []) as HealthInsight[]).map((insight) => ({
+        id: String(insight.id ?? crypto.randomUUID()),
+        title: String(insight.title ?? "Insight Atlas"),
+        recommendation: insight.content ?? "Revisar o contexto e definir a próxima ação.",
+        score: Number(insight.count ?? 0),
+        created_at: new Date().toISOString(),
+      })).slice(0, 5));
+    } else {
+      setTasks([]);
+      setInsights([]);
+    }
+
+    const decisionRes = decisionResult.status === "fulfilled" ? decisionResult.value : null;
+    const failureRes = failureResult.status === "fulfilled" ? failureResult.value : null;
+    setDecisions((decisionRes?.data ?? []) as DecisionItem[]);
+    setFailures((failureRes?.data ?? []) as DlqItem[]);
+    if (brokerLineResult.status === "fulfilled" && brokerLineResult.value.ok) {
+      const payload = await brokerLineResult.value.json().catch(() => null);
+      setBrokerLineRequests((payload?.data?.requests ?? []) as BrokerLineRequest[]);
+    } else {
+      // Corretores e gerentes não recebem esse aviso de diretoria.
+      setBrokerLineRequests([]);
+    }
     setLoading(false);
   }
 
@@ -116,8 +166,8 @@ export default function AtlasNotificationCenter() {
   const criticalCount = useMemo(() => {
     const overdue = tasks.filter((task) => task.due_at && new Date(task.due_at).getTime() < referenceTime).length;
     const highPriority = decisions.filter((decision) => ["high", "critical"].includes((decision.priority ?? "").toLowerCase())).length;
-    return overdue + highPriority + failures.length;
-  }, [decisions, failures.length, referenceTime, tasks]);
+    return overdue + highPriority + failures.length + brokerLineRequests.length;
+  }, [brokerLineRequests.length, decisions, failures.length, referenceTime, tasks]);
 
   if (!open) return null;
 
@@ -147,6 +197,28 @@ export default function AtlasNotificationCenter() {
         </div>
 
         <div className="space-y-7 p-5">
+          {brokerLineRequests.length > 0 ? (
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-amber-100">Aprovações da diretoria</h3>
+                <Link href="/integrations/whatsapp" className="text-xs font-semibold text-amber-300">Revisar linhas →</Link>
+              </div>
+              <div className="space-y-2">
+                {brokerLineRequests.map((request) => (
+                  <Link key={request.id} href="/integrations/whatsapp" className="block rounded-2xl border border-amber-300/15 bg-amber-300/[0.055] p-4 transition hover:border-amber-200/30">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-amber-50">Linha oficial solicitada por {request.brokerName}</p>
+                        <p className="mt-1 text-xs leading-5 text-amber-100/65">{request.displayPhone || request.phoneNumberIdMasked} · aguarda sua validação na Meta Business.</p>
+                      </div>
+                      <span className="rounded-full bg-amber-300/10 px-2.5 py-1 text-[10px] font-semibold text-amber-200">PENDENTE</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-white">Tarefas e prazos</h3>
@@ -187,7 +259,7 @@ export default function AtlasNotificationCenter() {
                       <p className="text-sm font-medium text-white">{decision.title}</p>
                       <p className="mt-1 text-xs capitalize text-slate-500">{decision.status?.replaceAll("_", " ")}</p>
                     </div>
-                    <span className="rounded-full bg-violet-400/10 px-2.5 py-1 text-micro font-semibold text-violet-200">{Math.round(Number(decision.confidence ?? 0) * (Number(decision.confidence ?? 0) <= 1 ? 100 : 1))}%</span>
+                    <span className="rounded-full bg-violet-400/10 px-2.5 py-1 text-[10px] font-semibold text-violet-200">{decision.confidence === null ? "REVISAR" : `${Math.round(Number(decision.confidence) * (Number(decision.confidence) <= 1 ? 100 : 1))}%`}</span>
                   </div>
                 </Link>
               ))}
@@ -197,7 +269,7 @@ export default function AtlasNotificationCenter() {
           <section>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-white">Inteligência recente</h3>
-              <Link href="/intelligence" className="text-xs font-semibold text-sky-300">Ver inteligência →</Link>
+              <Link href="/ai-dashboard" className="text-xs font-semibold text-sky-300">Ver inteligência →</Link>
             </div>
             <div className="space-y-2">
               {loading ? <div className="atlas-skeleton h-20 rounded-2xl" /> : insights.length === 0 ? (
@@ -214,14 +286,15 @@ export default function AtlasNotificationCenter() {
           {failures.length > 0 ? (
             <section>
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-rose-200">Falhas de integração</h3>
-                <Link href="/atlas-v3/audit" className="text-xs font-semibold text-rose-300">Abrir auditoria →</Link>
+                <h3 className="text-sm font-semibold text-rose-200">Fila de integração</h3>
+                <Link href="/integrations/health" className="text-xs font-semibold text-rose-300">Tratar falhas →</Link>
               </div>
               <div className="space-y-2">
                 {failures.map((failure) => (
                   <article key={failure.id} className="rounded-2xl border border-rose-400/15 bg-rose-400/[0.05] p-4">
                     <p className="text-sm font-medium text-rose-100">{failure.topic}</p>
-                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-rose-200/65">{failure.error_message}</p>
+                    <p className="mt-2 text-xs leading-5 text-rose-200/65">Falha terminal após tentativas automáticas. Abra a fila para diagnóstico sanitizado e ação segura.</p>
+                    <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-rose-300/70">Revisão da diretoria</p>
                   </article>
                 ))}
               </div>

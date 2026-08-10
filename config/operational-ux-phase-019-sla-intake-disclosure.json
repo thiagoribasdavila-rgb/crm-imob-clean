@@ -1,0 +1,46 @@
+{
+  "phase": 19,
+  "name": "sla-intake-progressive-disclosure",
+  "objective": "Compactar entrada diária e SLA do time sem esconder exceções operacionais nem remover evidência auditável.",
+  "canonicalSurfaces": ["lead-intake", "team-sla"],
+  "surfaces": {
+    "lead-intake": {
+      "immediate": [
+        "Entradas operacionais hoje",
+        "Recebimentos hoje",
+        "Sem responsável",
+        "Média diária · 7 dias",
+        "status da distribuição"
+      ],
+      "supporting": [
+        "origem dos dados",
+        "importações históricas",
+        "ritmo de 7 ou 14 dias",
+        "distribuição por corretor"
+      ]
+    },
+    "team-sla": {
+      "immediate": [
+        "Cumprimento",
+        "Recuperados",
+        "Follow-ups atrasados",
+        "Sem primeiro contato",
+        "Corretores com alerta",
+        "quatro alertas mais urgentes"
+      ],
+      "supporting": [
+        "tempo médio de execução",
+        "alertas adicionais até o limite auditável de doze"
+      ]
+    }
+  },
+  "rules": [
+    "O estado operacional e as exceções mais urgentes permanecem visíveis na primeira leitura.",
+    "Histórico, distribuição detalhada, proveniência e alertas adicionais permanecem acessíveis sob demanda.",
+    "Nenhum cálculo, consulta, endpoint, escopo hierárquico ou permissão é alterado.",
+    "Estados indisponível e vazio continuam explícitos.",
+    "A divulgação usa semântica nativa, teclado e foco acessível."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   LIVE_LEAD_SELECT,
+  isMissingColumn,
   mapLegacyLead,
   type CompatRow,
 } from "@/lib/compat/legacy-v2";
@@ -16,6 +17,10 @@ export const dynamic = "force-dynamic";
 
 const TERMINAL = new Set(["ganho", "perdido", "arquivado", "comprou_outro"]);
 const DAY = 86_400_000;
+const MANAGER_PROFILE_SELECT =
+  "id,full_name,role,access_role,commercial_role,reports_to,active,organization_id,team,max_active_leads,availability_status";
+const MANAGER_LEAD_SELECT =
+  "id,name,source,status,score,temperature,assigned_to,created_at,organization_id,next_action_at,development_id";
 const normalize = (value: unknown) =>
   String(value || "")
     .normalize("NFD")
@@ -42,21 +47,47 @@ export async function GET(request: NextRequest) {
 
   const organizationId = identity.access.organization.id;
   const managerId = identity.access.profile.id;
-  const [profileResult, leadResult] = await Promise.all([
-    identity.supabase
+  const canonicalProfileResult = await identity.supabase
+    .from("profiles")
+    .select(MANAGER_PROFILE_SELECT)
+    .eq("organization_id", organizationId)
+    .eq("active", true)
+    .eq("commercial_role", "broker")
+    .eq("reports_to", managerId)
+    .limit(1000);
+  let profileRows = (canonicalProfileResult.data ?? []) as unknown as CompatRow[];
+  let profileError = canonicalProfileResult.error;
+  let directHierarchyResolved = !canonicalProfileResult.error;
+  if (isMissingColumn(canonicalProfileResult.error)) {
+    const legacyProfileResult = await identity.supabase
       .from("profiles")
       .select(LIVE_PROFILE_SELECT)
       .eq("organization_id", organizationId)
       .eq("active", true)
-      .limit(1000),
-    identity.supabase
+      .limit(1000);
+    profileRows = (legacyProfileResult.data ?? []) as unknown as CompatRow[];
+    profileError = legacyProfileResult.error;
+    directHierarchyResolved = false;
+  }
+
+  const canonicalLeadResult = await identity.supabase
+    .from("leads")
+    .select(MANAGER_LEAD_SELECT)
+    .eq("organization_id", organizationId)
+    .limit(10000);
+  let leadRows = (canonicalLeadResult.data ?? []) as unknown as CompatRow[];
+  let leadError = canonicalLeadResult.error;
+  if (isMissingColumn(canonicalLeadResult.error)) {
+    const legacyLeadResult = await identity.supabase
       .from("leads")
       .select(LIVE_LEAD_SELECT)
       .eq("organization_id", organizationId)
-      .limit(10000),
-  ]);
+      .limit(10000);
+    leadRows = (legacyLeadResult.data ?? []) as unknown as CompatRow[];
+    leadError = legacyLeadResult.error;
+  }
 
-  if (profileResult.error || leadResult.error) {
+  if (profileError || leadError) {
     return apiError(
       "MANAGER_OPERATION_FAILED",
       "Não foi possível consolidar a operação do time.",
@@ -65,17 +96,18 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const profiles = resolveLiveHierarchy(
-    (profileResult.data ?? []) as unknown as CompatRow[],
-  );
-  const visibleIds = descendantsFromLiveProfiles(profiles, managerId);
+  const profiles = resolveLiveHierarchy(profileRows);
+  const visibleIds = directHierarchyResolved
+    ? new Set(profiles.map((profile) => text(profile.id)))
+    : descendantsFromLiveProfiles(profiles, managerId);
   const brokers = profiles.filter(
     (profile) =>
       profile.commercial_role === "broker" &&
-      visibleIds.has(text(profile.id)),
+      visibleIds.has(text(profile.id)) &&
+      (!directHierarchyResolved || text(profile.reports_to) === managerId),
   );
   const brokerIds = new Set(brokers.map((broker) => text(broker.id)));
-  const leads = ((leadResult.data ?? []) as unknown as CompatRow[])
+  const leads = leadRows
     .map(mapLegacyLead)
     .filter((lead) => brokerIds.has(text(lead.assigned_to)));
   const now = Date.now();

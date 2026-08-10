@@ -1,0 +1,90 @@
+{
+  "schema_version": "atlas.10x.phase-006.remote-security.v1",
+  "observed_at": "2026-07-23",
+  "source": "supabase_mcp_security_advisor",
+  "contains_personal_data": false,
+  "contains_secret_values": false,
+  "target": {
+    "project_id": "pozbrcsfthnhmnebfoxv",
+    "name": "atlas-v3-homologacao",
+    "region": "sa-east-1",
+    "status": "ACTIVE_HEALTHY",
+    "postgres_major": 17
+  },
+  "advisor_findings": {
+    "rls_enabled_without_policy": {
+      "count": 12,
+      "tables": [
+        "ai_conversations",
+        "ai_learning_events",
+        "ai_messages",
+        "ai_tool_calls",
+        "ai_usage",
+        "api_rate_limit_buckets",
+        "knowledge_chunks",
+        "lead_identity_registry",
+        "lead_scores",
+        "projects",
+        "user_provisioning_failures",
+        "users"
+      ]
+    },
+    "anon_security_definer_executable": {
+      "count": 3,
+      "functions": [
+        "apply_opportunity_commission_sla()",
+        "refresh_commission_status()",
+        "scaffold_project_intelligence()"
+      ]
+    },
+    "authenticated_security_definer_executable": {
+      "count": 10,
+      "functions": [
+        "apply_opportunity_commission_sla()",
+        "create_lead_atomic(uuid,uuid,uuid,text,text,text,text,text,numeric,numeric,integer,text[],text,integer,text,jsonb)",
+        "current_organization_id()",
+        "current_user_role()",
+        "distribute_project_leads(uuid,uuid,uuid,integer)",
+        "effective_distribution_rule(uuid,uuid)",
+        "mutate_crm_project_v1(uuid,text,uuid,jsonb,text,text)",
+        "refresh_commission_status()",
+        "scaffold_project_intelligence()",
+        "search_knowledge_chunks(text,uuid,integer)"
+      ]
+    }
+  },
+  "catalog_acl_snapshot": {
+    "available": false,
+    "reason": "connector_read_query_not_approved",
+    "workaround_attempted": false
+  },
+  "runtime_evidence": {
+    "all_no_policy_tables_classified": false,
+    "trigger_only_direct_execute_revoked": false,
+    "security_definer_search_paths_hardened": false,
+    "future_default_privileges_reviewed": false,
+    "anon_access_denial_passed": false,
+    "authenticated_role_matrix_passed": false,
+    "cross_tenant_denial_passed": false,
+    "rpc_actor_spoofing_denial_passed": false,
+    "policy_query_plan_reviewed": false,
+    "backup_restore_receipt_approved": false,
+    "isolated_rehearsal_passed": false,
+    "rollback_rehearsal_passed": false,
+    "security_advisors_clean": false,
+    "human_execution_approval": false
+  },
+  "execution": {
+    "remote_write_executed": false,
+    "migration_applied": false,
+    "grant_changed": false,
+    "policy_changed": false,
+    "user_changed": false,
+    "build_executed": false,
+    "package_created": false
+  },
+  "conclusion": {
+    "security_hardening_ready": false,
+    "production_ready": false
+  }
+}

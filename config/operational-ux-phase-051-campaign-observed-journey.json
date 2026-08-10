@@ -1,0 +1,16 @@
+{
+  "phase": 51,
+  "scope": "campaign_lead_service_observed_result",
+  "canonicalSource": "weekly_acquisition_report",
+  "campaignOriginVisible": true,
+  "leadVolumeVisible": true,
+  "serviceEvidenceVisible": true,
+  "commercialOutcomeVisible": true,
+  "causalClaim": false,
+  "missingSpendShownAsZero": false,
+  "brokerDetailProgressive": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

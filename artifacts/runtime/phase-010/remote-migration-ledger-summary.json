@@ -1,0 +1,87 @@
+{
+  "schema_version": "atlas.remote_migration_ledger_summary.v1",
+  "captured_at": "2026-07-23",
+  "capture_mode": "remote_metadata_read_only",
+  "project_alias": "atlas-v3-homologacao",
+  "project_health": "ACTIVE_HEALTHY",
+  "postgres_major": 17,
+  "remote_ledger": {
+    "migration_count": 179,
+    "unique_remote_versions": 179,
+    "names_with_embedded_original_version": 141,
+    "first": {
+      "version": "20260721230311",
+      "name": "20260711040000_atlas_v3_foundation"
+    },
+    "last": {
+      "version": "20260722044340",
+      "name": "20260722090000_fix_lead_contract_array_literal"
+    },
+    "version_strategy": "application_time_remote_versions_with_original_versions_embedded_in_names"
+  },
+  "local_ledger": {
+    "migration_file_count": 124,
+    "duplicate_version_count": 3,
+    "direct_cli_version_parity": false
+  },
+  "confirmed_collision_mappings": [
+    {
+      "remote_version": "20260722011652",
+      "remote_name": "20260716235900_meta_director_daily_reports",
+      "original_local_version": "20260716235900"
+    },
+    {
+      "remote_version": "20260722011701",
+      "remote_name": "20260716235901_omnichannel_integrations",
+      "original_local_version": "20260716235900",
+      "canonical_intent_version": "20260716235901"
+    },
+    {
+      "remote_version": "20260722013236",
+      "remote_name": "20260717203000_expand_project_material_catalog",
+      "original_local_version": "20260717203000"
+    },
+    {
+      "remote_version": "20260722013307",
+      "remote_name": "20260717203001_phase_35_follow_up_sla_cycles",
+      "original_local_version": "20260717203000",
+      "canonical_intent_version": "20260717203001"
+    },
+    {
+      "remote_version": "20260722013327",
+      "remote_name": "20260717213000_phase_36_visit_sla",
+      "original_local_version": "20260717213000"
+    },
+    {
+      "remote_version": "20260722013349",
+      "remote_name": "20260717213001_v3_legacy_runtime_schema_bridge",
+      "original_local_version": "20260717213000",
+      "canonical_intent_version": "20260717213001"
+    }
+  ],
+  "additional_schema_health_query": {
+    "executed": false,
+    "database_reached": false,
+    "reason": "approval_gate_rejected_before_database_execution",
+    "required_for_ledger_reconciliation": false
+  },
+  "execution": {
+    "remote_write_executed": false,
+    "migration_repair_executed": false,
+    "migration_push_executed": false,
+    "migration_renamed": false,
+    "branch_created": false,
+    "user_changed": false,
+    "business_data_changed": false,
+    "build_executed": false,
+    "package_created": false
+  },
+  "sanitization": {
+    "contains_project_ref": false,
+    "contains_credentials": false,
+    "contains_personal_data": false,
+    "contains_database_url": false,
+    "contains_access_tokens": false,
+    "contains_raw_sql_results": false
+  }
+}

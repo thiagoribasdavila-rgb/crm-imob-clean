@@ -1,0 +1,23 @@
+name: atlas-meta-phase32-pg17
+
+services:
+  postgres:
+    image: supabase/postgres:17.6.1.149
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    environment:
+      POSTGRES_DB: atlas_phase32
+      POSTGRES_PASSWORD: atlas_phase32_ephemeral_only
+      POSTGRES_USER: postgres
+    ports:
+      - "127.0.0.1:55433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d atlas_phase32"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - phase32-pg17-postgres-data:/var/lib/postgresql/data
+    restart: "no"
+
+volumes:
+  phase32-pg17-postgres-data:

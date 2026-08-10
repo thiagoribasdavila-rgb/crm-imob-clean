@@ -1,0 +1,28 @@
+{
+  "schema": "atlas.meta-learning-memory-revocation.v1",
+  "status": "not_evaluated",
+  "memoryReference": null,
+  "assessment": {
+    "lineageValid": false,
+    "expired": false,
+    "revocationRequested": false,
+    "reviewedAt": null
+  },
+  "decision": {
+    "usageState": "blocked_pending_review",
+    "humanReviewRequired": true
+  },
+  "execution": {
+    "memoryUsedInRecommendation": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "useAfterExpiry": true,
+    "useAfterRevocation": true,
+    "automaticReinstatement": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

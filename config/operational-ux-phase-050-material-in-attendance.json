@@ -1,0 +1,14 @@
+{
+  "phase": 50,
+  "scope": "material_in_attendance",
+  "singlePrimaryMaterialRoute": true,
+  "leadContextPreserved": true,
+  "projectFilterPreserved": true,
+  "returnToLeadAvailable": true,
+  "secondaryActionsProgressive": true,
+  "priceAndInventoryWarningPreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

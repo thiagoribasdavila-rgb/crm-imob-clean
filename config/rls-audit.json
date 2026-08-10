@@ -8,13 +8,11 @@
     "activities": "activities_commercial_select",
     "tasks": "tasks_commercial_select",
     "campaigns": "campaigns_leadership_update",
-    "ai_insights": "ai_insights_org_select",
-    "commission_rules": "commission_rules_leitura"
+    "ai_insights": "ai_insights_org_select"
   },
   "serviceOnlyTables": [
     "idempotency_keys",
     "integration_outbox",
-    "dead_letter_events",
-    "user_provisioning_failures"
+    "dead_letter_events"
   ]
 }

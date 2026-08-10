@@ -1,0 +1,46 @@
+-- ATLAS AI OS — FASE 15/24
+-- MODELO DE REVISÃO DO PACOTE DE MIGRATION ISOLADA
+-- NÃO EXECUTAR: este arquivo contém somente comentários.
+--
+-- PRÉ-CONDIÇÕES OBRIGATÓRIAS
+-- [ ] snapshot canônico PostgreSQL 17 em loopback aprovado
+-- [ ] backlog da Fase 14 íntegro e vinculado por SHA-256
+-- [ ] recibo humano com escopo isolated_loopback_pg17_only
+-- [ ] apenas IDs aprovados e objetos da allowlist exata
+-- [ ] P0 concluído antes de P1 e dependências fechadas
+--
+-- ESTRUTURA DA MIGRATION FUTURA
+-- [ ] criar o arquivo somente com `supabase migration new <approved_name>`
+-- [ ] usar transação quando o DDL permitir
+-- [ ] definir lock_timeout e statement_timeout
+-- [ ] comprovar precondição antes de alterar cada objeto
+-- [ ] tornar a mudança idempotente sem ocultar divergências
+-- [ ] comprovar pós-condição no mesmo ensaio
+-- [ ] não ler auth.users nem linhas comerciais
+--
+-- SUPABASE / POSTGRES
+-- [ ] RLS e grants são controles separados
+-- [ ] UPDATE possui SELECT aplicável, USING e WITH CHECK
+-- [ ] políticas declaram papéis com TO; não usam auth.role()
+-- [ ] autorização não confia em user_metadata
+-- [ ] views expostas usam security_invoker ou perdem exposição
+-- [ ] SECURITY DEFINER fixa search_path, qualifica objetos e restringe EXECUTE
+-- [ ] funções novas não mantêm EXECUTE para PUBLIC
+--
+-- ROLLBACK
+-- [ ] classificar como exact_reversible, containment_only ou manual_only
+-- [ ] nunca restaurar grant, policy, view ou EXECUTE inseguro
+-- [ ] quando a reversão reabriria exposição, usar correção segura para frente
+-- [ ] registrar responsável e evidência da revisão de rollback
+--
+-- ENSAIO LOCAL
+-- [ ] usar somente PostgreSQL 17 local/loopback
+-- [ ] proibir --linked, --db-url, db push, migration repair e apply_migration
+-- [ ] executar reset local sem seed de dados comerciais
+-- [ ] executar testes dinâmicos de RLS e grants
+-- [ ] executar advisors de segurança e performance
+-- [ ] registrar hashes, resultado, latência e divergências
+--
+-- PROMOÇÃO
+-- [ ] aprovação do ensaio não autoriza aplicação remota
+-- [ ] nenhuma mudança em homologação acontece nesta fase

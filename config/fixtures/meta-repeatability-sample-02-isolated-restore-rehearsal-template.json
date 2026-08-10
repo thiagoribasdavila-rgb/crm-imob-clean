@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "phase35.restore-rehearsal-contract.v1",
+  "phase": 35,
+  "sourcePhase": 34,
+  "status": "not_prepared",
+  "preparedAt": null,
+  "sourceReadinessFingerprint": null,
+  "backupManifestFingerprint": null,
+  "backupEvidenceAccepted": false,
+  "restorePlan": {
+    "isolatedTarget": true,
+    "disposableTarget": true,
+    "productionTarget": false,
+    "sourceDatabaseWriteAccess": false,
+    "singleTransactionWhereSupported": true,
+    "stopOnError": true,
+    "postRestoreIntegrityChecks": true,
+    "postRestoreSecurityChecks": true,
+    "postRestorePerformanceBaseline": true,
+    "targetDestructionRequired": true,
+    "humanApprovalRequiredBeforeExecution": true
+  },
+  "restoreExecuted": false,
+  "restoreExecutionAllowed": false,
+  "stagingMigrationAllowed": false,
+  "productionMigrationAllowed": false,
+  "productionCompatibilityApproved": false,
+  "remoteDatabaseTouched": false,
+  "metaTouched": false,
+  "buildExecuted": false
+}

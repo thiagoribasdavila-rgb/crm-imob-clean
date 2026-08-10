@@ -5,7 +5,30 @@ import ts from "typescript";
 
 const CRM_ROOT = "app/(crm)";
 
-function trackedCrmPages() {
+function isGitWorkspace() {
+  try {
+    return execFileSync("git", ["rev-parse", "--is-inside-work-tree"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim() === "true";
+  } catch {
+    return false;
+  }
+}
+
+function snapshotCrmPages(directory = CRM_ROOT) {
+  return fs
+    .readdirSync(directory, { withFileTypes: true })
+    .flatMap((entry) => {
+      const path = `${directory}/${entry.name}`;
+      if (entry.isDirectory()) return snapshotCrmPages(path);
+      return entry.isFile() && entry.name === "page.tsx" ? [path] : [];
+    })
+    .sort();
+}
+
+function crmPages() {
+  if (!isGitWorkspace()) return snapshotCrmPages();
   return execFileSync("git", ["ls-files", "-z", CRM_ROOT], { encoding: "utf8" })
     .split("\0")
     .filter((file) => file === `${CRM_ROOT}/page.tsx` || file.endsWith("/page.tsx"))
@@ -37,7 +60,8 @@ vm.runInContext(compiledNavigation, navigationContext, {
   filename: "navigation.compiled.cjs",
 });
 const { atlasNavigation, atlasContextCommands } = navigationModule.exports;
-const pageFiles = trackedCrmPages();
+const gitWorkspace = isGitWorkspace();
+const pageFiles = crmPages();
 const routes = pageFiles.map(routeFromPage);
 const routeSet = new Set(routes);
 const canonicalDestinations = [
@@ -52,20 +76,13 @@ const deepSupportRoutes = routes
 const topLevelNonCanonicalRoutes = routes
   .filter((route) => route !== "/" && !canonicalSet.has(route) && !route.includes("[") && segmentCount(route) === 1)
   .sort();
-// A raiz "/" deixou de ser um redirect do grupo (crm) para virar a landing
-// pública real (app/page.tsx, verificada ao vivo em produção) — o antigo
-// (crm)/page.tsx (redirect("/dashboard")) colidia de rota com ela (Next.js
-// não aceita duas page.tsx resolvendo o mesmo path) e foi removido. A entrada
-// autenticada agora passa por /login -> safeAuthDestination (que resolve para
-// /command-center, o "dashboard clássico" fundido — ver app/(auth)/login).
-const rootSource = fs.readFileSync("app/page.tsx", "utf8");
-const loginSource = fs.readFileSync("app/(auth)/login/page.tsx", "utf8");
+const rootSource = fs.readFileSync(`${CRM_ROOT}/page.tsx`, "utf8");
 
 const inventory = {
   generatedAt: new Date().toISOString(),
-  scope: "tracked-app-router-crm-pages",
+  scope: gitWorkspace ? "tracked-app-router-crm-pages" : "snapshot-app-router-crm-pages",
   sourceOfTruth: {
-    routeFiles: "git ls-files app/(crm)",
+    routeFiles: gitWorkspace ? "git ls-files app/(crm)" : "filesystem snapshot app/(crm)",
     navigationCatalog: "lib/atlas/navigation.ts",
   },
   counts: {
@@ -79,12 +96,7 @@ const inventory = {
   },
   entryRoute: {
     route: "/",
-    // Raiz pública oferece o caminho de entrada (login), e o login resolve o
-    // destino autenticado para /command-center — a mesma garantia de antes
-    // ("entrada autenticada continua no dashboard"), só que em 2 etapas
-    // explícitas em vez de um redirect cego na raiz.
-    linksToLogin: rootSource.includes('href="/login"'),
-    redirectsToDashboard: loginSource.includes('"/command-center"'),
+    redirectsToDashboard: rootSource.includes('redirect("/dashboard")'),
   },
   canonicalDestinations,
   missingCanonicalDestinations,

@@ -1,4 +1,9 @@
 import type { ApiIdentity } from "@/lib/security/api-auth";
+import {
+  readCompatibleDevelopments,
+  readCompatibleLeads,
+  readCompatiblePipeline,
+} from "@/lib/atlas/core-v2";
 
 type Row = Record<string, unknown>;
 
@@ -12,24 +17,34 @@ function status(value: unknown) {
 }
 
 export async function buildRealEstateContext(identity: ApiIdentity) {
+  const organizationId = identity.organizationId;
   const results = await Promise.allSettled([
-    identity.supabase.from("developments").select("id,name,developer_name,city,status,delivery_date").limit(100),
+    readCompatibleDevelopments(identity.supabase, { organizationId, limit: 100 }),
     identity.supabase.from("properties").select("development_id,status,price,typology,bedrooms,area").limit(2000),
-    identity.supabase.from("leads").select("status,score,temperature,source,assigned_to,next_action_at,created_at").limit(2000),
-    identity.supabase.from("opportunities").select("stage,value,probability,expected_close_at,created_at").limit(2000),
+    readCompatibleLeads(identity.supabase, { organizationId, limit: 2000 }),
+    readCompatiblePipeline(identity.supabase, { organizationId, limit: 2000 }),
     identity.supabase.from("project_materials").select("development_id,material_type,title,version,valid_until").eq("is_current", true).limit(500),
     identity.supabase.from("lead_source_memories").select("lead_id,memory_role,created_at").eq("ai_eligible", true).limit(5000),
   ]);
 
   const rows = (index: number): Row[] => {
     const result = results[index];
-    if (result.status !== "fulfilled" || result.value.error) return [];
-    return (result.value.data ?? []) as Row[];
+    if (result.status !== "fulfilled") return [];
+    const value = result.value as { error?: unknown; data?: unknown[] } | undefined;
+    if (value?.error) return [];
+    return (value?.data ?? []) as Row[];
   };
-  const developments = rows(0);
+  const compatRows = (index: number, property: "rows" | "opportunities" = "rows"): Row[] => {
+    const result = results[index];
+    if (result.status !== "fulfilled") return [];
+    const value = result.value;
+    if (!value || typeof value !== "object" || !("ok" in value) || value.ok !== true) return [];
+    return ((value as Record<string, unknown>)[property] ?? []) as Row[];
+  };
+  const developments = compatRows(0);
   const properties = rows(1);
-  const leads = rows(2).filter((item) => status(item.status) !== "arquivado");
-  const opportunities = rows(3);
+  const leads = compatRows(2).filter((item) => status(item.status) !== "arquivado");
+  const opportunities = compatRows(3, "opportunities");
   const materials = rows(4);
   const historicalMemories = rows(5);
   const now = Date.now();

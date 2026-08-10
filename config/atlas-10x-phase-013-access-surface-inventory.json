@@ -1,0 +1,123 @@
+{
+  "schema_version": "atlas.10x.phase-013.v1",
+  "phase": 13,
+  "total_phases": 24,
+  "name": "Inventário canônico da superfície de acesso",
+  "objective": "Inventariar RLS, grants, privilégios padrão, views e funções privilegiadas a partir do clone PostgreSQL 17 isolado aprovado, sem ler linhas comerciais e sem tocar na homologação.",
+  "status": "access_surface_contract_ready_capture_blocked",
+  "build_policy": "build_only_on_release_package",
+  "input_contract": {
+    "phase_012_config_path": "config/atlas-10x-phase-012-isolated-baseline-capture.json",
+    "phase_012_evidence_path": "artifacts/runtime/phase-012/isolated-baseline-capture-evidence.json",
+    "phase_012_approval_path": "artifacts/runtime/phase-012/manual-capture-approval-receipt.json",
+    "phase_012_sql_path": "artifacts/runtime/phase-012/execution/canonical_baseline.public.sql",
+    "phase_012_checksum_path": "artifacts/runtime/phase-012/execution/checksums.sha256",
+    "required_phase_012_status": "isolated_baseline_capture_complete",
+    "allowed_target_kind": "isolated_loopback_pg17",
+    "expected_postgres_major": 17
+  },
+  "inventory_contract": {
+    "schema_version": "atlas.access_surface_snapshot.v1",
+    "schema": "public",
+    "output_path": "artifacts/runtime/phase-013/execution/access-surface-snapshot.json",
+    "partial_path": "artifacts/runtime/phase-013/execution/access-surface-snapshot.partial.json",
+    "evidence_path": "artifacts/runtime/phase-013/access-surface-inventory-evidence.json",
+    "sql_path": "scripts/sql/phase-013-access-surface-readonly.sql",
+    "required_collections": [
+      "tables",
+      "views",
+      "functions",
+      "policies",
+      "default_privileges"
+    ],
+    "table_rows_allowed": false,
+    "function_bodies_allowed": false,
+    "raw_policy_expressions_allowed": false,
+    "database_url_allowed": false,
+    "auth_user_rows_allowed": false,
+    "business_rows_allowed": false
+  },
+  "security_contract": {
+    "api_roles": [
+      "anon",
+      "authenticated"
+    ],
+    "trusted_execute_grantees": [
+      "postgres",
+      "service_role",
+      "supabase_admin"
+    ],
+    "security_definer_authenticated_allowlist": [],
+    "canonical_business_tables": [
+      "organizations",
+      "profiles",
+      "leads",
+      "developments",
+      "tasks",
+      "activities",
+      "ai_insights",
+      "atlas_events"
+    ],
+    "anonymous_business_privileges_allowed": [],
+    "required_invariants": [
+      "rls_enabled_on_every_exposed_table",
+      "rls_and_grants_validated_separately",
+      "update_requires_select_using_and_with_check",
+      "views_use_security_invoker_or_are_not_api_exposed",
+      "security_definer_has_fixed_search_path_and_minimal_execute",
+      "policies_do_not_trust_user_metadata",
+      "policies_do_not_use_deprecated_auth_role",
+      "anonymous_business_access_is_denied",
+      "default_privileges_do_not_broadly_expose_objects"
+    ]
+  },
+  "required_runtime_gates": [
+    "phase_012_capture_accepted",
+    "canonical_sql_exists",
+    "phase_012_checksum_exists",
+    "phase_012_checksum_matches",
+    "catalog_snapshot_exists",
+    "catalog_snapshot_parses",
+    "snapshot_source_is_approved_loopback",
+    "snapshot_fingerprint_matches",
+    "snapshot_transaction_is_read_only",
+    "table_rows_not_read",
+    "required_collections_present",
+    "canonical_entities_inventoried",
+    "rls_inventory_complete",
+    "grant_inventory_complete",
+    "default_privilege_inventory_complete",
+    "view_inventory_complete",
+    "security_definer_inventory_complete",
+    "function_execute_inventory_complete",
+    "policy_inventory_complete",
+    "exposed_tables_have_rls",
+    "views_are_safe_or_not_exposed",
+    "security_definer_execute_is_minimal",
+    "security_definer_search_path_is_safe",
+    "update_policies_are_complete",
+    "policies_do_not_use_user_metadata",
+    "policies_do_not_use_auth_role",
+    "anonymous_business_access_is_denied",
+    "default_privileges_are_safe",
+    "live_homologation_not_touched",
+    "remote_write_not_executed",
+    "build_not_executed",
+    "package_not_created"
+  ],
+  "execution_policy": {
+    "allows_catalog_read_from_approved_loopback": true,
+    "allows_table_row_read": false,
+    "allows_remote_metadata_read": false,
+    "allows_remote_schema_read": false,
+    "allows_remote_ddl": false,
+    "allows_remote_dml": false,
+    "allows_linked_project": false,
+    "allows_migration_repair": false,
+    "allows_auth_user_read": false,
+    "allows_business_data_read": false,
+    "allows_build": false,
+    "allows_release_package": false
+  },
+  "next_phase": "Fase 14/24: produzir o backlog de correções de segurança com severidade, ordem de dependência e propostas SQL ainda não aplicadas."
+}

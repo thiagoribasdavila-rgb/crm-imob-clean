@@ -1,0 +1,44 @@
+{
+  "phase": 211,
+  "name": "Final Release Approval Decision",
+  "status": "implemented",
+  "objective": "Registrar a decisão humana final, independente, assinada e vinculada à adjudicação exata dos gates, sem atualizar memória, gerar pacote, publicar ou promover automaticamente.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "approvalPolicyHash": "808518cd61008b5da6eb94a9d506a4544bdf0723c6d60acbf5d7ce8f731610eb",
+    "trustedApproversConfigured": 0,
+    "verifiedAdjudicationRegisterAvailable": false,
+    "finalDecisionAvailable": false,
+    "finalDecisionOutcome": null,
+    "releaseApproved": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "approvalRules": {
+    "approverRole": "release-approval-director",
+    "signatureAlgorithm": "ed25519",
+    "maximumDecisionDelaySeconds": 1800,
+    "minimumReasonLength": 12,
+    "acceptedGateResultsRequiredForApproval": true,
+    "independentFinalApproverRequired": true,
+    "exactAdjudicationRegisterBindingRequired": true
+  },
+  "safety": {
+    "databaseChanged": false,
+    "authChanged": false,
+    "rlsChanged": false,
+    "externalCallExecuted": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 212,
+    "name": "Approved Release Memory Commitment",
+    "objective": "Registrar uma aprovação final válida na memória de release imutável, ainda sem gerar pacote, publicar ou promover."
+  }
+}

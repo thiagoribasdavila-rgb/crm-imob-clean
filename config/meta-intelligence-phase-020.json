@@ -1,0 +1,62 @@
+{
+  "phase": 20,
+  "program": "meta-andromeda-automation",
+  "mode": "governed_manual_test_events_rehearsal",
+  "status": "manual_rehearsal_packet_ready_evidence_gate_closed",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-019.json",
+  "rehearsalGate": "config/meta-test-events-rehearsal-gate.json",
+  "requestTemplate": "config/fixtures/meta-test-events-rehearsal-request-template.json",
+  "evidenceTemplate": "config/fixtures/meta-test-events-rehearsal-evidence-template.json",
+  "packetRunner": "scripts/run-meta-test-events-rehearsal.mjs",
+  "evidencePreflight": "scripts/preflight-meta-test-events-rehearsal.mjs",
+  "staticAudit": "scripts/audit-meta-test-events-rehearsal.mjs",
+  "documentation": "docs/META_TEST_EVENTS_MANUAL_REHEARSAL.md",
+  "officialReferences": {
+    "metaConversionsApi": "https://www.facebook.com/business/help/AboutConversionsAPI",
+    "metaConversionsApiDeveloperGuide": "https://developers.facebook.com/docs/marketing-api/conversions-api/using-the-api/",
+    "supabaseApiSecurity": "https://supabase.com/docs/guides/api/securing-your-api",
+    "supabaseDataApiChange": "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically"
+  },
+  "environmentAudit": {
+    "phase17ApprovedEvidenceDetected": false,
+    "phase19ApprovedEvidenceDetected": false,
+    "directorApprovalDetected": false,
+    "securityApprovalDetected": false,
+    "manualPacketGenerated": false,
+    "officialMetaExecutionPerformed": false,
+    "remoteCallsExecuted": false,
+    "databaseMutationExecuted": false,
+    "reason": "O roteiro e os validadores estao prontos, mas nenhuma prova real ou aprovacao foi fornecida. Autotestes usam apenas fixtures sinteticas em memoria."
+  },
+  "releaseGate": {
+    "phase17EvidenceApproved": false,
+    "phase19EvidenceApproved": false,
+    "humanApprovalApproved": false,
+    "manualRehearsalContractPassed": true,
+    "syntheticSelfTestPassed": true,
+    "manualOperatorRehearsalAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "temporaryCodePersisted": false,
+    "payloadPersisted": false,
+    "responsePersisted": false,
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false,
+    "databaseMutation": false,
+    "productionAccess": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 21,
+    "objective": "Preparar o recibo sanitizado de observacao do unico evento de teste, sem resposta bruta, e continuar bloqueando producao ate existir execucao manual aprovada."
+  }
+}

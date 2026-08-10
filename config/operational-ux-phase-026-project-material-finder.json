@@ -1,0 +1,17 @@
+{
+  "phase": 26,
+  "name": "project-material-finder",
+  "objective": "Levar o corretor do contexto da lead ao projeto e ao material vigente com uma busca compacta por projeto, incorporadora, região e tipologia.",
+  "canonicalSurface": "development-material-hub",
+  "searchDimensions": ["projeto", "incorporadora", "região", "tipologia"],
+  "rules": [
+    "A busca reutiliza o Hub de Materiais e o endpoint canônico já isolado por organização.",
+    "O projeto recebido pela URL do atendimento permanece selecionado quando válido.",
+    "Bairro e cidade formam a dimensão de região sem criar nova taxonomia.",
+    "Tipo de produto e tipologias cadastradas formam a dimensão de tipologia.",
+    "Acesso, rate limit, links privados, vigência e revisão de materiais permanecem inalterados.",
+    "Nenhuma tabela, migration, RLS, automação ou release é criada nesta fase."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

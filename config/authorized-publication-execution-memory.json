@@ -1,0 +1,17 @@
+{
+  "schema": "atlas.authorized-publication-execution-memory.v1",
+  "policyHash": "f3e75b7ecb0838ade427a23f8ad70225c36225e65f704b0f217f81b0723904e6",
+  "entries": [],
+  "summary": {
+    "recordedExecutions": 0,
+    "successfulLocalProofs": 0,
+    "failedLocalProofs": 0,
+    "latestEntryHash": null,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "5a2ddbe06754a269076998d0f1d432d82b9397421b411966c130e4da856526d9"
+}

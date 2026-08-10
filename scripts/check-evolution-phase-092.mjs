@@ -43,7 +43,7 @@ const checks = [
   ["Shell oficial usa Core V2 e decisão primeiro", shell.includes('data-visual-system="atlas-core-v2"') && shell.includes('data-information-strategy="decision-first"')],
   ["Cards e métricas declaram densidade, ênfase e relevância", card.includes("data-card-density") && card.includes("data-card-emphasis") && card.includes("data-relevance")],
   ["Primitivos de decisão e detalhe existem", primitiveNames.every((name) => primitives.includes(`function ${name}`))],
-  ["Visão rápida limita ruído a cinco indicadores", css.includes(".atlas-decision-strip > :nth-child(n + 6)") && phase.principles.includes("maximum-five-decision-metrics-per-glance")],
+  ["Visão rápida limita ruído a cinco indicadores", primitives.includes('data-primary-metric-limit="5"') && primitives.includes("atlas-metric-deck-primary") && primitives.includes("atlas-metric-deck-secondary") && primitives.includes('data-disclosure="progressive"') && phase.principles.includes("maximum-five-decision-metrics-per-glance")],
   ["Camada visual está isolada no shell autenticado", css.includes('.atlas-app-shell[data-visual-system="atlas-core-v2"]') && css.includes("impede que estilos legados reintroduzam ruído")],
   ["Orbes, elevação e gradientes decorativos não pertencem ao shell Core V2", css.includes(".atlas-ambient") && css.includes("transform: none") && phase.visualSystem.decorativeGradients === "removed-from-core-shell"],
   ["Estados vazios e recuperáveis usam linguagem compartilhada", states.includes("safeFailureDescription") && states.includes("atlas-recoverable-error") && states.includes("atlas-empty-orb")],

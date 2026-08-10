@@ -1,0 +1,93 @@
+{
+  "phase": 17,
+  "program": "meta-andromeda-automation",
+  "mode": "read_only_catalog_grants_rls_reconciliation",
+  "status": "local_contract_audited_branch_evidence_pending",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-016.json",
+  "migrationDraft": "supabase/migration-drafts/20260719070511_reconcile_legacy_and_canonical_contracts.sql",
+  "catalogQuery": "scripts/sql/meta-data-api-access-audit.sql",
+  "localPostgresTest": "scripts/test-meta-data-api-access-postgres.mjs",
+  "catalogEvidenceTemplate": "config/fixtures/meta-data-api-catalog-evidence-template.json",
+  "combinedEvidenceTemplate": "config/fixtures/meta-data-api-access-evidence-template.json",
+  "reconciliationRunner": "scripts/run-meta-data-api-access-reconciliation.mjs",
+  "evidencePreflight": "scripts/preflight-meta-data-api-access.mjs",
+  "staticAudit": "scripts/audit-meta-data-api-access.mjs",
+  "documentation": "docs/META_DATA_API_GRANTS_RLS.md",
+  "currentDocumentation": {
+    "secureData": "https://supabase.com/docs/guides/database/secure-data",
+    "apiSecurity": "https://supabase.com/docs/guides/api/securing-your-api",
+    "dataApiBreakingChange": "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically"
+  },
+  "environmentAudit": {
+    "isolatedCredentialsDetected": false,
+    "supabaseCliDetected": false,
+    "containerRuntimeDetected": false,
+    "remoteCallsExecuted": false,
+    "reason": "Nenhum branch Supabase isolado foi disponibilizado. A consulta e a reconciliacao estao prontas, mas nao foram executadas remotamente."
+  },
+  "findings": [
+    {
+      "code": "organization_data_api_contract_missing",
+      "status": "corrected_in_unapplied_draft",
+      "detail": "A tela de configuracoes le e atualiza organizations; o rascunho agora declara SELECT por coluna, UPDATE restrito, revogacao de anon/authenticated e service_role."
+    },
+    {
+      "code": "profile_name_update_grant_mismatch",
+      "status": "corrected_in_unapplied_draft",
+      "detail": "A tela de perfil grava name; o rascunho liberava somente full_name. name foi incluido no UPDATE autenticado."
+    },
+    {
+      "code": "lead_delete_not_required_by_client",
+      "status": "least_privilege_preserved",
+      "detail": "Leads continuam com SELECT, INSERT e UPDATE para authenticated. DELETE permanece fora da Data API autenticada."
+    },
+    {
+      "code": "branch_catalog_evidence_missing",
+      "status": "blocking",
+      "detail": "Grants efetivos, colunas, politicas, USING e WITH CHECK ainda precisam ser medidos no branch isolado."
+    }
+  ],
+  "catalogContract": {
+    "tables": [
+      "organizations",
+      "profiles",
+      "leads"
+    ],
+    "queryReadOnly": true,
+    "catalogOnly": true,
+    "rowDataRead": false,
+    "anonymousPrivilegesRevoked": true,
+    "rlsRequired": true,
+    "updateUsingAndWithCheckRequired": true,
+    "leadAuthenticatedPrivileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE"
+    ],
+    "leadDeleteAllowed": false
+  },
+  "releaseGate": {
+    "phase16EvidenceApproved": false,
+    "catalogEvidenceApproved": false,
+    "localExplicitGrantContractPassed": true,
+    "branchCatalogExecuted": false,
+    "dataApiGrantsRlsApproved": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "databaseMutation": false,
+    "migrationApplication": false,
+    "productionAccess": false,
+    "realMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 18,
+    "objective": "Somente depois da evidencia aprovada do branch, preparar o primeiro payload Meta em modo de validacao, sem entrega real."
+  }
+}

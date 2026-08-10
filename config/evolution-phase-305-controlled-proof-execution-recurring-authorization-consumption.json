@@ -1,0 +1,11 @@
+{
+  "phase": 305,
+  "name": "Controlled Proof Execution Recurring Authorization Consumption — Cycle 11",
+  "status": "implemented",
+  "gateStage": "authorization-consumption",
+  "objective": "Abrir o décimo primeiro ciclo somente pelo consumo único, assinado e ordenado da autorização recorrente anterior.",
+  "currentState": {"compositionId": "conversion-core-candidate", "policyHash": "9bc292a6ead4a7250a88a01837a2de0f40bf6e2c1a01ee67c4c55dc10f05d546", "memoryHash": "246a021d6ff8006135836c4d26307f8334d6a65b4ad39abe9c9afd140b2bc9de", "trustedActorsConfigured": 0, "recordedEntries": 0, "canonicalNextStage": "authorization-consumption", "runtimeEvidenceRecorded": false},
+  "safety": {"databaseChanged": false, "authChanged": false, "rlsChanged": false, "externalCallExecuted": false, "packageGenerated": false, "buildExecuted": false, "deployExecuted": false, "releasePromoted": false},
+  "runtimeHomologated": false,
+  "nextPhase": {"phase": 306, "name": "Controlled Proof Execution Recurring Continuation — Cycle 11", "objective": "Preparar a continuação do décimo primeiro ciclo após consumo comprovado."}
+}

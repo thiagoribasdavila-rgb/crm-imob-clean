@@ -6,18 +6,15 @@ import { LIVE_PROFILE_SELECT, mapLegacyProfile, mapLegacyTask, type CompatRow } 
 import { recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { readCompatibleLeads, readCompatibleTasks } from "@/lib/atlas/core-v2/live-repositories";
 import { requestFingerprint } from "@/lib/security/abuse-protection";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   buildCommercialOutcomeContextPreview,
   sameCommercialOutcomeContextPreview,
 } from "@/lib/atlas/commercial-outcome-context-preview";
-import { tarefaEncerrada } from "@/lib/crm/task-status";
 
 export const dynamic = "force-dynamic";
 const uuid = (value: unknown) => typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null;
-// A lista mora em lib/crm/task-status. Esta era a mais curta das cinco e nao
-// reconhecia "cancelada" nem "concluído" com acento — tarefa cancelada
-// aparecia como pendente para sempre.
-const completedTaskStatuses = { has: (status: string) => tarefaEncerrada(status) };
+const completedTaskStatuses = new Set(["done", "concluido", "concluida", "completed"]);
 const taskOutcomeLabels = {
   contacted: "Contato realizado",
   no_response: "Cliente não respondeu",
@@ -71,31 +68,20 @@ export async function POST(request: NextRequest) {
   const body = await request.json(); const title = String(body.title || "").trim(); const description = String(body.description || "").trim(); const leadId = uuid(body.leadId); const requestedAssignee = uuid(body.assigneeId); const dueAt = typeof body.dueAt === "string" ? new Date(body.dueAt) : null; const priority = ["baixa", "media", "alta"].includes(String(body.priority)) ? String(body.priority) : "media"; const cadence = ["daily", "weekly", "monthly"].includes(String(body.cadence)) ? String(body.cadence) : null; const endsAt = cadence && typeof body.endsAt === "string" ? new Date(body.endsAt) : null; const maxOccurrences = cadence ? Math.round(Number(body.maxOccurrences)) : null; const source = body.source === "atlas-copilot" ? "atlas-copilot" : "manual"; const humanConfirmed = body.humanConfirmed === true;
   if (source === "atlas-copilot" && (!leadId || !humanConfirmed)) return apiError("COPILOT_TASK_CONFIRMATION_REQUIRED", "Revise e confirme a tarefa antes de criá-la pelo Copilot.", identity.meta, { status: 409 });
   if (title.length < 3 || title.length > 120 || description.length > 2000 || !dueAt || !Number.isFinite(dueAt.getTime()) || dueAt.getTime() < Date.now() - 300_000) return apiError("TASK_CREATE_INVALID", "Informe título, prazo futuro e dados válidos.", identity.meta, { status: 400 });
+  if (cadence && (
+    !endsAt
+    || !Number.isFinite(endsAt.getTime())
+    || endsAt.getTime() <= dueAt.getTime()
+    || !maxOccurrences
+    || maxOccurrences < 2
+    || maxOccurrences > 100
+  )) return apiError("TASK_RECURRENCE_INVALID", "Defina término futuro e entre 2 e 100 ocorrências.", identity.meta, { status: 400 });
   let assigneeId = requestedAssignee || identity.access.profile.id;
   if (leadId) { const lead = await identity.supabase.from("leads").select("id,assigned_user_id").eq("id", leadId).eq("organization_id", identity.access.organization.id).maybeSingle(); if (lead.error || !lead.data) return apiError("TASK_LEAD_NOT_VISIBLE", "Lead não encontrada no seu escopo.", identity.meta, { status: 404 }); assigneeId = lead.data.assigned_user_id || identity.access.profile.id; }
   const assignee = await identity.supabase.from("profiles").select("id").eq("id", assigneeId).eq("organization_id", identity.access.organization.id).eq("active", true).maybeSingle();
   if (assignee.error || !assignee.data) return apiError("TASK_ASSIGNEE_NOT_VISIBLE", "Responsável não permitido no seu escopo.", identity.meta, { status: 403 });
-  // Recorrência: a série é criada pela RPC governada create_recurring_task, que
-  // grava task_recurrences e a primeira ocorrência numa transação só. A rota
-  // NÃO pressupõe que a RPC exista — bancos que ainda não receberam a migration
-  // da fase 43 respondem 42883 (undefined_function) ou PGRST202 (função ausente
-  // no schema cache), e aí a resposta volta a ser a recusa honesta de antes, em
-  // vez de um 500 sem explicação.
   if (cadence) {
-    if (endsAt && (!Number.isFinite(endsAt.getTime()) || endsAt.getTime() <= dueAt.getTime())) {
-      return apiError("TASK_RECURRENCE_INVALID", "O fim da recorrência precisa ser depois do primeiro prazo.", identity.meta, { status: 400 });
-    }
-    // Os limites são os do próprio banco (max_occurrences between 2 and 100):
-    // validar aqui devolve 400 com explicação em vez de deixar a constraint
-    // estourar como erro genérico.
-    if (maxOccurrences !== null && (!Number.isFinite(maxOccurrences) || maxOccurrences < 2 || maxOccurrences > 100)) {
-      return apiError("TASK_RECURRENCE_INVALID", "Informe de 2 a 100 ocorrências, ou deixe em branco para usar a data final.", identity.meta, { status: 400 });
-    }
-    if (!endsAt && maxOccurrences === null) {
-      return apiError("TASK_RECURRENCE_INVALID", "Defina uma data final ou um número de ocorrências — série infinita não é criada.", identity.meta, { status: 400 });
-    }
-
-    const series = await identity.supabase.rpc("create_recurring_task", {
+    const recurring = await getSupabaseAdmin().rpc("create_recurring_task", {
       p_actor: identity.access.profile.id,
       p_organization: identity.access.organization.id,
       p_title: title,
@@ -105,32 +91,23 @@ export async function POST(request: NextRequest) {
       p_lead_id: leadId,
       p_assigned_to: assigneeId,
       p_cadence: cadence,
-      p_ends_at: endsAt ? endsAt.toISOString() : null,
+      p_ends_at: endsAt?.toISOString(),
       p_max: maxOccurrences,
     });
-
-    if (series.error) {
-      const missingFunction = series.error.code === "42883" || series.error.code === "PGRST202";
-      if (missingFunction) {
-        structuredApiLog("warn", "task.recurrence.unavailable", request, identity.meta, {
-          organizationId: identity.access.organization.id,
-          reason: "create_recurring_task ausente neste banco",
-        });
-        return apiError("TASK_RECURRENCE_PENDING", "Crie a tarefa simples agora. A recorrência depende de uma atualização do banco que ainda não foi aplicada neste ambiente.", identity.meta, { status: 503 });
-      }
-      structuredApiLog("warn", "task.recurrence.rejected", request, identity.meta, {
-        organizationId: identity.access.organization.id,
-        code: series.error.code,
-      });
-      return apiError("TASK_RECURRENCE_FAILED", "Não foi possível criar a série recorrente.", identity.meta, { status: 400 });
-    }
-
-    structuredApiLog("info", "task.recurrence.created", request, identity.meta, {
-      organizationId: identity.access.organization.id,
+    if (recurring.error) return apiError("TASK_RECURRENCE_CREATE_FAILED", "Não foi possível criar a repetição. Confirme se a atualização do banco foi aplicada.", identity.meta, { status: 409 });
+    structuredApiLog("info", "task.recurrence_created", request, identity.meta, {
       actorId: identity.access.profile.id,
+      leadId,
+      assigneeId,
       cadence,
+      maxOccurrences,
+      recurrenceId: recurring.data?.recurrenceId,
     });
-    return apiSuccess({ recurrence: series.data, cadence }, identity.meta, { status: 201, headers: rate.headers });
+    return apiSuccess({
+      recurrence: recurring.data,
+      ownerPreservedFromLead: Boolean(leadId),
+      compatibility: "canonical+legacy-task-columns",
+    }, identity.meta, { status: 201, headers: rate.headers });
   }
   const result = await identity.supabase.from("tasks").insert({ organization_id: identity.access.organization.id, title, description: description || null, due_date: dueAt.toISOString(), priority, status: "pendente", lead_id: leadId, user_id: assigneeId }).select("id,title,due_date,priority,status,lead_id,user_id,created_at").single();
   if (result.error) return apiError("TASK_CREATE_FAILED", "Não foi possível criar a tarefa.", identity.meta, { status: 400 });
@@ -203,6 +180,42 @@ export async function PATCH(request: NextRequest) {
   );
   const idempotencyKey = request.headers.get("idempotency-key")?.trim() || null;
   if (!id || !["complete", "postpone_one_day", "reschedule", "record_outcome", "cancel_recurrence"].includes(action)) return apiError("TASK_ACTION_INVALID", "Ação de tarefa inválida.", identity.meta, { status: 400 });
+  if (action === "cancel_recurrence") {
+    const admin = getSupabaseAdmin();
+    const task = await admin
+      .from("tasks")
+      .select("id,recurrence_id")
+      .eq("id", id)
+      .eq("organization_id", identity.access.organization.id)
+      .maybeSingle();
+    if (task.error || !task.data?.recurrence_id) return apiError(
+      "TASK_RECURRENCE_NOT_FOUND",
+      "Repetição não encontrada ou atualização do banco ainda não aplicada.",
+      identity.meta,
+      { status: 404 },
+    );
+    const cancelled = await admin
+      .from("task_recurrences")
+      .update({ active: false })
+      .eq("id", task.data.recurrence_id)
+      .eq("organization_id", identity.access.organization.id)
+      .eq("active", true)
+      .select("id,active")
+      .maybeSingle();
+    if (cancelled.error) return apiError("TASK_RECURRENCE_CANCEL_FAILED", "Não foi possível encerrar a repetição.", identity.meta, { status: 409 });
+    structuredApiLog("info", "task.recurrence_cancelled", request, identity.meta, {
+      actorId: identity.access.profile.id,
+      taskId: id,
+      recurrenceId: task.data.recurrence_id,
+      changed: Boolean(cancelled.data),
+    });
+    return apiSuccess({
+      recurrenceId: task.data.recurrence_id,
+      active: false,
+      changed: Boolean(cancelled.data),
+      tasksPreserved: true,
+    }, identity.meta, { headers: rate.headers });
+  }
   if (source === "atlas-copilot" && !["complete", "reschedule", "record_outcome"].includes(action)) return apiError("COPILOT_TASK_ACTION_NOT_ALLOWED", "O Copilot só pode preparar a conclusão, o reagendamento ou o registro confirmado do resultado desta tarefa.", identity.meta, { status: 403 });
   if (source === "atlas-copilot" && action === "complete" && (!humanConfirmed || !expectedStatus)) return apiError("COPILOT_TASK_COMPLETION_CONFIRMATION_REQUIRED", "Revise e confirme o estado atual antes de concluir a tarefa.", identity.meta, { status: 409 });
   if (source === "atlas-copilot" && action === "reschedule" && (!humanConfirmed || !expectedStatus)) return apiError("COPILOT_TASK_RESCHEDULE_CONFIRMATION_REQUIRED", "Revise o novo prazo e confirme antes de reagendar a tarefa.", identity.meta, { status: 409 });
@@ -215,35 +228,6 @@ export async function PATCH(request: NextRequest) {
   const organizationId = identity.access.organization.id;
   const current = await identity.supabase.from("tasks").select("id,title,due_date,status,lead_id,user_id,created_at").eq("id", id).eq("organization_id", organizationId).maybeSingle();
   if (current.error || !current.data) return apiError("TASK_NOT_FOUND", "Tarefa não encontrada no seu escopo.", identity.meta, { status: 404 });
-  // cancel_recurrence encerra a SÉRIE, não a tarefa: as ocorrências já criadas
-  // continuam existindo e o worker apenas deixa de gerar novas. Sai antes do
-  // fluxo de status porque não mexe em nenhuma tarefa.
-  if (action === "cancel_recurrence") {
-    const seed = await identity.supabase.from("tasks").select("recurrence_id").eq("id", id).eq("organization_id", organizationId).maybeSingle();
-    const recurrenceId = seed.error ? null : uuid((seed.data as CompatRow | null)?.recurrence_id);
-    if (!recurrenceId) return apiError("TASK_RECURRENCE_NOT_FOUND", "Esta tarefa não faz parte de uma série recorrente.", identity.meta, { status: 404 });
-
-    const cancelled = await identity.supabase
-      .from("task_recurrences")
-      .update({ active: false, updated_at: new Date().toISOString() })
-      .eq("id", recurrenceId)
-      .eq("organization_id", organizationId)
-      .eq("active", true)
-      .select("id,title,cadence,occurrences,active")
-      .maybeSingle();
-
-    if (cancelled.error) {
-      // Banco sem a migration da fase 43: recusa honesta em vez de 500 opaco.
-      const missingTable = cancelled.error.code === "42P01" || cancelled.error.code === "PGRST205";
-      if (missingTable) return apiError("TASK_RECURRENCE_PENDING", "A recorrência depende de uma atualização do banco que ainda não foi aplicada neste ambiente.", identity.meta, { status: 503 });
-      return apiError("TASK_RECURRENCE_CANCEL_FAILED", "Não foi possível encerrar a repetição.", identity.meta, { status: 400 });
-    }
-    if (!cancelled.data) return apiError("TASK_RECURRENCE_NOT_FOUND", "Série não encontrada no seu escopo, ou já encerrada.", identity.meta, { status: 404 });
-
-    structuredApiLog("info", "task.recurrence.cancelled", request, identity.meta, { organizationId, actorId: identity.access.profile.id, recurrenceId });
-    return apiSuccess({ recurrence: cancelled.data, cancelled: true, active: false }, identity.meta, { headers: rate.headers });
-  }
-
   const currentStatus = normalizeTaskStatus(current.data.status);
   const expectedNormalized = normalizeTaskStatus(expectedStatus);
   const idempotencyFingerprint = idempotencyKey ? requestFingerprint({ organizationId, id, action, source, humanConfirmed, expectedStatus, expectedDueAt, requestedDueAt, outcome, outcomeNote, commercialContextReviewed, expectedCommercialContext: expectedCommercialContextPreview, idempotencyKey }) : null;

@@ -91,10 +91,30 @@ as $$
   );
 $$;
 
+create or replace function private.can_view_lead(target_lead_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.leads lead
+    where lead.id = target_lead_id
+      and private.can_access_commercial_lead(
+        lead.organization_id,
+        lead.assigned_to
+      )
+  );
+$$;
+
 revoke all on function private.can_view_commercial_profile(uuid) from public, anon;
 revoke all on function private.can_access_commercial_lead(uuid, uuid) from public, anon;
+revoke all on function private.can_view_lead(uuid) from public, anon;
 grant execute on function private.can_view_commercial_profile(uuid) to authenticated;
 grant execute on function private.can_access_commercial_lead(uuid, uuid) to authenticated;
+grant execute on function private.can_view_lead(uuid) to authenticated;
 
 drop policy if exists profiles_select_org on public.profiles;
 drop policy if exists profiles_commercial_scope on public.profiles;

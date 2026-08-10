@@ -1,0 +1,20 @@
+{
+  "phase": 45,
+  "program": "meta-andromeda-automation",
+  "mode": "sample_02_commit_unknown_final_authorization",
+  "status": "final_execution_control_prepared_source_evidence_missing",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-044.json",
+  "controlGate": "config/meta-repeatability-sample-02-commit-unknown-final-authorization-gate.json",
+  "controlTemplate": "config/fixtures/meta-repeatability-sample-02-commit-unknown-final-authorization-template.json",
+  "preflight": "scripts/preflight-meta-repeatability-sample-02-commit-unknown-final-authorization.mjs",
+  "controlBuilder": "scripts/run-meta-repeatability-sample-02-commit-unknown-final-authorization.mjs",
+  "staticAudit": "scripts/audit-meta-repeatability-sample-02-commit-unknown-final-authorization.mjs",
+  "documentation": "docs/META_REPEATABILITY_SAMPLE_02_COMMIT_UNKNOWN_FINAL_AUTHORIZATION.md",
+  "manualWorkflow": ".github/workflows/atlas-meta-phase30-local-rehearsal.yml",
+  "controlScope": { "requiredSourceFiles": 3, "maximumConsumerPlanAgeSeconds": 120, "maximumTransactionAttestationAgeSeconds": 86400, "maximumFinalAuthorizationAgeSeconds": 60, "maximumFinalAuthorizationValiditySeconds": 120, "maximumControlPlanValiditySeconds": 120, "aal2Required": true, "readOnlyReconciliationRequired": true, "automaticRetryForbidden": true, "successfulPreparationDoesNotConsumeArmOrExecute": true },
+  "environmentAudit": { "staticControlContractApproved": true, "negativeControlSelfTestsPrepared": true, "offlineControlBuilderPrepared": true, "commitUnknownReconciliationPrepared": true, "phase44ConsumerPlanReceived": false, "reviewedTransactionBoundaryAttestationReceived": false, "immediateFinalExecutionAuthorizationReceived": false, "finalExecutionControlPrepared": false, "commitUnknownReconcilerAvailable": false, "executionPermitConsumed": false, "consumerArmed": false, "supervisorStarted": false, "adapterExecuted": false, "replayExecuted": false, "databaseTouched": false, "networkTouched": false, "processSpawned": false, "stagingTouched": false, "productionTouched": false, "metaTouched": false, "buildExecuted": false },
+  "releaseGate": { "controlBuilderPrepared": true, "sourceEvidenceReceived": false, "finalExecutionControlPrepared": false, "runtimeBoundaryVerified": false, "exactlyOneReservationProven": false, "finalExecutionAuthorizationAvailable": false, "permitConsumptionAllowed": false, "workerArmAllowed": false, "replayExecutionAllowed": false, "stagingMutationAllowed": false, "productionMutationAllowed": false, "metaDeliveryAllowed": false, "buildAllowed": false, "nextPhaseAllowed": false },
+  "governance": { "sourceFilesMustRemainInsideWorkspace": true, "symbolicLinksRejected": true, "sourceReceiptPermissions": "0600", "controlPlanPermissions": "0600", "jsonMaximumBytes": 1048576, "databaseAccess": false, "networkAccess": false, "processSpawning": false, "shellExecution": false, "remoteDatabaseAccess": false, "stagingAccess": false, "productionAccess": false, "credentialPersistence": false, "rawSessionPersistence": false, "authorizationClaimsPersistence": false, "noncePersistence": false, "permitValueCollection": false, "executionPermitConsumption": false, "workerArm": false, "workerStart": false, "replayExecution": false, "realMetaEventDelivery": false, "testMetaEventDelivery": false, "campaignMutation": false, "deployment": false, "buildExecuted": false },
+  "nextPhase": { "phase": 46, "objective": "Preparar a prova offline de reserva exatamente-uma e a máquina de estados de reconciliação, ainda sem consumir permit, armar worker ou executar replay.", "blockedUntil": ["plano real e ainda válido da Fase 44", "atestado real da fronteira transacional", "autorização final AAL2 imediata", "evidência real de reserva exatamente-uma", "staging descartável separado de produção"] }
+}

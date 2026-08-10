@@ -1,6 +1,5 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { requireApiIdentity } from "@/lib/security/api-auth";
-import { enforceRateLimit } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { resolveCommercialRole } from "@/lib/api/security";
@@ -9,10 +8,7 @@ export const dynamic = "force-dynamic";
 
 type Payload = { action?: "approve" | "reject" | "execute" | "cancel"; reason?: string };
 
-export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  // Mesma natureza da caixa de aprovações: decisão registrada, não consulta.
-  const rate = enforceRateLimit(request, { limit: 20, windowMs: 60_000, scope: "v3.decisions.decide" });
-  if (!rate.ok) return rate.response;
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;
@@ -69,11 +65,6 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     return NextResponse.json({ id, status: "executing", runId: run.id }, { status: 202 });
   } catch (error) {
     logger.error("v3.decision_action_failed", error);
-    // Recusa de ACESSO não é falha de servidor. Sem esta régua, perfil inativo,
-    // organização suspensa e sessão expirada viravam HTTP 500 — "o servidor
-    // quebrou" — e quem lê um 500 não procura o diretor.
-    const mensagem = error instanceof Error ? error.message : "Falha ao processar decisão.";
-    const acesso = /sess[ãa]o|token|autentica|autoriz|organiza|escopo/i.test(mensagem);
-    return NextResponse.json({ error: mensagem }, { status: acesso ? 401 : 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao processar decisão." }, { status: 500 });
   }
 }

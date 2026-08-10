@@ -1,0 +1,22 @@
+{
+  "schema": "atlas.controlled-proof-execution-continuation-authorization-memory.v1",
+  "policyHash": "91da90471bff1a671083844f6a0a45fd330cedf7542593db49f506b91868be9d",
+  "entries": [],
+  "summary": {
+    "recordedContinuationAuthorizations": 0,
+    "authorizedObservations": 0,
+    "distinctAuthorizations": 0,
+    "latestEntryHash": null,
+    "controlledProofExecutionStarted": false,
+    "controlledProofExecutionObserved": false,
+    "controlledProofExecutionContinuationAuthorized": false,
+    "controlledProofExecutionContinued": false,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "f8932bcb64c8e92202bd8b52ec4eb4b168c214f26754a5d1f5f78a1645d9e086"
+}

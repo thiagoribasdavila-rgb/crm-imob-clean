@@ -1,13 +1,39 @@
-// As 48 páginas-casca dos grupos especulativos foram REMOVIDAS em 2026-07-26,
-// não apenas quarentenadas: nenhuma das 48 consumia dado real (média de 15
-// linhas, zero fetch, zero supabase). Quarentenar casca é carregar peso morto no
-// repositório e no inventário mental de quem audita.
-//
-// O git preserva tudo em checkpoint/antes-remocao-cascas. As ideias por trás de
-// algumas delas já vivem melhor implementadas: predição em conversion-predictor,
-// equilíbrio de verba no stop loss, varredura de mercado no Perplexity.
 export const legacyRoutePaths = [
+  "app/(crm)/page.tsx",
+  "app/(crm)/atlas-v2",
+  "app/(crm)/atlas-2030",
+  "app/(crm)/atlas-v3",
+  "app/(crm)/agents",
+  "app/(crm)/ai-insights",
+  "app/(crm)/analytics",
+  "app/(crm)/approvals",
+  "app/(crm)/automation",
+  "app/(crm)/automations",
+  "app/(crm)/chat",
+  "app/(crm)/creatives",
+  "app/(crm)/design-lab",
+  "app/(crm)/intelligence",
+  "app/(crm)/kanban",
+  "app/(crm)/notifications",
+  "app/(crm)/properties/mtching",
+  "app/(ai)",
+  "app/(autonomous)",
+  "app/(andromeda)",
   "app/(atlas)",
+  "app/(automation)",
+  "app/(autonomous-business)",
+  "app/(collective-intelligence)",
+  "app/(consciousness)",
+  "app/(digital-life-form)",
+  "app/(economic-system)",
+  "app/(ecosystem)",
+  "app/(meta-economy)",
+  "app/(reality-control)",
+  "app/(reality-engine)",
+  "app/(self-replicating)",
+  "app/(supreme-market)",
+  "app/(engine)",
+  "app/(unified-consciousness)",
   "app/analytics",
   "app/(crm)/pipedrive",
   "app/(crm)/pipeline/cold",
@@ -18,4 +44,17 @@ export const legacyRoutePaths = [
   "app/(crm)/leads/table",
   "app/(crm)/tasks/[id]",
   "app/api/leads",
+];
+
+export const legacyComponentPaths = [
+  "components/analytics",
+  "components/atlas/AIInsights.tsx",
+  "components/atlas/LeadRanking.tsx",
+  "components/atlas/MetricCard.tsx",
+  "components/atlas/Pipeline.tsx",
+  "components/atlas/RevenueForecast.tsx",
+  "components/core",
+  "components/crm/customer",
+  "components/design-lab",
+  "components/Sidebar.tsx",
 ];

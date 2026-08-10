@@ -1,0 +1,41 @@
+{
+  "phase": 180,
+  "name": "Conversion Core Supabase Migration Reconciliation Planner",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Comparar o catálogo local somente com evidência remota atual e sanitizada, recusando snapshots históricos e mantendo qualquer mutação ou release bloqueada.",
+  "evidenceLevel": "local_contract_tested_current_remote_evidence_missing",
+  "runtimeHomologated": false,
+  "currentState": {
+    "localMigrationFiles": 131,
+    "localUniqueVersions": 128,
+    "duplicateVersions": 3,
+    "currentRemoteEvidenceAvailable": false,
+    "historicalSnapshotAcceptedAsCurrent": false,
+    "reconciliationComplete": false
+  },
+  "safety": {
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationFileRenamed": false,
+    "migrationHistoryRepaired": false,
+    "databaseReset": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "contractsPassed": true,
+    "currentRemoteEvidenceCollected": false,
+    "historicalEvidenceRejected": true,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "directPushAllowed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Em sessão operacional autorizada, coletar o ledger remoto atual pela fase 179 e então repetir este comparador; as três colisões ainda exigirão evidência remota com nomes antes de qualquer decisão."
+}
+

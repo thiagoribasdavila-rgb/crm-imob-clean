@@ -1,0 +1,24 @@
+{
+  "schema": "atlas.meta-commercial-signal-contract.v1",
+  "phase": 57,
+  "status": "prepared_no_external_dispatch",
+  "purpose": "Preservar sinais comerciais de conversão para feedback de campanhas sem enviar dados ou eventos automaticamente.",
+  "signals": [
+    { "name": "lead_received", "stage": "new", "valueRequired": false, "humanConfirmationRequired": false },
+    { "name": "lead_qualified", "stage": "qualified", "valueRequired": false, "humanConfirmationRequired": true },
+    { "name": "contact_completed", "stage": "contact", "valueRequired": false, "humanConfirmationRequired": true },
+    { "name": "visit_scheduled", "stage": "visit", "valueRequired": false, "humanConfirmationRequired": true },
+    { "name": "proposal_sent", "stage": "proposal", "valueRequired": true, "humanConfirmationRequired": true },
+    { "name": "sale_confirmed", "stage": "won", "valueRequired": true, "humanConfirmationRequired": true }
+  ],
+  "guardrails": {
+    "dispatchEnabled": false,
+    "requiresConsent": true,
+    "requiresServerSideHashing": true,
+    "requiresIdempotencyKey": true,
+    "requiresHumanConfirmationForRevenue": true,
+    "allowsClientSecrets": false,
+    "allowsCustomerDataInLogs": false,
+    "allowsAutomaticOptimizationClaims": false
+  }
+}

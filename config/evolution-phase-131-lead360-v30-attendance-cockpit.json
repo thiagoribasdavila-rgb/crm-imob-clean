@@ -1,0 +1,26 @@
+{
+  "phase": 131,
+  "name": "Lead 360 V30 Attendance Cockpit",
+  "status": "implemented",
+  "versionTarget": "V30",
+  "focus": "Transformar a tela individual da lead em um cockpit de atendimento orientado à próxima melhor ação.",
+  "businessGoal": "Ajudar o corretor a decidir rápido o que fazer com cada lead, reduzindo ruído visual e aumentando a chance de avanço no funil.",
+  "implemented": [
+    "Criado score compacto de atendimento V30 usando readiness, qualidade do perfil, score comercial e saúde da ação.",
+    "Criados quatro sinais práticos: Próxima ação, Perfil comprador, Oferta indicada e Memória comercial.",
+    "Adicionado cockpit visual acima dos blocos longos da Lead 360 para reduzir tempo até decisão.",
+    "Integrado Copilot supervisionado em cada sinal sem execução automática.",
+    "Criado CSS responsivo premium para leitura rápida em desktop e celular."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-131:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  },
+  "riskPolicy": [
+    "Não altera banco de dados.",
+    "Não altera contratos de API.",
+    "Não envia mensagens automaticamente.",
+    "Não cria automações sem confirmação humana."
+  ]
+}

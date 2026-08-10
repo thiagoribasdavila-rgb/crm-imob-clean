@@ -1,0 +1,22 @@
+{
+  "phase": 24,
+  "name": "essential-data-recovery",
+  "objective": "Tornar dados comerciais essenciais recuperáveis no ponto de uso do Lead 360 sem criar cadastro, origem ou persistência paralela.",
+  "canonicalSurface": "lead-360",
+  "essentialFields": [
+    "project",
+    "budget_max",
+    "preferred_regions",
+    "bedrooms",
+    "phone"
+  ],
+  "rules": [
+    "A primeira lacuna essencial recebe destaque e uma ação direta.",
+    "As lacunas restantes permanecem compactas para reduzir ruído visual.",
+    "Projeto abre a correção de contexto comercial já governada e auditável.",
+    "Os demais dados levam aos campos canônicos já existentes no perfil.",
+    "Nenhuma API, tabela, RLS, automação ou regra comercial é alterada."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

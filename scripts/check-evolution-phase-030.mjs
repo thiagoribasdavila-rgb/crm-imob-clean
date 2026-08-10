@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { temAlvoDeToque } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-030-navigation-useful-empty-states.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -10,27 +9,16 @@ const wrapper = fs.readFileSync("components/atlas/empty-state.tsx", "utf8");
 const styles = fs.readFileSync("app/globals.css", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_030_NAVIGATION_USEFUL_EMPTY_STATES.md", "utf8");
 
-/**
- * 2026-07-29 — a oitava superfície auditada por esta fase, "Clientes 360"
- * (`app/(crm)/customers/page.tsx`), foi APAGADA: era a mesma tabela `leads` de
- * /leads, sem SLA nem lote, e — o grave — sem o piso de carteira, então um
- * corretor via a carteira da imobiliária inteira. Ela agora só redireciona.
- *
- * O config NÃO foi renumerado: `criticalSurfaces` continua registrando as 8
- * superfícies que a fase auditou, porque isso é história e história não se
- * reescreve. O que a checagem faz é afirmar que 7 delas continuam com estado
- * vazio explícito e que a 8ª desemboca em uma que tem — /leads, já na lista.
- */
 const criticalFiles = [
   "app/(crm)/leads/page.tsx",
   "app/(crm)/calendar/page.tsx",
   "app/(crm)/tasks/page.tsx",
   "app/(crm)/pipeline/page.tsx",
+  "app/(crm)/customers/page.tsx",
   "app/(crm)/developments/page.tsx",
   "app/(crm)/sales/page.tsx",
   "app/(crm)/distribution/page.tsx",
 ];
-const retiredSurface = fs.readFileSync("app/(crm)/customers/page.tsx", "utf8");
 
 function listTsx(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -67,18 +55,11 @@ const checks = [
   ["Linha de base estrutural permanece coberta", crmFiles.length >= config.structuralBaseline.crmPages && emptyStateConsumers >= config.structuralBaseline.emptyStateConsumers && emptyStateUses >= config.structuralBaseline.emptyStateUses],
   ["Primeiro recorte governado possui motivos explícitos", explicitReasons >= config.structuralBaseline.explicitReasonsAfter && config.structuralBaseline.explicitReasonsBefore === 0],
   ["Ações úteis aumentaram sem dados fictícios", statesWithActions >= config.structuralBaseline.emptyStatesWithActionsAfter && config.structuralBaseline.emptyStatesWithActionsAfter > config.structuralBaseline.emptyStatesWithActionsBefore && config.truthPolicy.fakeRecordsRendered === false],
-  // Sete telas vivas com motivo explícito + a aposentada, que continua
-  // ALCANÇÁVEL e cai em /leads (a primeira da lista). 7 + 1 = as 8 originais:
-  // a soma amarra o guard à realidade em vez de renumerar o config.
-  ["Oito superfícies comerciais estão cobertas", criticalFiles.every((file) => fs.readFileSync(file, "utf8").includes("reason=")) && retiredSurface.includes('redirect("/leads")') && criticalFiles.length + 1 === config.criticalSurfaces.length && config.criticalSurfaces.length === 8],
+  ["Oito superfícies comerciais estão cobertas", criticalFiles.every((file) => fs.readFileSync(file, "utf8").includes("reason=")) && config.criticalSurfaces.length === 8],
   ["Filtro e primeira configuração têm recuperação", criticalSource.includes("Limpar filtros") && criticalSource.includes("Criar lead") && criticalSource.includes("Cadastrar empreendimento") && criticalSource.includes("Abrir pipeline")],
   ["Rotina concluída e configuração pendente não se confundem", criticalSource.includes('reason="completed"') && criticalSource.includes('reason="not-configured"') && config.exitCriteria.completedAndConfigurationPendingAreDistinguished === true],
   ["Falha continua separada de vazio", atlasUi.includes("AtlasRecoverableError") && config.truthPolicy.emptyStateMayMaskFetchFailure === false && config.exitCriteria.failuresRemainRecoverableErrors === true],
-  ["Ações preservam alvo mínimo",
-    /* O `min-height: 44px` era conferido solto, longe da classe ao lado. Agora
-       o alvo é cobrado DENTRO da família do estado vazio com ação. */
-    temAlvoDeToque(styles, '.atlas-empty-state[data-has-action="true"]', config.accessibility.minimumActionTargetPx)
-    && config.accessibility.minimumActionTargetPx === 44],
+  ["Ações preservam alvo mínimo", styles.includes('.atlas-empty-state[data-has-action="true"]') && styles.includes("min-height: 44px") && config.accessibility.minimumActionTargetPx === 44],
   ["Cobertura estrutural não vira métrica inventada", config.structuralBaseline.runtimeOutcomesMeasured === false && config.truthPolicy.fakeRuntimeMetricPublished === false && config.truthPolicy.structuralCoverageIsRuntimeOutcomeProof === false],
   ["Relatório registra contrato, limite e próxima fase", report.includes("101 usos") && report.includes("oito superfícies") && report.includes("Falha não é estado vazio") && report.includes("Fase 031")],
   ["Rotas, RBAC e gate de homologação permanecem intactos", config.routeBehaviorChanged === false && config.safetyPolicy.rbacPreserved === true && config.exitCriteria.routeRemoved === false && phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false],

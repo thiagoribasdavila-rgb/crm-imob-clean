@@ -1,0 +1,29 @@
+{
+  "phase": 142,
+  "name": "Kanban V30 Clean Card Reading",
+  "status": "implemented",
+  "area": "crm.pipeline.kanban.cards",
+  "goal": "Reduzir ruído visual dos cards do Kanban e acelerar a leitura da próxima decisão comercial.",
+  "businessOutcome": [
+    "corretor identifica prioridade, SLA e etapa em poucos segundos",
+    "modo compacto remove metadados duplicados sem perder profundidade",
+    "gestor mantém leitura de risco e ação sem depender de abrir cada card"
+  ],
+  "implementation": {
+    "primaryFile": "app/(crm)/pipeline/page.tsx",
+    "styleFile": "app/globals.css",
+    "uiMarker": "142-kanban-v30-clean-card-reading",
+    "newConcept": "quickSignals"
+  },
+  "safety": {
+    "databaseChanges": false,
+    "mutations": false,
+    "usesExistingPipelineData": true,
+    "aiCostIncrease": false
+  },
+  "validation": {
+    "script": "npm run evolution:phase-142:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

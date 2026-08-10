@@ -1,0 +1,43 @@
+{
+  "format": "atlas_meta_repeatability_atomic_ledger_request_v1",
+  "phase": 27,
+  "environment": "staging_clone",
+  "ledgerReference": null,
+  "requestedAt": null,
+  "sourceContractFingerprint": null,
+  "slot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2
+  },
+  "event": {
+    "eventName": null,
+    "classification": null,
+    "eventIdFingerprint": null,
+    "syntheticRecordFingerprint": null
+  },
+  "operation": {
+    "type": "prepare_atomic_reservation_contract",
+    "expectedRevision": 0,
+    "proposedRevision": 1,
+    "persistReservation": false,
+    "issuePermit": false,
+    "consumePermit": false,
+    "executeAction": false,
+    "deliverEvent": false
+  },
+  "controls": {
+    "sourceContractReviewed": false,
+    "compareAndSetRequired": false,
+    "singleWinnerRequired": false,
+    "duplicateReservationRejected": false,
+    "atomicConsumeBeforeAction": false,
+    "appendOnlyAuditRequired": false,
+    "realCustomerDataIncluded": false,
+    "temporaryCodeRemainsInOfficialSurface": false,
+    "stopWithoutRetry": false,
+    "campaignUnchanged": false,
+    "budgetUnchanged": false,
+    "audienceUnchanged": false,
+    "noPerformanceClaim": false
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "phase": 35,
+  "scope": "safe_stage_movement",
+  "canonicalFeedback": "35-safe-stage-movement",
+  "visibleStates": ["saving", "success", "error"],
+  "uniformLanguage": [
+    "Movendo oportunidade",
+    "Etapa atualizada",
+    "Movimento não confirmado",
+    "Desfazer"
+  ],
+  "preservedSafeguards": [
+    "single_in_flight_move",
+    "same_stage_noop",
+    "terminal_stage_confirmation",
+    "optimistic_rollback",
+    "timeline_history",
+    "undo"
+  ],
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

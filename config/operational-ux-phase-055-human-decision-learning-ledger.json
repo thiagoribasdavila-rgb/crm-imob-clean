@@ -1,0 +1,17 @@
+{
+  "phase": 55,
+  "scope": "human_decision_learning_ledger",
+  "canonicalRoute": "/decision-center",
+  "humanDecisionRecorded": true,
+  "decisionReasonRecorded": true,
+  "responsibleRecorded": true,
+  "deadlineRecorded": true,
+  "observedOutcomeRecorded": true,
+  "organizationIsolationPreserved": true,
+  "managerHierarchyPreserved": true,
+  "automaticCommercialAction": false,
+  "migrationCreated": true,
+  "migrationAppliedRemotely": false,
+  "externalDeliveryDuringPhase": false,
+  "buildExecuted": false
+}

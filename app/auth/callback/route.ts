@@ -37,14 +37,9 @@ export async function GET(request: NextRequest) {
   const rawType = requestUrl.searchParams.get("type");
   const errorCode = requestUrl.searchParams.get("error_code");
   const errorDescription = requestUrl.searchParams.get("error_description");
-  /* `/redefinir-senha` veio da `main` em 25/07/2026 e é um re-export de
-     `/reset-password` — mesma tela, nome em português. É para onde o e-mail de
-     recuperação aponta, então é o destino padrão. A rota antiga continua
-     funcionando e continua sendo reconhecida como fluxo de recuperação: links
-     de e-mail já enviados carregam `next=/reset-password` e não podem quebrar. */
-  const fallback = rawType === "recovery" ? "/redefinir-senha" : "/dashboard";
+  const fallback = rawType === "recovery" ? "/reset-password" : "/dashboard";
   const next = safeAuthDestination(requestUrl.searchParams.get("next"), fallback);
-  const recoveryFlow = rawType === "recovery" || next === "/reset-password" || next === "/redefinir-senha";
+  const recoveryFlow = rawType === "recovery" || next === "/reset-password";
 
   if (errorCode || errorDescription) {
     return NextResponse.redirect(authFailureUrl(origin, "recovery_link_invalid"));

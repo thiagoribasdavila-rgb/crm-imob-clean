@@ -30,6 +30,16 @@ export type AtlasNavigationIdentity = {
   accessRole: string;
 };
 
+export type AtlasNavigationRole = "director" | "superintendent" | "manager" | "broker";
+
+export type AtlasRoleRoutine = {
+  role: AtlasNavigationRole;
+  label: string;
+  description: string;
+  itemIds: readonly string[];
+  mobileItemIds: readonly string[];
+};
+
 type AtlasScopedItem = {
   roles: readonly string[];
   accessRoles?: readonly string[];
@@ -55,13 +65,11 @@ export function canAccessAtlasItem(
 
 export const atlasNavigation = [
   {
-    // Fusão Início + Command Center consolidada NA FONTE (o sidebar não precisa
-    // mais remapear em runtime): uma única home de decisão.
-    id: "command-center", surface: "canonical", group: "Operação diária", label: "Sala de comando", href: "/command-center", icon: "⌘",
-    roles: ["director", "superintendent", "manager", "broker"], keywords: "dashboard início sala de comando indicadores prioridades decisões hoje tempo real pulso ia",
-    businessOutcome: "Mostrar a prioridade comercial que exige decisão ou execução agora, com o pulso ao vivo.",
+    id: "command-center", surface: "canonical", group: "Operação diária", label: "Command Center", href: "/dashboard", icon: "⌘",
+    roles: ["director", "superintendent", "manager", "broker"], keywords: "dashboard início indicadores prioridades decisões hoje",
+    businessOutcome: "Mostrar a prioridade comercial que exige decisão ou execução agora.",
     primaryAction: { label: "Abrir prioridade", href: "/pipeline?focus=priority", outcome: "Avançar a oportunidade mais relevante." },
-    dataDomains: ["leads", "tasks", "opportunities", "insights"], mobilePrimary: true,
+    dataDomains: ["leads", "tasks", "opportunities"], mobilePrimary: true,
   },
   {
     id: "leads", surface: "canonical", group: "Operação diária", label: "Leads", href: "/leads", icon: "◎",
@@ -91,14 +99,20 @@ export const atlasNavigation = [
     primaryAction: { label: "Novo compromisso", href: "/calendar?create=1", outcome: "Reservar uma ação com cliente ou equipe." },
     dataDomains: ["tasks", "visits", "commercial-events"],
   },
-  // "Clientes 360" (/customers) saiu do catálogo em 2026-07-29: a tela morreu.
-  // Lia a MESMA tabela `leads` que /leads (readCompatibleCustomers era alias de
-  // readCompatibleLeads), sem SLA, sem lote e — o grave — sem o piso de
-  // carteira: um corretor via as 469 leads da imobiliária inteira. As duas
-  // capacidades próprias dela (segmentos por vínculo e copiar contato) vivem
-  // agora em /leads; a regra do vínculo em lib/crm/vinculo-do-cliente.ts.
-  // A rota continua respondendo por redirect (memória de workspace + probe HTTP),
-  // mas não é mais um DESTINO — por isso saiu daqui.
+  {
+    id: "activity", surface: "canonical", group: "Operação diária", label: "Atividades", href: "/activity", icon: "◷",
+    roles: ["director", "superintendent", "manager", "broker"], keywords: "histórico eventos registros contatos auditoria",
+    businessOutcome: "Explicar o que aconteceu com cada oportunidade e preservar continuidade.",
+    primaryAction: { label: "Ver atividade recente", href: "/activity?period=today", outcome: "Revisar a movimentação comercial mais recente." },
+    dataDomains: ["commercial-events", "lead-activities", "tasks"],
+  },
+  {
+    id: "customers-360", surface: "canonical", group: "Clientes e portfólio", label: "Clientes 360", href: "/customers", icon: "◉",
+    roles: ["director", "superintendent", "manager", "broker"], keywords: "customer intelligence compradores perfil histórico relacionamento",
+    businessOutcome: "Reunir a história do comprador e indicar a melhor continuidade do relacionamento.",
+    primaryAction: { label: "Abrir cliente prioritário", href: "/customers?focus=priority", outcome: "Continuar o atendimento com contexto completo." },
+    dataDomains: ["customers", "leads", "commercial-events"],
+  },
   {
     id: "developments", surface: "canonical", group: "Clientes e portfólio", label: "Projetos", href: "/developments", icon: "▥",
     roles: ["director", "superintendent", "manager", "broker"], keywords: "incorporadoras lançamentos empreendimentos estoque materiais",
@@ -106,9 +120,20 @@ export const atlasNavigation = [
     primaryAction: { label: "Buscar materiais", href: "/developments/materials", outcome: "Entregar conteúdo comercial vigente ao cliente." },
     dataDomains: ["developments", "inventory", "materials"],
   },
-  // "Copilot" (/ai-dashboard) removido do menu: o grupo (ai) é QUARENTENADO no
-  // build de produção (legacy-route-paths) — o item dava 404 em produção. O
-  // copiloto vive no dock global (AtlasCopilotDock), presente em toda página.
+  {
+    id: "reactivation", surface: "canonical", group: "Clientes e portfólio", label: "Reativação", href: "/leads/import", icon: "↻",
+    roles: ["director", "superintendent", "manager", "broker"], keywords: "base antiga oferta ativa recuperação inativos higienização",
+    businessOutcome: "Recuperar oportunidades antigas sem poluir a carteira operacional.",
+    primaryAction: { label: "Abrir fila elegível", href: "/leads/import?view=eligible", outcome: "Priorizar contatos com dados válidos e consentimento." },
+    dataDomains: ["reactivation-leads", "suppression-list", "lead-memory"],
+  },
+  {
+    id: "copilot", surface: "canonical", group: "Clientes e portfólio", label: "Copilot", href: "/ai-dashboard", icon: "✦",
+    roles: ["director", "superintendent", "manager", "broker"], keywords: "inteligência assistente recomendação briefing próxima ação",
+    businessOutcome: "Traduzir dados comerciais em uma próxima ação explicável e supervisionada.",
+    primaryAction: { label: "Preparar meu dia", href: "/ai-dashboard?briefing=daily", outcome: "Receber um plano comercial baseado no escopo do usuário." },
+    dataDomains: ["leads", "tasks", "opportunities", "ai-memory"],
+  },
   {
     id: "brokers", surface: "canonical", group: "Gestão", label: "Corretores", href: "/brokers", icon: "◇",
     roles: ["director", "superintendent", "manager"], keywords: "equipe gerente corretor desempenho carteira hierarquia",
@@ -118,7 +143,7 @@ export const atlasNavigation = [
   },
   {
     id: "distribution", surface: "canonical", group: "Gestão", label: "Distribuição", href: "/distribution", icon: "⇄",
-    roles: ["director", "superintendent", "manager"], keywords: "fila transferência atribuição carga online projeto",
+    roles: ["director"], keywords: "fila transferência atribuição carga online projeto",
     businessOutcome: "Colocar cada lead em um único responsável compatível com projeto e capacidade.",
     primaryAction: { label: "Abrir fila sem responsável", href: "/distribution?queue=unassigned", outcome: "Distribuir oportunidades sem atendimento." },
     dataDomains: ["leads", "profiles", "distribution-rules"],
@@ -138,27 +163,11 @@ export const atlasNavigation = [
     dataDomains: ["analytics", "opportunities", "campaign-performance"],
   },
   {
-    // Substitui "Revenue Engine" (/revenue-engine, grupo (autonomous) QUARENTENADO
-    // no build → 404 em produção) pela superfície real de decisão: menos telas,
-    // mais tomada de decisão.
-    id: "decision-center", surface: "canonical", group: "Gestão", label: "Decisões", href: "/decision-center", icon: "⚡",
-    roles: ["director", "superintendent", "manager"], keywords: "decisões alertas aprovações ação recomendada prioridade rastreável",
-    businessOutcome: "Converter indicadores e sinais da IA em decisões rastreáveis com aprovação humana.",
-    primaryAction: { label: "Abrir decisão prioritária", href: "/decision-center", outcome: "Agir na recomendação de maior impacto agora." },
-    dataDomains: ["decisions", "approvals", "insights"],
-  },
-  {
-    // Promovido do ⌘K para a rail em 2026-07-26. A regra "menos telas, menos
-    // ruído" tirou daqui os destinos de suporte — e levou junto a tela que hoje
-    // é o centro da operação de aquisição. Campanha da Meta com lead não
-    // atendida queima verba e ainda ensina o Andromeda a buscar o público
-    // errado; isso não pode morar escondido atrás de um atalho de teclado.
-    id: "marketing", surface: "canonical", group: "Gestão", label: "Marketing", href: "/marketing", icon: "◈",
-    roles: ["director", "superintendent", "manager"], accessRoles: ["admin", "director_decisor", "director"],
-    keywords: "meta andromeda criativos campanhas verba cpl roi aquisição",
-    businessOutcome: "Ver o que cada campanha trouxe, quanto foi atendido e o que a IA propõe — sem publicar nada sozinha.",
-    primaryAction: { label: "Nova campanha", href: "/marketing/nova-campanha", outcome: "Montar uma campanha para aprovação humana." },
-    dataDomains: ["marketing-campaigns", "lead-attribution", "ai-decisions"],
+    id: "revenue-engine", surface: "canonical", group: "Gestão", label: "Revenue Engine", href: "/revenue-engine", icon: "⚡",
+    roles: ["director", "superintendent", "manager"], keywords: "meta conversão atendimento receita andromeda sinais",
+    businessOutcome: "Conectar aquisição, atendimento e resultado para melhorar a qualidade do público.",
+    primaryAction: { label: "Revisar conversões", href: "/revenue-engine?view=conversions", outcome: "Identificar campanhas que geram compradores reais." },
+    dataDomains: ["campaigns", "conversion-events", "opportunities"],
   },
   {
     id: "users", surface: "canonical", group: "Administração", label: "Usuários e acessos", href: "/users", icon: "♙",
@@ -190,19 +199,12 @@ export const atlasNavigation = [
   },
 ] as const satisfies readonly AtlasNavigationItem[];
 
-// "Menos telas, menos ruído" (decisão do dono, 2026-07-20): as páginas-meta de
-// evolução (/atlas-v3/*) saíram do MENU — são documentação viva do projeto, não
-// rotina comercial. As rotas continuam acessíveis por URL direta para auditoria
-// e homologação; só a navegação deixou de anunciá-las.
 export const atlasInternalNavigation: readonly AtlasInternalNavigationItem[] = [];
 
 export const atlasContextCommands = [
   { label: "Novo lead", href: "/leads/new", group: "Ações", keywords: "cadastrar criar lead contato", roles: ["director", "superintendent", "manager", "broker"] },
-  // Rail mais enxuta (2026-07-21): destinos de suporte (não rotina diária) saem da
-  // sidebar para o ⌘K — acesso preservado, menos ruído no menu principal.
-  { label: "Atividades", href: "/activity", group: "Operação", keywords: "histórico eventos registros contatos auditoria movimentação recente", roles: ["director", "superintendent", "manager", "broker"] },
-  { label: "Reativação", href: "/leads/import", group: "Carteira", keywords: "base antiga oferta ativa recuperação inativos higienização reativar importar", roles: ["director", "superintendent", "manager", "broker"] },
   { label: "Imóveis", href: "/properties", group: "Launch OS", keywords: "estoque produtos unidades", roles: ["director", "superintendent", "manager", "broker"] },
+  { label: "Marketing AI", href: "/marketing", group: "Growth", keywords: "meta criativos campanhas roi", roles: ["director", "superintendent", "manager"] },
   { label: "Conversas", href: "/conversations", group: "Growth", keywords: "whatsapp instagram atendimento", roles: ["director", "superintendent", "manager", "broker"] },
   { label: "Centro de Decisão", href: "/decision-center", group: "Intelligence", keywords: "decisões alertas aprovações", roles: ["director", "superintendent", "manager"] },
 ] as const;
@@ -211,18 +213,16 @@ export const atlasTaskActions = [
   { contextHref: "/leads/new", label: "Ver leads", href: "/leads", icon: "◎", keywords: "voltar carteira leads", roles: ["director", "superintendent", "manager", "broker"] },
   { contextHref: "/tasks", label: "Abrir agenda", href: "/calendar", icon: "□", keywords: "agenda compromissos visitas", roles: ["director", "superintendent", "manager", "broker"] },
   { contextHref: "/calendar", label: "Ver tarefas", href: "/tasks", icon: "✓", keywords: "tarefas follow up pendências", roles: ["director", "superintendent", "manager", "broker"] },
-  // A ação contextual de /customers saiu junto com a tela (2026-07-29): a rota
-  // redireciona para /leads, então ninguém permanece nela para ver a ação.
+  { contextHref: "/customers", label: "Abrir leads", href: "/leads", icon: "◎", keywords: "leads carteira atendimento", roles: ["director", "superintendent", "manager", "broker"] },
   { contextHref: "/developments", label: "Buscar materiais", href: "/developments/materials", icon: "⌕", keywords: "book tabela espelho materiais", roles: ["director", "superintendent", "manager", "broker"] },
   { contextHref: "/leads/import", label: "Revisar duplicidades", href: "/leads/deduplication", icon: "◇", keywords: "duplicados limpeza base", roles: ["director", "superintendent", "manager", "broker"] },
-  { contextHref: "/brokers", label: "Distribuir leads", href: "/distribution", icon: "⇄", keywords: "fila atribuição corretores", roles: ["director", "superintendent", "manager"] },
+  { contextHref: "/brokers", label: "Distribuir leads", href: "/distribution", icon: "⇄", keywords: "fila atribuição corretores", roles: ["director"] },
   { contextHref: "/sales", label: "Abrir relatórios", href: "/reports", icon: "↗", keywords: "resultado decisão forecast", roles: ["director", "superintendent", "manager"] },
   { contextHref: "/reports", label: "Centro de decisão", href: "/decision-center", icon: "◈", keywords: "decisão aprovação evidência", roles: ["director", "superintendent", "manager"] },
   { contextHref: "/revenue-engine", label: "Marketing AI", href: "/marketing", icon: "⚡", keywords: "campanhas meta receita", roles: ["director", "superintendent", "manager"] },
   { contextHref: "/users", label: "Configurar equipe", href: "/settings/team", icon: "♙", keywords: "equipe acesso organização", roles: ["director"], accessRoles: ["admin"] },
   { contextHref: "/external-sales", label: "Abrir relatórios", href: "/reports", icon: "↗", keywords: "aprendizado comprador externo", roles: ["director"], accessRoles: ["admin", "director_decisor"] },
   { contextHref: "/integrations", label: "Ver saúde", href: "/integrations/health", icon: "⌁", keywords: "status teste conexão", roles: ["director"], accessRoles: ["admin", "director_decisor"] },
-  { contextHref: "/atlas-v3", label: "Abrir homologação", href: "/atlas-v3/homologation", icon: "◈", keywords: "gate evidência homologação", roles: ["director"], accessRoles: ["admin", "director_decisor"] },
   { contextHref: "/settings", label: "Saúde da IA", href: "/settings/ai", icon: "✦", keywords: "modelos agentes custo saúde", roles: ["director", "superintendent", "manager"], accessRoles: ["admin"] },
 ] as const satisfies readonly AtlasTaskAction[];
 
@@ -237,6 +237,63 @@ const atlasDefaultTaskAction = {
 
 export const atlasMobileNavigation = atlasNavigation.filter((item) => "mobilePrimary" in item && item.mobilePrimary);
 
+export const atlasRoleRoutines: Record<AtlasNavigationRole, AtlasRoleRoutine> = {
+  broker: {
+    role: "broker",
+    label: "Minha rotina",
+    description: "Atender, avançar e cumprir a próxima ação.",
+    itemIds: ["command-center", "leads", "pipeline", "tasks", "calendar"],
+    mobileItemIds: ["command-center", "leads", "pipeline", "tasks"],
+  },
+  manager: {
+    role: "manager",
+    label: "Rotina da equipe",
+    description: "Acompanhar, destravar e sustentar o ritmo do time.",
+    itemIds: ["command-center", "brokers", "pipeline", "tasks", "reports"],
+    mobileItemIds: ["command-center", "pipeline", "tasks", "reports"],
+  },
+  superintendent: {
+    role: "superintendent",
+    label: "Gestão comercial",
+    description: "Comparar times, capacidade, receita e execução.",
+    itemIds: ["command-center", "reports", "brokers", "sales", "revenue-engine"],
+    mobileItemIds: ["command-center", "reports", "sales", "revenue-engine"],
+  },
+  director: {
+    role: "director",
+    label: "Decisão executiva",
+    description: "Decidir sobre receita, risco, campanhas e operação.",
+    itemIds: ["command-center", "reports", "sales", "revenue-engine", "integrations"],
+    mobileItemIds: ["command-center", "reports", "sales", "revenue-engine"],
+  },
+};
+
+export function normalizeAtlasNavigationRole(identity: AtlasNavigationIdentity): AtlasNavigationRole {
+  const role = String(identity.role || "").trim().toLowerCase();
+  const accessRole = String(identity.accessRole || "").trim().toLowerCase();
+  if (role === "director" || role === "superintendent" || role === "manager" || role === "broker") return role;
+  if (role === "admin" || role === "director_decisor" || accessRole === "admin" || accessRole === "director_decisor") return "director";
+  return "broker";
+}
+
+export function getAtlasRoleRoutineForIdentity(identity: AtlasNavigationIdentity) {
+  const routine = atlasRoleRoutines[normalizeAtlasNavigationRole(identity)];
+  const permittedItems = getAtlasNavigationForIdentity(identity);
+  const permittedById = new Map<string, (typeof permittedItems)[number]>(permittedItems.map((item) => [item.id, item]));
+  return {
+    ...routine,
+    items: routine.itemIds.flatMap((id) => {
+      const item = permittedById.get(id);
+      return item ? [item] : [];
+    }),
+  };
+}
+
+export function getAtlasSecondaryNavigationForIdentity(identity: AtlasNavigationIdentity) {
+  const routineIds = new Set(atlasRoleRoutines[normalizeAtlasNavigationRole(identity)].itemIds);
+  return getAtlasNavigationForIdentity(identity).filter((item) => !routineIds.has(item.id));
+}
+
 export function getAtlasNavigationForIdentity(identity: AtlasNavigationIdentity) {
   return atlasNavigation.filter((item) => canAccessAtlasItem(item, identity));
 }
@@ -246,7 +303,13 @@ export function getAtlasContextCommandsForIdentity(identity: AtlasNavigationIden
 }
 
 export function getAtlasMobileNavigationForIdentity(identity: AtlasNavigationIdentity) {
-  return atlasMobileNavigation.filter((item) => canAccessAtlasItem(item, identity));
+  const routine = atlasRoleRoutines[normalizeAtlasNavigationRole(identity)];
+  const permittedItems = getAtlasNavigationForIdentity(identity);
+  const permittedById = new Map<string, (typeof permittedItems)[number]>(permittedItems.map((item) => [item.id, item]));
+  return routine.mobileItemIds.flatMap((id) => {
+    const item = permittedById.get(id);
+    return item ? [item] : [];
+  });
 }
 
 export function getAtlasTaskActionForPathname(
@@ -270,35 +333,21 @@ const atlasNavigationContexts = [
     group: item.group,
     label: item.label,
     href: item.href,
-    // A AÇÃO PRIMÁRIA VIAJA JUNTO — antes ela era derrubada aqui.
-    //
-    // Cada destino declara `primaryAction` com o resultado comercial que ela
-    // deve produzir, e nove delas carregam parâmetro na URL. Só que este mapa,
-    // que é o ÚNICO caminho do catálogo até a interface, copiava apenas
-    // group/label/href. Resultado medido em 2026-07-29: nenhum componente
-    // renderizava `primaryAction` — as nove promessas não eram nem clicáveis.
-    // O dado existia, era tipado, e morria uma linha antes da tela.
-    primaryAction: item.primaryAction,
+    businessOutcome: item.businessOutcome,
     source: "primary" as const,
   })),
   ...atlasContextCommands.map((item) => ({
-    // Comandos do palco não têm ação própria: eles SÃO a ação. Declarado como
-    // `undefined` para os dois lados da união terem a mesma forma — sem isto,
-    // quem consome o contexto precisa saber de qual metade veio, que é como
-    // uma união vira armadilha.
-    primaryAction: undefined,
     group: item.group,
     label: item.label,
     href: item.href,
+    businessOutcome: null,
     source: "contextual" as const,
   })),
   ...atlasInternalNavigation.map((item) => ({
-    // Páginas internas (auditoria, homologação) não têm ação comercial. Mesma
-    // razão do bloco acima: as três metades da união precisam ter a mesma forma.
-    primaryAction: undefined,
     group: item.group,
     label: item.label,
     href: item.href,
+    businessOutcome: item.businessOutcome,
     source: "internal" as const,
   })),
 ].sort((left, right) => right.href.length - left.href.length);

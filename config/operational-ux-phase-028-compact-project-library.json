@@ -1,0 +1,14 @@
+{
+  "phase": 28,
+  "name": "Biblioteca operacional compacta por projeto",
+  "route": "/developments/materials",
+  "groups": ["essential", "plans", "visual", "documents"],
+  "preservedActions": ["open", "share", "validate", "upload", "version"],
+  "dataSources": ["project_materials", "Supabase Storage"],
+  "security": [
+    "authenticated context",
+    "organization isolation",
+    "signed URLs",
+    "role-based management"
+  ]
+}

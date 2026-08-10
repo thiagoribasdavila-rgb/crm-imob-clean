@@ -1,0 +1,116 @@
+{
+  "format": "atlas_meta_validation_only_signal_contract_v1",
+  "phase": 18,
+  "program": "meta-andromeda-automation",
+  "contractVersion": "atlas-meta-validation-v1",
+  "sourceEventContract": "config/meta-intelligence-phase-003.json",
+  "mode": "validation_only_no_delivery",
+  "status": "branch_gate_closed",
+  "canonicalEvents": {
+    "Lead": {
+      "classification": "acquisition",
+      "requiredEvidence": ["consentSnapshot", "leadReceived"],
+      "businessMeaning": "Lead recebido por origem governada e com consentimento aplicável."
+    },
+    "Contact": {
+      "classification": "commercial_progress",
+      "requiredEvidence": ["forwardStageTransition", "authenticatedActor", "pipelineHistory", "meaningfulContact"],
+      "businessMeaning": "Contato humano efetivo; tentativa sem resposta não é conversão."
+    },
+    "QualifiedLead": {
+      "classification": "commercial_progress",
+      "requiredEvidence": ["forwardStageTransition", "authenticatedActor", "pipelineHistory", "structuredQualification", "humanConfirmed"],
+      "businessMeaning": "Qualificação confirmada por respostas estruturadas e revisão humana; score sozinho não qualifica."
+    },
+    "Schedule": {
+      "classification": "commercial_progress",
+      "requiredEvidence": ["forwardStageTransition", "authenticatedActor", "pipelineHistory", "confirmedAppointment"],
+      "businessMeaning": "Visita ou compromisso comercial confirmado pelo cliente."
+    },
+    "SubmitApplication": {
+      "classification": "commercial_progress",
+      "requiredEvidence": ["forwardStageTransition", "authenticatedActor", "pipelineHistory", "formalProposalSubmitted"],
+      "businessMeaning": "Proposta formal ou simulação comercial governada efetivamente submetida."
+    },
+    "ConvertedLead": {
+      "classification": "confirmed_outcome",
+      "requiredEvidence": ["forwardStageTransition", "authenticatedActor", "pipelineHistory", "confirmedCommercialOutcome", "humanConfirmed"],
+      "businessMeaning": "Venda própria confirmada por fato comercial e revisão humana."
+    },
+    "BuyerProfile": {
+      "classification": "internal_learning_only",
+      "requiredEvidence": ["externalPurchaseRecord", "consentSnapshot", "notCountedAsAtlasSale"],
+      "businessMeaning": "Perfil comprador externo preservado somente para aprendizado interno nesta fase.",
+      "metaEligible": false
+    }
+  },
+  "matching": {
+    "rawInputEphemeralOnly": true,
+    "atLeastOneRequired": ["email", "phone"],
+    "serverSideSha256": true,
+    "normalizedBeforeHash": true,
+    "persistRawIdentifiers": false,
+    "persistHashedIdentifiersInEvidence": false,
+    "externalIdDerivedFromTenantAndLead": true
+  },
+  "payload": {
+    "allowedActionSources": ["system_generated"],
+    "allowedUserDataKeys": ["em", "ph", "external_id", "fbc", "fbp"],
+    "allowedCustomDataKeys": [
+      "crm_stage",
+      "previous_crm_stage",
+      "stage_rank",
+      "currency",
+      "value",
+      "content_ids",
+      "content_type",
+      "campaign_id",
+      "form_id",
+      "atlas_signal_version"
+    ],
+    "signalVersion": "andromeda-validation-v1",
+    "payloadPersisted": false,
+    "networkDelivery": false
+  },
+  "forbidden": {
+    "positiveSignals": [
+      "score_change_only",
+      "task_created_only",
+      "contact_attempt_without_response",
+      "pipeline_regression",
+      "lost_lead",
+      "external_purchase_as_atlas_sale",
+      "cold_base_without_consent",
+      "ai_suggestion_without_governed_fact"
+    ],
+    "payloadData": [
+      "free_text_notes",
+      "message_content",
+      "cpf",
+      "document_number",
+      "street_address",
+      "income",
+      "health_data",
+      "religion",
+      "race_or_ethnicity",
+      "political_opinion",
+      "protected_or_sensitive_attribute"
+    ]
+  },
+  "deduplication": {
+    "scope": ["organization_id", "event_id"],
+    "eventIdMustBeStable": true,
+    "eventIdMayContainPersonalData": false,
+    "oneSignalPerLeadMilestone": true
+  },
+  "releaseGate": {
+    "phase17ApprovedEvidenceRequired": true,
+    "phase17EvidenceAvailable": false,
+    "validationPayloadAllowed": false,
+    "testEventDeliveryAllowed": false,
+    "productionEventDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false
+  }
+}

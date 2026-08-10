@@ -1,0 +1,29 @@
+{
+  "schema": "atlas.meta-external-test-command-permit.v1",
+  "status": "not_permitted",
+  "decisionReference": null,
+  "approvalReference": null,
+  "operatorGateReference": null,
+  "dryRunReference": null,
+  "eventReference": null,
+  "environment": "staging",
+  "scope": "single_test_event",
+  "permit": {
+    "issued": false,
+    "expiresAt": null,
+    "consumed": false
+  },
+  "execution": {
+    "commandExecuted": false,
+    "productionAllowed": false,
+    "retryAllowed": false,
+    "automaticPromotionAllowed": false
+  },
+  "forbidden": {
+    "bulkDispatch": true,
+    "payloadLogging": true,
+    "secretsInArtifact": true,
+    "productionDispatch": true,
+    "automaticCampaignChanges": true
+  }
+}

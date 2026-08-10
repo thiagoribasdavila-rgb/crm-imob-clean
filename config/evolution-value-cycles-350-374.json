@@ -1,0 +1,356 @@
+{
+  "schema": "atlas.value-delivery-cycles.v1",
+  "program": "ATLAS ONE — Ciclos de ganho operacional real",
+  "phaseRange": {
+    "start": 350,
+    "end": 399
+  },
+  "cycleContract": {
+    "phasesPerCycle": 5,
+    "phaseSequence": [
+      "measure-real-baseline",
+      "implement-smallest-complete-change",
+      "integrate-existing-flow",
+      "validate-real-role-and-data",
+      "prove-gain-and-release-decision"
+    ],
+    "definitionOfDone": [
+      "the target user can complete the journey without a workaround",
+      "the result persists in the current Supabase contract when persistence is required",
+      "organization and role isolation remain enforced",
+      "loading, empty, error and success states are validated",
+      "a before-and-after business metric is recorded",
+      "targeted regression passes",
+      "no external action is simulated as successful",
+      "a safe rollback or disable path is documented"
+    ]
+  },
+  "cycles": [
+    {
+      "cycle": 20,
+      "name": "Lead recebida até primeira ação",
+      "phases": [350, 351, 352, 353, 354],
+      "primaryUser": "corretor",
+      "problem": "Leads novas podem entrar sem responsável, contexto do projeto ou próxima ação visível.",
+      "existingAssets": [
+        "/api/v1/analytics/lead-intake",
+        "/api/v1/leads",
+        "/dashboard",
+        "/leads",
+        "leads.next_action_at",
+        "leads.development_id"
+      ],
+      "deliverable": "Fila diária única que mostra projeto, origem, responsável, SLA e ação recomendada, permitindo registrar a primeira ação sem sair do fluxo.",
+      "businessMetric": {
+        "primary": "median-lead-to-first-action-minutes",
+        "secondary": [
+          "new-leads-with-owner-rate",
+          "new-leads-with-next-action-rate",
+          "leads-received-per-broker-per-day"
+        ],
+        "target": "reduzir o tempo mediano e elevar cobertura de responsável e próxima ação sem inventar baseline"
+      },
+      "phasePlan": {
+        "350": "Medir baseline real por dia, projeto, origem e corretor.",
+        "351": "Unificar a prioridade de entrada usando os componentes e APIs existentes.",
+        "352": "Integrar registro da primeira ação, tarefa e atualização da lead.",
+        "353": "Validar com corretor autenticado e dados reais dentro do seu escopo.",
+        "354": "Comparar ganho, executar regressão e decidir liberação do ciclo."
+      }
+    },
+    {
+      "cycle": 21,
+      "name": "Kanban orientado à próxima decisão",
+      "phases": [355, 356, 357, 358, 359],
+      "primaryUser": "corretor",
+      "problem": "O Kanban concentra dados, mas ainda exige leitura excessiva para decidir qual lead mover e o que fazer.",
+      "existingAssets": [
+        "/kanban",
+        "/api/v1/pipeline",
+        "/api/v1/pipeline/stages",
+        "tests/contracts/kanban-safe-stage-movement.test.mjs",
+        "tests/contracts/kanban-single-priority-queue.test.mjs"
+      ],
+      "deliverable": "Kanban compacto com projeto sempre visível, uma prioridade por vez, próxima ação clara e movimentação segura com histórico.",
+      "businessMetric": {
+        "primary": "leads-with-valid-next-action-rate",
+        "secondary": [
+          "median-stage-age-hours",
+          "stale-leads-rate",
+          "safe-stage-movement-success-rate"
+        ],
+        "target": "reduzir leads paradas e aumentar movimentos com próxima ação válida"
+      },
+      "phasePlan": {
+        "355": "Medir envelhecimento, ações ausentes e esforço visual do fluxo atual.",
+        "356": "Redesenhar cartão e coluna preservando os contratos existentes.",
+        "357": "Integrar movimento, próxima ação, projeto e histórico em um fluxo único.",
+        "358": "Validar desktop, mobile, teclado e papéis comerciais com dados reais.",
+        "359": "Provar redução de ruído e ganho operacional antes da liberação."
+      }
+    },
+    {
+      "cycle": 22,
+      "name": "Distribuição por projeto com decisão da diretoria",
+      "phases": [360, 361, 362, 363, 364],
+      "primaryUser": "diretor",
+      "problem": "A configuração da fila por empreendimento e capacidade dos corretores precisa ser simples, explicável e segura.",
+      "existingAssets": [
+        "/distribution",
+        "/api/v1/crm/distribution",
+        "/api/v2/distribution/reservations/process",
+        "tests/contracts/distribution-roster.test.mjs"
+      ],
+      "deliverable": "Painel de diretoria para selecionar incorporadora, projeto e corretores elegíveis, visualizar carga e espera e aplicar roleta com confirmação explícita.",
+      "businessMetric": {
+        "primary": "median-lead-assignment-minutes",
+        "secondary": [
+          "unassigned-leads-count",
+          "broker-load-deviation",
+          "assignment-rule-explanation-coverage"
+        ],
+        "target": "diminuir espera e desequilíbrio sem violar responsável único"
+      },
+      "phasePlan": {
+        "360": "Medir filas, carga, espera e regras reais por projeto.",
+        "361": "Simplificar seleção de projeto, incorporadora e roster elegível.",
+        "362": "Integrar capacidade, roleta, prioridade e trilha de decisão.",
+        "363": "Validar permissões de diretor e isolamento da organização.",
+        "364": "Provar ganho de tempo e equilíbrio antes da liberação."
+      }
+    },
+    {
+      "cycle": 23,
+      "name": "WhatsApp oficial como memória comercial",
+      "phases": [365, 366, 367, 368, 369],
+      "primaryUser": "corretor",
+      "problem": "A conversa oficial precisa chegar ao corretor correto e virar histórico útil sem acessar WhatsApp pessoal nem alegar conexão inexistente.",
+      "existingAssets": [
+        "/conversations",
+        "/api/webhooks/whatsapp",
+        "/api/v1/integrations/whatsapp",
+        "/api/v1/integrations/whatsapp/pending-lines",
+        "conversations",
+        "messages",
+        "tests/contracts/whatsapp-broker-line-routing.test.mjs"
+      ],
+      "deliverable": "Caixa oficial com roteamento por corretor, vínculo à lead, histórico auditável e resumo autorizado para apoio da IA.",
+      "businessMetric": {
+        "primary": "official-conversations-linked-to-lead-rate",
+        "secondary": [
+          "inbound-to-owner-notification-seconds",
+          "conversation-history-coverage",
+          "unmatched-conversations-count"
+        ],
+        "target": "aumentar conversas corretamente vinculadas e reduzir mensagens sem responsável"
+      },
+      "phasePlan": {
+        "365": "Medir linhas, conversas, mensagens e vínculos reais disponíveis.",
+        "366": "Consolidar inbox e registro de linha sem alterar o login do Atlas.",
+        "367": "Integrar webhook, roteamento, lead, responsável e memória autorizada.",
+        "368": "Validar entrada real somente se houver credencial; caso contrário, provar contrato local sem falso positivo.",
+        "369": "Provar rastreabilidade, segurança e ganho antes da liberação."
+      }
+    },
+    {
+      "cycle": 24,
+      "name": "Relatório executivo por incorporadora",
+      "phases": [370, 371, 372, 373, 374],
+      "primaryUser": "diretor",
+      "problem": "A diretoria precisa prestar contas por incorporadora ligando verba, campanha, leads, atendimento, etapa e venda em uma leitura exportável.",
+      "existingAssets": [
+        "/reports",
+        "/api/v1/analytics/executive-marketing",
+        "/api/v1/analytics/weekly-acquisition",
+        "marketing_campaigns",
+        "developers",
+        "developments",
+        "leads",
+        "tests/contracts/reports-data-integrity.test.mjs"
+      ],
+      "deliverable": "Relatório filtrável e exportável por incorporadora, projeto, campanha, período e corretor, com gastos, leads e etapas do funil baseados em dados conhecidos.",
+      "businessMetric": {
+        "primary": "developer-report-data-coverage-rate",
+        "secondary": [
+          "campaign-spend-coverage-rate",
+          "lead-project-attribution-rate",
+          "lead-broker-attribution-rate",
+          "report-preparation-minutes"
+        ],
+        "target": "reduzir preparação manual e elevar cobertura factual sem converter ausência em zero"
+      },
+      "phasePlan": {
+        "370": "Medir cobertura e inconsistências reais por incorporadora.",
+        "371": "Consolidar filtros, hierarquia visual e métricas conhecidas.",
+        "372": "Integrar funil, corretor, campanha, custo e exportação.",
+        "373": "Validar reconciliação de amostra e acesso da diretoria.",
+        "374": "Provar cobertura, executar regressão ampla e decidir fechamento V30."
+      }
+    },
+    {
+      "cycle": 25,
+      "name": "Lead 360 sem trabalho duplicado",
+      "phases": [375, 376, 377, 378, 379],
+      "primaryUser": "corretor",
+      "problem": "O corretor precisa consultar contexto, registrar resultado e criar a próxima ação sem repetir dados em várias telas.",
+      "existingAssets": [
+        "/leads/[id]",
+        "/leads/[id]/timeline",
+        "/leads/[id]/tasks",
+        "/leads/[id]/qualification",
+        "/api/v1/leads/[id]",
+        "lib/analytics/task-center.ts"
+      ],
+      "deliverable": "Workspace Lead 360 com resumo factual, dados essenciais editáveis, histórico, resultado do contato e próxima ação persistida em um único fluxo.",
+      "businessMetric": {
+        "primary": "median-contact-outcome-registration-seconds",
+        "secondary": [
+          "leads-with-complete-commercial-context-rate",
+          "contacts-with-recorded-outcome-rate",
+          "contacts-with-follow-up-rate"
+        ],
+        "target": "reduzir digitação repetida e elevar cobertura de resultado e follow-up"
+      },
+      "phasePlan": {
+        "375": "Medir cliques, campos repetidos e cobertura atual de contexto e resultado.",
+        "376": "Consolidar resumo, edição essencial e ação principal usando componentes existentes.",
+        "377": "Integrar atividade, resultado, tarefa e próxima ação com persistência única.",
+        "378": "Validar corretor, gerente e isolamento organizacional com dados reais.",
+        "379": "Comparar tempo e completude, executar regressão e decidir liberação."
+      }
+    },
+    {
+      "cycle": 26,
+      "name": "Visita até proposta com material vigente",
+      "phases": [380, 381, 382, 383, 384],
+      "primaryUser": "corretor",
+      "problem": "Depois da qualificação, o corretor precisa preparar visita e proposta com estoque, book e tabela vigentes sem alternar entre módulos desconectados.",
+      "existingAssets": [
+        "/leads/[id]/visit-assistant",
+        "/leads/[id]/simulation",
+        "/developments/materials",
+        "/developments/[id]/inventory",
+        "lib/commercial/visit-proposal-assistant.ts",
+        "tests/contracts/material-in-attendance.test.mjs"
+      ],
+      "deliverable": "Jornada guiada de visita e proposta que verifica qualificação, unidade disponível, material atual, registra resultado e prepara o próximo passo para revisão humana.",
+      "businessMetric": {
+        "primary": "qualified-to-visit-conversion-rate",
+        "secondary": [
+          "visit-to-proposal-rate",
+          "visits-with-current-material-rate",
+          "proposals-with-available-unit-rate",
+          "post-visit-follow-up-coverage"
+        ],
+        "target": "reduzir visitas sem preparo e aumentar continuidade até proposta sem prometer disponibilidade"
+      },
+      "phasePlan": {
+        "380": "Medir gargalos entre qualificação, visita, material, unidade e proposta.",
+        "381": "Consolidar checklist de preparo com bloqueios factuais e ações claras.",
+        "382": "Integrar materiais vigentes, estoque, simulação, resultado e follow-up.",
+        "383": "Validar jornada completa com corretor autenticado e revisão humana.",
+        "384": "Provar ganho de continuidade e segurança antes da liberação."
+      }
+    },
+    {
+      "cycle": 27,
+      "name": "Marketing até receita com sinais confiáveis",
+      "phases": [385, 386, 387, 388, 389],
+      "primaryUser": "diretor",
+      "problem": "Campanha, lead e resultado comercial precisam formar uma cadeia atribuível antes de enviar sinais de conversão à Meta.",
+      "existingAssets": [
+        "/marketing/campaigns",
+        "/integrations/meta",
+        "/integrations/meta/andromeda",
+        "/api/v1/analytics/executive-marketing",
+        "lib/revenue/revenue-engine.ts",
+        "tests/contracts/leads-quality-filters.test.mjs"
+      ],
+      "deliverable": "Painel de qualidade de atribuição que mostra campanha, projeto, incorporadora, corretor, etapa e resultado, mantendo CAPI bloqueada quando o sinal não estiver comprovado.",
+      "businessMetric": {
+        "primary": "qualified-conversion-signal-coverage-rate",
+        "secondary": [
+          "lead-campaign-attribution-rate",
+          "campaign-developer-attribution-rate",
+          "offline-event-deduplication-rate",
+          "known-spend-coverage-rate"
+        ],
+        "target": "elevar sinais comerciais utilizáveis pela Meta sem enviar evento duplicado ou inferido"
+      },
+      "phasePlan": {
+        "385": "Medir lacunas reais entre campanha, projeto, lead, etapa e resultado.",
+        "386": "Consolidar diagnóstico e correção assistida da atribuição existente.",
+        "387": "Integrar elegibilidade, deduplicação, fila e recibo dos eventos governados.",
+        "388": "Validar contrato local e executar teste externo somente com credencial e aprovação.",
+        "389": "Provar cobertura e integridade; liberar, corrigir ou manter CAPI bloqueada."
+      }
+    },
+    {
+      "cycle": 28,
+      "name": "Copilot proativo com decisão humana",
+      "phases": [390, 391, 392, 393, 394],
+      "primaryUser": "corretor",
+      "problem": "A IA possui contexto e roteamento, mas só gera valor quando recomenda uma ação explicável, barata e conectada ao resultado real.",
+      "existingAssets": [
+        "/chat",
+        "/settings/ai-context",
+        "/settings/ai-guardrails",
+        "/settings/ai-orchestration",
+        "lib/ai/governed-real-estate-context.ts",
+        "lib/ai/provider-router.ts",
+        "lib/ai/structured-commercial-memory.ts"
+      ],
+      "deliverable": "Copilot contextual que prioriza uma próxima ação, explica os sinais usados, pede confirmação humana, registra decisão e resultado e funciona com fallback seguro sem provedor externo.",
+      "businessMetric": {
+        "primary": "accepted-copilot-recommendation-rate",
+        "secondary": [
+          "recommendations-with-explanation-rate",
+          "recommendations-with-recorded-outcome-rate",
+          "median-ai-cost-per-assisted-action",
+          "fallback-completion-rate"
+        ],
+        "target": "aumentar ações úteis aceitas e aprendizados registrados sem autonomia indevida"
+      },
+      "phasePlan": {
+        "390": "Medir uso, aceitação, custo, fallback e resultados atualmente observáveis.",
+        "391": "Consolidar uma recomendação prioritária com explicação e confiança calibrada.",
+        "392": "Integrar confirmação, execução interna permitida, decisão e resultado na memória.",
+        "393": "Validar dados pessoais, guardrails, papéis, custo e indisponibilidade do provedor.",
+        "394": "Provar utilidade e segurança antes de ampliar a exposição do Copilot."
+      }
+    },
+    {
+      "cycle": 29,
+      "name": "Sala de comando da decisão à correção",
+      "phases": [395, 396, 397, 398, 399],
+      "primaryUser": "diretor",
+      "problem": "A sala de comando precisa destacar poucos desvios acionáveis e permitir chegar à correção sem excesso de indicadores ou alegações preditivas.",
+      "existingAssets": [
+        "/dashboard",
+        "/reports",
+        "/atlas-v3/forecast",
+        "/atlas-v3/pipeline-aging",
+        "lib/analytics/pipeline-aging.ts",
+        "lib/analytics/stage-forecast.ts"
+      ],
+      "deliverable": "Command Center compacto com saúde da entrada, atendimento, funil, receita, marketing e dados, mostrando até três decisões prioritárias com causa, impacto e acesso direto à correção.",
+      "businessMetric": {
+        "primary": "median-alert-to-corrective-action-minutes",
+        "secondary": [
+          "actionable-alert-rate",
+          "critical-data-coverage-rate",
+          "director-decision-path-clicks",
+          "false-certainty-findings"
+        ],
+        "target": "reduzir tempo até a decisão e ruído sem converter previsão em promessa"
+      },
+      "phasePlan": {
+        "395": "Medir ruído, cobertura, alertas sem ação e caminhos atuais da diretoria.",
+        "396": "Consolidar hierarquia visual, indicadores essenciais e três prioridades.",
+        "397": "Integrar cada prioridade ao filtro e fluxo corretivo já existente.",
+        "398": "Validar diretoria, gerência, mobile, acessibilidade e consistência factual.",
+        "399": "Provar ganho, executar regressão ponta a ponta e decidir o pacote de entrega."
+      }
+    }
+  ]
+}

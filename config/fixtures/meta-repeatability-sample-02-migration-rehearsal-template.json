@@ -1,0 +1,33 @@
+{
+  "format": "atlas_meta_repeatability_migration_rehearsal_v1",
+  "phase": 29,
+  "environment": "staging_clone",
+  "status": "not_run",
+  "target": {
+    "hostFingerprint": null,
+    "databaseFingerprint": null,
+    "projectRefFingerprint": null,
+    "productionIdentityCompared": false
+  },
+  "tooling": {
+    "supabaseCliVersion": "2.109.1",
+    "officialMigrationCreated": true
+  },
+  "rehearsal": {
+    "migrationApplied": false,
+    "schemaVerified": false,
+    "rollbackAttempted": false,
+    "rollbackSucceeded": false,
+    "finalLedgerObjectsAbsent": false,
+    "permitReservationPersisted": false
+  },
+  "releaseGates": {
+    "isolatedRehearsalApproved": false,
+    "ledgerPersistenceAllowed": false,
+    "permitIssuanceAllowed": false,
+    "permitConsumptionAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "deploymentAllowed": false
+  }
+}

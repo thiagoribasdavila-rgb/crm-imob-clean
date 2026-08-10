@@ -102,7 +102,7 @@ Todas passaram individualmente por verificador da fase, TypeScript, lint sem ale
 - pacotes recorrentes nas Fases 100, 200, 300 e assim por diante até 2.000;
 - artefatos anteriores são preservados;
 - os pacotes nunca incluem chaves, `.env.local`, planilhas, PDFs ou dados de clientes;
-- o alvo continua sendo Hostinger com Node.js 20.9+, sem dependência de Vercel.
+- o alvo continua sendo Hostinger com Node.js 22+ (Node 24 recomendado), sem dependência de Vercel.
 
 ## Critério de produto
 

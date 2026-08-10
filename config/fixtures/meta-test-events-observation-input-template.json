@@ -1,0 +1,52 @@
+{
+  "format": "atlas_meta_test_events_observation_input_v1",
+  "phase": 21,
+  "environment": "staging_clone",
+  "observationReference": "replace-with-non-personal-reference",
+  "attestations": {
+    "operatorConfirmed": false,
+    "operatorReference": null,
+    "reviewerConfirmed": false,
+    "reviewerReference": null
+  },
+  "timing": {
+    "executedAt": null,
+    "observedAt": null
+  },
+  "execution": {
+    "manualExecutionConfirmed": false,
+    "officialTestSurfaceUsed": false,
+    "syntheticRecordUsed": true,
+    "realCustomerDataUsed": false,
+    "productionDatasetUsed": false,
+    "automaticDeliveryUsed": false,
+    "deliveryCount": 0
+  },
+  "event": {
+    "eventName": null,
+    "eventIdFingerprint": null
+  },
+  "outcome": {
+    "eventVisible": false,
+    "normalizedStatus": null,
+    "warningDetected": false,
+    "errorDetected": false,
+    "unexpectedResultDetected": false
+  },
+  "sensitiveArtifacts": {
+    "temporaryCodeCopied": false,
+    "payloadCopied": false,
+    "rawResponseCopied": false,
+    "screenshotStored": false,
+    "personalIdentifiersStored": false,
+    "projectIdentifiersStored": false
+  },
+  "acknowledgements": {
+    "stopWithoutRetry": true,
+    "campaignUnchanged": true,
+    "budgetUnchanged": true,
+    "audienceUnchanged": true,
+    "noPerformanceClaim": true,
+    "noProductionRelease": true
+  }
+}

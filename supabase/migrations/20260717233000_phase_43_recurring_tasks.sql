@@ -1,4 +1,46 @@
 begin;
+
+-- O ambiente de homologação nasceu com os nomes V2 (`due_date`, `user_id`),
+-- enquanto os módulos V3 usam (`due_at`, `assigned_to`). Mantemos os dois
+-- contratos sincronizados durante a transição, sem apagar ou renomear dados.
+alter table public.tasks
+  add column if not exists due_at timestamptz,
+  add column if not exists assigned_to uuid references public.profiles(id) on delete set null,
+  add column if not exists due_date timestamptz,
+  add column if not exists user_id uuid references public.profiles(id) on delete set null;
+
+update public.tasks
+set
+  due_at = coalesce(due_at, due_date, created_at),
+  due_date = coalesce(due_date, due_at, created_at),
+  assigned_to = coalesce(assigned_to, user_id),
+  user_id = coalesce(user_id, assigned_to)
+where
+  due_at is null
+  or due_date is null
+  or (assigned_to is null and user_id is not null)
+  or (user_id is null and assigned_to is not null);
+
+create or replace function private.sync_task_compatibility_columns()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.due_at := coalesce(new.due_at, new.due_date, now());
+  new.due_date := coalesce(new.due_date, new.due_at);
+  new.assigned_to := coalesce(new.assigned_to, new.user_id);
+  new.user_id := coalesce(new.user_id, new.assigned_to);
+  return new;
+end
+$$;
+
+drop trigger if exists tasks_sync_compatibility_columns on public.tasks;
+create trigger tasks_sync_compatibility_columns
+before insert or update of due_at, due_date, assigned_to, user_id
+on public.tasks
+for each row execute function private.sync_task_compatibility_columns();
+
 create table if not exists public.task_recurrences (
   id uuid primary key default gen_random_uuid(), organization_id uuid not null references public.organizations(id) on delete cascade,
   title text not null, description text, priority text not null, lead_id uuid references public.leads(id) on delete cascade,

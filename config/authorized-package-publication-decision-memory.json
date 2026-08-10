@@ -1,0 +1,17 @@
+{
+  "schema": "atlas.authorized-package-publication-decision-memory.v1",
+  "policyHash": "4e930b1d97a3331cb21a80f738662de546e4ede6fd9622a3085d3dc1d800727a",
+  "entries": [],
+  "summary": {
+    "recordedDecisions": 0,
+    "approvedDecisions": 0,
+    "rejectedDecisions": 0,
+    "authorizedPackages": 0,
+    "latestEntryHash": null,
+    "publicationExecuted": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "a4c98007ca445fa70d0e73b2da3d02e559f467b891409eafd47e2e41f142bbfe"
+}

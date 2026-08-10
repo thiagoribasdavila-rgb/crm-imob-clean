@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { activityCategoryForType, type ActivityCategory } from "@/lib/atlas/activity-timeline";
@@ -8,16 +8,11 @@ export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ id: string }> };
 type TimelineCategory = ActivityCategory;
 type TimelineEvent = { id: string; category: TimelineCategory; title: string; description: string | null; occurredAt: string; actorName: string; source: string; status?: string | null };
+const TIMELINE_CATEGORIES: TimelineCategory[] = ["change", "contact", "transfer", "ai", "proposal", "external"];
 
 function safeError(error: unknown) {
-  // A timeline devolve a HISTÓRIA da lead. Lead de outra carteira é recusa
-  // explícita — 400 mandaria a tela pedir para o corretor "corrigir os dados"
-  // de uma lead que ele nem deveria abrir.
-  if (ehLeadForaDaCarteira(error)) {
-    return NextResponse.json({ error: error.message, code: "TIMELINE_OUT_OF_SCOPE" }, { status: 403 });
-  }
   const message = error instanceof Error ? error.message : "Não foi possível carregar a timeline.";
-  const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
+  const status = /sessão|token|autenticação/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   return NextResponse.json({ error: message }, { status });
 }
 
@@ -67,7 +62,8 @@ export async function GET(request: Request, context: RouteContext) {
       ...(simulationResult.data ?? []).filter((row) => !representedSimulationIds.has(row.id)).map((row) => ({ id: `simulation-${row.id}`, category: "proposal" as const, title: row.status === "draft" ? "Simulação comercial criada" : "Simulação comercial atualizada", description: `Valor de referência ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(row.property_price || 0))}.`, occurredAt: row.updated_at || row.created_at, actorName: actor(row.created_by), source: "commercial_simulation", status: row.status })),
     ].filter((event) => Boolean(event.occurredAt)).sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()).slice(0, 500);
 
-    const counts = events.reduce<Record<TimelineCategory, number>>((result, event) => { result[event.category] += 1; return result; }, { change: 0, contact: 0, transfer: 0, ai: 0, proposal: 0, external: 0 });
+    const initialCounts = Object.fromEntries(TIMELINE_CATEGORIES.map((category) => [category, 0])) as Record<TimelineCategory, number>;
+    const counts = events.reduce<Record<TimelineCategory, number>>((result, event) => { result[event.category] += 1; return result; }, initialCounts);
     return NextResponse.json({ lead: { id: leadResult.data.id, name: leadResult.data.name }, events, counts, scope: { organizationId: identity.organizationId, hierarchicalRls: true, hiddenEventsExcluded: true } });
   } catch (error) {
     logger.warn("lead.timeline.read_failed", { error: error instanceof Error ? error.message : String(error) });

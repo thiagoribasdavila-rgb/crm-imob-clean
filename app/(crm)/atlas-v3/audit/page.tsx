@@ -51,9 +51,9 @@ export default function AuditPage() {
 
   return <div className="space-y-6 pb-12">
     <header className="atlas-grid-glow rounded-[30px] border border-sky-400/15 bg-gradient-to-br from-sky-500/[.12] via-violet-500/[.06] to-emerald-500/[.08] p-6 sm:p-8">
-      <AtlasBadge tone="info">GOVERNANÇA · FASES 16–17</AtlasBadge>
+      <AtlasBadge tone="info">GOVERNANÇA · RECUPERAÇÃO V3</AtlasBadge>
       <h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">Backup e retorno controlado.</h1>
-      <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">Comprove a restauração e ensaie o retorno ao V2 sem apagar o V3. O Atlas guarda responsável, duração e evidência — nunca declara um teste que não foi executado.</p>
+      <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">Comprove a restauração isolada do banco, preserve os arquivos do Storage e ensaie o retorno para uma versão anterior do V3. O Atlas nunca declara um teste que não foi executado.</p>
     </header>
 
     {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
@@ -64,7 +64,7 @@ export default function AuditPage() {
       <div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-5"><RotateCcw className="h-5 w-5 text-amber-300" /><div className="mt-4 text-2xl font-semibold text-white">{backups.filter((item) => item.restore_status === "pending").length}</div><p className="mt-1 text-xs text-slate-400">Ensaios pendentes</p></div>
     </section>
 
-    <AtlasCard><AtlasCardHeader eyebrow="Snapshot externo" title="Registrar evidência de backup" description="Use a referência fornecida pelo Supabase ou pela infraestrutura da Hostinger. Não cole senhas ou chaves." />
+    <AtlasCard><AtlasCardHeader eyebrow="Snapshot externo" title="Registrar evidência de backup do banco" description="Use a referência fornecida pelo Supabase ou pela infraestrutura da Hostinger. Os arquivos do Storage são comprovados separadamente no ensaio. Não cole senhas ou chaves." />
       <form onSubmit={submit} className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-3">
         <label className="text-xs text-slate-400">Provedor<input required value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })} className="atlas-input mt-2 w-full" /></label>
         <label className="text-xs text-slate-400">Referência do snapshot<input required value={form.snapshotReference} onChange={(e) => setForm({ ...form, snapshotReference: e.target.value })} className="atlas-input mt-2 w-full" placeholder="ID ou caminho seguro" /></label>

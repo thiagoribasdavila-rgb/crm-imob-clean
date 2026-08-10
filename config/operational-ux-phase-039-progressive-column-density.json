@@ -1,0 +1,24 @@
+{
+  "phase": 39,
+  "scope": "progressive_kanban_column_density",
+  "alwaysVisible": [
+    "stage_identity",
+    "lead_count",
+    "stage_value",
+    "probability",
+    "primary_stage_command"
+  ],
+  "onDemand": [
+    "stage_health",
+    "stage_decision_diagnostic",
+    "lens_priority",
+    "stage_microcopy"
+  ],
+  "nativeDisclosure": true,
+  "keyboardAccessible": true,
+  "cardMovementPreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

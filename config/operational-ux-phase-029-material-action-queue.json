@@ -1,0 +1,14 @@
+{
+  "phase": 29,
+  "name": "Fila curta de atualização de materiais",
+  "route": "/developments/materials",
+  "priorityOrder": ["expired", "expires_within_30_days", "pending_review"],
+  "visibleLimit": 5,
+  "actions": ["validate", "prepare_new_version"],
+  "preservedFlows": [
+    "review history",
+    "version archive",
+    "private storage",
+    "organization isolation"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-learning-revalidation-request.v1",
+  "status": "not_requested",
+  "resolutionReference": null,
+  "request": {
+    "requesterReference": null,
+    "requestedAt": null,
+    "reasonClass": null,
+    "requiresNewLineage": true,
+    "requiresNewApproval": true
+  },
+  "execution": {
+    "oldMemoryReused": false,
+    "externalTestStarted": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticRevalidation": true,
+    "oldEvidenceReuse": true,
+    "automaticCampaignChanges": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

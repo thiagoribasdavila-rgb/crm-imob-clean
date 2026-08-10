@@ -16,6 +16,20 @@ export default function SupabaseGuard({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const controller = new AbortController();
+    let redirecting = false;
+
+    function redirectToLogin() {
+      if (redirecting) return;
+      redirecting = true;
+      clearAtlasAuthContext();
+
+      if (pathname) {
+        router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      } else {
+        router.replace("/login");
+      }
+      router.refresh();
+    }
 
     async function checkSession() {
       setState("checking");
@@ -27,10 +41,8 @@ export default function SupabaseGuard({ children }: { children: ReactNode }) {
         }
 
         if (response.status === 401 || response.status === 403) {
-          clearAtlasAuthContext();
           await supabase.auth.signOut({ scope: "local" });
-          const next = pathname ? `?next=${encodeURIComponent(pathname)}` : "";
-          router.replace(`/login${next}`);
+          redirectToLogin();
           return;
         }
 
@@ -45,11 +57,14 @@ export default function SupabaseGuard({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
-        clearAtlasAuthContext();
-        const next = pathname ? `?next=${encodeURIComponent(pathname)}` : "";
-        router.replace(`/login${next}`);
+        redirectToLogin();
+        return;
+      }
+
+      if (event === "TOKEN_REFRESHED" && !session) {
+        redirectToLogin();
       }
     });
 
@@ -63,7 +78,7 @@ export default function SupabaseGuard({ children }: { children: ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-300">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-4 text-sm shadow-2xl">
-          Verificando acesso ao Atlas AI...
+          Verificando acesso ao Atlas One...
         </div>
       </div>
     );

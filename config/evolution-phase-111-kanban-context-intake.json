@@ -1,0 +1,25 @@
+{
+  "phase": 111,
+  "name": "Kanban Context Intake",
+  "status": "implemented",
+  "productGoal": "fazer Tarefas, Agenda e Vendas receberem o contexto vindo do Kanban sem o usuário repetir informação",
+  "businessOutcome": "corretor abre a próxima tela já com lead, etapa, score, temperatura e ação recomendada visíveis para executar mais rápido",
+  "scope": [
+    "shared kanban handoff banner",
+    "tasks intake from pipeline query context",
+    "calendar context intake",
+    "sales context intake",
+    "premium low-noise visual handoff"
+  ],
+  "nonGoals": [
+    "criação automática de tarefa sem revisão humana",
+    "envio automático de mensagem",
+    "alteração de banco",
+    "mudança de regra RBAC"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-111:check",
+    "requiresBuild": false,
+    "requiresDatabaseMigration": false
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "phase": 110,
+  "name": "Kanban Execution Handoff",
+  "status": "implemented",
+  "productGoal": "transformar diagnóstico do Kanban em execução imediata dentro dos módulos operacionais existentes",
+  "businessOutcome": "corretor reduz cliques para criar tarefa, abrir agenda, preparar proposta ou acionar IA a partir de uma oportunidade",
+  "scope": [
+    "pipeline card execution rail",
+    "priority queue task shortcut",
+    "contextual handoff to tasks calendar sales and copilot",
+    "compact premium styling with lower visual noise"
+  ],
+  "nonGoals": [
+    "criação automática de tarefas sem revisão humana",
+    "envio automático de mensagens",
+    "alteração de banco",
+    "novo módulo de propostas"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-110:check",
+    "requiresBuild": false,
+    "requiresDatabaseMigration": false
+  }
+}

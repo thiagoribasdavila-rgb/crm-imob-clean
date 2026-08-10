@@ -8,6 +8,7 @@ import {
   executiveRoles,
   type ExecutiveRole,
 } from "@/lib/governance/executive-homologation";
+import { V3_RELEASE_ROLLBACK_MARKER } from "@/lib/governance/recovery-contract";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +59,8 @@ async function collect(org: string, cycleId?: string) {
       .from("v2_rollback_drills")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", org)
-      .eq("status", "passed"),
+      .eq("status", "passed")
+      .like("notes", `${V3_RELEASE_ROLLBACK_MARKER}%`),
     db
       .from("leads")
       .select("id", { count: "exact", head: true })

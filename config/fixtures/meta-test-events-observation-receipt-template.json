@@ -1,0 +1,58 @@
+{
+  "format": "atlas_meta_test_events_observation_receipt_v1",
+  "phase": 21,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "observedAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "containsTemporaryCode": false,
+  "payloadPersisted": false,
+  "rawResponsePersisted": false,
+  "screenshotPersisted": false,
+  "sourceEvidence": {
+    "phase20Approved": false,
+    "phase20Fingerprint": null
+  },
+  "humanAttestations": {
+    "operatorConfirmed": false,
+    "reviewerConfirmed": false,
+    "operatorReferenceFingerprint": null,
+    "reviewerReferenceFingerprint": null,
+    "observationReferenceFingerprint": null
+  },
+  "event": {
+    "eventName": null,
+    "eventIdFingerprint": null
+  },
+  "observation": {
+    "manualExecutionConfirmed": false,
+    "officialTestSurfaceUsed": false,
+    "syntheticRecordUsed": true,
+    "eventVisible": false,
+    "normalizedStatus": null,
+    "deliveryCount": 0,
+    "observationDelaySeconds": null,
+    "warningDetected": false,
+    "errorDetected": false,
+    "unexpectedResultDetected": false
+  },
+  "governance": {
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false
+  },
+  "releaseGates": {
+    "officialTestObservationApproved": false,
+    "automaticDeliveryAllowed": false,
+    "automaticRetryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  },
+  "issueCodes": ["manual_observation_and_prior_evidence_missing"],
+  "errorCode": "manual_observation_and_prior_evidence_missing"
+}

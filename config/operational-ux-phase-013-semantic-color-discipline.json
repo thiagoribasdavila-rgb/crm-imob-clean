@@ -1,0 +1,27 @@
+{
+  "phase": 13,
+  "objective": "Reduzir cor decorativa e reservar a paleta para ação, navegação e estados operacionais inequívocos.",
+  "colorRoles": {
+    "action": "blue",
+    "success": "green",
+    "attention": "yellow",
+    "blocking": "red",
+    "structure": "neutral"
+  },
+  "requirements": {
+    "singleActionHue": true,
+    "neutralStructuralSurfaces": true,
+    "semanticStatusColorsPreserved": true,
+    "legacyVioletDoesNotCreateNewMeaning": true,
+    "canonicalGradientsReduced": true,
+    "accessibleStateMeaningPreserved": true
+  },
+  "infrastructureMutation": {
+    "schema": false,
+    "data": false,
+    "rls": false,
+    "authentication": false,
+    "integrations": false,
+    "release": false
+  }
+}

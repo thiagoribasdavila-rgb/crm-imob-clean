@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "phase31.runtime-evidence.v1",
+  "phase": 30,
+  "runId": null,
+  "startedAt": null,
+  "finishedAt": null,
+  "status": "not_run",
+  "environment": "local_ephemeral",
+  "runtime": {
+    "engineDetected": false,
+    "engine": "docker_compose",
+    "databaseHealthy": false,
+    "imageReference": "supabase/postgres:15.14.1.149",
+    "imageFingerprint": null,
+    "targetFingerprint": null,
+    "postgresVersion": null
+  },
+  "artifactFingerprints": {},
+  "eventSequence": [],
+  "rehearsal": {
+    "baselineApplied": false,
+    "migrationApplied": false,
+    "securityVerified": false,
+    "permitReservationExecuted": false,
+    "rollbackAttempted": false,
+    "rollbackApproved": false,
+    "finalLedgerObjectsAbsent": false,
+    "volumesDestroyed": false
+  },
+  "releaseGates": {
+    "isolatedRuntimeProven": false,
+    "migrationRehearsalApproved": false,
+    "rollbackRehearsalApproved": false,
+    "cleanupApproved": false
+  },
+  "databaseTouched": false,
+  "remoteDatabaseTouched": false,
+  "metaTouched": false,
+  "buildExecuted": false
+}

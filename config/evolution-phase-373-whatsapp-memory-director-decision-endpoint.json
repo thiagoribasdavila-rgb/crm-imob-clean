@@ -1,0 +1,38 @@
+{
+  "phase": 373,
+  "status": "implemented_local",
+  "scope": "authenticated_organization",
+  "endpoint": {
+    "path": "/api/v1/integrations/whatsapp/memory-director-decision",
+    "method": "POST",
+    "implemented": true,
+    "remoteAvailable": false
+  },
+  "security": {
+    "sessionValidatedServerSide": true,
+    "allowedRoles": ["admin", "director"],
+    "organizationDerivedServerSide": true,
+    "actorDerivedServerSide": true,
+    "sameOriginForCookieMutation": true,
+    "rateLimited": true,
+    "idempotencyRequired": true,
+    "strictBodyContract": true
+  },
+  "evidence": {
+    "recalculatedServerSide": true,
+    "clientEvidenceAccepted": false,
+    "readsMessageContent": false,
+    "containsPii": false,
+    "automaticDecision": false
+  },
+  "persistence": {
+    "migrationLocal": true,
+    "migrationRemoteApplied": false,
+    "safePendingMigrationResponse": true,
+    "learningActivated": false
+  },
+  "interface": {
+    "statusVisible": true,
+    "decisionButtonExposed": false
+  }
+}

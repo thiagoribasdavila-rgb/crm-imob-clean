@@ -58,7 +58,19 @@ export async function GET(request: NextRequest) {
       paused: batches.filter((batch) => Boolean(batch.paused_reason) || batch.quality_status === "red").length,
       replies: batches.reduce((total, batch) => total + batch.replied_count, 0),
     },
-    policy: { officialApiOnly: true, approvedTemplateOnly: true, documentedConsent: true, stopOnReply: true, stopOnOptOut: true, stopOnInvalidPhone: true, maximumAttempts: 2, coolingOffHours: 72, brokerChoiceOnBadExperience: true, humanApproval: true },
+    policy: {
+      officialApiOnly: true,
+      approvedTemplateOnly: true,
+      documentedConsent: true,
+      stopOnReply: true,
+      stopOnOptOut: true,
+      stopOnInvalidPhone: true,
+      maximumAttempts: 2,
+      coolingOffHours: 72,
+      brokerChoiceOnBadExperience: true,
+      humanApproval: true,
+      simulationOnly: true,
+    },
   }, access.meta, { headers: { ...rate.headers, "Cache-Control": "no-store" } });
 }
 

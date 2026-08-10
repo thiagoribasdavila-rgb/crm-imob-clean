@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ThemeToggle } from "@/components/atlas/theme-toggle";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { clearAtlasAuthContext } from "@/lib/auth/atlas-auth-context";
@@ -40,30 +39,13 @@ export function Topbar({
   const currentSection = navigationContext?.label
     || `${fallbackSection.charAt(0).toLocaleUpperCase("pt-BR")}${fallbackSection.slice(1)}`;
   const currentGroup = navigationContext?.group || "Atlas";
-  /**
-   * O BOTÃO PRIMÁRIO PASSA A SER A AÇÃO DESTA TELA.
-   *
-   * Havia dois catálogos, e eles respondem perguntas diferentes:
-   *
-   *   · `primaryAction` de cada destino = O QUE FAZER AQUI ("Nova tarefa" em
-   *     /tasks, "Abrir fila sem responsável" em /distribution). Cada um declara
-   *     o resultado comercial esperado.
-   *   · `atlasTaskActions` = PARA ONDE IR DEPOIS ("Abrir agenda" quando se está
-   *     em /tasks). É uma transição entre telas, não uma ação na tela.
-   *
-   * A topbar renderizava só a transição, e caía num "Novo lead" fixo quando não
-   * havia transição para o caminho atual — por isso o mesmo botão aparecia no
-   * pipeline, em vendas e em distribuição. A ação própria de cada destino, que
-   * é a que carrega o resultado comercial, nunca chegava a existir em pixel.
-   *
-   * Agora a ação da tela vem primeiro; a transição continua como último
-   * recurso, para os caminhos que não são destino do catálogo (subrotas, telas
-   * de apoio). O "Novo lead" fixo continua existindo só depois dos dois — sem
-   * ele, uma subrota sem nenhuma das duas ficaria sem botão nenhum.
-   */
-  const taskAction = navigationContext?.primaryAction
-    ?? getAtlasTaskActionForPathname(pathname, identity)
-    ?? { label: "Novo lead", href: "/leads/new", icon: "＋" };
+  const decisionOutcome = navigationContext?.businessOutcome
+    || "Priorize a próxima melhor ação comercial.";
+  const taskAction = getAtlasTaskActionForPathname(pathname, identity) ?? {
+    label: "Novo lead",
+    href: "/leads/new",
+    icon: "＋",
+  };
   const roleLabel = identity.accessRole === "admin"
     ? "Administrador"
     : identity.accessRole === "director_decisor"
@@ -98,41 +80,19 @@ export function Topbar({
             <strong>{currentGroup}</strong>
           </span>
           <span className="atlas-topbar-section" aria-live="polite">{currentSection}</span>
+          <span className="atlas-topbar-outcome">{decisionOutcome}</span>
         </div>
         </div>
 
-        <div className="atlas-topbar-actions">
-        <AtlasActionLink
-          href={taskAction.href}
-          className="atlas-quick-create"
-          /**
-           * Quando o destino é a TELA ATUAL com parâmetro, força navegação
-           * cheia. Sem isto o botão fica clicável e inerte: no App Router,
-           * ir de /tasks para /tasks?create=1 é o mesmo segmento de rota — o
-           * componente RE-RENDERIZA e não REMONTA, então o efeito que lê a
-           * intenção (deps vazias) não roda de novo e o formulário não abre.
-           *
-           * Medido ao vivo em 2026-07-29: a URL mudava e a tela não reagia.
-           * É o modo de falha mais traiçoeiro possível — o botão responde ao
-           * clique, o endereço muda, e nada acontece.
-           */
-          onClick={(evento) => {
-            const destino = taskAction.href.split("?")[0];
-            if (destino === pathname && taskAction.href.includes("?")) {
-              evento.preventDefault();
-              window.location.assign(taskAction.href);
-            }
-          }}
-          label={taskAction.label}
-          icon={"icon" in taskAction ? taskAction.icon : "＋"}
-          priority="primary"
-          // O catálogo declara o RESULTADO de cada ação primária ("Avançar a
-          // oportunidade mais relevante", "Distribuir oportunidades sem
-          // atendimento"). Dizer isso é melhor que repetir o rótulo do botão
-          // com "Ação rápida:" na frente — o rótulo já está escrito ao lado.
-          aria-label={"outcome" in taskAction ? `${taskAction.label}: ${taskAction.outcome}` : `Ação rápida: ${taskAction.label}`}
-          title={"outcome" in taskAction ? taskAction.outcome : `Ação rápida: ${taskAction.label}`}
-        />
+        <div
+          className="atlas-topbar-actions"
+          data-global-command-rail="coordinated"
+          data-primary-global-action="quick-create"
+        >
+        <div className="atlas-v30-decision-pill sr-only" role="status" aria-label="Atlas One conectado">
+          <span>ONE</span>
+          <strong>Operação segura</strong>
+        </div>
         <button
           type="button"
           className="atlas-mobile-search"
@@ -155,6 +115,28 @@ export function Topbar({
           <span>Buscar</span>
           <kbd>⌘ K</kbd>
         </button>
+        <AtlasActionLink
+          href={taskAction.href}
+          className="atlas-quick-create"
+          label={taskAction.label}
+          icon={taskAction.icon}
+          priority="primary"
+          aria-label={`Ação rápida: ${taskAction.label}`}
+          title={`Ação rápida: ${taskAction.label}`}
+        />
+        <div className="atlas-topbar-utilities" role="group" aria-label="Assistência e avisos">
+        <button
+          type="button"
+          className="atlas-copilot-topbar-trigger"
+          onClick={() =>
+            window.dispatchEvent(new Event("atlas:open-copilot"))
+          }
+          aria-label="Abrir Atlas Copilot"
+          title="Abrir Atlas Copilot (⌘ J)"
+        >
+          <span aria-hidden="true">✦</span>
+          <span className="atlas-copilot-topbar-label">Copilot</span>
+        </button>
         <button
           type="button"
           className="atlas-desktop-density-toggle"
@@ -172,22 +154,6 @@ export function Topbar({
             {desktopDensity === "compact" ? "Compacto" : "Confortável"}
           </span>
         </button>
-        {/* Vizinho do controle de densidade de propósito: as duas são preferência de
-            leitura da mesma pessoa, e ficam onde ela já procura por elas. */}
-        <ThemeToggle />
-        <button
-          type="button"
-          className="atlas-command-trigger atlas-copilot-trigger"
-          aria-label="Abrir copiloto de IA"
-          title="Copiloto — Ctrl/⌘ J"
-          onClick={() =>
-            window.dispatchEvent(new Event("atlas:open-copilot"))
-          }
-        >
-          <span aria-hidden="true">✦</span>
-          <span>Copiloto</span>
-          <kbd>⌘ J</kbd>
-        </button>
         <button
           type="button"
           className="atlas-notification-button"
@@ -199,6 +165,7 @@ export function Topbar({
           <span aria-hidden="true">⌁</span>
           <span className="atlas-notification-dot" />
         </button>
+        </div>
         <div className="atlas-user-copy">
           <strong>{identity.name}</strong>
           <span>{roleLabel}</span>

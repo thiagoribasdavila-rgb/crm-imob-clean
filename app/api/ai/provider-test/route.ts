@@ -4,17 +4,12 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   aiProviderReadiness,
   testEconomyProviderConnection,
-  type EconomyProvider, provedoresGratuitos,
+  type EconomyProvider,
 } from "@/lib/ai/provider-router";
 
 export const dynamic = "force-dynamic";
 
-// A lista vem do roteador: escrita à mão aqui, ela ficava para trás a cada
-// provedor novo e o teste da diretoria recusava um provedor que já existia.
-const supported = new Set<EconomyProvider>([
-  "deepseek", "qwen", "kimi", "glm",
-  ...provedoresGratuitos,
-]);
+const supported = new Set<EconomyProvider>(["deepseek", "qwen", "kimi", "glm"]);
 
 export async function POST(request: NextRequest) {
   const rate = enforceRateLimit(request, {
@@ -32,7 +27,7 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as { provider?: string } | null;
   const provider = body?.provider?.toLowerCase() as EconomyProvider | undefined;
   if (!provider || !supported.has(provider)) {
-    return apiError("INVALID_PROVIDER", `Provedor não suportado. Disponíveis: ${[...supported].join(", ")}.`, identity.meta, { status: 400 });
+    return apiError("INVALID_PROVIDER", "Selecione Kimi, Qwen, DeepSeek ou GLM.", identity.meta, { status: 400 });
   }
   if (!aiProviderReadiness()[provider]) {
     return apiError(

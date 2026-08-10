@@ -1,0 +1,38 @@
+{
+  "phase": 114,
+  "name": "Kanban Card Command",
+  "status": "implemented",
+  "productVersionTrack": "ATLAS_V30_ROADMAP",
+  "objective": "Reduzir ruído interno dos cards do Kanban e transformar cada oportunidade em uma decisão clara de próxima ação.",
+  "problemSolved": [
+    "O card reunia sinais, roteiro, ações e detalhes em excesso na primeira camada visual.",
+    "O corretor precisava ler blocos repetidos para entender qual ação executar primeiro.",
+    "O roteiro de IA ocupava espaço fixo mesmo quando o operador só precisava agir rapidamente."
+  ],
+  "implementation": {
+    "screen": "Pipeline / Kanban",
+    "components": [
+      "atlas-kanban-card-command",
+      "atlas-kanban-card-essentials",
+      "atlas-kanban-card-actions-compact",
+      "atlas-kanban-playbook-shell"
+    ],
+    "behavior": [
+      "Comando principal por lead com urgência, ação recomendada e CTA de abordagem",
+      "Resumo essencial com projeto e potencial financeiro",
+      "Roteiro rápido da IA recolhido por padrão",
+      "Ações primárias compactas para Lead 360 e contato"
+    ]
+  },
+  "expectedImpact": [
+    "Menos ruído visual no Kanban.",
+    "Decisão mais rápida para o corretor.",
+    "Mais foco em contato, qualificação e avanço real do funil.",
+    "Base preparada para cards ainda mais proativos nas próximas fases."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-114:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

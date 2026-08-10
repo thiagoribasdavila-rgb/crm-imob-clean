@@ -1,0 +1,26 @@
+{
+  "phase": 127,
+  "name": "Command Center V30 Decision Cockpit",
+  "status": "implemented",
+  "area": "command-center",
+  "priority": "P1-lead-conversion",
+  "objective": "Transformar o topo do Command Center em um cockpit decisivo: uma prioridade principal, quatro rotas de ação e leitura de saúde operacional com menos ruído visual.",
+  "businessImpact": [
+    "Corretor, gerente e diretor enxergam a prioridade do momento antes dos relatórios detalhados.",
+    "A navegação passa a conduzir para tarefas, distribuição, pipeline ou evolução da IA conforme o gargalo real.",
+    "A tela reduz a sensação de painel carregado e aumenta a clareza da próxima decisão.",
+    "O Copilot recebe contexto estruturado do cockpit para gerar plano curto de execução."
+  ],
+  "technicalScope": [
+    "Adiciona o bloco atlas-command-v30-cockpit ao Command Center.",
+    "Cria o cálculo v30Cockpit com saúde operacional, ruído, foco principal, sinal do operador e cards de ação.",
+    "Integra o cockpit ao Atlas Copilot com contexto de decisão e papel do usuário.",
+    "Adiciona CSS responsivo premium para desktop, tablet e mobile.",
+    "Não altera banco de dados, autenticação, APIs ou RBAC."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-127:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

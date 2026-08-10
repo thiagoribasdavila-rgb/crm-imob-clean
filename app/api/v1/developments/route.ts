@@ -4,6 +4,7 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const canManage = (commercialRole: string | null, role: string) => commercialRole === "director" || commercialRole === "superintendent" || role === "admin";
+const canRead = (commercialRole: string | null, role: string) => canManage(commercialRole, role) || commercialRole === "manager";
 const optionalNumber = (value: unknown) => value === "" || value === null || value === undefined ? null : Number(value);
 const optionalDate = (value: unknown) => value ? String(value) : null;
 
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
   if (!rate.ok) return rate.response;
   const access = await requireAccessContext(request);
   if (!access.ok) return access.response;
-  if (!canManage(access.access.profile.commercialRole, access.access.profile.role)) return apiError("FORBIDDEN", "Cadastro completo disponível para diretoria e superintendência.", access.meta, { status: 403 });
+  if (!canRead(access.access.profile.commercialRole, access.access.profile.role)) return apiError("FORBIDDEN", "Cadastro disponível para gestão comercial.", access.meta, { status: 403 });
   const organizationId = access.access.organization.id;
   const admin = getSupabaseAdmin();
   const [developments, developers, events] = await Promise.all([

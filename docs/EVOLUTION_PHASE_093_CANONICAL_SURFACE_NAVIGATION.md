@@ -6,7 +6,7 @@ Transformar a navegação do ATLAS em uma superfície de produto clara: trabalho
 
 ## Problema resolvido
 
-O projeto possui 271 páginas. Parte delas representa operação real; outra parte reúne ferramentas contextuais, laboratórios, auditorias internas, ideias futuras e referências históricas.
+O projeto possui 273 páginas, incluindo o onboarding seguro da instalação limpa. Parte delas representa operação real; outra parte reúne ferramentas contextuais, laboratórios, auditorias internas, ideias futuras e referências históricas.
 
 Sem um contrato explícito, uma tela tecnicamente existente poderia parecer pronta para operação ou reaparecer no menu. Isso aumentava ruído, duplicidade e risco de o usuário entrar em uma jornada sem dados, permissão ou objetivo comercial definido.
 
@@ -14,9 +14,9 @@ Sem um contrato explícito, uma tela tecnicamente existente poderia parecer pron
 
 ### Superfícies classificadas
 
-Todos os 271 arquivos de página foram classificados:
+Todos os 273 arquivos de página foram classificados:
 
-- 23 canônicos, incluindo entrada pública, autenticação e os módulos produtivos;
+- 24 canônicos, incluindo entrada pública, autenticação, onboarding e os módulos produtivos;
 - 103 contextuais, acessados a partir da jornada principal;
 - 23 internos, destinados a evolução e homologação;
 - 115 experimentais, preservados para pesquisa sem exposição operacional;
@@ -77,7 +77,7 @@ Contadores decorativos de telas por grupo e catálogos antigos comentados foram 
 
 ## Checklist de validação
 
-- [x] 271 páginas classificadas;
+- [x] 275 páginas classificadas;
 - [x] zero páginas sem superfície;
 - [x] 19 módulos produtivos contratados;
 - [x] navegação separada em operação, portfólio, gestão e administração;

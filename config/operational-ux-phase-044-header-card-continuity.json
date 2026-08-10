@@ -1,0 +1,14 @@
+{
+  "phase": 44,
+  "scope": "kanban_header_card_continuity",
+  "headerLeadContinuity": true,
+  "priorityMarkerPreserved": true,
+  "nestedSurfaceReduced": true,
+  "compactModePreserved": true,
+  "mobileModePreserved": true,
+  "cardMovementPreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

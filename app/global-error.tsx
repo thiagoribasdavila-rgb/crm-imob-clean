@@ -1,41 +1,48 @@
 "use client";
 
-/**
- * ERRO NA RAIZ — o último anteparo.
- *
- * `app/(crm)/error.tsx` cobre o CRM. O que ficava descoberto era a falha no
- * próprio layout raiz: ali o React desmonta tudo, e o usuário vê uma tela
- * branca sem nada. Tela branca é o pior estado possível — não diz o que houve,
- * não diz se o dado sobreviveu e não dá o que fazer.
- *
- * Esta tela responde as três, e nada mais: sem stack trace, sem código HTTP,
- * sem nome de tabela. O `digest` aparece porque é o que liga o relato da pessoa
- * ao log do servidor, e não revela nada sobre a estrutura do sistema.
- */
-export default function ErroGlobal({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   return (
     <html lang="pt-BR">
-      <body style={{ margin: 0, background: "#0b0f14", color: "#e2e8f0", fontFamily: "system-ui, sans-serif" }}>
-        <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ maxWidth: 460, textAlign: "center" }}>
-            <p style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#64748b", margin: 0 }}>Atlas One</p>
-            <h1 style={{ fontSize: 22, fontWeight: 600, color: "#fff", margin: "12px 0 0" }}>Algo falhou ao carregar a tela</h1>
-            <p style={{ fontSize: 14, lineHeight: 1.6, color: "#94a3b8", margin: "8px 0 0" }}>
-              O erro foi registrado. Nenhum dado que você já tinha salvo foi perdido. Tente carregar de novo — se
-              continuar, avise o suporte com o código abaixo.
+      <body className="bg-[#050914] text-white">
+        <main className="flex min-h-screen items-center justify-center px-4 py-12">
+          <section className="w-full max-w-2xl rounded-[32px] border border-rose-400/15 bg-[#091120] p-6 text-center shadow-2xl sm:p-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-300">
+              Recuperação segura
             </p>
+            <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+              O Atlas encontrou uma inconsistência
+            </h1>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-slate-400">
+              Seus dados permanecem protegidos. Tente recuperar a tela; se a
+              falha continuar, volte ao acesso e registre o horário do ocorrido.
+            </p>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={reset}
+                className="min-h-11 rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300"
+              >
+                Tentar novamente
+              </button>
+              <a
+                href="/login"
+                className="min-h-11 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-sky-300/40 hover:text-white"
+              >
+                Voltar ao acesso
+              </a>
+            </div>
             {error.digest ? (
-              <p style={{ fontSize: 12, color: "#64748b", margin: "12px 0 0", fontFamily: "ui-monospace, monospace" }}>
-                código {error.digest}
+              <p className="mt-6 text-xs text-slate-600">
+                Referência: {error.digest}
               </p>
             ) : null}
-            <button
-              onClick={reset}
-              style={{ marginTop: 24, borderRadius: 12, border: 0, background: "#0ea5e9", color: "#fff", fontSize: 14, fontWeight: 600, padding: "10px 18px", cursor: "pointer" }}
-            >
-              Tentar de novo
-            </button>
-          </div>
+          </section>
         </main>
       </body>
     </html>

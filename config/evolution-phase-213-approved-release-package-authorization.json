@@ -1,0 +1,49 @@
+{
+  "phase": 213,
+  "name": "Approved Release Package Authorization",
+  "status": "implemented",
+  "objective": "Autorizar explicitamente a montagem de um pacote somente a partir de uma aprovação fixada na memória, sem gerar ZIP, publicar ou promover automaticamente.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "approvalPolicyHash": "808518cd61008b5da6eb94a9d506a4544bdf0723c6d60acbf5d7ce8f731610eb",
+    "memoryPolicyHash": "37af76ac19a603949ccb56c1fe127919bc9e595770822df11b4a7e61a54e497a",
+    "memoryHash": "04de684a4dacf1080468bf849fc929f9c7ac007621ce942f59c70bb4046abf76",
+    "packageAuthorizationPolicyHash": "e3608e6505c0fb02b7f9bf2e9fe80a18b3c41247d16eccc842350bd97c3c3d00",
+    "trustedPackageAuthorizersConfigured": 0,
+    "committedApprovals": 0,
+    "approvedMemoryEntryAvailable": false,
+    "packageAssemblyAuthorized": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "authorizationRules": {
+    "exactApprovedMemoryBindingRequired": true,
+    "exactApprovedMemoryEntryBindingRequired": true,
+    "sameApproverAsCommittedDecisionRequired": true,
+    "oneShotAuthorizationRequired": true,
+    "safeZipNameRequired": true,
+    "reasonRequired": true,
+    "signatureRequired": true,
+    "maximumAuthorizationDelaySeconds": 300,
+    "maximumAuthorizationValiditySeconds": 900
+  },
+  "safety": {
+    "databaseChanged": false,
+    "authChanged": false,
+    "rlsChanged": false,
+    "externalCallExecuted": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 214,
+    "name": "Authorized Release Package Assembly",
+    "objective": "Montar um pacote rastreável somente sob autorização válida e de uso único, sem publicar, fazer deploy ou promover automaticamente."
+  }
+}

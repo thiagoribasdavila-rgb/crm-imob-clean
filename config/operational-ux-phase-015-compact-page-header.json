@@ -1,0 +1,30 @@
+{
+  "phase": 15,
+  "name": "compact-page-header",
+  "objective": "Cada tela começa com contexto, título, orientação curta e no máximo uma ação visível, sem competir com o trabalho principal.",
+  "contract": {
+    "order": ["context", "title", "decision-guidance", "single-context-action"],
+    "maximumVisibleActions": 1,
+    "descriptionLines": 2,
+    "desktopMinimumHeightPx": 88,
+    "compactMinimumHeightPx": 76
+  },
+  "canonicalSurfaces": [
+    "/dashboard",
+    "/leads",
+    "/pipeline",
+    "/tasks",
+    "/customers",
+    "/developments",
+    "/sales"
+  ],
+  "rules": [
+    "O cabeçalho contextualiza a tela, mas não funciona como um segundo dashboard.",
+    "A descrição ocupa no máximo duas linhas e a orientação de decisão permanece opcional.",
+    "Somente uma ação contextual pode ficar visível no cabeçalho.",
+    "No celular, a ação ocupa a largura disponível sem reduzir a área de toque.",
+    "Nenhuma compactação altera rotas, APIs, persistência, autenticação ou permissões."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

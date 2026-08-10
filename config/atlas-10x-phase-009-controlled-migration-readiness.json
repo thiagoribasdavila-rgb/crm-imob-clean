@@ -1,0 +1,127 @@
+{
+  "schema_version": "atlas.10x.phase-009.v1",
+  "phase": 9,
+  "total_phases": 24,
+  "name": "Prontidão para migração controlada e clone reproduzível",
+  "objective": "Impedir alterações de schema sem clone sanitizado, histórico de migrations reconciliado, prova dinâmica de RLS, diff aprovado e rollback verificável.",
+  "target_environment": "isolated_clone",
+  "build_policy": "build_only_on_release_package",
+  "status": "controlled_migration_rehearsal_blocked",
+  "execution_policy": {
+    "default_mode": "local_readiness_assessment",
+    "remote_execution_enabled": false,
+    "linked_project_execution_enabled": false,
+    "migration_creation_enabled": false,
+    "migration_rename_enabled": false,
+    "requires_loopback_database": true,
+    "requires_sanitized_backup": true,
+    "requires_remote_history_snapshot": true,
+    "requires_unique_local_versions": true,
+    "requires_dynamic_rls_evidence": true,
+    "requires_acl_snapshot": true,
+    "requires_diff_approval": true,
+    "requires_rollback_rehearsal": true,
+    "allows_remote_user_changes": false,
+    "allows_remote_business_writes": false,
+    "allows_build": false,
+    "allows_release_package": false
+  },
+  "toolchain_contract": {
+    "supabase_cli_package": "supabase",
+    "supabase_cli_expected_version": "2.109.1",
+    "supabase_config_path": "supabase/config.toml",
+    "database_test_command": "supabase test db --local",
+    "database_lint_command": "supabase db lint --local --level error",
+    "local_runtime": "docker_compatible",
+    "telemetry_disabled": true,
+    "isolated_home_required": true
+  },
+  "migration_contract": {
+    "directory": "supabase/migrations",
+    "draft_directory": "supabase/migration-drafts",
+    "version_pattern": "^[0-9]{14}$",
+    "version_must_be_unique": true,
+    "rename_requires_remote_history": true,
+    "duplicate_versions_detected": {
+      "20260716235900": [
+        "20260716235900_meta_director_daily_reports.sql",
+        "20260716235900_omnichannel_integrations.sql"
+      ],
+      "20260717203000": [
+        "20260717203000_expand_project_material_catalog.sql",
+        "20260717203000_phase_35_follow_up_sla_cycles.sql"
+      ],
+      "20260717213000": [
+        "20260717213000_phase_36_visit_sla.sql",
+        "20260717213000_v3_legacy_runtime_schema_bridge.sql"
+      ]
+    },
+    "duplicate_resolution_policy": "compare_remote_history_before_rename_or_repair"
+  },
+  "backup_contract": {
+    "source": "sanitized_reference_export",
+    "allowed_formats": [
+      ".dump",
+      ".backup",
+      ".sql.gz",
+      ".tar"
+    ],
+    "required_location": "artifacts/runtime/phase-009",
+    "must_exclude_secrets": true,
+    "must_exclude_unnecessary_personal_data": true,
+    "restore_target_must_be_loopback": true
+  },
+  "required_gates": [
+    "supabase_cli_pinned",
+    "supabase_cli_available",
+    "supabase_config_present",
+    "docker_compatible_runtime_available",
+    "local_stack_healthy",
+    "sanitized_backup_available",
+    "remote_migration_history_captured",
+    "local_migration_versions_unique",
+    "phase_008_dynamic_rls_passed",
+    "acl_snapshot_available",
+    "candidate_and_rollback_paired",
+    "schema_diff_reviewed",
+    "rollback_rehearsal_passed",
+    "database_tests_passed",
+    "database_lint_passed",
+    "evidence_sanitized",
+    "human_approval_recorded"
+  ],
+  "runtime_evidence": {
+    "local_stack_healthy": false,
+    "remote_migration_history_captured": false,
+    "phase_008_dynamic_rls_passed": false,
+    "acl_snapshot_available": false,
+    "schema_diff_reviewed": false,
+    "rollback_rehearsal_passed": false,
+    "database_tests_passed": false,
+    "database_lint_passed": false,
+    "evidence_sanitized": false,
+    "human_approval_recorded": false
+  },
+  "evidence_contract": {
+    "format": "atlas_controlled_migration_readiness_v1",
+    "contains_secrets": false,
+    "contains_personal_data": false,
+    "contains_database_url": false,
+    "contains_access_tokens": false,
+    "contains_raw_backup": false,
+    "contains_raw_cli_output": false
+  },
+  "forbidden_operations_in_phase_009": [
+    "use --linked",
+    "apply migration to a remote project",
+    "rename duplicate migration versions before remote history reconciliation",
+    "create a correction migration without a proven clone failure",
+    "restore a backup into a non-loopback target",
+    "persist credentials or personal data in evidence",
+    "create, delete or reset remote users",
+    "change remote business data",
+    "run a release build",
+    "create a deployment package"
+  ],
+  "next_phase": "Fase 10/24: executar o ensaio controlado somente após zerar os bloqueios de ambiente e cadeia de migrations."
+}

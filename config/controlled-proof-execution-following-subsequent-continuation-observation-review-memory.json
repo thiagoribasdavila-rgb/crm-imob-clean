@@ -1,0 +1,21 @@
+{
+  "schema": "atlas.controlled-proof-execution-following-subsequent-continuation-observation-review-memory.v1",
+  "policyHash": "69b319962257bab30f541abb7c29ededf58a475c2b0a04214c604590ca8550d5",
+  "entries": [],
+  "summary": {
+    "recordedReviews": 0,
+    "acceptedObservations": 0,
+    "rejectedObservations": 0,
+    "reviewedObservations": 0,
+    "latestEntryHash": null,
+    "nextSubsequentContinuationObservationAccepted": false,
+    "nextSubsequentContinuationObservationReviewAuthorizationAllowed": false,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "3137e8c38c9f0af4ab012340369d4e3b80355d2bbcf82dd27e2c0e67b50b60e0"
+}

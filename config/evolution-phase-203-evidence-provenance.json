@@ -1,0 +1,47 @@
+{
+  "phase": 203,
+  "name": "Evidence Provenance Verification Contract",
+  "status": "implemented",
+  "objective": "Verificar autoria, origem e integridade criptográfica dos recibos aceitos antes de qualquer admissão na matriz de evidências.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "signatureAlgorithm": "ed25519",
+    "trustedSignersConfigured": 0,
+    "provenanceEnvelopesReceived": 0,
+    "provenanceEnvelopesVerified": 0,
+    "provenanceVerified": false,
+    "eligibleForEvidenceMatrix": false,
+    "evidenceMatrixEvaluated": false,
+    "gatesExecuted": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "policyHash": "101483b0f07f1daf5e948d411459c4938f3ec97739b283428ff06d44fb13f9ca"
+  },
+  "provenanceRules": {
+    "hashAloneDoesNotProveAuthorship": true,
+    "trustedEd25519SignatureRequired": true,
+    "exactActorRoleAndChannelRequired": true,
+    "signedRecordManifestRequired": true,
+    "keyValidityWindowRequired": true,
+    "signatureFreshnessRequired": true,
+    "replayProtectionRequired": true,
+    "automaticEvidenceMatrixAdmission": false,
+    "automaticGateExecution": false,
+    "automaticReleasePromotion": false
+  },
+  "safety": {
+    "remoteAccess": false,
+    "databaseMutation": false,
+    "migrationApplied": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 204,
+    "name": "Evidence matrix admission contract",
+    "objective": "Admit somente recibos com procedência verificada na avaliação da matriz, ainda sem executar gates nem promover release."
+  }
+}

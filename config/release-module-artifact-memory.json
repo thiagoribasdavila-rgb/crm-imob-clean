@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.release-module-artifact-memory.v1",
+  "snapshots": [
+    {
+      "schema": "atlas.release-module-artifact-snapshot.v1",
+      "moduleId": "conversion-core-capture-governance",
+      "revision": 1,
+      "completionEntryHash": "fd0bcb541a7e8c4ba944aab6f13c9f6c8c84affb0c3bc60717a0c8d9efb61666",
+      "artifactCount": 48,
+      "totalBytes": 299795,
+      "artifactSetHash": "0a7efb960edb94bf178138d9802e95b0063941f463c84515cad4307148b2a075",
+      "snapshotHash": "974474421f01c900ff12eacb5f2c0cf851926705206d892b431beacbac2322b2"
+    },
+    {
+      "schema": "atlas.release-module-artifact-snapshot.v1",
+      "moduleId": "conversion-core-isolated-readiness",
+      "revision": 1,
+      "completionEntryHash": "5d76302e95051f129bc2d191c0c44548790361f2882c4276c93a9140b50a9577",
+      "artifactCount": 46,
+      "totalBytes": 161632,
+      "artifactSetHash": "b53101a39dd1fcb48839f9142941e6d8fbe49b8b60f96e79dbd246accb9a1beb",
+      "snapshotHash": "2a69efaf91766197264907ca072547528cfbcc432540a1ddafbd0995603db652"
+    }
+  ],
+  "memoryHash": "1ef911f99bf207801eebf5b27dbbb29d9a609411c1ce0488050d90d33f510ccd"
+}

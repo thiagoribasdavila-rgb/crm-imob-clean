@@ -1,18 +1,14 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { requireApiIdentity } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
-import { isDirectorProfile, enforceRateLimit } from "@/lib/api/security";
+import { isDirectorProfile } from "@/lib/api/security";
 
 export const dynamic = "force-dynamic";
 
 type RetryPayload = { eventId?: string };
 
-export async function POST(request: NextRequest) {
-  // Reprocessar fila morta reenfileira trabalho; sem teto, um clique nervoso
-  // multiplica a fila em vez de drená-la.
-  const rate = enforceRateLimit(request, { limit: 10, windowMs: 60_000, scope: "v3.dlq.retry" });
-  if (!rate.ok) return rate.response;
+export async function POST(request: Request) {
   try {
     const identity = await requireApiIdentity(request);
     const body = (await request.json()) as RetryPayload;
@@ -60,11 +56,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: "requeued", eventId: deadLetter.id, outboxEventId: deadLetter.outbox_event_id });
   } catch (error) {
     logger.error("v3.dlq_retry_failed", error);
-    // Recusa de ACESSO não é falha de servidor. Sem esta régua, perfil inativo,
-    // organização suspensa e sessão expirada viravam HTTP 500 — "o servidor
-    // quebrou" — e quem lê um 500 não procura o diretor.
-    const mensagem = error instanceof Error ? error.message : "Falha ao reprocessar evento.";
-    const acesso = /sess[ãa]o|token|autentica|autoriz|organiza|escopo/i.test(mensagem);
-    return NextResponse.json({ error: mensagem }, { status: acesso ? 401 : 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao reprocessar evento." }, { status: 500 });
   }
 }

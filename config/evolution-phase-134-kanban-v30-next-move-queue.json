@@ -1,0 +1,29 @@
+{
+  "phase": 134,
+  "name": "Kanban V30 Next Move Queue",
+  "status": "implemented",
+  "versionTarget": "V30",
+  "focus": "Transformar o Kanban em uma fila curta de próximo movimento, priorizando SLA, score, valor, etapa e próxima ação.",
+  "businessGoal": "Diminuir ruído visual no pipeline e aumentar a velocidade do corretor ao decidir qual lead atacar, avançar ou proteger primeiro.",
+  "implemented": [
+    "Criada faixa V30 Next Move no topo do Pipeline/Kanban.",
+    "Calculada fila priorizada com leads abertos e sinais comerciais já existentes.",
+    "Priorizados SLA vencido, follow-up atrasado, proposta aberta, lead quente sem ação, lead sem próxima ação e card travado.",
+    "Adicionadas ações rápidas para abrir Lead 360, preparar abordagem com IA, acionar WhatsApp/tarefa e avançar etapa com confirmação do fluxo existente.",
+    "Mantida operação supervisionada: a IA recomenda e prepara contexto, mas não executa disparos automáticos.",
+    "Criado layout responsivo premium para foco de decisão sem poluir as colunas do Kanban."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-134:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  },
+  "riskPolicy": [
+    "Não altera banco de dados.",
+    "Não altera contratos de API.",
+    "Não cria automações de disparo.",
+    "Não envia mensagens automaticamente.",
+    "Não substitui o Kanban existente.",
+    "Reusa apenas dados já autorizados e carregados no recorte do pipeline."
+  ]
+}

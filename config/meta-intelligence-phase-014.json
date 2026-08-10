@@ -1,0 +1,80 @@
+{
+  "phase": 14,
+  "program": "meta-andromeda-automation",
+  "mode": "isolated_supabase_auth_signed_jwt_session_and_data_api_harness",
+  "status": "isolated_auth_harness_ready",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-013.json",
+  "stagingEvidenceTemplate": "config/fixtures/meta-auth-jwt-data-api-evidence-template.json",
+  "stagingRunner": "scripts/run-meta-auth-jwt-data-api-staging.mjs",
+  "stagingPreflight": "scripts/preflight-meta-auth-jwt-data-api-staging.mjs",
+  "staticAudit": "scripts/audit-meta-auth-jwt-contract.mjs",
+  "documentation": "docs/META_AUTH_JWT_DATA_API_HOMOLOGATION.md",
+  "currentDocumentation": {
+    "jwtVerification": "https://supabase.com/docs/guides/auth/jwts",
+    "signingKeys": "https://supabase.com/docs/guides/auth/signing-keys",
+    "sessions": "https://supabase.com/docs/guides/auth/sessions",
+    "dataApiSecurity": "https://supabase.com/docs/guides/api/securing-your-api",
+    "breakingChanges": "https://supabase.com/changelog?tags=breaking-change"
+  },
+  "localAudit": {
+    "applicationMiddlewareUsesGetClaims": true,
+    "sensitiveApiUsesGetUser": true,
+    "sessionEndpointReturnsTokens": false,
+    "rlsUsesEditableUserMetadata": false,
+    "supabaseClientPinned": true,
+    "remoteCallsExecuted": false
+  },
+  "harnessCoverage": {
+    "passwordSignIn": true,
+    "verifiedClaims": true,
+    "jwksDiscovery": true,
+    "issuerAudienceSubjectRoleExpiration": true,
+    "sessionId": true,
+    "refreshTokenRotation": true,
+    "refreshTokenRevocation": true,
+    "anonymousDataApiBoundary": true,
+    "authenticatedHierarchy": true,
+    "crossTenantReadWrite": true,
+    "serviceRoleServerBoundary": true,
+    "editableMetadataEscalation": true,
+    "mutationRestore": true
+  },
+  "unverifiedBoundaries": {
+    "isolatedSupabaseProject": true,
+    "realSignedJwtExecution": true,
+    "jwksRuntime": true,
+    "sessionRefreshRuntime": true,
+    "sessionRevocationRuntime": true,
+    "dataApiRuntime": true,
+    "serviceRoleRuntime": true,
+    "directorApproval": true,
+    "securityApproval": true
+  },
+  "releaseGate": {
+    "phase13LocalRlsPassed": true,
+    "phase14StaticAuditPassed": true,
+    "isolatedStagingPassed": false,
+    "realSignedJwtPassed": false,
+    "dataApiPassed": false,
+    "sessionLifecyclePassed": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "databaseMutation": false,
+    "migrationApplication": false,
+    "productionAccess": false,
+    "tokenPersistence": false,
+    "secretPersistence": false,
+    "realMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 15,
+    "objective": "Executar o ensaio em um clone Supabase isolado, registrar evidências sanitizadas e reconciliar qualquer divergência sem liberar produção."
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "schema_version": "atlas.phase-019.evidence.v1",
+  "phase": "19/24",
+  "status": "remediation_plan_not_generated",
+  "assessment": {
+    "gates_passed": 11,
+    "gates_total": 48,
+    "mutants_rejected": 28,
+    "mutants_total": 28,
+    "sanitized_plan_ready": false,
+    "total_findings": null,
+    "active_workstreams": null
+  },
+  "validation": {
+    "phase_019_checks": "45/45",
+    "phase_018_regression": "43/43",
+    "typecheck": "passed",
+    "lint": "passed",
+    "secret_scan": "passed",
+    "secret_scan_files": 3004,
+    "credentials_detected": 0
+  },
+  "inputs": {
+    "phase_017_dossier": false,
+    "target_descriptor": false,
+    "phase_018_permit": false,
+    "phase_018_observation": false
+  },
+  "decision": {
+    "ready_for_local_migration_design": false,
+    "remote_apply_authorized": false,
+    "production_authorized": false,
+    "human_review_required": true
+  },
+  "privacy": {
+    "contains_credentials": false,
+    "contains_project_ref": false,
+    "contains_object_names": false,
+    "contains_raw_sql": false,
+    "contains_raw_cli_output": false,
+    "contains_personal_data": false,
+    "contains_business_data": false,
+    "contains_auth_user_data": false
+  },
+  "safety": {
+    "remote_command_executed": false,
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "migration_generated": false,
+    "migration_applied": false,
+    "branch_mutated": false,
+    "production_touched": false,
+    "main_branch_touched": false,
+    "business_or_auth_data_read": false,
+    "build_executed": false,
+    "release_package_created": false
+  },
+  "next_phase": "Fase 20/24: converter somente workstreams aprovados em especificações locais de migration e testes de isolamento, ainda sem aplicar nada remotamente."
+}

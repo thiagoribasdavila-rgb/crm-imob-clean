@@ -1,4 +1,4 @@
-# Atlas V3 na Hostinger
+# Atlas One na Hostinger
 
 ## Arquitetura
 
@@ -6,27 +6,15 @@
 - Supabase como banco, autenticação e storage externos.
 - OpenAI e Perplexity acessados diretamente pelo servidor.
 - Worker de outbox acionado por cron da Hostinger.
-- O V3 é uma implantação limpa. O ZIP histórico do V2 é somente referência documental e não participa da execução.
+- O Atlas One é uma implantação limpa. Pacotes históricos são somente referência documental e não participam da execução.
 
 ## Aplicação
 
-Use Node.js 20.9 ou superior da linha 20, execute `npm ci`, `npm run prisma:generate`, `npm run validate:deploy` e inicie com `npm start`.
+Use Node.js 22 ou superior (Node 24 recomendado), execute `npm ci`, `npm run prisma:generate` e inicie com `npm start` depois que o pacote tiver passado pelo build limpo da fase 29. Em VPS, `pm2 start ecosystem.config.cjs` mantém o processo ativo. Em Node.js Web Apps, configure o comando de inicialização como `npm start`.
 
-> **Qual gate rodar.** `npm run validate:deploy` é o **gate de deploy**: roda todas as
-> verificações que precisam valer para subir com segurança — segredos, dependências
-> (`npm audit`), RLS, segurança de API, observabilidade, orçamento de performance,
-> typecheck, lint, build e o empacotamento — e **pula apenas uma lista explícita de
-> lacunas de features já rastreadas no roadmap** (impressa na saída, com o motivo de
-> cada uma). `npm run validate` continua sendo a suíte COMPLETA (aspiracional): como
-> encadeia tudo com `&&`, uma feature inacabada trava o release de tudo o que está
-> pronto — por isso ela não serve de portão de deploy. Um gate deve barrar release
-> **insegura**, não release **incompleta**.
->
-> O passo `build` exige que **nenhum `npm run dev` esteja ativo** na mesma pasta: a
-> quarentena de rotas usa um lock exclusivo e aborta se detectar outra execução. No
-> servidor isso não ocorre; localmente, pare o dev antes de rodar o gate. Em VPS, `pm2 start ecosystem.config.cjs` mantém o processo ativo. Em Node.js Web Apps, configure o comando de inicialização como `npm start`.
+No painel Node.js Web Apps, mantenha o diretório raiz na pasta que contém `package.json`, use `npm run build` como comando de build e `.next` como diretório de saída. Não defina `ATLAS_NEXT_BUNDLER=webpack`: o build homologado usa Turbopack para reduzir o pico de memória e conserva Webpack somente como fallback diagnóstico explícito.
 
-O pacote enxuto e verificado é gerado com `npm run package:hostinger`. Use o ZIP e o SHA-256 criados em `dist/hostinger`; não compacte manualmente a pasta de desenvolvimento.
+O pacote enxuto é preparado com `npm run package:hostinger` e recebe seu único build completo no ensaio limpo `npm run package:hostinger:clean-build`. Use o ZIP e o SHA-256 criados em `dist/hostinger`; não compacte manualmente a pasta de desenvolvimento.
 
 ## Worker
 
@@ -56,7 +44,7 @@ Teste com `npm run reports:meta-daily`. O processo é idempotente: gera um relat
 
 - `ATLAS_HOSTING_PROVIDER=hostinger`
 - `ATLAS_ENV=homologation`
-- `ATLAS_DEFAULT_ORGANIZATION_ID=8523bec1-1bef-4395-92ee-7458becc9b3f` (somente homologação legada; remover em produção)
+- `ATLAS_DEFAULT_ORGANIZATION_ID=<organization-id-da-homologacao>` (use o identificador da organização atual; nunca reutilize um tenant legado)
 - `ATLAS_ENVIRONMENT_ID=atlas-v3-hostinger-homolog` (use outro identificador exclusivo em produção)
 - `ATLAS_DATABASE_ENVIRONMENT=homologation` (deve coincidir com `ATLAS_ENV`)
 - `ATLAS_BASE_URL=https://homolog.seu-dominio.com.br`
@@ -74,7 +62,7 @@ Produção deve usar `ATLAS_ENV=production`, `ATLAS_DATABASE_ENVIRONMENT=product
 ## Publicação segura
 
 1. Criar a aplicação V3 no domínio ou subdomínio escolhido, sem reutilizar arquivos da instalação removida do V2.
-2. Aplicar migrações somente no projeto Supabase de homologação. Siga `docs/POST_DEPLOY_CHECKLIST.md`: DDL antes do código. Confirme a fundação V3, especialmente `public.atlas_events`, antes de publicar rotas que registram eventos, IA operacional, webhooks ou auditoria.
+2. Aplicar migrações somente no projeto Supabase de homologação. Siga `docs/POST_DEPLOY_CHECKLIST.md`: DDL antes do código. Isso garante tabelas como `public.atlas_events` antes de rotas como `/api/v3/events/ingest` entrarem em uso.
 3. Executar preflight, rotas reais e roteiro por perfil.
 4. Criar snapshot/backup antes de qualquer promoção.
 5. Manter o ZIP e o commit da última versão V3 aprovada para rollback.

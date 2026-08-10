@@ -1,0 +1,86 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 12,
+  "title": "Semantica PostgreSQL efemera e gate Supabase isolado",
+  "mode": "ephemeral_postgres_semantics_and_fail_closed_staging_gate",
+  "status": "ephemeral_postgres_verified",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-011.json",
+  "migrationDraft": "supabase/migration-drafts/20260719070511_reconcile_legacy_and_canonical_contracts.sql",
+  "semanticRunner": "scripts/test-meta-canonical-migration-postgres.mjs",
+  "stagingEvidenceTemplate": "config/fixtures/meta-canonical-postgres-evidence-template.json",
+  "runtime": {
+    "engine": "PGlite PostgreSQL WASM",
+    "package": "@electric-sql/pglite",
+    "version": "0.4.1",
+    "postgresVersion": "17.5",
+    "ephemeral": true,
+    "fullSupabaseStack": false,
+    "containerRuntimeAvailable": false,
+    "supabaseCliVersion": "2.109.1"
+  },
+  "semanticEvidence": {
+    "sanitized": true,
+    "containsPersonalData": false,
+    "scenarioCount": 6,
+    "assertionCount": 41,
+    "happyPathPassed": true,
+    "backfillVerified": true,
+    "legacyDualWriteVerified": true,
+    "canonicalDualWriteVerified": true,
+    "conflictRejectionVerified": true,
+    "explicitGrantsVerified": true,
+    "rlsEnabledVerified": true,
+    "securityInvokerVerified": true,
+    "transactionRollbackVerified": true,
+    "stagingGuardVerified": true
+  },
+  "unverifiedBoundaries": {
+    "supabaseAuthJwt": true,
+    "crossTenantRls": true,
+    "dataApiRuntime": true,
+    "remoteSchemaFingerprint": true,
+    "remoteBackupRestore": true,
+    "remoteStagingMigration": true,
+    "pgTapSuite": true,
+    "databaseLint": true
+  },
+  "releaseGate": {
+    "ephemeralPostgresPassed": true,
+    "sanitizedSeedPassed": true,
+    "rollbackSemanticsPassed": true,
+    "isolatedSupabaseStagingReady": false,
+    "authenticatedJwtRlsPassed": false,
+    "crossTenantRlsPassed": false,
+    "remoteFingerprintMatched": false,
+    "backupRestorePassed": false,
+    "migrationPromoted": false,
+    "migrationReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "databaseMutation": false,
+    "migrationApplication": false,
+    "remoteCatalogRead": false,
+    "businessRowsRead": false,
+    "personalDataRead": false,
+    "secretsRead": false,
+    "stagingProjectCreated": false,
+    "testUsersCreated": false,
+    "realEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "officialReferences": [
+    "https://supabase.com/docs/guides/local-development",
+    "https://supabase.com/docs/guides/local-development/cli/testing-and-linting",
+    "https://supabase.com/docs/guides/database/testing",
+    "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically"
+  ],
+  "nextPhase": {
+    "phase": 13,
+    "title": "Homologacao RLS e JWT no stack Supabase isolado"
+  }
+}

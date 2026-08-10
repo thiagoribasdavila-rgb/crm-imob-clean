@@ -1,0 +1,33 @@
+{
+  "phase": 20,
+  "name": "kanban-decision-density",
+  "objective": "Reduzir a densidade inicial do Pipeline sem retirar movimentação, filtros, prioridades, estados operacionais ou inteligência de apoio.",
+  "canonicalSurface": "pipeline-kanban",
+  "alwaysVisible": [
+    "comando de decisão",
+    "decisão V30",
+    "próximo movimento",
+    "estados de recuperação e erro",
+    "fila de prioridade",
+    "barra de comando do Kanban",
+    "controles de ordenação e visualização",
+    "quadro, etapas e cartões movimentáveis"
+  ],
+  "progressive": [
+    "diagnóstico e clareza do pipeline",
+    "atalhos de análise",
+    "saúde e indicadores",
+    "resumo visual das etapas",
+    "lentes, fila inteligente e gargalos",
+    "inteligência avançada e ações em lote"
+  ],
+  "rules": [
+    "A primeira leitura deve responder o que fazer, com quem e em qual etapa.",
+    "Mover lead, abrir Lead 360, ordenar, filtrar e alternar etapas continuam imediatamente acessíveis.",
+    "Análises complementares permanecem no mesmo contexto por divulgação progressiva nativa.",
+    "Nenhum cálculo, API, persistência, RLS, hierarquia ou regra comercial é alterado.",
+    "Estados de carregamento, vazio, erro e confirmação permanecem explícitos."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

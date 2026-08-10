@@ -1,0 +1,28 @@
+{
+  "phase": 132,
+  "name": "Lead 360 V30 Material Delivery Router",
+  "status": "implemented",
+  "versionTarget": "V30",
+  "focus": "Conectar a lead ao material certo do projeto sem obrigar o corretor a procurar em várias telas.",
+  "businessGoal": "Reduzir o tempo entre diagnóstico da lead e envio do próximo material comercial, aumentando clareza, velocidade e chance de avanço no funil.",
+  "implemented": [
+    "Criado roteador compacto de materiais dentro da Lead 360.",
+    "Conectadas quatro decisões comerciais: Book certo, Tabela e fluxo, Estoque indicado e Argumento de região.",
+    "Reaproveitados dados já carregados da lead, do projeto, dos matches, da simulação e do contexto comercial.",
+    "Adicionados links diretos para materiais, simulação, estoque e qualificação.",
+    "Integrado Copilot supervisionado para preparar mensagens e argumentos sem envio automático.",
+    "Criado CSS responsivo premium para leitura rápida em desktop e celular."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-132:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  },
+  "riskPolicy": [
+    "Não altera banco de dados.",
+    "Não altera contratos de API.",
+    "Não envia mensagens automaticamente.",
+    "Não promete disponibilidade, desconto, financiamento ou valorização.",
+    "Não cria automações sem confirmação humana."
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "phase": 130,
+  "name": "Clientes 360 / Lead 360 V30 Relationship Cockpit",
+  "status": "implemented",
+  "area": "customers-lead360",
+  "priority": "P1-lead-conversion",
+  "objective": "Transformar Clientes 360 em um cockpit de relacionamento decisivo: clareza de carteira, próxima conversa, perfis quentes e memória suficiente para abordagem assistida por IA.",
+  "businessImpact": [
+    "O corretor entende rapidamente quem precisa de contato e qual dado falta antes de falar com o cliente.",
+    "A gestão passa a enxergar qualidade da memória comercial, não apenas quantidade de contatos.",
+    "O Copilot recebe contexto de relacionamento para sugerir ações sem executar disparos ou alterar dados automaticamente.",
+    "A experiência reduz ruído: Clientes 360 vira uma tela de decisão, não apenas uma base pesquisável."
+  ],
+  "technicalScope": [
+    "Cria CustomerV30Signal e customersV30Signals derivados dos dados já carregados pela API de Clientes 360.",
+    "Adiciona data-v30-phase para rastreabilidade da camada V30.",
+    "Insere atlas-customers-v30-command-strip com score de clareza e quatro sinais operacionais.",
+    "Conecta os sinais ao Copilot por ações supervisionadas, sem automação autônoma.",
+    "Adiciona estilos premium responsivos e estados compatíveis com carregamento atual.",
+    "Não altera banco de dados, Supabase, APIs, autenticação, RBAC, importações ou histórico de clientes."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-130:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

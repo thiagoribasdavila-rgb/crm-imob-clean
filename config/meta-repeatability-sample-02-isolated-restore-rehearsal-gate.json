@@ -1,0 +1,79 @@
+{
+  "phase": 35,
+  "program": "meta-andromeda-automation",
+  "sourcePhase": 34,
+  "environment": "isolated_restore_rehearsal_contract",
+  "schemaVersion": "phase35.restore-rehearsal-contract.v1",
+  "maximumInputBytes": 1048576,
+  "sourceReadinessReceipt": {
+    "schemaVersion": "phase34.migration-readiness.v1",
+    "phase": 34,
+    "sourcePhase": 33,
+    "status": "assessment_complete_blocked",
+    "sourceReceiptAccepted": true,
+    "verifiedControls": 5,
+    "requiredControls": 15,
+    "evidenceCoveragePercent": 33,
+    "stagingMigrationAllowed": false,
+    "productionMigrationAllowed": false,
+    "productionCompatibilityApproved": false
+  },
+  "backupManifest": {
+    "schemaVersion": "phase35.backup-manifest.v1",
+    "status": "verified",
+    "allowedBackupTypes": [
+      "logical",
+      "physical_download"
+    ],
+    "postgresMajor": 17,
+    "postgresImage": "supabase/postgres:17.6.1.149",
+    "maximumAgeHours": 24,
+    "maximumRpoMinutes": 1440,
+    "minimumSizeBytes": 1
+  },
+  "requiredBackupEvidence": [
+    "immutable",
+    "encrypted_at_rest",
+    "offsite_copy_verified",
+    "storage_objects_inventory_included",
+    "custom_roles_documented",
+    "auth_storage_changes_documented",
+    "realtime_publications_documented",
+    "replication_subscriptions_documented"
+  ],
+  "requiredRestorePlan": {
+    "isolatedTarget": true,
+    "disposableTarget": true,
+    "productionTarget": false,
+    "sourceDatabaseWriteAccess": false,
+    "singleTransactionWhereSupported": true,
+    "stopOnError": true,
+    "postRestoreIntegrityChecks": true,
+    "postRestoreSecurityChecks": true,
+    "postRestorePerformanceBaseline": true,
+    "targetDestructionRequired": true,
+    "humanApprovalRequiredBeforeExecution": true
+  },
+  "requiredBlockedState": {
+    "restoreExecuted": false,
+    "restoreExecutionAllowed": false,
+    "stagingMigrationAllowed": false,
+    "productionMigrationAllowed": false,
+    "metaDeliveryAllowed": false,
+    "buildAllowed": false
+  },
+  "prohibitedActions": {
+    "localDatabaseAccess": true,
+    "remoteDatabaseAccess": true,
+    "productionMutation": true,
+    "supabaseDbPush": true,
+    "restoreExecution": true,
+    "permitReservation": true,
+    "permitIssuance": true,
+    "permitConsumption": true,
+    "realMetaEventDelivery": true,
+    "testMetaEventDelivery": true,
+    "campaignMutation": true,
+    "buildExecution": true
+  }
+}

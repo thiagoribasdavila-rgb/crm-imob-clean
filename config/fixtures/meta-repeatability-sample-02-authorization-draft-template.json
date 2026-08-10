@@ -1,0 +1,66 @@
+{
+  "format": "atlas_meta_repeatability_authorization_draft_v1",
+  "phase": 24,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "expiresAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "containsTemporaryCode": false,
+  "payloadPersisted": false,
+  "rawResponsePersisted": false,
+  "screenshotPersisted": false,
+  "sourceEvidence": {
+    "phase23Approved": false,
+    "phase23Fingerprint": null,
+    "baselineEventIdFingerprint": null
+  },
+  "slot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2,
+    "sourceStatus": "awaiting_new_authorization"
+  },
+  "event": {
+    "eventName": null,
+    "classification": null,
+    "eventIdFingerprint": null,
+    "syntheticRecordFingerprint": null,
+    "differentFromBaseline": false
+  },
+  "humanGovernance": {
+    "directorApproved": false,
+    "securityApproved": false,
+    "operatorApproved": false,
+    "reviewerApproved": false,
+    "directorReferenceFingerprint": null,
+    "securityReferenceFingerprint": null,
+    "operatorReferenceFingerprint": null,
+    "reviewerReferenceFingerprint": null,
+    "fourDistinctReferences": false,
+    "baselineReferencesNotReusedAttested": false
+  },
+  "activation": {
+    "status": "not_prepared",
+    "singleUse": true,
+    "authorizationActivated": false,
+    "fourRolesMustReconfirm": true,
+    "manualObservationAllowed": false
+  },
+  "releaseGates": {
+    "authorizationDraftPrepared": false,
+    "phase23PlanLinked": false,
+    "authorizationActivationAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  },
+  "issueCodes": ["phase23_plan_or_authorization_request_missing"],
+  "errorCode": "phase23_plan_or_authorization_request_missing"
+}

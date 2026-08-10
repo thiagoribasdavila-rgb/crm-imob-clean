@@ -1,0 +1,46 @@
+{
+  "format": "atlas_meta_test_events_evidence_reconciliation_gate_v1",
+  "phase": 22,
+  "mode": "sanitized_chain_reconciliation_no_delivery",
+  "environment": "staging_clone",
+  "sourceSignalContract": "config/meta-validation-only-signal-contract.json",
+  "requiredPhases": [19, 20, 21],
+  "chain": {
+    "requireCanonicalSha256": true,
+    "requirePhase19ToPhase20Link": true,
+    "requirePhase20ToPhase21Link": true,
+    "requireSameEnvironment": true,
+    "requireSameEventName": true,
+    "requireSameEventIdFingerprint": true,
+    "requireChronologicalOrder": true
+  },
+  "scope": {
+    "syntheticRecordOnly": true,
+    "maximumObservedDeliveries": 1,
+    "minimumIndependentHumanRoles": 4,
+    "roles": ["director", "security", "operator", "reviewer"],
+    "singleObservationSufficientForAutomation": false,
+    "singleObservationSufficientForOptimizationClaim": false
+  },
+  "persistedEvidence": {
+    "sourceFingerprintsAllowed": true,
+    "eventFingerprintAllowed": true,
+    "normalizedStatusAllowed": true,
+    "rawPayloadAllowed": false,
+    "rawResponseAllowed": false,
+    "temporaryCodeAllowed": false,
+    "personalDataAllowed": false,
+    "projectIdentifiersAllowed": false,
+    "screenshotsAllowed": false
+  },
+  "releaseGate": {
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "nextControlledTestAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  }
+}

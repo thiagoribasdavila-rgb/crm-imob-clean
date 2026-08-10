@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0.0",
+  "phase": "operational-ux-003",
+  "status": "implemented-awaiting-real-sample",
+  "capturedAt": "2026-08-04T18:00:00-03:00",
+  "timeZone": "America/Sao_Paulo",
+  "purpose": "Separar operação diária, importação histórica e registros sem origem suficiente antes de formar uma decisão executiva.",
+  "classifications": [
+    { "id": "operational", "includedInDailyIntake": true, "evidence": "origem comercial explícita sem marcador de importação histórica" },
+    { "id": "historical_import", "includedInDailyIntake": false, "evidence": "lote de importação, memória histórica, reativação ou origem de base antiga/externa" },
+    { "id": "ambiguous", "includedInDailyIntake": false, "evidence": "origem ausente ou insuficiente para classificar com segurança" }
+  ],
+  "decisionGate": {
+    "minimumOperationalSample": 5,
+    "requiresNoAmbiguousRecords": true,
+    "requiresDistributionLedger": true,
+    "smallSampleLabel": "AMOSTRA INSUFICIENTE",
+    "unknownValuesMustNeverBecomeZero": true
+  },
+  "executiveSnapshot": {
+    "cadence": "daily",
+    "businessDateTimeZone": "America/Sao_Paulo",
+    "fields": ["capturedAt", "businessDate", "operationalLeads", "historicalImports", "ambiguousRecords", "assignedOperationalLeads", "unassignedOperationalLeads", "distributionReceipts", "decisionReady"]
+  },
+  "databaseChanges": false,
+  "recordsMutated": false
+}

@@ -1,0 +1,98 @@
+{
+  "schema_version": "atlas.10x.phase-004.v1",
+  "phase": 4,
+  "total_phases": 24,
+  "name": "Identidade de ambiente, tenant e RBAC remoto",
+  "objective": "Provar que cada sessão resolve um perfil ativo, uma organização ativa e um escopo comercial verificável antes de liberar homologação operacional.",
+  "target_environment": "atlas-v3-homologacao",
+  "build_policy": "build_only_on_release_package",
+  "remote_write_policy": "read_only_audit",
+  "remote_evidence_max_age_days": 1,
+  "production_policy": "blocked_until_real_users_tenant_policies_and_hierarchy_are_proven",
+  "authorization_source": {
+    "authentication": "supabase_auth_user",
+    "authorization": "public_profiles_server_resolved",
+    "tenant": "profiles.organization_id",
+    "forbidden_sources": [
+      "user_metadata",
+      "raw_user_meta_data",
+      "client_role",
+      "client_organization_id"
+    ]
+  },
+  "access_roles": [
+    "admin",
+    "director_decisor",
+    "director",
+    "broker"
+  ],
+  "commercial_hierarchy": [
+    {
+      "role": "director",
+      "reports_to": null,
+      "visibility": "organization"
+    },
+    {
+      "role": "superintendent",
+      "reports_to": "director",
+      "visibility": "managed_managers_and_brokers"
+    },
+    {
+      "role": "manager",
+      "reports_to": "superintendent",
+      "visibility": "managed_brokers"
+    },
+    {
+      "role": "broker",
+      "reports_to": "manager",
+      "visibility": "owned_leads"
+    }
+  ],
+  "access_to_commercial_role_contract": {
+    "admin": [
+      "director"
+    ],
+    "director_decisor": [
+      "director"
+    ],
+    "director": [
+      "superintendent",
+      "manager"
+    ],
+    "broker": [
+      "broker"
+    ]
+  },
+  "forbidden_runtime_behaviors": [
+    "authorize from editable user metadata",
+    "accept organization_id from request body",
+    "apply default organization to an unbound profile",
+    "change access_role without hierarchy validation",
+    "expose security-definer functions to anon",
+    "promote a tenant without cross-tenant tests"
+  ],
+  "required_remote_evidence": [
+    "at least one active organization",
+    "auth user and profile parity",
+    "real profile for every commercial role",
+    "RLS policies and table grants reviewed",
+    "security-definer execution grants reviewed",
+    "cross-tenant denial test",
+    "director, superintendent, manager and broker visibility tests",
+    "profile authorization trigger includes access_role"
+  ],
+  "forbidden_operations": [
+    "create auth users",
+    "invite users",
+    "apply migration",
+    "execute remote DDL",
+    "change remote policies",
+    "copy production identities",
+    "build",
+    "create release zip"
+  ],
+  "next_phase": {
+    "phase": 5,
+    "name": "Provisionamento controlado do tenant de homologação"
+  }
+}

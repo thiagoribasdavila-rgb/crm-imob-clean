@@ -1,0 +1,30 @@
+{
+  "phase": 138,
+  "slug": "kanban-v30-compact-empty-stage",
+  "status": "implemented",
+  "title": "Kanban V30 Compact Empty Stage",
+  "objective": "Reduzir ruído visual nas colunas vazias do Kanban, mantendo orientação útil sem ocupar espaço excessivo.",
+  "businessImpact": [
+    "Quadro fica mais limpo quando várias etapas estão sem leads",
+    "Corretor entende que uma etapa vazia está saudável e pronta para receber oportunidades",
+    "Gerente consegue ler gargalos reais sem confundir etapa vazia com erro",
+    "Experiência fica mais próxima de produto premium, com menos tela parada"
+  ],
+  "implemented": [
+    "Substituição do empty state pesado por bloco compacto dentro da coluna",
+    "Mensagem clara de etapa livre e pronta para receber leads",
+    "Botão Monitorar etapa para abrir foco amplo sem esconder colunas",
+    "CSS responsivo com visual leve e baixa interferência"
+  ],
+  "safety": [
+    "Não altera banco",
+    "Não movimenta leads",
+    "Não dispara automações",
+    "Apenas melhora leitura e navegação do Kanban"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-138:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

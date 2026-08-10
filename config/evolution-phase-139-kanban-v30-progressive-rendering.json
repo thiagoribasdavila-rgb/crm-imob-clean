@@ -1,0 +1,31 @@
+{
+  "phase": 139,
+  "slug": "kanban-v30-progressive-rendering",
+  "status": "implemented",
+  "title": "Kanban V30 Progressive Column Rendering",
+  "objective": "Deixar o Kanban mais rápido, limpo e decisivo ao renderizar primeiro as oportunidades mais relevantes de cada etapa e compactar o excesso sob demanda.",
+  "businessImpact": [
+    "Corretor vê primeiro os leads que realmente pedem ação",
+    "Gerente reduz ruído em etapas com muitas oportunidades acumuladas",
+    "Quadro fica mais leve para navegação diária e mobile",
+    "Dados continuam completos, mas a primeira leitura fica mais objetiva"
+  ],
+  "implemented": [
+    "Limite progressivo de cards visíveis por etapa",
+    "Controle de expansão por coluna do Kanban",
+    "Botão Mostrar restantes com microcopy de prioridade comercial",
+    "Botão Compactar etapa para voltar à visão enxuta",
+    "Estilo premium para expansão sem criar poluição visual"
+  ],
+  "safety": [
+    "Não altera banco",
+    "Não altera status de leads",
+    "Não remove dados do funil",
+    "Apenas muda a renderização visual da coluna"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-139:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

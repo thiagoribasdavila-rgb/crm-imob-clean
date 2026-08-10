@@ -1,46 +1,30 @@
 import type { ReactNode } from "react";
-
-type StatusBadgeTone =
-  | "neutral"
-  | "info"
-  | "success"
-  | "warning"
-  | "danger"
-  | "violet";
+import { AtlasBadge } from "@/components/ui/AtlasUI";
+import {
+  resolveOperationalState,
+  type OperationalState,
+  type OperationalTone,
+} from "@/lib/ui/operational-state";
 
 type StatusBadgeProps = {
-  children: ReactNode;
-  tone?: StatusBadgeTone;
+  children?: ReactNode;
+  tone?: OperationalTone;
+  state?: OperationalState | string;
+  showSymbol?: boolean;
 };
 
-/*
- * CC-5: semântica por cor (accent para info, emerald ok, amber alerta, rose
- * crítico), micro-tipografia mono uppercase com tracking largo, sem glow.
- * "violet" é mapeado para a variante quieta do acento único (hairline neutra
- * + tinta do acento) para não introduzir uma segunda cor decorativa.
- * Utilitários com `!` vencem as classes atlas-badge-* unlayered de globals.css.
- */
-const toneClasses: Record<StatusBadgeTone, string> = {
-  neutral:
-    "border-[rgba(148,163,184,0.18)]! bg-[rgba(148,163,184,0.07)]! text-[var(--atlas-texto-medio)]!",
-  info: "border-[rgba(75,141,248,0.32)]! bg-[rgba(75,141,248,0.10)]! text-[color:var(--atlas-accent-hover)]!",
-  success:
-    "border-[rgba(52,211,153,0.28)]! bg-[rgba(52,211,153,0.09)]! text-[var(--atlas-estado-sucesso)]!",
-  warning:
-    "border-[rgba(245,181,68,0.30)]! bg-[rgba(245,181,68,0.09)]! text-[var(--atlas-estado-atencao)]!",
-  danger:
-    "border-[rgba(251,113,133,0.30)]! bg-[rgba(251,113,133,0.10)]! text-[var(--atlas-estado-perigo)]!",
-  violet:
-    "border-[rgba(148,163,184,0.18)]! bg-[rgba(148,163,184,0.05)]! text-[color:var(--atlas-accent-hover)]!",
-};
-
-export function StatusBadge({ children, tone = "neutral" }: StatusBadgeProps) {
+export function StatusBadge({ children, tone, state, showSymbol = false }: StatusBadgeProps) {
+  const definition = resolveOperationalState(state);
+  const resolvedTone = tone ?? (state ? definition.tone : "neutral");
+  const content = children ?? definition.label;
   return (
-    <span
-      className={`atlas-badge atlas-badge-${tone} gap-1.5 font-mono text-micro! uppercase tracking-[0.14em]! [font-variant-numeric:tabular-nums] ${toneClasses[tone]}`}
-      data-tone={tone}
+    <AtlasBadge
+      tone={resolvedTone}
+      operationalState={state ? definition.state : undefined}
+      title={state ? definition.meaning : undefined}
     >
-      {children}
-    </span>
+      {showSymbol && state ? <span aria-hidden="true">{definition.symbol} </span> : null}
+      {content}
+    </AtlasBadge>
   );
 }

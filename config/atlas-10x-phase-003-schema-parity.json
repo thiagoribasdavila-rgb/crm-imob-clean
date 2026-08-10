@@ -1,0 +1,91 @@
+{
+  "schema_version": "atlas.10x.phase-003.v1",
+  "phase": 3,
+  "total_phases": 24,
+  "name": "Paridade de ambientes e schema remoto",
+  "objective": "Distinguir o Supabase legado do Atlas V3, provar o estado do schema remoto e impedir migrations ou releases quando o histórico não for reproduzível.",
+  "target_environment": "atlas-v3-homologacao",
+  "legacy_environment": "atlas-ai-crm-v1",
+  "build_policy": "build_only_on_release_package",
+  "remote_write_policy": "read_only_audit",
+  "remote_evidence_max_age_days": 1,
+  "production_policy": "blocked_until_schema_history_and_operational_tenant_are_proven",
+  "required_core_tables": [
+    "organizations",
+    "profiles",
+    "leads",
+    "tasks",
+    "projects",
+    "developments",
+    "opportunities",
+    "atlas_events",
+    "meta_conversion_events",
+    "meta_executions"
+  ],
+  "required_core_columns": {
+    "organizations": ["id", "name", "status"],
+    "profiles": ["id", "organization_id", "name", "full_name", "role", "active"],
+    "leads": [
+      "id",
+      "organization_id",
+      "name",
+      "status",
+      "score",
+      "score_ia",
+      "assigned_to",
+      "development_id",
+      "next_action_at"
+    ],
+    "tasks": ["id", "organization_id", "title", "status", "due_date"],
+    "developments": ["id", "organization_id", "name", "status"],
+    "opportunities": ["id", "organization_id", "lead_id", "stage", "status"],
+    "atlas_events": ["id", "organization_id", "event_type", "occurred_at"],
+    "meta_conversion_events": [
+      "id",
+      "organization_id",
+      "lead_id",
+      "event_name",
+      "status"
+    ],
+    "meta_executions": ["idempotency_key", "organization_id", "result"]
+  },
+  "compatibility_adapters": [
+    {
+      "runtime_contract": "tasks.due_at",
+      "remote_column": "tasks.due_date",
+      "status": "adapter_required"
+    },
+    {
+      "runtime_contract": "profiles.display_name",
+      "remote_columns": ["profiles.full_name", "profiles.name"],
+      "status": "adapter_available"
+    },
+    {
+      "runtime_contract": "leads.commercial_score",
+      "remote_columns": ["leads.score", "leads.score_ia"],
+      "status": "adapter_available"
+    }
+  ],
+  "forbidden_operations": [
+    "supabase db push",
+    "supabase migration repair",
+    "supabase db reset",
+    "apply_migration",
+    "remote DDL",
+    "production data copy"
+  ],
+  "approval_gates": [
+    "target project is atlas-v3-homologacao",
+    "local migration versions are unique",
+    "local and remote logical migration histories match",
+    "all required core tables and columns exist",
+    "all public tables have RLS enabled",
+    "policies, grants and privileged functions have current evidence",
+    "an active organization and authenticated profile exist",
+    "operational data migration has an approved rehearsal"
+  ],
+  "next_phase": {
+    "phase": 4,
+    "name": "Identidade de ambiente, tenant e RBAC remoto"
+  }
+}

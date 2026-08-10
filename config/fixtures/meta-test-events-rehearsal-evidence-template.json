@@ -1,0 +1,51 @@
+{
+  "format": "atlas_meta_test_events_rehearsal_evidence_v1",
+  "phase": 20,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "expiresAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "containsTemporaryCode": false,
+  "payloadPersisted": false,
+  "responsePersisted": false,
+  "sourceEvidence": {
+    "phase17Approved": false,
+    "phase19Approved": false,
+    "phase17Fingerprint": null,
+    "phase19Fingerprint": null
+  },
+  "humanApprovals": {
+    "directorApproved": false,
+    "securityApproved": false,
+    "directorApprovalFingerprint": null,
+    "securityApprovalFingerprint": null,
+    "requestFingerprint": null
+  },
+  "scope": {
+    "syntheticRecordOnly": true,
+    "realCustomerDataAllowed": false,
+    "singleCanonicalEvent": true,
+    "maximumDeliveries": 1,
+    "eventName": null,
+    "eventIdFingerprint": null
+  },
+  "officialExecution": {
+    "executed": false,
+    "eventDelivered": false,
+    "responseObserved": false
+  },
+  "releaseGates": {
+    "manualOperatorRehearsalAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  },
+  "issueCodes": ["prior_evidence_and_human_approval_missing"],
+  "errorCode": "prior_evidence_and_human_approval_missing"
+}

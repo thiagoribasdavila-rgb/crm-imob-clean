@@ -1,0 +1,19 @@
+{
+  "schema": "atlas.release-audit-binding.v1",
+  "status": "not_bound",
+  "evidenceFingerprint": null,
+  "ledgerEntryHash": null,
+  "releaseGateReference": null,
+  "execution": {
+    "buildAllowed": false,
+    "packageAllowed": false,
+    "deploymentAllowed": false
+  },
+  "forbidden": {
+    "secrets": true,
+    "rawSessions": true,
+    "authorizationClaims": true,
+    "customerRecords": true,
+    "personalData": true
+  }
+}

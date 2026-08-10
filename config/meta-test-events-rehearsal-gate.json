@@ -1,0 +1,61 @@
+{
+  "format": "atlas_meta_test_events_rehearsal_gate_v1",
+  "phase": 20,
+  "program": "meta-andromeda-automation",
+  "mode": "manual_packet_only_no_delivery",
+  "sourceEvidence": {
+    "phase17": "atlas_meta_data_api_access_evidence_v1",
+    "phase19": "atlas_meta_validation_comparison_evidence_v1"
+  },
+  "authorization": {
+    "directorApprovalRequired": true,
+    "securityApprovalRequired": true,
+    "distinctApprovalReferencesRequired": true,
+    "maximumValidityHours": 24,
+    "expiredApprovalFailsClosed": true
+  },
+  "testScope": {
+    "environment": "staging_clone",
+    "syntheticRecordOnly": true,
+    "singleCanonicalEventOnly": true,
+    "realCustomerDataAllowed": false,
+    "maximumDeliveries": 1,
+    "testCodeEnteredOnlyInOfficialMetaSurface": true,
+    "testCodeMayBePersistedByAtlas": false,
+    "payloadMayBePersistedByAtlas": false,
+    "officialResponseMayBePersistedByAtlas": false
+  },
+  "manualChecklist": [
+    "confirm_phase17_isolated_branch_evidence",
+    "confirm_phase19_local_quality_evidence",
+    "confirm_director_and_security_approval",
+    "confirm_synthetic_record",
+    "open_official_meta_test_events_surface",
+    "enter_temporary_code_only_in_official_surface",
+    "limit_rehearsal_to_one_canonical_event",
+    "record_only_sanitized_presence_and_outcome",
+    "stop_without_retry_on_unexpected_result"
+  ],
+  "prohibitedActions": [
+    "automatic_meta_delivery",
+    "production_delivery",
+    "real_customer_record",
+    "campaign_mutation",
+    "budget_mutation",
+    "audience_mutation",
+    "test_code_persistence",
+    "payload_persistence",
+    "raw_response_persistence",
+    "event_match_quality_estimation",
+    "optimization_impact_claim"
+  ],
+  "releaseGate": {
+    "phase17EvidenceAvailable": false,
+    "phase19EvidenceAvailable": false,
+    "humanApprovalAvailable": false,
+    "manualRehearsalPacketReady": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "deploymentAllowed": false
+  }
+}

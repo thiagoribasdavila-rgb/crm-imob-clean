@@ -1,0 +1,74 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 11,
+  "title": "Migracao canonica versionada e testes locais",
+  "mode": "versioned_draft_and_local_contract_tests",
+  "status": "draft_verified_offline",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-010.json",
+  "cli": {
+    "package": "supabase",
+    "version": "2.109.1",
+    "pinned": true,
+    "generationCommand": "supabase migration new reconcile_legacy_and_canonical_contracts",
+    "generatedFileName": "20260719070511_reconcile_legacy_and_canonical_contracts.sql",
+    "draftPath": "supabase/migration-drafts/20260719070511_reconcile_legacy_and_canonical_contracts.sql",
+    "activeQueuePath": "supabase/migrations/20260719070511_reconcile_legacy_and_canonical_contracts.sql",
+    "promotedToActiveQueue": false
+  },
+  "localTestFixture": "config/fixtures/meta-canonical-migration-local-tests.json",
+  "executionEvidenceTemplate": "config/fixtures/meta-canonical-migration-evidence-template.json",
+  "observedContract": {
+    "correctedCliMigrationCreated": true,
+    "activeMigrationQueueClean": true,
+    "stagingGuardSpecified": true,
+    "scoreBackfillSafeByConstruction": true,
+    "ownerDualWriteSpecified": true,
+    "projectDualWriteSpecified": true,
+    "scoreDualWriteSpecified": true,
+    "unknownRoleBlocked": true,
+    "reportsToNotInferred": true,
+    "explicitDataApiGrantsVersioned": true,
+    "databaseSemanticsExecuted": false,
+    "stagingExecutionApproved": false
+  },
+  "releaseGate": {
+    "draftVersioned": true,
+    "localModelTestsPassed": true,
+    "staticAuditPassed": true,
+    "isolatedStagingReady": false,
+    "backfillVerified": false,
+    "dualWriteVerifiedInDatabase": false,
+    "explicitGrantsVerifiedInDatabase": false,
+    "rlsVerified": false,
+    "rollbackVerified": false,
+    "migrationReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "migrationCreated": true,
+    "migrationApplication": false,
+    "databaseMutation": false,
+    "remoteCatalogRead": false,
+    "businessRowsRead": false,
+    "personalDataRead": false,
+    "secretsRead": false,
+    "historicalBridgeModified": false,
+    "stagingProjectCreated": false,
+    "testUsersCreated": false,
+    "realEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "officialReferences": [
+    "https://supabase.com/docs/reference/cli/supabase-migration-new",
+    "https://supabase.com/docs/guides/database/postgres/row-level-security",
+    "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically"
+  ],
+  "nextPhase": {
+    "phase": 12,
+    "title": "Execucao semantica em banco efemero e gate de staging"
+  }
+}

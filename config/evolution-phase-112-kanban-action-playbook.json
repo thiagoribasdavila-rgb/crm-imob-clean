@@ -1,0 +1,26 @@
+{
+  "phase": 112,
+  "name": "Kanban Action Playbook",
+  "status": "implemented",
+  "productGoal": "transformar cada card do Kanban em um roteiro claro de execução para o corretor",
+  "businessOutcome": "reduzir tempo de decisão no funil, aumentar leads com próxima ação e acelerar avanço para visita, proposta ou fechamento",
+  "scope": [
+    "roteiro rápido com 3 passos por lead",
+    "priorização por SLA, ação atrasada, score e temperatura",
+    "orientação de qualificação sem criar ruído visual",
+    "atalhos contextuais para IA, Lead 360, Agenda, Tarefas e Vendas",
+    "modo compacto otimizado para execução diária"
+  ],
+  "nonGoals": [
+    "criação automática de tarefas sem decisão humana",
+    "envio automático de WhatsApp",
+    "alteração de banco de dados",
+    "mudança de regras RBAC",
+    "troca completa do layout do Kanban"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-112:check",
+    "requiresBuild": false,
+    "requiresDatabaseMigration": false
+  }
+}

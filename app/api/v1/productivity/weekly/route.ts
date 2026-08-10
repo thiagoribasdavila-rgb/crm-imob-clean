@@ -2,11 +2,9 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
-  LIVE_LEAD_SELECT,
-  mapLegacyLead,
-  mapLegacyTask,
-  type CompatRow,
-} from "@/lib/compat/legacy-v2";
+  readCompatibleLeads,
+  readCompatibleTasks,
+} from "@/lib/atlas/core-v2/live-repositories";
 
 export const dynamic = "force-dynamic";
 
@@ -34,23 +32,36 @@ export async function GET(request: NextRequest) {
 
   const organizationId = identity.access.organization.id;
   const actorId = identity.access.profile.id;
+  const minimumSample = 5;
+  const maximumPlanItems = 5;
   const end = new Date();
   const start = new Date(end.getTime() - 7 * 86_400_000);
-  const [taskResult, leadResult, eventResult] = await Promise.all([
+  const [taskResult, leadResult, visitResult, activityResult, eventResult] =
+    await Promise.all([
+    readCompatibleTasks(identity.supabase, {
+      organizationId,
+      limit: 1_000,
+    }),
+    readCompatibleLeads(identity.supabase, {
+      organizationId,
+      limit: 1_000,
+    }),
     identity.supabase
-      .from("tasks")
-      .select(
-        "id,title,description,status,user_id,lead_id,created_at,organization_id,priority,due_date",
-      )
+      .from("lead_visits")
+      .select("id,broker_id,status,scheduled_at,completed_at,no_show_at")
+      .eq("organization_id", organizationId)
+      .eq("broker_id", actorId)
+      .gte("scheduled_at", start.toISOString())
+      .lt("scheduled_at", end.toISOString())
+      .limit(1000),
+    identity.supabase
+      .from("activities")
+      .select("id,user_id,occurred_at")
       .eq("organization_id", organizationId)
       .eq("user_id", actorId)
-      .limit(1000),
-    identity.supabase
-      .from("leads")
-      .select(LIVE_LEAD_SELECT)
-      .eq("organization_id", organizationId)
-      .eq("assigned_user_id", actorId)
-      .limit(1000),
+      .gte("occurred_at", start.toISOString())
+      .lt("occurred_at", end.toISOString())
+      .limit(2000),
     identity.supabase
       .from("lead_events")
       .select("id,created_at")
@@ -61,7 +72,7 @@ export async function GET(request: NextRequest) {
       .limit(2000),
   ]);
 
-  if (taskResult.error || leadResult.error || eventResult.error) {
+  if (!taskResult.ok || !leadResult.ok) {
     return apiError(
       "WEEKLY_PRODUCTIVITY_LOAD_FAILED",
       "Não foi possível preparar sua revisão semanal.",
@@ -70,12 +81,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const tasks = ((taskResult.data ?? []) as unknown as CompatRow[]).map(
-    mapLegacyTask,
+  const tasks = taskResult.rows.filter(
+    (task) => String(task.assigned_to || "") === actorId,
   );
-  const leads = ((leadResult.data ?? []) as unknown as CompatRow[]).map(
-    mapLegacyLead,
+  const leads = leadResult.rows.filter(
+    (lead) => String(lead.assigned_to || "") === actorId,
   );
+  const visits = visitResult.error ? [] : visitResult.data ?? [];
   const now = end.getTime();
   const completed = tasks.filter((task) => DONE.has(normalize(task.status)));
   const open = tasks.filter((task) => !DONE.has(normalize(task.status)));
@@ -90,10 +102,22 @@ export async function GET(request: NextRequest) {
   const hotWithoutNext = withoutNext.filter(
     (lead) => normalize(lead.temperature) === "quente" || Number(lead.score || 0) >= 70,
   );
-  const interactions = eventResult.data?.length ?? 0;
+  const interactions = activityResult.error
+    ? eventResult.error
+      ? 0
+      : eventResult.data?.length ?? 0
+    : activityResult.data?.length ?? 0;
+  const completedVisits = visits.filter(
+    (visit) => normalize(visit.status) === "completed",
+  ).length;
+  const noShows = visits.filter(
+    (visit) => normalize(visit.status) === "no_show",
+  ).length;
   const measured = completed.length + open.length;
   const completionRate =
-    measured >= 5 ? Math.round((completed.length / measured) * 100) : null;
+    measured >= minimumSample
+      ? Math.round((completed.length / measured) * 100)
+      : null;
   const plan: Array<{
     key: string;
     title: string;
@@ -158,7 +182,7 @@ export async function GET(request: NextRequest) {
       },
       outcomes: {
         completedTasks: completed.length,
-        completedVisits: 0,
+        completedVisits,
         interactions,
         newLeads: newLeads.length,
       },
@@ -167,24 +191,34 @@ export async function GET(request: NextRequest) {
         overdueTasks: overdue.length,
         leadsWithoutNextAction: withoutNext.length,
         hotLeadsWithoutNextAction: hotWithoutNext.length,
-        noShows: 0,
+        noShows,
       },
       quality: {
         completionRate,
         sampleSize: measured,
-        minimumSample: 5,
-        sufficientSample: measured >= 5,
+        minimumSample,
+        sufficientSample: measured >= minimumSample,
       },
-      plan: plan.slice(0, 5),
+      plan: plan.slice(0, maximumPlanItems),
       method: {
         llmCost: 0,
         explainable: true,
         personalOnly: true,
         peopleRanking: false,
         humanDecisionRequired: true,
-        visitMetricsAvailable: false,
+        visitMetricsAvailable: !visitResult.error,
       },
-      compatibility: "live-schema-safe",
+      sources: {
+        tasks: taskResult.source,
+        leads: leadResult.source,
+        visits: visitResult.error ? "awaiting-ddl" : "public.lead_visits",
+        interactions: activityResult.error
+          ? eventResult.error
+            ? "unavailable"
+            : "public.lead_events"
+          : "public.activities",
+      },
+      compatibility: "v2-v3-live-schema-safe",
     },
     identity.meta,
     { headers: { ...rate.headers, "Cache-Control": "no-store" } },

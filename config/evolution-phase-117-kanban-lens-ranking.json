@@ -1,0 +1,20 @@
+{
+  "phase": 117,
+  "name": "Kanban Lens Ranking",
+  "status": "implemented",
+  "objective": "Ordenar dinamicamente os cards do Kanban conforme a lente ativa: corretor executa o próximo contato, gerente destrava gargalos e diretor enxerga maior impacto financeiro.",
+  "businessOutcome": "Aumenta velocidade de decisão no funil e reduz tempo perdido escolhendo manualmente qual lead priorizar em cada etapa.",
+  "scope": [
+    "Peso de prioridade específico por lente comercial",
+    "Ranking interno por etapa usando score, SLA, próxima ação, risco, valor e forecast",
+    "Indicador discreto de motivo da prioridade em cada card",
+    "Resumo de qual lead cada etapa está priorizando",
+    "Fallback para prioridade operacional quando houver empate"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-117:check",
+    "requiresTypecheck": true,
+    "requiresLint": true,
+    "buildPolicy": "defer-to-release-close"
+  }
+}

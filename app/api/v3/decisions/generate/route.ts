@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { campaignDecision, leadDecision, overdueTaskDecision, type DecisionCandidate } from "@/lib/atlas/decision-engine";
+import { mapLegacyTask, type CompatRow } from "@/lib/compat/legacy-v2";
 import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
@@ -26,13 +27,16 @@ export async function POST(request: Request) {
     for (const organization of organizations ?? []) {
       const [leadsResult, tasksResult, campaignsResult] = await Promise.all([
         admin.from("leads").select("id,name,score,temperature,status").eq("organization_id", organization.id).order("score", { ascending: false }).limit(100),
-        admin.from("tasks").select("id,title,status,due_at,priority").eq("organization_id", organization.id).not("due_at", "is", null).limit(100),
+        // `due_date` is the live V2/V3 bridge column. The compatibility mapper
+        // exposes it as `due_at` to the decision engine without requiring a
+        // destructive schema change in the homologation database.
+        admin.from("tasks").select("id,title,status,due_date,priority").eq("organization_id", organization.id).not("due_date", "is", null).limit(100),
         admin.from("campaigns").select("id,name,status,spend,leads_count").eq("organization_id", organization.id).limit(100),
       ]);
 
       const candidates: DecisionCandidate[] = [
         ...(leadsResult.data ?? []).map(leadDecision),
-        ...(tasksResult.data ?? []).map(overdueTaskDecision),
+        ...((tasksResult.data ?? []) as unknown as CompatRow[]).map(mapLegacyTask).map(overdueTaskDecision),
         ...(campaignsResult.data ?? []).map((campaign) => campaignDecision(campaign)),
       ].filter((candidate): candidate is DecisionCandidate => Boolean(candidate));
 

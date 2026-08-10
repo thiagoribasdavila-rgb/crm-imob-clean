@@ -1,0 +1,16 @@
+{
+  "schema": "atlas.release-evidence-provenance-policy.v1",
+  "compositionId": "conversion-core-candidate",
+  "compositionDecisionHash": "468bcb65ac7ff6412df595580d8ac328644c646301b0c77cf55c787ad6b5bc8c",
+  "evidencePlanHash": "c42803abb3c0c0d68c958db17edcfdc43f93acd04d6c2e90b8f40b0373d42a95",
+  "intakePolicyHash": "034f73e437a8f5dc64b80dcb588348f40da66609c478d32175d2053a67f9cf22",
+  "signatureAlgorithm": "ed25519",
+  "trustedSigners": [],
+  "maxSignatureAgeSeconds": 900,
+  "requireExactActorRoleAndChannel": true,
+  "requireSignedRecordManifest": true,
+  "automaticEvidenceMatrixAdmission": false,
+  "automaticGateExecution": false,
+  "automaticReleasePromotion": false,
+  "policyHash": "101483b0f07f1daf5e948d411459c4938f3ec97739b283428ff06d44fb13f9ca"
+}

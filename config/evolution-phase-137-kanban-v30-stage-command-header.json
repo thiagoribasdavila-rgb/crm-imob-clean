@@ -1,0 +1,30 @@
+{
+  "phase": 137,
+  "slug": "kanban-v30-stage-command-header",
+  "status": "implemented",
+  "title": "Kanban V30 Stage Command Header",
+  "objective": "Transformar o cabeçalho de cada coluna do Kanban em uma orientação prática de decisão para o usuário agir mais rápido.",
+  "businessImpact": [
+    "Corretor entende a próxima ação da etapa sem interpretar todos os números",
+    "Gerente identifica rapidamente urgência, gargalo, ausência de próxima ação ou oportunidade quente",
+    "Diretor enxerga riscos de conversão e cadência com menos ruído visual",
+    "O Kanban fica mais proativo e mais próximo de um copiloto operacional"
+  ],
+  "implemented": [
+    "Modelo KanbanV30StageCommand para traduzir saúde da etapa em comando",
+    "Comandos: recuperar agora, remover gargalo, agendar próximo passo, acelerar conversão e manter ritmo",
+    "Botão de foco por coluna para aplicar automaticamente o filtro mais relevante",
+    "CSS premium responsivo para comando compacto por etapa"
+  ],
+  "safety": [
+    "Não altera banco",
+    "Não envia mensagens",
+    "Não movimenta leads automaticamente",
+    "Não executa automação; apenas muda foco visual e filtros do Kanban"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-137:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

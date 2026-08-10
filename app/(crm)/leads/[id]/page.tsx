@@ -1,39 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import {
-  CSSProperties,
-  FormEvent,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useParams } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { matchLeadToProperty } from "@/lib/atlas/matching";
 import { supabase } from "@/lib/supabase";
+import type { AtlasLead, AtlasProperty } from "@/types/atlas";
 import {
+  AtlasBadge,
   AtlasEmpty,
   AtlasProgress,
   AtlasSkeleton,
 } from "@/components/ui/AtlasUI";
-import { StatusBadge } from "@/components/atlas/status-badge";
-import { TiltShell } from "@/components/atlas/tilt-shell";
-import { decidirProximaAcao } from "@/lib/crm/gesto-da-proxima-acao";
+import {
+  AtlasCard,
+  AtlasCardHeader,
+  AtlasMetric,
+} from "@/components/ui/AtlasCard";
 import { LeadOperationalBar } from "@/components/crm/lead-operational-bar";
 import {
   LeadContextCorrection,
   type LeadContextProjectOption,
 } from "@/components/crm/lead-context-correction";
 import { CommercialContextTimelineEntry } from "@/components/crm/commercial-context-timeline-entry";
-import {
-  FirstContactQuickLog,
-  type FirstContactRegistration,
-  type FirstContactResult,
-  type FirstContactSla,
-} from "@/components/crm/first-contact-quick-log";
+import { AssistedInteractionCapture } from "@/components/crm/assisted-interaction-capture";
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
+import { AtlasDetailDisclosure } from "@/components/atlas/information-primitives";
 import { parseCommercialContextCorrectionTimeline } from "@/lib/atlas/commercial-context-timeline";
-import { ContactAttemptsBadge } from "@/components/crm/contact-attempts-badge";
-import { CompatibilidadeDoClientePanel } from "@/components/atlas/CompatibilidadeDoClientePanel";
 
 type LeadRow = {
   id: string;
@@ -76,6 +69,18 @@ type ActivityRow = {
   } & Record<string, unknown>) | null;
   occurred_at: string;
 };
+type PropertyRow = {
+  id: string;
+  title: string | null;
+  price: number | null;
+  city: string | null;
+  state: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  parking_spaces: number | null;
+  area: number | null;
+  status: string | null;
+};
 type OpportunityRow = {
   id: string;
   stage: string;
@@ -85,16 +90,15 @@ type OpportunityRow = {
   property_id: string | null;
   created_at: string;
 };
-// Fase 100 · Sinais de atenção proativos — etapa parada, follow-up vencido,
-// lead quente sem contato recente ou objeção sem resposta.
-// Ver lib/atlas/attention-signals.ts.
-type AttentionSignalRow = {
-  kind: "stale_stage" | "follow_up_overdue" | "high_score_no_contact" | "objection_open" | "never_contacted";
-  severity: "critical" | "warning" | "info";
-  reason: string;
-  detail: string;
-  since: string | null;
-  metric: number;
+type ExperienceRow = {
+  id: string;
+  severity: string;
+  confidence: number;
+  evidence: string;
+  recommendation: string;
+  suggested_reply: string | null;
+  status: string;
+  created_at: string;
 };
 type ProposalRow = {
   id: string;
@@ -135,6 +139,34 @@ type GapQuestion = {
   target: string;
   options?: Array<{ value: string; label: string }>;
 };
+type Lead360V30Signal = {
+  label: string;
+  value: string;
+  detail: string;
+  tone: "success" | "warning" | "danger" | "info" | "violet";
+  actionLabel: string;
+  prompt: string;
+};
+type Lead360AttendanceKit = {
+  projectName: string;
+  region: string;
+  materialHref: string;
+  inventoryHref: string;
+  simulationHref: string;
+  qualificationHref: string;
+  matchLabel: string;
+  budgetLabel: string;
+  ready: boolean;
+};
+type Lead360V30WorkItem = {
+  label: string;
+  value: string;
+  detail: string;
+  urgency: "now" | "today" | "soon" | "watch";
+  href: string;
+  actionLabel: string;
+  prompt: string;
+};
 type DataQuality = {
   completeness: number;
   completedFields: number;
@@ -157,6 +189,8 @@ type UnifiedProfile = {
   }>;
   tasks: Array<{
     id: string;
+    title: string;
+    description: string | null;
     status: string;
     due_at: string | null;
     priority: string | null;
@@ -177,6 +211,26 @@ type ContactBriefing = {
   actions: string[];
   generatedBy: string;
   requiresApproval: boolean;
+};
+type OperationalTimelineItem = {
+  id: string;
+  kind: "next_action" | "task" | "visit" | "activity";
+  title: string;
+  detail: string;
+  at: string | null;
+  timing: "overdue" | "upcoming" | "history";
+};
+type EssentialRecoveryItem = {
+  key: "project" | "budget_max" | "preferred_regions" | "bedrooms" | "phone";
+  label: string;
+  question: string;
+  impact: string;
+};
+type MinimumAdvanceCheck = {
+  key: EssentialRecoveryItem["key"] | "next_action";
+  label: string;
+  complete: boolean;
+  guidance: string;
 };
 type RelationshipContext = {
   owner: {
@@ -227,9 +281,9 @@ type AssignmentReservation = {
 type Payload = {
   lead: LeadRow;
   activities: ActivityRow[];
+  properties: PropertyRow[];
   opportunities: OpportunityRow[];
-  opportunitiesMensuraveis?: boolean;
-  attentionSignals: AttentionSignalRow[];
+  experienceSignals: ExperienceRow[];
   proposals: ProposalRow[];
   dataQuality: DataQuality;
   unifiedProfile: UnifiedProfile;
@@ -237,8 +291,6 @@ type Payload = {
   relationshipContext: RelationshipContext;
   assignmentReservation: AssignmentReservation | null;
   projectOptions: LeadContextProjectOption[];
-  firstContactSla?: FirstContactSla;
-  proposalsMensuraveis?: boolean;
 };
 type Qualification = {
   score: number;
@@ -266,21 +318,15 @@ type Qualification = {
   scoreChange: { previous: number; current: number; delta: number };
 };
 
-/* CC-6: campos com hairline neutra, foco no acento único e tinta oficial.
-   Os placeholders são contrato: actOnGap e as perguntas de qualificação fazem
-   querySelector por eles — não renomear. */
 const inputClass =
-  "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[rgba(15,24,48,0.55)] px-4 py-3 text-sm text-[var(--atlas-texto-forte)] outline-none transition placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] focus:bg-[rgba(75,141,248,0.05)]";
-const focusRing =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)]";
-const chipButtonClass = `cc6-chip cc6-interativo-acento cursor-pointer hover:text-[var(--atlas-texto-forte)] disabled:cursor-default disabled:opacity-50 ${focusRing}`;
-const summaryClass = `flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 rounded-xl p-4 [&::-webkit-details-marker]:hidden ${focusRing}`;
+  "w-full rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-400/40 focus:bg-sky-400/[0.035]";
 const brl = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
+const OPERATIONAL_TIMELINE_REFERENCE_TIME = Date.now();
 
 function temperatureTone(
   value?: string | null,
@@ -291,49 +337,15 @@ function temperatureTone(
   return "neutral";
 }
 
-// Sinais determinísticos do strip: só aritmética sobre timestamps já carregados.
-function daysSince(iso: string | null | undefined): number | null {
-  if (!iso) return null;
-  const time = new Date(iso).getTime();
-  if (!Number.isFinite(time)) return null;
-  return Math.max(0, Math.floor((Date.now() - time) / 86_400_000));
-}
-
-const attentionSeverityRank: Record<AttentionSignalRow["severity"], number> = {
-  critical: 0,
-  warning: 1,
-  info: 2,
-};
-const attentionChipClass: Record<AttentionSignalRow["severity"], string> = {
-  critical: "cc6-crit border-[rgba(251,113,133,0.35)]",
-  warning: "cc6-warn border-[rgba(245,181,68,0.35)]",
-  info: "",
-};
-
-/**
- * O rótulo de cada tipo de interação, na mesma ordem e com as mesmas palavras
- * do seletor da tela. Fica AQUI, e não embutido no `addActivity`, para que
- * mudar "Ligação" em um lugar não deixe o outro para trás — foi assim que este
- * produto já criou duas verdades para o mesmo fato mais de uma vez.
- */
-const TITULO_PADRAO_POR_TIPO: Record<string, string> = {
-  note: "Nota",
-  call: "Ligação",
-  whatsapp: "WhatsApp",
-  visit: "Visita",
-};
-
 export default function LeadDetailPage() {
   const { id: leadId } = useParams<{ id: string }>();
-  const router = useRouter();
   const [lead, setLead] = useState<LeadRow | null>(null);
-  const [firstContactSla, setFirstContactSla] = useState<FirstContactSla | null>(null);
   const [activities, setActivities] = useState<ActivityRow[]>([]);
+  const [properties, setProperties] = useState<PropertyRow[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
-  const [opportunitiesMensuraveis, setOpportunitiesMensuraveis] = useState(true);
-  const [attentionSignals, setAttentionSignals] = useState<
-    AttentionSignalRow[]
-  >([]);
+  const [experienceSignals, setExperienceSignals] = useState<ExperienceRow[]>(
+    [],
+  );
   const [proposals, setProposals] = useState<ProposalRow[]>([]);
   const [dataQuality, setDataQuality] = useState<DataQuality | null>(null);
   const [unifiedProfile, setUnifiedProfile] = useState<UnifiedProfile | null>(
@@ -347,18 +359,39 @@ export default function LeadDetailPage() {
     useState<AssignmentReservation | null>(null);
   const [projectOptions, setProjectOptions] = useState<LeadContextProjectOption[]>([]);
   const [contextSaving, setContextSaving] = useState(false);
+  const [contextEditorRequest, setContextEditorRequest] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [activityTitle, setActivityTitle] = useState("");
   const [activityDescription, setActivityDescription] = useState("");
   const [activityType, setActivityType] = useState("note");
+  const [activitySaving, setActivitySaving] = useState(false);
   const [qualification, setQualification] = useState<Qualification | null>(
     null,
   );
   const [qualifying, setQualifying] = useState(false);
   const [moreActionsOpen, setMoreActionsOpen] = useState(false);
-  const [copiedContact, setCopiedContact] = useState<string | null>(null);
+  const [simulation, setSimulation] = useState<{
+    id: string;
+    property_price: number;
+    down_payment: number | null;
+    financed_balance: number | null;
+    installment_amount: number | null;
+    installments_count: number | null;
+    valid_until: string;
+    rule_snapshot: {
+      ruleName: string;
+      version: number;
+      paymentFlow: string;
+      developerName: string;
+      calculation: string;
+      disclaimer: string;
+      balloonPaymentNotes?: string | null;
+      financingNotes?: string | null;
+      ruleValidity: { from: string | null; until: string | null };
+    };
+  } | null>(null);
 
   async function api(path: string, init?: RequestInit) {
     const { data } = await supabase.auth.getSession();
@@ -373,33 +406,8 @@ export default function LeadDetailPage() {
       },
     });
     const body = await response.json();
-    if (!response.ok) {
-      // Duas famílias de erro convivem aqui: `{ error: "texto" }` das rotas
-      // antigas e `{ error: { code, message } }` do envelope novo. Sem esta
-      // distinção o corretor lia "[object Object]" na tela.
-      const detalhe = typeof body.error === "string" ? body.error : body.error?.message;
-      throw new Error(detalhe || "Falha na operação.");
-    }
+    if (!response.ok) throw new Error(body.error || "Falha na operação.");
     return body;
-  }
-
-  // Registro de primeiro contato: uma chamada, sem formulário. Devolve a
-  // medição para a barra mostrar na hora e recarrega a ficha em segundo plano,
-  // para a linha do tempo e o prazo virem do banco, não de um palpite da tela.
-  async function registrarPrimeiroContato(
-    input: FirstContactRegistration,
-  ): Promise<FirstContactResult> {
-    const resposta = await api(`/api/v1/leads/${leadId}/first-contact`, {
-      method: "POST",
-      body: JSON.stringify(input),
-    });
-    const dados = (resposta?.data ?? resposta) as FirstContactResult;
-    void load();
-    return {
-      primeiroContato: Boolean(dados?.primeiroContato),
-      medicao: dados?.medicao ?? null,
-      aviso: dados?.aviso ?? null,
-    };
   }
 
   async function load() {
@@ -409,9 +417,9 @@ export default function LeadDetailPage() {
       const data = (await api(`/api/v1/leads/${leadId}`)) as Payload;
       setLead(data.lead);
       setActivities(data.activities);
-      setOpportunities(data.opportunities ?? []);
-      setOpportunitiesMensuraveis(data.opportunitiesMensuraveis !== false);
-      setAttentionSignals(data.attentionSignals ?? []);
+      setProperties(data.properties);
+      setOpportunities(data.opportunities);
+      setExperienceSignals(data.experienceSignals ?? []);
       setProposals(data.proposals ?? []);
       setDataQuality(data.dataQuality);
       setUnifiedProfile(data.unifiedProfile);
@@ -419,7 +427,6 @@ export default function LeadDetailPage() {
       setRelationshipContext(data.relationshipContext);
       setAssignmentReservation(data.assignmentReservation);
       setProjectOptions(data.projectOptions ?? []);
-      setFirstContactSla(data.firstContactSla ?? null);
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Falha ao carregar o lead.",
@@ -433,14 +440,65 @@ export default function LeadDetailPage() {
     void load();
   }, [leadId]);
 
+  const feedbackByProperty = useMemo(() => {
+    const feedback = new Map<string, "interested" | "rejected">();
+    for (const activity of activities) {
+      const propertyId = activity.metadata?.propertyId;
+      const signal = activity.metadata?.signal;
+      if (
+        activity.type === "property_feedback" &&
+        propertyId &&
+        signal &&
+        !feedback.has(propertyId)
+      )
+        feedback.set(propertyId, signal);
+    }
+    return feedback;
+  }, [activities]);
+
+  const matches = useMemo(() => {
+    if (!lead) return [];
+    const atlasLead: Partial<AtlasLead> = {
+      id: lead.id,
+      budgetMax: lead.budget_max,
+      bedrooms: lead.bedrooms,
+      preferredRegions: lead.preferred_regions ?? [],
+    };
+    return properties
+      .map((property) => {
+        const atlasProperty: AtlasProperty = {
+          id: property.id,
+          title: property.title,
+          price: property.price,
+          city: property.city,
+          state: property.state,
+          bedrooms: property.bedrooms,
+          bathrooms: property.bathrooms,
+          parkingSpaces: property.parking_spaces,
+          area: property.area,
+          status: property.status,
+        };
+        return {
+          property,
+          match: matchLeadToProperty(
+            atlasLead,
+            atlasProperty,
+            feedbackByProperty.get(property.id),
+          ),
+        };
+      })
+      .filter((item) => item.match.score > 0)
+      .sort((a, b) => b.match.score - a.match.score)
+      .slice(0, 6);
+  }, [feedbackByProperty, lead, properties]);
+
   const intelligence = useMemo(() => {
     if (!lead)
       return {
         readiness: 0,
-        // Enquanto carrega não há gesto: oferecer um seria agir sobre fato que
-        // ainda não se conhece. O botão de recarregar é o único honesto aqui.
-        proximaAcao: decidirProximaAcao({ atividades: 1, oportunidadesLegiveis: false, oportunidades: 0 }),
+        nextAction: "Carregando contexto...",
         risk: "unknown",
+        summary: "",
       };
     let readiness = 20;
     if (lead.phone || lead.email) readiness += 15;
@@ -450,30 +508,486 @@ export default function LeadDetailPage() {
     if (activities.length > 0) readiness += 10;
     if (opportunities.length > 0) readiness += 10;
     readiness = Math.min(100, readiness);
-    // "Não deu para ler" não é "não existe". Enquanto a rota devolvia `[]` fixo,
-    // este ramo classificava TODA lead como risco médio e o "baixo" era
-    // inalcançável — a tela dizia risco médio do melhor cliente da casa.
     const risk =
       activities.length === 0
         ? "alto"
-        : !opportunitiesMensuraveis
-          ? "unknown"
-          : opportunities.length === 0
-            ? "médio"
-            : "baixo";
-    /**
-     * A decisão saiu daqui e foi para `lib/crm/gesto-da-proxima-acao`, com 12
-     * contratos e 5 mutações. Não é organização por gosto: enquanto a regra
-     * vivia num ternário dentro do JSX, ela não podia ser testada nem devolver
-     * o GESTO junto com a frase — e era exatamente o gesto que faltava.
-     */
-    const proximaAcao = decidirProximaAcao({
-      atividades: activities.length,
-      oportunidadesLegiveis: opportunitiesMensuraveis,
-      oportunidades: opportunities.length,
+        : opportunities.length === 0
+          ? "médio"
+          : "baixo";
+    const nextAction =
+      activities.length === 0
+        ? "Realizar o primeiro contato e registrar a resposta."
+        : opportunities.length === 0
+          ? "Apresentar o imóvel com maior aderência e abrir oportunidade."
+          : "Validar objeções e avançar a oportunidade para a próxima etapa.";
+    const summary = `${lead.name || "Este lead"} entrou por ${lead.source || "origem não informada"}, possui score ${lead.score ?? 0} e está na etapa ${lead.status || "novo"}. ${matches.length ? `Há ${matches.length} imóveis com aderência comercial.` : "Ainda não há imóveis compatíveis suficientes."}`;
+    return { readiness, nextAction, risk, summary };
+  }, [activities.length, lead, matches.length, opportunities.length]);
+
+  const lead360V30Score = useMemo(() => {
+    if (!lead) return 0;
+    const actionHealth =
+      (contactBriefing?.openTasks ?? 0) > 0 ||
+      (contactBriefing?.unreadMessages ?? 0) > 0
+        ? 64
+        : activities.length > 0
+          ? 86
+          : 52;
+    const profileQuality = dataQuality?.completeness ?? 45;
+    const commercialScore = lead.score ?? 0;
+
+    return Math.round(
+      intelligence.readiness * 0.32 +
+        profileQuality * 0.28 +
+        commercialScore * 0.24 +
+        actionHealth * 0.16,
+    );
+  }, [
+    activities.length,
+    contactBriefing?.openTasks,
+    contactBriefing?.unreadMessages,
+    dataQuality?.completeness,
+    intelligence.readiness,
+    lead,
+  ]);
+
+  const lead360V30Signals = useMemo<Lead360V30Signal[]>(() => {
+    if (!lead) return [];
+
+    const nextQuestion =
+      dataQuality?.nextQuestion?.question ||
+      dataQuality?.questions[0]?.question ||
+      "confirmar objetivo, prazo e faixa de investimento";
+    const lastInteraction = contactBriefing?.lastInteractionAt
+      ? new Date(contactBriefing.lastInteractionAt).toLocaleDateString("pt-BR")
+      : activities.length > 0
+        ? "histórico registrado"
+        : "sem contato registrado";
+    const projectName =
+      relationshipContext?.development?.name || "projeto ainda indefinido";
+    const activeDeals =
+      contactBriefing?.activeOpportunities ?? opportunities.length;
+
+    return [
+      {
+        label: "Próxima ação",
+        value:
+          contactBriefing?.actions[0] ||
+          qualification?.nextBestAction ||
+          intelligence.nextAction,
+        detail: `${contactBriefing?.openTasks ?? 0} tarefas abertas · ${contactBriefing?.unreadMessages ?? 0} mensagens não lidas`,
+        tone:
+          (contactBriefing?.openTasks ?? 0) > 0 ||
+          (contactBriefing?.unreadMessages ?? 0) > 0
+            ? "danger"
+            : "success",
+        actionLabel: "Preparar contato",
+        prompt:
+          "Prepare uma abordagem objetiva para este lead com base no histórico, risco, tarefas abertas e próxima melhor ação. Não envie nada automaticamente.",
+      },
+      {
+        label: "Perfil comprador",
+        value:
+          dataQuality?.completeness !== undefined
+            ? `${dataQuality.completeness}% completo`
+            : "perfil em formação",
+        detail: `Pergunta-chave: ${nextQuestion}`,
+        tone:
+          (dataQuality?.completeness ?? 0) >= 80
+            ? "success"
+            : (dataQuality?.completeness ?? 0) >= 55
+              ? "warning"
+              : "danger",
+        actionLabel: "Gerar pergunta",
+        prompt:
+          "Crie a próxima pergunta mais curta e natural para completar o perfil comprador desta lead, focando no dado que mais aumenta chance de venda.",
+      },
+      {
+        label: "Oferta indicada",
+        value: matches.length ? `${matches.length} matches` : projectName,
+        detail:
+          matches[0]?.property.title ||
+          "Complete orçamento, região e tipologia para melhorar o matching.",
+        tone: matches.length ? "info" : "warning",
+        actionLabel: "Sugerir imóvel",
+        prompt:
+          "Analise o perfil desta lead e sugira o imóvel/projeto mais aderente, com argumento comercial simples e cuidado para não prometer disponibilidade.",
+      },
+      {
+        label: "Memória comercial",
+        value: `${activities.length} eventos`,
+        detail: `${activeDeals} oportunidades ativas · último contexto: ${lastInteraction}`,
+        tone: activities.length > 0 ? "violet" : "warning",
+        actionLabel: "Resumir memória",
+        prompt:
+          "Resuma a memória comercial desta lead em até 5 bullets: intenção, objeções, melhor abordagem, risco e próxima ação.",
+      },
+    ];
+  }, [
+    activities.length,
+    contactBriefing,
+    dataQuality,
+    intelligence.nextAction,
+    lead,
+    matches,
+    opportunities.length,
+    qualification?.nextBestAction,
+    relationshipContext,
+  ]);
+
+  const lead360AttendanceKit = useMemo<Lead360AttendanceKit | null>(() => {
+    if (!lead) return null;
+
+    const developmentId =
+      relationshipContext?.development?.id || lead.development_id;
+    const projectName =
+      relationshipContext?.development?.name ||
+      matches[0]?.property.title ||
+      "projeto a definir";
+    const region =
+      relationshipContext?.development?.city ||
+      lead.preferred_regions?.[0] ||
+      "região pendente";
+    const bestMatch = matches[0];
+    const materialParameters = new URLSearchParams({
+      mode: "attendance",
+      lead: lead.id,
     });
-    return { readiness, proximaAcao, risk };
-  }, [activities.length, lead, opportunities.length, opportunitiesMensuraveis]);
+    if (developmentId) materialParameters.set("project", developmentId);
+    const materialHref = `/developments/materials?${materialParameters.toString()}`;
+    const inventoryHref = developmentId
+      ? `/developments/${developmentId}/inventory`
+      : "/developments";
+
+    return {
+      projectName,
+      region,
+      materialHref,
+      inventoryHref,
+      simulationHref: `/leads/${lead.id}/simulation`,
+      qualificationHref: `/leads/${lead.id}/qualification`,
+      matchLabel: bestMatch
+        ? `${bestMatch.match.score}% de aderência · ${bestMatch.property.title}`
+        : "Matching pendente",
+      budgetLabel: lead.budget_max
+        ? brl.format(lead.budget_max)
+        : "Orçamento pendente",
+      ready: Boolean(developmentId),
+    };
+  }, [lead, matches, relationshipContext]);
+
+  const lead360V30WorkItems = useMemo<Lead360V30WorkItem[]>(() => {
+    if (!lead) return [];
+
+    const unreadMessages = contactBriefing?.unreadMessages ?? 0;
+    const openTasks = contactBriefing?.openTasks ?? 0;
+    const activeDeals =
+      contactBriefing?.activeOpportunities ?? opportunities.length;
+    const completeness = dataQuality?.completeness ?? 0;
+    const nextQuestion =
+      dataQuality?.nextQuestion?.question ||
+      dataQuality?.questions[0]?.question ||
+      "confirmar objetivo, prazo e faixa de investimento";
+    const lastInteraction = contactBriefing?.lastInteractionAt
+      ? new Date(contactBriefing.lastInteractionAt).toLocaleDateString("pt-BR")
+      : activities.length
+        ? "histórico registrado"
+        : "sem histórico";
+    const projectName =
+      relationshipContext?.development?.name ||
+      matches[0]?.property.title ||
+      "projeto/oferta a definir";
+
+    return [
+      {
+        label: "Responder agora",
+        value: unreadMessages
+          ? `${unreadMessages} mensagens`
+          : contactBriefing?.actions[0] || intelligence.nextAction,
+        detail: unreadMessages
+          ? "Cliente já sinalizou resposta; retome com contexto e objetividade."
+          : `Último contexto: ${lastInteraction}. Evite conversa fria.`,
+        urgency: unreadMessages ? "now" : activities.length ? "today" : "soon",
+        href: `/leads/${lead.id}/messages`,
+        actionLabel: "Preparar resposta",
+        prompt:
+          "Prepare uma resposta curta, humana e objetiva para retomar esta lead usando o histórico e a próxima melhor ação. Não envie automaticamente.",
+      },
+      {
+        label: "Organizar follow-up",
+        value: openTasks ? `${openTasks} tarefas abertas` : "sem tarefa aberta",
+        detail: openTasks
+          ? "Transforme pendências em uma próxima ação clara, com horário e objetivo."
+          : "Crie uma próxima ação para impedir que a lead fique esquecida.",
+        urgency: openTasks ? "today" : "soon",
+        href: `/leads/${lead.id}/tasks`,
+        actionLabel: "Criar rotina",
+        prompt:
+          "Monte uma rotina de follow-up para esta lead, com uma ação principal, um canal recomendado e um prazo seguro.",
+      },
+      {
+        label: "Completar perfil",
+        value: `${completeness}% completo`,
+        detail: `Pergunta útil: ${nextQuestion}`,
+        urgency:
+          completeness >= 80 ? "watch" : completeness >= 55 ? "today" : "now",
+        href: `/leads/${lead.id}/qualification`,
+        actionLabel: "Gerar pergunta",
+        prompt:
+          "Crie a próxima pergunta de qualificação mais natural para aumentar a precisão do score e do matching sem cansar o cliente.",
+      },
+      {
+        label: "Avançar negócio",
+        value: activeDeals ? `${activeDeals} oportunidades` : "abrir oportunidade",
+        detail: activeDeals
+          ? `Use o contexto do projeto ${projectName} para mover a lead sem pular etapa.`
+          : "Defina projeto, oferta ou simulação antes de tentar proposta.",
+        urgency: activeDeals ? "today" : "soon",
+        href: activeDeals ? "/pipeline" : `/leads/${lead.id}/simulation`,
+        actionLabel: "Planejar avanço",
+        prompt:
+          "Diga qual é o próximo passo comercial mais seguro para avançar esta lead no funil, com justificativa simples para o corretor.",
+      },
+    ];
+  }, [
+    activities.length,
+    contactBriefing,
+    dataQuality,
+    intelligence.nextAction,
+    lead,
+    matches,
+    opportunities.length,
+    relationshipContext?.development?.name,
+  ]);
+
+  const operationalTimeline = useMemo<OperationalTimelineItem[]>(() => {
+    if (!lead) return [];
+
+    const now = OPERATIONAL_TIMELINE_REFERENCE_TIME;
+    const closedTaskStatuses = new Set([
+      "done",
+      "concluida",
+      "concluído",
+      "completed",
+      "cancelado",
+    ]);
+    const taskItems = (unifiedProfile?.tasks ?? [])
+      .filter(
+        (task) => !closedTaskStatuses.has(String(task.status).toLowerCase()),
+      )
+      .map<OperationalTimelineItem>((task) => {
+        const dueTime = task.due_at ? Date.parse(task.due_at) : Number.NaN;
+        return {
+          id: `task-${task.id}`,
+          kind: "task",
+          title: task.title || "Tarefa comercial",
+          detail:
+            task.description ||
+            `${task.priority || "prioridade não informada"} · ${task.status || "aberta"}`,
+          at: task.due_at,
+          timing:
+            Number.isFinite(dueTime) && dueTime < now ? "overdue" : "upcoming",
+        };
+      })
+      .sort((left, right) => {
+        if (left.timing !== right.timing)
+          return left.timing === "overdue" ? -1 : 1;
+        return (
+          Date.parse(left.at || "9999-12-31") -
+          Date.parse(right.at || "9999-12-31")
+        );
+      });
+
+    const nextActionItem: OperationalTimelineItem[] =
+      lead.next_action_at && taskItems.length === 0
+        ? [
+            {
+              id: `next-action-${lead.id}`,
+              kind: "next_action",
+              title: intelligence.nextAction,
+              detail: "Próxima ação cadastrada para esta lead.",
+              at: lead.next_action_at,
+              timing:
+                Date.parse(lead.next_action_at) < now ? "overdue" : "upcoming",
+            },
+          ]
+        : [];
+
+    const historyItems = activities
+      .slice(0, 4)
+      .map<OperationalTimelineItem>((activity) => ({
+        id: `activity-${activity.id}`,
+        kind: activity.type === "visit" ? "visit" : "activity",
+        title: activity.title,
+        detail:
+          activity.description ||
+          `${activity.authorName || "Equipe Atlas"} · ${activity.type}`,
+        at: activity.occurred_at,
+        timing: "history",
+      }));
+
+    return [...nextActionItem, ...taskItems, ...historyItems].slice(0, 7);
+  }, [activities, intelligence.nextAction, lead, unifiedProfile?.tasks]);
+
+  const operationalSnapshot = useMemo(() => {
+    if (!lead) return null;
+
+    const statusLabels: Record<string, string> = {
+      novo: "Novo lead",
+      contato: "Em contato",
+      qualificacao: "Em qualificação",
+      visita: "Visita",
+      proposta: "Proposta",
+      contrato: "Contrato",
+      ganho: "Venda ganha",
+      perdido: "Perdido",
+      comprou_outro: "Comprou em outro lugar",
+    };
+    const lastInteraction = activities[0] ?? null;
+    const nextCommitment = operationalTimeline.find(
+      (item) => item.timing === "overdue" || item.timing === "upcoming",
+    );
+
+    return {
+      situation: statusLabels[lead.status || "novo"] || lead.status || "Novo lead",
+      situationDetail: `${lead.temperature || "sem temperatura"} · score ${lead.score ?? 0}/100`,
+      lastInteraction: lastInteraction?.title || "Sem interação registrada",
+      lastInteractionDetail: lastInteraction?.occurred_at
+        ? new Date(lastInteraction.occurred_at).toLocaleString("pt-BR", {
+            day: "2-digit",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "Registre o primeiro contato para iniciar a memória.",
+      nextAction: nextCommitment?.title || intelligence.nextAction,
+      nextActionDetail: nextCommitment?.at
+        ? `${nextCommitment.timing === "overdue" ? "Atrasada" : "Programada"} · ${new Date(nextCommitment.at).toLocaleString("pt-BR", {
+            day: "2-digit",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}`
+        : `${contactBriefing?.openTasks ?? 0} tarefas abertas`,
+      nextActionTone:
+        nextCommitment?.timing === "overdue"
+          ? "overdue"
+          : nextCommitment?.timing === "upcoming"
+            ? "scheduled"
+            : "open",
+    };
+  }, [
+    activities,
+    contactBriefing?.openTasks,
+    intelligence.nextAction,
+    lead,
+    operationalTimeline,
+  ]);
+
+  const prioritizedOperationalTimeline = useMemo(() => {
+    const visible = operationalTimeline.slice(0, 3);
+    const remaining = operationalTimeline.slice(3);
+    return { visible, remaining };
+  }, [operationalTimeline]);
+
+  const essentialRecoveryItems = useMemo<EssentialRecoveryItem[]>(() => {
+    if (!lead) return [];
+    return [
+      !lead.development_id
+        ? {
+            key: "project" as const,
+            label: "Projeto",
+            question: "Qual projeto despertou o interesse?",
+            impact: "Conecta material, estoque e argumento comercial.",
+          }
+        : null,
+      !lead.budget_max
+        ? {
+            key: "budget_max" as const,
+            label: "Investimento",
+            question: "Qual faixa deixa a compra confortável?",
+            impact: "Evita oferta incompatível e melhora o matching.",
+          }
+        : null,
+      !lead.preferred_regions?.length
+        ? {
+            key: "preferred_regions" as const,
+            label: "Região",
+            question: "Quais regiões são prioridade?",
+            impact: "Reduz opções e torna a conversa mais relevante.",
+          }
+        : null,
+      lead.bedrooms === null
+        ? {
+            key: "bedrooms" as const,
+            label: "Tipologia",
+            question: "Quantos dormitórios atendem a necessidade?",
+            impact: "Elimina unidades que não servem ao cliente.",
+          }
+        : null,
+      !lead.phone
+        ? {
+            key: "phone" as const,
+            label: "Contato",
+            question: "Qual telefone deve receber o atendimento?",
+            impact: "Permite continuidade com consentimento e histórico.",
+          }
+        : null,
+    ].filter((item): item is EssentialRecoveryItem => item !== null);
+  }, [lead]);
+
+  const minimumAdvanceReadiness = useMemo(() => {
+    if (!lead) return null;
+    const checks: MinimumAdvanceCheck[] = [
+      {
+        key: "phone",
+        label: "Contato válido",
+        complete: Boolean(lead.phone || lead.email),
+        guidance: "Confirme telefone ou e-mail para manter a continuidade.",
+      },
+      {
+        key: "project",
+        label: "Projeto de interesse",
+        complete: Boolean(lead.development_id),
+        guidance: "Vincule o projeto para acessar oferta, material e estoque.",
+      },
+      {
+        key: "budget_max",
+        label: "Faixa de investimento",
+        complete: Boolean(lead.budget_max),
+        guidance: "Registre a faixa para evitar uma recomendação incompatível.",
+      },
+      {
+        key: "preferred_regions",
+        label: "Região prioritária",
+        complete: Boolean(lead.preferred_regions?.length),
+        guidance: "Confirme a região que realmente orienta a busca.",
+      },
+      {
+        key: "bedrooms",
+        label: "Tipologia mínima",
+        complete: lead.bedrooms !== null,
+        guidance: "Confirme dormitórios para filtrar unidades aderentes.",
+      },
+      {
+        key: "next_action",
+        label: "Continuidade programada",
+        complete: Boolean(
+          lead.next_action_at || (contactBriefing?.openTasks ?? 0) > 0,
+        ),
+        guidance: "Defina uma próxima ação ou tarefa antes de encerrar o contato.",
+      },
+    ];
+    const completed = checks.filter((check) => check.complete).length;
+    return {
+      checks,
+      completed,
+      total: checks.length,
+      percentage: Math.round((completed / checks.length) * 100),
+      nextMissing: checks.find((check) => !check.complete) ?? null,
+      ready: completed === checks.length,
+    };
+  }, [contactBriefing?.openTasks, lead]);
 
   async function saveLead(event: FormEvent) {
     event.preventDefault();
@@ -486,26 +1000,7 @@ export default function LeadDetailPage() {
         body: JSON.stringify(lead),
       });
       setLead(data.lead);
-      /**
-       * ── O LEMBRETE SAI DA TELA E VOLTA NA HORA CERTA ───────────────────
-       *
-       * A instrução do "Faça agora" ocupava 190px no topo o tempo todo — e o
-       * corretor a lia uma vez, no segundo em que abriu a ficha, e depois
-       * convivia com ela atrapalhando a visão.
-       *
-       * Salvar é o momento em que ele levanta a cabeça do formulário. É aí que
-       * lembrar do passo seguinte custa nada e serve para alguma coisa.
-       *
-       * Só lembra do que ainda NÃO foi feito: se ele acabou de registrar a
-       * primeira conversa, cobrar "faça o primeiro contato" seria o produto não
-       * prestando atenção no que a pessoa acabou de fazer.
-       */
-      const passo = intelligence.proximaAcao;
-      setMessage(
-        passo.urgente
-          ? `Alterações salvas. Lembrete: ${passo.instrucao}`
-          : "Lead atualizado e registrado na timeline.",
-      );
+      setMessage("Lead atualizado e registrado na timeline.");
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Falha ao salvar.");
@@ -545,37 +1040,17 @@ export default function LeadDetailPage() {
 
   async function addActivity(event: FormEvent) {
     event.preventDefault();
-    const descricao = activityDescription.trim();
-    const digitado = activityTitle.trim();
-
-    /**
-     * ── RECUSAR EM SILÊNCIO ERA O DEFEITO ──────────────────────────────────
-     *
-     * Antes: `if (!title) return;` — sem mensagem, sem erro, sem nada. O
-     * corretor escrevia no campo grande "O que o cliente falou?", clicava em
-     * salvar e a tela não reagia. Da cadeira dele, "não está salvando" era a
-     * leitura CORRETA do que via.
-     *
-     * E o título era exigência sem razão: o tipo da interação (Nota, Ligação,
-     * WhatsApp, Visita) já está escolhido no seletor ao lado. Pedir que a
-     * pessoa escreva "Ligação" num campo tendo marcado "Ligação" no outro é
-     * cobrar informação que o produto já tem.
-     *
-     * Agora: o título vem do tipo quando não foi digitado, e a única recusa
-     * possível — nada preenchido em lugar nenhum — é dita em voz alta.
-     */
-    if (!digitado && !descricao) {
-      setMessage("Escreva o que aconteceu no contato antes de registrar.");
-      return;
-    }
-    const title = digitado || TITULO_PADRAO_POR_TIPO[activityType] || "Interação registrada";
+    const title = activityTitle.trim();
+    if (!title || activitySaving) return;
+    setActivitySaving(true);
+    setMessage(null);
     try {
       await api(`/api/v1/leads/${leadId}`, {
         method: "POST",
         body: JSON.stringify({
           action: "activity",
           title,
-          description: descricao,
+          description: activityDescription,
           type: activityType,
         }),
       });
@@ -589,6 +1064,8 @@ export default function LeadDetailPage() {
           ? error.message
           : "Falha ao registrar interação.",
       );
+    } finally {
+      setActivitySaving(false);
     }
   }
 
@@ -622,6 +1099,40 @@ export default function LeadDetailPage() {
         error instanceof Error
           ? error.message
           : "Não foi possível aceitar a lead.",
+      );
+    }
+  }
+
+  async function simulate(propertyId: string) {
+    setMessage(null);
+    try {
+      const data = (await api(`/api/v1/leads/${leadId}/commercial-simulation`, {
+        method: "POST",
+        body: JSON.stringify({ action: "simulate", propertyId }),
+      })) as { simulation: typeof simulation; disclaimer: string };
+      setSimulation(data.simulation);
+      setMessage(data.disclaimer);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Falha ao simular.");
+    }
+  }
+
+  async function requestProposal() {
+    if (!simulation) return;
+    try {
+      await api(`/api/v1/leads/${leadId}/commercial-simulation`, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "proposal",
+          simulationId: simulation.id,
+        }),
+      });
+      setMessage(
+        "Proposta enviada para revisão humana de preço, estoque e condição de pagamento.",
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Falha ao preparar proposta.",
       );
     }
   }
@@ -705,12 +1216,7 @@ export default function LeadDetailPage() {
 
   function actOnGap(question: GapQuestion) {
     if (question.action === "navigate") {
-      // `window.location.assign` recarregava o documento inteiro. Como página
-      // isolada isso só era lento; com a ficha aberta em lâmina sobre a lista,
-      // derruba tudo o que a lâmina existe para preservar — filtros, seleção,
-      // posição de rolagem e o cache da lista. `router.push` navega dentro do
-      // app e mantém a lista viva atrás.
-      router.push(
+      window.location.assign(
         question.target === "schedule"
           ? `/leads/${leadId}/schedule`
           : question.target,
@@ -728,29 +1234,44 @@ export default function LeadDetailPage() {
       ?.focus();
   }
 
-  async function copyContact(field: "phone" | "email", value: string) {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopiedContact(field);
-      window.setTimeout(
-        () => setCopiedContact((current) => (current === field ? null : current)),
-        1600,
-      );
-    } catch {
-      setMessage("Não foi possível copiar automaticamente. Copie manualmente.");
+  function recoverEssentialData(target: EssentialRecoveryItem["key"]) {
+    if (target === "project") {
+      setContextEditorRequest((current) => current + 1);
+      window.requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLElement>("#commercial-context")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      return;
     }
+
+    const selector: Record<Exclude<EssentialRecoveryItem["key"], "project">, string> = {
+      budget_max: 'input[placeholder="Orçamento máximo"]',
+      preferred_regions: 'input[placeholder="Regiões preferidas"]',
+      bedrooms: 'input[placeholder="Dormitórios"]',
+      phone: 'input[placeholder="Telefone"]',
+    };
+    const input = document.querySelector<HTMLInputElement>(selector[target]);
+    input?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.requestAnimationFrame(() => input?.focus({ preventScroll: true }));
+  }
+
+  function recoverAdvanceRequirement(target: MinimumAdvanceCheck["key"]) {
+    if (target === "next_action") {
+      window.location.assign(`/leads/${leadId}/schedule`);
+      return;
+    }
+    recoverEssentialData(target);
   }
 
   if (loading)
     return (
-      <div className="space-y-4">
-        <AtlasSkeleton className="h-56 w-full" />
-        <AtlasSkeleton className="h-16 w-full" />
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <AtlasSkeleton className="h-24 w-full" />
-          <AtlasSkeleton className="h-24 w-full" />
-          <AtlasSkeleton className="h-24 w-full" />
-          <AtlasSkeleton className="h-24 w-full" />
+      <div className="space-y-5">
+        <AtlasSkeleton className="h-36 w-full" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <AtlasSkeleton className="h-28 w-full" />
+          <AtlasSkeleton className="h-28 w-full" />
+          <AtlasSkeleton className="h-28 w-full" />
         </div>
         <AtlasSkeleton className="h-96 w-full" />
       </div>
@@ -771,367 +1292,386 @@ export default function LeadDetailPage() {
       />
     );
 
-  // Derivações determinísticas do strip de sinais (zero fetch novo).
-  const leadAgeDays = daysSince(lead.created_at);
-  const lastTouchAt = contactBriefing?.lastInteractionAt ?? null;
-  const lastTouchDays = daysSince(lastTouchAt);
-  const orderedAttentionSignals = [...attentionSignals].sort(
-    (a, b) => attentionSeverityRank[a.severity] - attentionSeverityRank[b.severity],
-  );
-  const ownerName = relationshipContext?.owner?.full_name || null;
-  const ownerRole =
-    relationshipContext?.owner?.commercial_role ||
-    relationshipContext?.owner?.role ||
-    null;
-
   return (
-    <div className="flex flex-col gap-5 pb-10" data-phase="26-lead-360">
-      {/* ── Cartão de identidade: único lugar da página com nome, status,
-          temperatura, score, contatos e dono. Nenhuma seção abaixo repete. ── */}
-      {/* ── `order` VAI NO FILHO DIRETO DO FLEX, NÃO NO COMPONENTE DE DENTRO ──
-            MEDIDO na produção af16f978: o cabeçalho ficou em 2.621px, no fim da
-            ficha. Eu tinha posto `order-[-4]` no <TiltShell>, que é elemento
-            INTERNO — este <section> é que o container flex enxerga, e ele não
-            tinha ordem nenhuma: caiu para 0.
-
-            E acusei o TiltShell de não repassar `className`. Ele repassa. O erro
-            era meu, uma camada acima — a classe chegou ao DOM, no elemento
-            errado. Conferir que a classe existe no componente não prova que ela
-            está no elemento que manda. */}
-        <section id="lead-overview" className="order-[-4] scroll-mt-28 [perspective:1400px]">
-        {/* ── CONSENTIMENTO E TENTATIVAS: NO FLUXO, NÃO NO TOPO GRUDENTO ───
-            Saiu da barra sticky, onde ocupava 63px colados no alto da tela em
-            toda lead sem resposta. Fica em `order-[-2]`, junto do "o que
-            perguntar" — que é exatamente quando o corretor descobre a resposta:
-            durante a conversa, não antes dela. */}
-        {/* ── A PERGUNTA DE CONSENTIMENTO SAIU DA FICHA ────────────────────
-            Decisão do dono do produto, e ela está correta: a lead que vem de um
-            formulário da Meta JÁ traz consentimento — o formulário mostra a
-            política e o envio é voluntário. Pedir de novo era pedir ao corretor
-            que atestasse algo que ele não presenciou.
-
-            O produto já sabia disso: `consentimentoDaFonte()` marca `concedido`
-            com origem `formulario_meta` na ingestão, quando a fonte tem a
-            cláusula. A pergunta só aparecia para quem NÃO veio de lá — como a
-            lead que usei no teste, importada de `relatiro arvo.xlsx`.
-
-            O QUE ISSO MUDA, medido: lead de origem Meta continua enviável (já
-            nasce `concedido`). Lead de outra origem fica `nao_perguntado`, e
-            `faltaParaEnviar()` a mantém FORA da CAPI — que é o comportamento
-            conservador certo: sem anúncio, não houve base para o envio.
-
-            A rota `/api/v1/crm/leads/meta-consent` FICA. Ela deixa de ser o
-            caminho do dia a dia e passa a ser o de correção — o único jeito de
-            registrar ou desfazer um consentimento fora do fluxo automático. */}
-        {/* ── A ORDEM DA FICHA SEGUE O QUE O CORRETOR FAZ, NÃO O ORGANOGRAMA
-            DO PRODUTO ────────────────────────────────────────────────────────
-
-            Ele abre esta tela para FALAR com alguém. A sequência é a da ligação:
-
-              -4  quem é      identidade, etapa, score
-              -3  o que fazer o gesto ("Ligar agora", "Ver imóveis")
-              -2  o que PERGUNTAR   a qualificação guiada, com respostas de 1
-                                    clique — é a IA trabalhando DURANTE a
-                                    conversa, não um relatório depois dela
-              -1  o que anotar      os dados do cliente
-               0  o resto           análise de apoio, na ordem do DOM
-
-            MEDIDO antes: a ficha tinha 3.443px (3,8 telas) e o nome do cliente
-            começava em 2.931px. A primeira correção trouxe o formulário para
-            438px — e DEIXOU O CABEÇALHO ÓRFÃO em 1.759px, no meio da ficha.
-            Regressão minha, achada medindo a produção depois de publicar.
-
-            `order` e não mover marcação: já quebrei o aninhamento uma vez
-            tentando mover 143 linhas. Reverter isto é apagar uma classe. */}
-        {/* ── O CABEÇALHO É DENSO POR DENTRO E FROUXO POR FORA ─────────────
-            MEDIDO na produção: 325px para breadcrumb, nome, duas etiquetas,
-            telefone, dono, score e um botão. Somado à barra operacional (302px),
-            são 627px — 70% da primeira tela antes de qualquer conteúdo.
-        
-            E, ao contrário do que eu afirmei duas vezes, os dois NÃO dizem a
-            mesma coisa: medida a sobreposição, são ZERO palavras em comum. O
-            cabeçalho é identidade, dono e score; a barra é próximo passo e ações.
-            Fundi-los juntaria coisas diferentes — o problema não é repetição, é
-            respiro.
-        
-            Aqui só o respiro encolhe: padding e espaçamento entre linhas. Nenhuma
-            informação sai da tela, nenhuma estrutura muda. */}
-        <TiltShell maxDeg={2} className="cc6-reveal cc6-panel p-4 sm:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                <Link
-                  href="/leads"
-                  className={`rounded-sm text-xs text-[var(--atlas-texto-fraco)] transition-colors hover:text-[var(--atlas-texto-medio)] ${focusRing}`}
-                >
-                  ← Leads
-                </Link>
-                <p className="cc6-eyebrow">Lead 360</p>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[var(--atlas-texto-forte)] sm:text-[32px] sm:leading-10">
-                  {lead.name || "Lead sem nome"}
-                </h1>
-                <StatusBadge tone="violet">{lead.status || "novo"}</StatusBadge>
-                <StatusBadge tone={temperatureTone(lead.temperature)}>
-                  {lead.temperature || "não classificado"}
-                </StatusBadge>
-              </div>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                {([
-                  ["phone", lead.phone, "telefone"],
-                  ["email", lead.email, "e-mail"],
-                ] as const).map(([field, value, label]) =>
-                  value ? (
-                    <button
-                      key={field}
-                      type="button"
-                      onClick={() => void copyContact(field, value)}
-                      title={`Copiar ${label}`}
-                      aria-label={`Copiar ${label} ${value}`}
-                      className={chipButtonClass}
-                    >
-                      <span>{value}</span>
-                      <span
-                        aria-hidden="true"
-                        className={
-                          copiedContact === field ? "cc6-ok" : "text-[var(--atlas-texto-fraco)]"
-                        }
-                      >
-                        {copiedContact === field ? "✓" : "⧉"}
-                      </span>
-                    </button>
-                  ) : null,
-                )}
-                {!lead.phone && !lead.email ? (
-                  <span className="cc6-chip">
-                    sem contatos — preencha no formulário
-                  </span>
-                ) : null}
-              </div>
-              <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--atlas-texto-fraco)]">
-                <span className="cc6-eyebrow text-micro">dono</span>
-                <span className="text-[var(--atlas-texto-medio)]">
-                  {ownerName || "Sem responsável"}
-                </span>
-                <span>· {ownerRole || "distribuição necessária"}</span>
-                <Link
-                  href={`/leads/${lead.id}/transfer`}
-                  className={`rounded-sm text-[color:var(--atlas-accent)] transition-colors hover:underline ${focusRing}`}
-                >
-                  {ownerName ? "transferir" : "atribuir"}
-                </Link>
-              </p>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="cc6-eyebrow">Score</p>
-              <p className="mt-1">
-                <span className="cc6-metric-value text-[40px] leading-none">
-                  {lead.score ?? 0}
-                </span>
-                <span className="cc6-num ml-1 text-sm text-[var(--atlas-texto-fraco)]">/100</span>
-              </p>
-              <p className="cc6-metric-label mt-2">
-                prontidão{" "}
-                <span className="cc6-num text-[var(--atlas-texto-medio)]">
-                  {intelligence.readiness}%
-                </span>
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center gap-2">
-            <CopilotContextAction
-              label="✦ Preparar próxima ação"
-              prompt="Analise esta lead e prepare a próxima melhor ação com justificativa, abordagem sugerida e ponto que exige confirmação humana."
-              context={{
-                leadId: lead.id,
-                source: "lead_360",
-                workspace: "lead",
-                contextLabel: "Lead 360",
-                returnHref: `/leads/${lead.id}`,
-              }}
-              className="atlas-button-primary"
-            />
-            <Link href={`/leads/${lead.id}/messages`} className="cc6-ghost-btn">
-              Criar mensagem
+    <div className="space-y-6 pb-10" data-phase="26-lead-360">
+      <section id="lead-overview" className="atlas-grid-glow overflow-hidden rounded-[28px] border border-sky-400/10 bg-gradient-to-br from-sky-500/[.12] via-blue-500/[.05] to-violet-500/[.1] p-6 sm:p-8">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <Link href="/leads" className="text-xs font-semibold text-sky-300">
+              ← Voltar para leads
             </Link>
-            <Link
-              href={`/leads/${lead.id}/qualification`}
-              className="cc6-ghost-btn"
-            >
-              Qualificar
-            </Link>
-            <a href="#historico" className="cc6-ghost-btn">
-              Registrar contato
-            </a>
-            <button
-              type="button"
-              className="cc6-ghost-btn"
-              aria-expanded={moreActionsOpen}
-              aria-controls="atlas-lead-more-actions"
-              onClick={() => setMoreActionsOpen((current) => !current)}
-            >
-              {moreActionsOpen ? "Menos ações" : "Mais ações"}{" "}
-              <span aria-hidden="true">{moreActionsOpen ? "−" : "+"}</span>
-            </button>
-          </div>
-          {moreActionsOpen ? (
-            <div
-              id="atlas-lead-more-actions"
-              className="mt-3 flex flex-wrap gap-2"
-            >
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <AtlasBadge tone="info">LEAD INTELLIGENCE 360</AtlasBadge>
+              <AtlasBadge tone={temperatureTone(lead.temperature)}>
+                {lead.temperature || "não classificado"}
+              </AtlasBadge>
+              <AtlasBadge tone="violet">{lead.status || "novo"}</AtlasBadge>
+            </div>
+            <h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">
+              {lead.name || "Lead sem nome"}
+            </h1>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400">
+              {intelligence.summary}
+            </p>
+            <div className="atlas-lead-primary-actions mt-6">
+              <CopilotContextAction
+                label="✦ Preparar próxima ação"
+                prompt="Analise esta lead e prepare a próxima melhor ação com justificativa, abordagem sugerida e ponto que exige confirmação humana."
+                context={{
+                  leadId: lead.id,
+                  source: "lead_360",
+                  workspace: "lead",
+                  contextLabel: "Lead 360",
+                  returnHref: `/leads/${lead.id}`,
+                }}
+                className="atlas-button-primary"
+              />
               <Link
-                href={`/leads/${lead.id}/simulation`}
-                className="cc6-ghost-btn"
+                href={`/leads/${lead.id}/messages`}
+                className="atlas-button-primary"
               >
-                Simular condições
+                Criar mensagem
               </Link>
               <Link
-                href={`/leads/${lead.id}/visit-assistant`}
-                className="cc6-ghost-btn"
+                href={`/leads/${lead.id}/qualification`}
+                className="atlas-button-secondary"
               >
-                Visita e proposta
+                Qualificar
               </Link>
+              <a href="#historico" className="atlas-button-secondary">
+                Registrar contato
+              </a>
               <button
                 type="button"
-                onClick={() => void qualifyLead()}
-                disabled={qualifying}
-                className="cc6-ghost-btn disabled:opacity-50"
+                className="atlas-button-secondary"
+                aria-expanded={moreActionsOpen}
+                aria-controls="atlas-lead-more-actions"
+                onClick={() => setMoreActionsOpen((current) => !current)}
               >
-                {qualifying ? "Recalibrando..." : "Recalibrar com IA"}
-              </button>
-              <Link
-                href={`/leads/${lead.id}/prediction`}
-                className="cc6-ghost-btn"
-              >
-                Previsão explicada
-              </Link>
-              <Link href={`/leads/${lead.id}/memory`} className="cc6-ghost-btn">
-                Memória segura
-              </Link>
-              <Link
-                href={`/leads/${lead.id}/behavior`}
-                className="cc6-ghost-btn"
-              >
-                Jornada inteligente
-              </Link>
-              <Link
-                href={`/leads/${lead.id}/attribution`}
-                className="cc6-ghost-btn"
-              >
-                Origem e atribuição
-              </Link>
-              <Link
-                href={`/leads/${lead.id}/contact-preferences`}
-                className="cc6-ghost-btn"
-              >
-                Consentimento
-              </Link>
-              <Link
-                href={`/leads/${lead.id}/objections`}
-                className="cc6-ghost-btn"
-              >
-                Objeções de venda
-              </Link>
-              <button
-                type="button"
-                onClick={() => void createOpportunity()}
-                className="cc6-ghost-btn"
-              >
-                Criar oportunidade
+                {moreActionsOpen ? "Menos ações" : "Mais ações"}{" "}
+                <span aria-hidden="true">{moreActionsOpen ? "−" : "+"}</span>
               </button>
             </div>
-          ) : null}
-
-          {/* Strip de sinais: mono, discreto, determinístico — title explica cada chip. */}
+            {moreActionsOpen ? (
+              <div
+                className="atlas-lead-more-actions"
+                id="atlas-lead-more-actions"
+              >
+                <Link href={`/leads/${lead.id}/simulation`}>
+                  Simular condições
+                </Link>
+                <Link href={`/leads/${lead.id}/visit-assistant`}>
+                  Visita e proposta
+                </Link>
+                <button
+                  onClick={() => void qualifyLead()}
+                  disabled={qualifying}
+                >
+                  {qualifying ? "Recalibrando..." : "Recalibrar com IA"}
+                </button>
+                <Link href={`/leads/${lead.id}/prediction`}>
+                  Previsão explicada
+                </Link>
+                <Link href={`/leads/${lead.id}/memory`}>Memória segura</Link>
+                <Link href={`/leads/${lead.id}/behavior`}>
+                  Jornada inteligente
+                </Link>
+                <Link href={`/leads/${lead.id}/attribution`}>
+                  Origem e atribuição
+                </Link>
+                <Link href={`/leads/${lead.id}/contact-preferences`}>
+                  Consentimento
+                </Link>
+                <button onClick={() => void createOpportunity()}>
+                  Criar oportunidade
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {minimumAdvanceReadiness ? (
           <div
-            className="cc6-hairline mt-6 pt-4"
-            data-phase="100-proactive-attention-signals"
+            data-ux-phase="25-minimum-advance-readiness"
+            className="min-w-full rounded-3xl border border-white/[0.08] bg-[#070d1b]/75 p-5 backdrop-blur-xl xl:min-w-80"
           >
-            <ul
-              className="m-0 flex list-none flex-wrap items-center gap-2 p-0"
-              aria-label="Sinais operacionais do lead"
-            >
-              <li className="cc6-eyebrow mr-1">Sinais</li>
-              {lead.created_at && leadAgeDays !== null ? (
-                <li
-                  className="cc6-chip"
-                  title={`No CRM desde ${new Date(lead.created_at).toLocaleDateString("pt-BR")}.`}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="atlas-eyebrow">Prontidão mínima</p>
+                <p className="mt-2 text-xl font-semibold text-white">
+                  {minimumAdvanceReadiness.ready
+                    ? "Contexto pronto para avançar"
+                    : "O que falta para avançar"}
+                </p>
+              </div>
+              <span
+                className={`text-3xl font-semibold ${minimumAdvanceReadiness.ready ? "text-emerald-300" : "text-cyan-200"}`}
+              >
+                {minimumAdvanceReadiness.completed}/
+                {minimumAdvanceReadiness.total}
+              </span>
+            </div>
+            <div className="mt-5">
+              <AtlasProgress
+                value={minimumAdvanceReadiness.percentage}
+                label="Requisitos comerciais confirmados"
+              />
+            </div>
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {minimumAdvanceReadiness.checks.map((check) => (
+                <span
+                  key={check.key}
+                  className={`rounded-full border px-2 py-1 text-[10px] font-medium ${check.complete ? "border-emerald-400/20 bg-emerald-400/[.07] text-emerald-200" : "border-white/10 bg-white/[.03] text-slate-500"}`}
                 >
-                  criado há {leadAgeDays}d
-                </li>
-              ) : null}
-              {lastTouchAt && lastTouchDays !== null ? (
-                <li
-                  className="cc6-chip"
-                  title={`Última interação em ${new Date(lastTouchAt).toLocaleString("pt-BR")}.`}
-                >
-                  último toque há {lastTouchDays}d
-                </li>
-              ) : (
-                <li
-                  className="cc6-chip cc6-warn cc6-atencao"
-                  title="Nenhuma interação registrada na timeline até agora."
-                >
-                  sem contato registrado
-                </li>
-              )}
-              {orderedAttentionSignals.map((signal) => (
-                <li
-                  key={signal.kind}
-                  className={`cc6-chip ${attentionChipClass[signal.severity]}`}
-                  title={
-                    signal.since
-                      ? `${signal.detail} Desde ${new Date(signal.since).toLocaleDateString("pt-BR")}.`
-                      : signal.detail
-                  }
-                >
-                  {signal.reason}
-                </li>
+                  {check.complete ? "✓" : "○"} {check.label}
+                </span>
               ))}
-            </ul>
+            </div>
+            {minimumAdvanceReadiness.nextMissing ? (
+              <div className="mt-4 rounded-xl border border-cyan-300/15 bg-cyan-400/[.04] p-3">
+                <p className="text-xs leading-5 text-slate-300">
+                  {minimumAdvanceReadiness.nextMissing.guidance}
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    recoverAdvanceRequirement(
+                      minimumAdvanceReadiness.nextMissing!.key,
+                    )
+                  }
+                  className="mt-2 text-xs font-semibold text-cyan-200 hover:text-white"
+                >
+                  Resolver próximo requisito →
+                </button>
+              </div>
+            ) : (
+              <p className="mt-4 text-xs leading-5 text-emerald-200">
+                Dados mínimos confirmados. Avalie a próxima etapa com o cliente.
+              </p>
+            )}
+            <p className="mt-3 text-[10px] leading-4 text-slate-600">
+              Orientação operacional, não bloqueio automático. Cobertura ampliada
+              do perfil: {intelligence.readiness}%.
+            </p>
           </div>
-        </TiltShell>
+          ) : null}
+        </div>
       </section>
 
-      {/* ── TENTATIVAS DE CONTATO: NO FLUXO, JUNTO DO "O QUE PERGUNTAR" ──────
-          Estava ANINHADA dentro de `#lead-overview`, e por isso `order-[-2]`
-          não fazia nada: `order` só vale no FILHO DIRETO do flex. Medido: dar
-          `display:flex` ao pai não movia a seção um pixel.
-
-          É o mesmo erro que pôs o cabeçalho em 2.621px, duas camadas acima.
-          Aqui ele custava mais do que posição: a moldura tem borda, fundo e
-          12px 14px de padding, e `ContactAttemptsBadge` devolve `null` em três
-          casos — inclusive no primeiro paint de TODA lead. O resultado era uma
-          caixa decorada VAZIA acima do nome do cliente. A guarda `:empty` em
-          globals.css fecha esse lado; sair daqui fecha o outro. ── */}
-      <section className="order-[-2] atlas-lead-consentimento" aria-label="Tentativas de contato">
-        <ContactAttemptsBadge leadId={String(lead.id)} />
-      </section>
-
-      {/* ── Grau primário de decisão: a barra operacional já concentra próxima
-          ação, risco, tarefas, mensagens e atalhos — logo sob a identidade. ── */}
       <LeadOperationalBar
         leadId={lead.id}
         leadName={lead.name || "Lead sem nome"}
         phone={lead.phone}
-        proximaAcao={intelligence.proximaAcao}
+        nextAction={intelligence.nextAction}
         risk={intelligence.risk}
         openTasks={contactBriefing?.openTasks ?? 0}
         unreadMessages={contactBriefing?.unreadMessages ?? 0}
-        firstContactSlot={
-          firstContactSla ? (
-            <FirstContactQuickLog sla={firstContactSla} onRegister={registrarPrimeiroContato} />
-          ) : null
-        }
       />
 
-      {message ? (
-        <div
-          role="status"
-          className="cc6-panel-quiet cc6-destaque p-4 text-sm leading-6 text-[var(--atlas-texto-medio)]"
+      {operationalSnapshot ? (
+        <section
+          className="atlas-lead360-operational-snapshot"
+          data-ux-phase="46-lead360-operational-snapshot"
+          aria-labelledby="lead360-operational-snapshot-title"
         >
+          <div className="atlas-lead360-operational-snapshot-head">
+            <div>
+              <span>LEITURA OPERACIONAL</span>
+              <h2 id="lead360-operational-snapshot-title">
+                Situação, contexto e próximo passo
+              </h2>
+            </div>
+            <p>O essencial para retomar o atendimento sem percorrer painéis repetidos.</p>
+          </div>
+          <div className="atlas-lead360-operational-snapshot-grid">
+            <article data-signal="situation">
+              <span>Situação comercial</span>
+              <strong>{operationalSnapshot.situation}</strong>
+              <p>{operationalSnapshot.situationDetail}</p>
+              <a href="#qualificacao">Revisar qualificação →</a>
+            </article>
+            <article data-signal="last-interaction">
+              <span>Última interação</span>
+              <strong>{operationalSnapshot.lastInteraction}</strong>
+              <p>{operationalSnapshot.lastInteractionDetail}</p>
+              <a href="#historico">Abrir rotina →</a>
+            </article>
+            <article
+              data-signal="next-action"
+              data-tone={operationalSnapshot.nextActionTone}
+            >
+              <span>Próxima ação</span>
+              <strong>{operationalSnapshot.nextAction}</strong>
+              <p>{operationalSnapshot.nextActionDetail}</p>
+              <Link href={`/leads/${lead.id}/tasks`}>Organizar ação →</Link>
+            </article>
+          </div>
+        </section>
+      ) : null}
+
+      <AtlasDetailDisclosure label="Ver inteligência completa do atendimento">
+        <section
+          className="atlas-lead360-v30-command-strip"
+          data-v30-phase="131-lead360-v30-attendance-cockpit"
+        >
+        <article className="atlas-lead360-v30-score-card">
+          <span>V30 ATTENDANCE COCKPIT</span>
+          <strong>{lead360V30Score}%</strong>
+          <p>
+            Atendimento orientado à conversão: próximo contato, perfil,
+            oferta e memória em uma leitura única.
+          </p>
+          <CopilotContextAction
+            label="Gerar plano de atendimento"
+            prompt="Gere um plano de atendimento para esta lead em 3 passos: agora, próximo contato e avanço para proposta. Use somente os dados do CRM e peça confirmação humana antes de qualquer ação."
+            context={{
+              leadId: lead.id,
+              leadName: lead.name,
+              source: "lead_360_v30_attendance_cockpit",
+              workspace: "lead",
+              contextLabel: "Lead 360 V30",
+              score: lead360V30Score,
+              readiness: intelligence.readiness,
+              returnHref: `/leads/${lead.id}`,
+            }}
+            className="atlas-lead360-v30-action"
+          />
+        </article>
+
+        <div className="atlas-lead360-v30-signal-grid">
+          {lead360V30Signals.map((signal) => (
+            <article key={signal.label} data-tone={signal.tone}>
+              <span>{signal.label}</span>
+              <strong>{signal.value}</strong>
+              <p>{signal.detail}</p>
+              <CopilotContextAction
+                label={signal.actionLabel}
+                prompt={`${signal.prompt}\n\nLead: ${lead.name || "sem nome"}\nStatus: ${lead.status || "novo"}\nScore: ${lead.score ?? 0}\nTemperatura: ${lead.temperature || "não classificada"}\nResumo atual: ${intelligence.summary}`}
+                context={{
+                  leadId: lead.id,
+                  leadName: lead.name,
+                  signal: signal.label,
+                  source: "lead_360_v30_signal",
+                  workspace: "lead",
+                  contextLabel: "Lead 360 V30",
+                  returnHref: `/leads/${lead.id}`,
+                }}
+                className="atlas-lead360-v30-action"
+              />
+            </article>
+          ))}
+        </div>
+        </section>
+      </AtlasDetailDisclosure>
+
+      <section
+        className="atlas-lead360-v30-material-strip"
+        data-v30-phase="50-lead360-attendance-kit"
+        data-ux-phase="50-material-in-attendance"
+      >
+        <div className="atlas-lead360-v30-material-head">
+          <span>Kit de atendimento</span>
+          <h2>Material do projeto sem perder o contexto</h2>
+          <p>
+            Abra uma única biblioteca já filtrada para esta lead. Book, tabela e
+            espelho ficam juntos; estoque e simulação continuam ao alcance.
+          </p>
+        </div>
+        {lead360AttendanceKit ? (
+          <article
+            className="atlas-lead360-attendance-kit"
+            data-tone={lead360AttendanceKit.ready ? "success" : "warning"}
+          >
+            <div className="atlas-lead360-attendance-kit-primary">
+              <div>
+                <span>{lead360AttendanceKit.ready ? "Projeto conectado" : "Projeto pendente"}</span>
+                <strong>{lead360AttendanceKit.projectName}</strong>
+                <p>
+                  {lead360AttendanceKit.region} · {lead360AttendanceKit.matchLabel}
+                </p>
+              </div>
+              <Link
+                href={lead360AttendanceKit.materialHref}
+                className="atlas-button-primary"
+              >
+                Abrir kit do projeto
+              </Link>
+            </div>
+            <div className="atlas-lead360-attendance-kit-context" aria-label="Contexto do envio">
+              <span>Faixa: <strong>{lead360AttendanceKit.budgetLabel}</strong></span>
+              <span>Disponibilidade deve ser confirmada antes do envio.</span>
+            </div>
+            <details className="atlas-lead360-attendance-kit-more">
+              <summary>Outras ações do atendimento</summary>
+              <div>
+                <Link href={lead360AttendanceKit.inventoryHref}>Conferir estoque</Link>
+                <Link href={lead360AttendanceKit.simulationHref}>Montar simulação</Link>
+                <Link href={lead360AttendanceKit.qualificationHref}>Revisar perfil</Link>
+                <CopilotContextAction
+                  label="Preparar mensagem"
+                  prompt={`Prepare uma mensagem curta para enviar o material vigente deste projeto, explicando por que ele combina com o perfil da lead. Não envie automaticamente e peça confirmação humana de preço e estoque.\n\nLead: ${lead.name || "sem nome"}\nProjeto: ${lead360AttendanceKit.projectName}\nRegião: ${lead360AttendanceKit.region}\nFaixa: ${lead360AttendanceKit.budgetLabel}\nStatus: ${lead.status || "novo"}\nResumo atual: ${intelligence.summary}`}
+                  context={{
+                    leadId: lead.id,
+                    leadName: lead.name,
+                    source: "lead_360_attendance_kit",
+                    workspace: "lead",
+                    contextLabel: "Kit de atendimento",
+                    returnHref: `/leads/${lead.id}`,
+                  }}
+                  className="atlas-lead360-v30-material-copilot"
+                />
+              </div>
+            </details>
+          </article>
+        ) : null}
+      </section>
+
+      <section
+        className="atlas-lead360-v30-work-strip"
+        data-v30-phase="133-lead360-v30-next-best-work"
+      >
+        <div className="atlas-lead360-v30-work-head">
+          <span>V30 NEXT BEST WORK</span>
+          <h2>O próximo trabalho do corretor em ordem de impacto</h2>
+          <p>
+            Mensagens, tarefas, qualificação e avanço comercial reunidos em uma
+            fila simples para vender mais sem abrir dez telas.
+          </p>
+        </div>
+        <div className="atlas-lead360-v30-work-grid">
+          {lead360V30WorkItems.map((item, index) => (
+            <article key={item.label} data-urgency={item.urgency}>
+              <div className="atlas-lead360-v30-work-order">
+                {String(index + 1).padStart(2, "0")}
+              </div>
+              <div>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <p>{item.detail}</p>
+              </div>
+              <div className="atlas-lead360-v30-work-actions">
+                <Link href={item.href}>Abrir</Link>
+                <CopilotContextAction
+                  label={item.actionLabel}
+                  prompt={`${item.prompt}\n\nLead: ${lead.name || "sem nome"}\nStatus: ${lead.status || "novo"}\nScore: ${lead.score ?? 0}\nTemperatura: ${lead.temperature || "não classificada"}\nPróxima melhor ação atual: ${intelligence.nextAction}\nResumo: ${intelligence.summary}`}
+                  context={{
+                    leadId: lead.id,
+                    leadName: lead.name,
+                    workSignal: item.label,
+                    urgency: item.urgency,
+                    source: "lead_360_v30_next_best_work",
+                    workspace: "lead",
+                    contextLabel: "Lead 360 Work Queue",
+                    returnHref: `/leads/${lead.id}`,
+                  }}
+                  className="atlas-lead360-v30-work-copilot"
+                />
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {message ? (
+        <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 p-4 text-sm text-sky-100">
           {message}
         </div>
       ) : null}
@@ -1139,24 +1679,22 @@ export default function LeadDetailPage() {
       {assignmentReservation?.status === "pending" ? (
         <section
           data-phase="58-lead-reservation"
-          className="cc6-panel cc6-sev-band flex flex-col gap-4 p-5 pl-6 sm:flex-row sm:items-center sm:justify-between"
-          style={{ "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}
+          className="flex flex-col gap-4 rounded-3xl border border-amber-400/25 bg-amber-400/[.07] p-5 sm:flex-row sm:items-center sm:justify-between"
         >
           <div>
-            <p className="cc6-eyebrow cc6-warn">Reserva aguardando aceite</p>
-            <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
+            <p className="atlas-eyebrow text-amber-200">
+              Fase 58 · Reserva aguardando aceite
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-white">
               Confirme que você assumirá este atendimento
             </h2>
-            <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
+            <p className="mt-1 text-xs leading-5 text-slate-400">
               Aceite até{" "}
-              <span className="cc6-num text-[var(--atlas-texto-medio)]">
-                {new Date(assignmentReservation.expires_at).toLocaleTimeString(
-                  "pt-BR",
-                  { hour: "2-digit", minute: "2-digit" },
-                )}
-              </span>
-              . Se houver interação registrada, a lead não será devolvida
-              automaticamente.
+              {new Date(assignmentReservation.expires_at).toLocaleTimeString(
+                "pt-BR",
+                { hour: "2-digit", minute: "2-digit" },
+              )}
+              . Se houver interação registrada, a lead não será devolvida automaticamente.
             </p>
           </div>
           <button
@@ -1169,112 +1707,208 @@ export default function LeadDetailPage() {
         </section>
       ) : null}
 
-      {dataQuality?.questions.length ? (
+      {essentialRecoveryItems.length ? (
         <section
-          data-phase="30-data-gaps"
-          className="order-[-2] cc6-reveal cc6-panel p-5 sm:p-6"
-          style={{ animationDelay: "60ms" }}
+          data-ux-phase="24-essential-data-recovery"
+          aria-labelledby="essential-data-recovery-title"
+          className="rounded-3xl border border-cyan-300/15 bg-cyan-400/[.035] p-5 sm:p-6"
         >
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="cc6-eyebrow">Dados que faltam</p>
-              <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
-                O que perguntar agora
-              </h2>
-            </div>
-            <p className="cc6-num text-xs text-[var(--atlas-texto-fraco)]">
-              {dataQuality.completeness}% completo ·{" "}
-              {dataQuality.completedFields}/{dataQuality.totalFields} campos
-            </p>
-          </div>
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
-            {dataQuality.questions.slice(0, 6).map((question, index) => (
-              <article
-                key={question.key}
-                className={`cc6-panel-quiet p-4 ${
-                  index === 0 ? "border-[rgba(75,141,248,0.45)]" : ""
-                }`}
+              <p className="atlas-eyebrow text-cyan-200">Dados essenciais</p>
+              <h2
+                id="essential-data-recovery-title"
+                className="mt-2 text-xl font-semibold tracking-tight text-white"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <StatusBadge
-                    tone={
-                      question.priority === "critical"
-                        ? "danger"
-                        : question.priority === "high"
-                          ? "warning"
-                          : "info"
-                    }
-                  >
-                    {question.label}
-                  </StatusBadge>
-                  {index === 0 ? (
-                    <span className="cc6-eyebrow text-micro text-[color:var(--atlas-accent)]">
-                      pergunte agora
-                    </span>
-                  ) : null}
-                </div>
-                <strong className="mt-3 block text-sm leading-6 text-[var(--atlas-texto-forte)]">
-                  {question.question}
-                </strong>
-                <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
-                  {question.why}
-                </p>
-                {question.options ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {question.options.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        disabled={qualifying}
-                        onClick={() =>
-                          void qualifyLead({ [question.key]: option.value })
-                        }
-                        className={chipButtonClass}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => actOnGap(question)}
-                    className="cc6-ghost-btn mt-3"
-                  >
-                    {question.action === "navigate"
-                      ? "Abrir ação"
-                      : "Preencher agora"}
-                  </button>
-                )}
-              </article>
-            ))}
+                Complete o mínimo para recomendar melhor
+              </h2>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-400">
+                Resolva uma lacuna por vez no cadastro oficial da lead. O Atlas
+                indica primeiro o dado com maior impacto no atendimento.
+              </p>
+            </div>
+            <AtlasBadge tone="warning">
+              {essentialRecoveryItems.length} PENDENTE
+              {essentialRecoveryItems.length === 1 ? "" : "S"}
+            </AtlasBadge>
           </div>
-          <p className="cc6-hairline mt-4 pt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-            Prioridade por impacto em contato, intenção, matching e
-            continuidade — análise local, sem custo de IA. CPF, CNPJ, endereço
-            exato e documentos não aumentam score nem são enviados às IAs.
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,.55fr)]">
+            <article className="rounded-2xl border border-cyan-300/25 bg-cyan-400/[.07] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <AtlasBadge tone="info">
+                  {essentialRecoveryItems[0].label}
+                </AtlasBadge>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-200">
+                  Próximo dado
+                </span>
+              </div>
+              <strong className="mt-3 block text-sm leading-6 text-white">
+                {essentialRecoveryItems[0].question}
+              </strong>
+              <p className="mt-1 text-xs leading-5 text-slate-400">
+                {essentialRecoveryItems[0].impact}
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  recoverEssentialData(essentialRecoveryItems[0].key)
+                }
+                className="atlas-button-primary mt-4"
+              >
+                Preencher agora
+              </button>
+            </article>
+
+            {essentialRecoveryItems.length > 1 ? (
+              <div className="rounded-2xl border border-white/[.07] bg-white/[.02] p-3">
+                <p className="px-1 text-[10px] font-semibold uppercase tracking-[.16em] text-slate-500">
+                  Depois
+                </p>
+                <div className="mt-2 grid gap-2">
+                  {essentialRecoveryItems.slice(1).map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => recoverEssentialData(item.key)}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-white/[.06] px-3 py-2.5 text-left transition hover:border-cyan-300/25 hover:bg-cyan-400/[.04]"
+                    >
+                      <span>
+                        <strong className="block text-xs text-slate-200">
+                          {item.label}
+                        </strong>
+                        <span className="mt-0.5 block text-[11px] text-slate-500">
+                          {item.question}
+                        </span>
+                      </span>
+                      <span aria-hidden="true" className="text-cyan-300">
+                        →
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <p className="mt-3 text-[11px] leading-5 text-slate-500">
+            A correção salva no registro canônico e preserva organização,
+            responsável, RLS e histórico existente.
           </p>
         </section>
+      ) : null}
+
+      {dataQuality?.questions.length ? (
+        <AtlasCard>
+          <div data-phase="30-data-gaps">
+            <AtlasCardHeader
+              eyebrow="Fase 30 · Dados úteis"
+              title="Pergunte menos e descubra o que realmente ajuda a vender"
+              description="As lacunas são priorizadas pelo impacto em contato, intenção, matching e continuidade. A análise local não gera custo de IA."
+              action={
+                <AtlasBadge tone="warning">
+                  {dataQuality.completeness}% COMPLETO
+                </AtlasBadge>
+              }
+            />
+            <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-3">
+              {dataQuality.questions.slice(0, 6).map((question, index) => (
+                <article
+                  key={question.key}
+                  className={`rounded-2xl border p-4 ${index === 0 ? "border-cyan-300/30 bg-cyan-400/[.07]" : "border-white/[.07] bg-white/[.025]"}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <AtlasBadge
+                      tone={
+                        question.priority === "critical"
+                          ? "danger"
+                          : question.priority === "high"
+                            ? "warning"
+                            : "info"
+                      }
+                    >
+                      {question.label}
+                    </AtlasBadge>
+                    {index === 0 ? (
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-200">
+                        Pergunte agora
+                      </span>
+                    ) : null}
+                  </div>
+                  <strong className="mt-3 block text-sm leading-6 text-white">
+                    {question.question}
+                  </strong>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {question.why}
+                  </p>
+                  {question.options ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {question.options.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          disabled={qualifying}
+                          onClick={() =>
+                            void qualifyLead({ [question.key]: option.value })
+                          }
+                          className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-cyan-100 hover:border-cyan-400/40 disabled:opacity-50"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => actOnGap(question)}
+                      className="atlas-button-secondary mt-3"
+                    >
+                      {question.action === "navigate"
+                        ? "Abrir ação"
+                        : "Preencher agora"}
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
+            <div className="border-t border-white/[.06] px-5 py-4 text-[11px] leading-5 text-slate-500 sm:px-6">
+              A completude é ponderada pelo valor comercial do dado. CPF, CNPJ,
+              endereço exato e documentos não aumentam score nem são enviados às
+              IAs.
+            </div>
+          </div>
+        </AtlasCard>
       ) : dataQuality?.status === "complete" ? (
         <div
           data-phase="30-data-gaps"
-          className="order-[-2] cc6-panel-quiet p-4 text-sm leading-6 text-[var(--atlas-texto-medio)]"
+          className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[.06] p-5 text-sm text-emerald-100"
         >
-          <span className="cc6-ok font-medium">Perfil comercial completo.</span>{" "}
-          Confirme apenas mudanças naturais na próxima conversa.
+          Perfil comercial completo. Confirme apenas mudanças naturais na
+          próxima conversa.
         </div>
       ) : null}
 
-      {/* Contexto comercial: só o que a identidade não cobre (projeto, origem,
-          comunicações, pipeline). Cada tile aponta para o registro canônico. */}
       {relationshipContext ? (
-        <section
-          className="cc6-reveal"
-          style={{ animationDelay: "110ms" }}
-          aria-label="Contexto comercial do lead"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AtlasDetailDisclosure label="Ver contexto completo do relacionamento">
+          <AtlasCard>
+          <AtlasCardHeader
+            eyebrow="Fase 26 · Lead 360"
+            title="Tudo sobre esta relação em uma única tela"
+            description="Identidade, origem, responsável, projeto, comunicações, histórico, score e pipeline reconciliados sob o mesmo escopo comercial."
+            action={<AtlasBadge tone="success">FONTE ÚNICA</AtlasBadge>}
+          />
+          <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-4">
             {[
+              {
+                label: "Responsável único",
+                value:
+                  relationshipContext.owner?.full_name || "Sem responsável",
+                detail:
+                  relationshipContext.owner?.commercial_role ||
+                  relationshipContext.owner?.role ||
+                  "Distribuição necessária",
+                href: `/leads/${lead.id}/transfer`,
+              },
               {
                 label: "Projeto de interesse",
                 value:
@@ -1297,312 +1931,537 @@ export default function LeadDetailPage() {
               {
                 label: "Comunicações",
                 value: `${relationshipContext.communications.messages} mensagens`,
-                detail: `${relationshipContext.communications.inbound} recebidas${
-                  relationshipContext.communications.channels.length
-                    ? ` · ${relationshipContext.communications.channels.join(", ")}`
-                    : ""
-                }`,
+                detail: `${relationshipContext.communications.inbound} recebidas · ${relationshipContext.communications.unread} não lidas`,
                 href: `/leads/${lead.id}/messages`,
               },
               {
+                label: "Score atual",
+                value: `${lead.score ?? 0}/100`,
+                detail: `${lead.temperature || "sem temperatura"} · prontidão ${intelligence.readiness}%`,
+                href: "#qualificacao",
+              },
+              {
+                label: "Histórico",
+                value: `${activities.length} eventos`,
+                detail: contactBriefing?.lastInteractionAt
+                  ? `Último em ${new Date(contactBriefing.lastInteractionAt).toLocaleDateString("pt-BR")}`
+                  : "Primeiro contato pendente",
+                href: "#historico",
+              },
+              {
                 label: "Pipeline",
-                value: opportunitiesMensuraveis
-                  ? `${opportunities.length} oportunidades`
-                  : "oportunidades não medidas",
+                value: `${opportunities.length} oportunidades`,
                 detail: `${contactBriefing?.activeOpportunities ?? 0} negócios ativos`,
                 href: "/pipeline",
+              },
+              {
+                label: "Próxima ação",
+                value: intelligence.nextAction,
+                detail: `${unifiedProfile?.tasks.length ?? 0} tarefas vinculadas`,
+                href: `/leads/${lead.id}/tasks`,
               },
             ].map((item) => (
               <Link
                 href={item.href}
                 key={item.label}
- className={`cc6-panel-quiet cc6-interativo-acento block p-4 ${focusRing}`}
+                className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4 transition hover:border-cyan-400/20 hover:bg-cyan-400/[.035]"
               >
-                <span className="cc6-eyebrow text-micro">{item.label}</span>
-                <strong
-                  className="mt-2 block truncate text-sm leading-5 text-[var(--atlas-texto-forte)]"
-                  title={item.value}
-                >
+                <span className="text-[10px] font-bold uppercase tracking-[.15em] text-slate-500">
+                  {item.label}
+                </span>
+                <strong className="mt-2 block text-sm leading-5 text-white">
                   {item.value}
                 </strong>
-                <p className="mt-1.5 truncate text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
+                <p className="mt-2 text-[11px] leading-5 text-slate-500">
                   {item.detail}
                 </p>
               </Link>
             ))}
           </div>
-        </section>
+          <div className="border-t border-white/[.06] px-5 py-4 text-[11px] leading-5 text-slate-500 sm:px-6">
+            A tela não cria uma segunda versão do cliente: cada bloco aponta
+            para o registro canônico e respeita o mesmo proprietário,
+            organização, RLS e histórico auditável.
+          </div>
+          </AtlasCard>
+        </AtlasDetailDisclosure>
       ) : null}
 
       {relationshipContext ? (
         <LeadContextCorrection
-          key={`${lead.id}:${lead.development_id || "none"}:${lead.source || "none"}`}
+          key={`${lead.id}:${lead.development_id || "none"}:${lead.source || "none"}:${contextEditorRequest}`}
           currentProjectId={lead.development_id}
           currentProjectName={relationshipContext.development?.name ?? null}
           currentSource={lead.source}
           projects={projectOptions}
           saving={contextSaving}
+          initiallyEditing={contextEditorRequest > 0}
           onSubmit={correctCommercialContext}
         />
       ) : null}
 
-      {/* Briefing: leitura secundária antes do contato — sem repetir contadores
-          que já vivem na barra operacional. */}
-      {contactBriefing ? (
-        <section
-          className="order-[-2] cc6-reveal cc6-panel-quiet p-5 sm:p-6"
-          style={{ animationDelay: "160ms" }}
-        >
-          <p className="cc6-eyebrow">Briefing antes do contato</p>
-          <div className="mt-4 grid gap-5 lg:grid-cols-2">
-            <div>
-              <h3 className="text-sm font-medium text-[var(--atlas-texto-forte)]">
-                Último contexto conhecido
-              </h3>
-              <p className="mt-2 max-w-prose text-corpo leading-7 text-[var(--atlas-texto-medio)]">
-                {contactBriefing.context}
+      {dataQuality && unifiedProfile ? (
+        <AtlasDetailDisclosure label="Ver qualidade e memória unificada">
+          <AtlasCard>
+          <AtlasCardHeader
+            eyebrow="Fonte única da verdade"
+            title="Perfil unificado e qualidade dos dados"
+            description="CRM, atendimento, vendas e marketing reunidos no mesmo cliente, com lacunas e inconsistências explicadas pela IA."
+            action={
+              <AtlasBadge
+                tone={
+                  dataQuality.status === "complete"
+                    ? "success"
+                    : dataQuality.status === "review"
+                      ? "danger"
+                      : "warning"
+                }
+              >
+                {dataQuality.completeness}% COMPLETO
+              </AtlasBadge>
+            }
+          />
+          <div className="grid gap-5 p-5 sm:p-6 xl:grid-cols-[.8fr_1.2fr]">
+            <div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-5">
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="atlas-eyebrow">Identidade canônica</p>
+                  <strong className="mt-2 block text-lg text-white">
+                    Um cliente, um histórico
+                  </strong>
+                </div>
+                <span className="text-3xl font-semibold text-cyan-200">
+                  {dataQuality.completedFields}/{dataQuality.totalFields}
+                </span>
+              </div>
+              <div className="mt-4">
+                <AtlasProgress
+                  value={dataQuality.completeness}
+                  label="Completude para personalização"
+                />
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {unifiedProfile.sources.map((source) => (
+                  <AtlasBadge key={source} tone="info">
+                    {source.toUpperCase()}
+                  </AtlasBadge>
+                ))}
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+                {[
+                  ["Conversas", unifiedProfile.conversations.length],
+                  ["Tarefas", unifiedProfile.tasks.length],
+                  ["Sinais de campanha", unifiedProfile.campaignEvents.length],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-xl bg-white/[.03] p-3">
+                    <strong className="text-lg text-white">{value}</strong>
+                    <p className="mt-1 text-[10px] text-slate-500">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-violet-400/15 bg-violet-400/[.06] p-4">
+                <p className="atlas-eyebrow">Próximo dado mais valioso</p>
+                <p className="mt-2 text-sm leading-6 text-violet-100">
+                  {dataQuality.recommendation}
+                </p>
+              </div>
+              {dataQuality.missing.length ? (
+                <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[.05] p-4">
+                  <p className="text-xs font-bold uppercase tracking-[.14em] text-amber-300">
+                    Lacunas encontradas
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {dataQuality.missing.map((item) => (
+                      <span
+                        key={item.key}
+                        className="rounded-full border border-amber-300/15 px-3 py-1 text-xs text-amber-100"
+                      >
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {dataQuality.inconsistencies.length ? (
+                <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[.05] p-4">
+                  <p className="text-xs font-bold uppercase tracking-[.14em] text-rose-300">
+                    Revisão humana necessária
+                  </p>
+                  <ul className="mt-2 space-y-1 text-xs text-slate-300">
+                    {dataQuality.inconsistencies.map((item) => (
+                      <li key={item}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <p className="text-[11px] leading-5 text-slate-500">
+                O Atlas nunca funde cadastros ambíguos silenciosamente.
+                Sugestões de limpeza ou consolidação preservam proprietário,
+                consentimento, timeline e auditoria.
               </p>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-[var(--atlas-texto-forte)]">
-                Roteiro recomendado
-              </h3>
-              <ol className="mt-2 space-y-2">
+          </div>
+          </AtlasCard>
+        </AtlasDetailDisclosure>
+      ) : null}
+
+      {contactBriefing ? (
+        <AtlasCard>
+          <AtlasCardHeader
+            eyebrow="Briefing antes do contato"
+            title="Chegue preparado à conversa ou visita"
+            description="Resumo automático do relacionamento, pendências e próximos passos com base na fonte única do CRM."
+            action={
+              <div className="flex gap-2">
+                <AtlasBadge tone="violet">IA LOCAL</AtlasBadge>
+                <AtlasBadge tone="success">CUSTO REDUZIDO</AtlasBadge>
+              </div>
+            }
+          />
+          <div className="grid gap-4 p-5 sm:p-6 lg:grid-cols-[.9fr_1.1fr]">
+            <div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-5">
+              <p className="atlas-eyebrow">Último contexto conhecido</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                {contactBriefing.context}
+              </p>
+              <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+                {[
+                  ["Não lidas", contactBriefing.unreadMessages],
+                  ["Tarefas abertas", contactBriefing.openTasks],
+                  ["Negócios ativos", contactBriefing.activeOpportunities],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-xl bg-white/[.03] p-3">
+                    <strong className="text-lg text-white">{value}</strong>
+                    <p className="mt-1 text-[10px] text-slate-500">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[.05] p-5">
+              <p className="atlas-eyebrow">Roteiro recomendado</p>
+              <ol className="mt-4 space-y-3">
                 {contactBriefing.actions.map((action, index) => (
                   <li
                     key={action}
-                    className="flex gap-3 text-corpo leading-7 text-[var(--atlas-texto-medio)]"
+                    className="flex gap-3 text-sm leading-6 text-cyan-50"
                   >
-                    <span className="cc6-num shrink-0 text-xs leading-7 text-[var(--atlas-texto-fraco)]">
-                      {String(index + 1).padStart(2, "0")}
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-cyan-300/10 text-xs font-bold text-cyan-200">
+                      {index + 1}
                     </span>
                     {action}
                   </li>
                 ))}
               </ol>
+              <p className="mt-5 text-[11px] leading-5 text-slate-500">
+                Preparado por {contactBriefing.generatedBy}. O corretor revisa e
+                decide antes de qualquer envio ou alteração.
+              </p>
             </div>
           </div>
-          <p className="cc6-hairline mt-4 pt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-            Preparado por {contactBriefing.generatedBy}. O corretor revisa e
-            decide antes de qualquer envio ou alteração.
-          </p>
-        </section>
+        </AtlasCard>
       ) : null}
 
-      {/*
-        COMPATIBILIDADE E AS PERGUNTAS QUE DESTRAVAM.
-
-        Fica FORA do `qualification ?` de propósito: o painel importa mais quando
-        a lead NÃO está qualificada, que é o caso de 469 das 482. Medido em
-        2026-07-30 — só 13 leads responderam algum dos três critérios decisivos
-        (preço 9 · dormitórios 12 · bairro 6), e a recomendação do motor é
-        exatamente 13. Preencher catálogo não move esse número; foi tentado três
-        vezes no mesmo dia. Perguntar move.
-
-        O painel já existia pronto e não estava montado em tela nenhuma.
-      */}
-      {/* A âncora `#matching` vive AQUI agora. A barra operacional tem
-          `<a href="#matching">Imóveis</a>`, e a seção "Matching Atlas" que a
-          respondia foi removida: ela dizia "nenhum match encontrado — complete
-          orçamento, dormitórios e regiões" sobre um `properties: []` cravado na
-          rota, culpando o corretor por um defeito do servidor. Este painel é o
-          matching de verdade — mesma pergunta, resposta medida. */}
-      <div id="matching" className="scroll-mt-28">
-        <CompatibilidadeDoClientePanel leadId={lead.id} />
-      </div>
-
-      {qualification ? (
-        <section
-          id="qualificacao"
-          className="cc6-reveal cc6-panel scroll-mt-28 p-5 sm:p-6"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="cc6-eyebrow">Qualificação rápida</p>
-              <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
-                Como o Atlas chegou a esta qualificação
-              </h2>
-              <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
-                Confiança de{" "}
-                <span className="cc6-num">{qualification.confidence}%</span> ·{" "}
-                <span className="cc6-num">
-                  {qualification.progress.answered}/3
-                </span>{" "}
-                respostas essenciais · recalculado em{" "}
-                <span className="cc6-num">
-                  {new Date(qualification.recalculatedAt).toLocaleString(
-                    "pt-BR",
-                  )}
-                </span>
+      {experienceSignals[0]?.status === "pending" ? (
+        <AtlasCard>
+          <AtlasCardHeader
+            eyebrow="IA de experiência"
+            title="Atenção ao atendimento"
+            description="A recomendação é explicável e a troca nunca acontece automaticamente."
+            action={
+              <AtlasBadge
+                tone={
+                  experienceSignals[0].severity === "critical"
+                    ? "danger"
+                    : "warning"
+                }
+              >
+                {experienceSignals[0].confidence}% confiança
+              </AtlasBadge>
+            }
+          />
+          <div className="grid gap-4 p-5 sm:p-6 xl:grid-cols-[1fr_.8fr]">
+            <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[.05] p-4">
+              <p className="font-semibold text-white">
+                {experienceSignals[0].evidence}
+              </p>
+              <p className="mt-2 text-sm text-slate-400">
+                Recomendação:{" "}
+                {experienceSignals[0].recommendation === "offer_broker_change"
+                  ? "oferecer ao cliente a opção de manter ou trocar o corretor"
+                  : "recuperar o atendimento com acompanhamento"}
                 .
               </p>
             </div>
-            <div className="flex gap-2">
-              <StatusBadge
-                tone={
-                  qualification.scoreChange.delta >= 0 ? "success" : "warning"
-                }
+            <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[.05] p-4">
+              <p className="atlas-eyebrow">Resposta sugerida</p>
+              <p className="mt-2 text-sm leading-6 text-cyan-50">
+                {experienceSignals[0].suggested_reply}
+              </p>
+            </div>
+          </div>
+        </AtlasCard>
+      ) : null}
+
+      {lead.source === "Meta Lead Ads" ? (
+        <AtlasCard>
+          <AtlasCardHeader
+            eyebrow="Meta campaign context"
+            title="Origem e aprendizado do lead"
+            description="Informações de campanha preservadas automaticamente para atribuição, qualidade e otimização posterior."
+          />
+          <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-5">
+            {[
+              ["Origem", lead.metadata?.meta?.sourceName || "Meta Lead Ads"],
+              [
+                "Campanha",
+                lead.metadata?.meta?.campaignId || "Não identificada",
+              ],
+              ["Conjunto", lead.metadata?.meta?.adsetId || "Não identificado"],
+              ["Anúncio", lead.metadata?.meta?.adId || "Não identificado"],
+              [
+                "Aprendizado",
+                lead.metadata?.meta?.dataSharingConsent
+                  ? "Autorizado"
+                  : "Sem autorização",
+              ],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-2xl border border-white/[.06] bg-white/[.025] p-4"
               >
-                {qualification.scoreChange.delta >= 0 ? "+" : ""}
-                {qualification.scoreChange.delta} pontos
-              </StatusBadge>
-              <StatusBadge tone={temperatureTone(qualification.temperature)}>
-                {qualification.score}/100 · {qualification.temperature}
-              </StatusBadge>
-            </div>
-          </div>
-          <div className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {qualification.dimensions.map((dimension) => (
-                <div key={dimension.key} className="cc6-panel-quiet p-4">
-                  <div className="flex items-center justify-between">
-                    <strong className="text-sm text-[var(--atlas-texto-forte)]">
-                      {dimension.label}
-                    </strong>
-                    <span className="cc6-num text-xs text-[var(--atlas-texto-medio)]">
-                      {dimension.score}/{dimension.maximum}
-                    </span>
-                  </div>
-                  <div className="mt-3">
-                    <AtlasProgress
-                      value={Math.round(
-                        (dimension.score / dimension.maximum) * 100,
-                      )}
-                    />
-                  </div>
-                  <p className="mt-3 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
-                    {dimension.reasons.slice(0, 2).join(" · ") ||
-                      "Ainda sem sinais suficientes"}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-3">
-              <div className="cc6-panel-quiet cc6-sev-band p-4 pl-5">
-                <p className="cc6-eyebrow text-micro">Próxima melhor ação</p>
-                <p className="mt-2 text-sm leading-6 text-[var(--atlas-texto-forte)]">
-                  {qualification.nextBestAction}
-                </p>
-              </div>
-              {qualification.risks.length ? (
-                <div
-                  className="cc6-panel-quiet cc6-sev-band p-4 pl-5"
-                  style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
-                >
-                  <p className="cc6-eyebrow cc6-crit text-micro">Riscos</p>
-                  <ul className="mt-2 space-y-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">
-                    {qualification.risks.map((risk) => (
-                      <li key={risk}>• {risk}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {qualification.missingData.length ? (
-                <div
-                  className="cc6-panel-quiet cc6-sev-band p-4 pl-5"
-                  style={{ "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}
-                >
-                  <p className="cc6-eyebrow cc6-warn text-micro">
-                    Dados que aumentam a confiança
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-[var(--atlas-texto-medio)]">
-                    {qualification.missingData.join(" · ")}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </div>
-          {qualification.recommendedQuestions.length ? (
-            <div className="cc6-hairline mt-5 pt-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="cc6-eyebrow">Próxima pergunta mais relevante</p>
-                <span className="cc6-num text-xs text-[var(--atlas-texto-fraco)]">
-                  {qualification.progress.percent}% essencial concluído
+                <span className="text-[10px] uppercase tracking-wider text-slate-500">
+                  {label}
                 </span>
+                <strong className="mt-2 block break-all text-sm text-white">
+                  {value}
+                </strong>
               </div>
-              <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                {qualification.recommendedQuestions.map((question, index) => (
-                  <div
-                    key={question.key}
-                    className={`cc6-panel-quiet p-4 ${
-                      index === 0 ? "border-[rgba(75,141,248,0.45)]" : ""
-                    }`}
+            ))}
+          </div>
+          <div className="border-t border-white/[.06] px-5 py-4 text-xs leading-5 text-slate-400 sm:px-6">
+            O corretor só precisa manter o estágio e o acompanhamento
+            atualizados. O CRM transforma essas ações em sinais estruturados;
+            textos livres e dados pessoais não são exibidos nos relatórios de
+            campanha.
+          </div>
+        </AtlasCard>
+      ) : null}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <AtlasMetric
+          label="Score Atlas"
+          value={lead.score ?? 0}
+          detail="Qualificação atual"
+          trend="AI"
+          tone="blue"
+        />
+        <AtlasMetric
+          label="Oportunidades"
+          value={opportunities.length}
+          detail="Negócios vinculados"
+          trend="PIPE"
+          tone="violet"
+        />
+        <AtlasMetric
+          label="Interações"
+          value={activities.length}
+          detail="Eventos registrados"
+          trend="360"
+          tone="green"
+        />
+        <AtlasMetric
+          label="Matches"
+          value={matches.length}
+          detail="Imóveis recomendados"
+          trend="MATCH"
+          tone="amber"
+        />
+        <AtlasMetric
+          label="Risco"
+          value={intelligence.risk}
+          detail="Risco de inércia"
+          trend="SLA"
+          tone={intelligence.risk === "alto" ? "rose" : "green"}
+        />
+      </section>
+
+      {qualification ? (
+        <AtlasDetailDisclosure label="Ver evidências do score">
+          <div id="qualificacao">
+          <AtlasCard>
+            <AtlasCardHeader
+              eyebrow="Fase 44 · Qualificação rápida"
+              title="Evidências da qualificação"
+              description={`Confiança de ${qualification.confidence}% · ${qualification.progress.answered}/3 respostas essenciais · recalculado em ${new Date(qualification.recalculatedAt).toLocaleString("pt-BR")}.`}
+              action={
+                <div className="flex gap-2">
+                  <AtlasBadge
+                    tone={
+                      qualification.scoreChange.delta >= 0
+                        ? "success"
+                        : "warning"
+                    }
                   >
-                    <strong className="text-sm leading-6 text-[var(--atlas-texto-forte)]">
-                      {question.question}
-                    </strong>
-                    <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
-                      {question.why}
+                    {qualification.scoreChange.delta >= 0 ? "+" : ""}
+                    {qualification.scoreChange.delta} PONTOS
+                  </AtlasBadge>
+                  <AtlasBadge tone={temperatureTone(qualification.temperature)}>
+                    {qualification.score}/100 · {qualification.temperature}
+                  </AtlasBadge>
+                </div>
+              }
+            />
+            <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-[1.2fr_.8fr]">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {qualification.dimensions.map((dimension) => (
+                  <div
+                    key={dimension.key}
+                    className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <strong className="text-sm text-white">
+                        {dimension.label}
+                      </strong>
+                      <span className="text-xs font-semibold text-sky-300">
+                        {dimension.score}/{dimension.maximum}
+                      </span>
+                    </div>
+                    <div className="mt-3">
+                      <AtlasProgress
+                        value={Math.round(
+                          (dimension.score / dimension.maximum) * 100,
+                        )}
+                      />
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-slate-500">
+                      {dimension.reasons.slice(0, 2).join(" · ") ||
+                        "Ainda sem sinais suficientes"}
                     </p>
-                    {question.options ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {question.options.map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            disabled={qualifying}
-                            onClick={() =>
-                              void qualifyLead({
-                                [question.key]: option.value,
-                              })
-                            }
-                            className={chipButtonClass}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          document
-                            .querySelector<HTMLInputElement>(
-                              question.key === "budget"
-                                ? 'input[placeholder="Orçamento máximo"]'
-                                : 'input[placeholder="Regiões preferidas"]',
-                            )
-                            ?.focus()
-                        }
-                        className="cc6-ghost-btn mt-3"
-                      >
-                        Preencher perfil
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>
-              <p className="mt-4 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-                Finalidade, prazo e pagamento recalibram score e próxima ação
-                imediatamente. Para a Meta saem apenas categorias agregadas;
-                conversa livre e dados pessoais permanecem no CRM.
-              </p>
+              <div className="space-y-3">
+                {qualification.risks.length ? (
+                  <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[0.06] p-4">
+                    <p className="text-xs font-bold uppercase tracking-[.14em] text-rose-300">
+                      Riscos
+                    </p>
+                    <ul className="mt-2 space-y-1 text-xs text-slate-300">
+                      {qualification.risks.map((risk) => (
+                        <li key={risk}>• {risk}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {qualification.missingData.length ? (
+                  <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.06] p-4">
+                    <p className="text-xs font-bold uppercase tracking-[.14em] text-amber-300">
+                      Dados que aumentam a confiança
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-slate-300">
+                      {qualification.missingData.join(" · ")}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
             </div>
-          ) : null}
-        </section>
+            {qualification.recommendedQuestions.length ? (
+              <div className="border-t border-white/[.06] p-5 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <p className="atlas-eyebrow">
+                    Próxima pergunta mais relevante
+                  </p>
+                  <span className="text-xs text-cyan-200">
+                    {qualification.progress.percent}% essencial concluído
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                  {qualification.recommendedQuestions.map((question, index) => (
+                    <div
+                      key={question.key}
+                      className={`rounded-2xl border p-4 ${index === 0 ? "border-cyan-300/30 bg-cyan-400/[.07]" : "border-white/[.07] bg-white/[.025]"}`}
+                    >
+                      <strong className="text-sm text-white">
+                        {question.question}
+                      </strong>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        {question.why}
+                      </p>
+                      {question.options ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {question.options.map((option) => (
+                            <button
+                              key={option.value}
+                              disabled={qualifying}
+                              onClick={() =>
+                                void qualifyLead({
+                                  [question.key]: option.value,
+                                })
+                              }
+                              className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-cyan-100 hover:border-cyan-400/40"
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            document
+                              .querySelector<HTMLInputElement>(
+                                question.key === "budget"
+                                  ? 'input[placeholder="Orçamento máximo"]'
+                                  : 'input[placeholder="Regiões preferidas"]',
+                              )
+                              ?.focus()
+                          }
+                          className="atlas-button-secondary mt-3"
+                        >
+                          Preencher perfil
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-[11px] leading-5 text-slate-500">
+                  Finalidade, prazo e pagamento recalibram score e próxima ação
+                  imediatamente. Para a Meta saem apenas categorias agregadas;
+                  conversa livre e dados pessoais permanecem no CRM.
+                </p>
+              </div>
+            ) : null}
+          </AtlasCard>
+          </div>
+        </AtlasDetailDisclosure>
       ) : null}
 
       {proposals.length ? (
-        <section data-phase="37-proposal-sla" className="cc6-reveal cc6-panel p-5 sm:p-6">
-          <p className="cc6-eyebrow">Fase 37 · SLA de proposta</p>
-          <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
-            Preparação, envio e retorno
-          </h2>
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <AtlasCard>
+          <AtlasCardHeader
+            eyebrow="Fase 37 · SLA de proposta"
+            title="Preparação, envio e retorno"
+            description="Preço, estoque e regra continuam governados; agora o contato com o cliente também fica mensurado."
+          />
+          <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-2">
             {proposals.map((proposal) => (
-              <article key={proposal.id} className="cc6-panel-quiet p-4">
+              <article
+                key={proposal.id}
+                className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"
+              >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <strong className="block truncate text-sm text-[var(--atlas-texto-forte)]">
+                  <div>
+                    <strong className="text-white">
                       {proposal.rule_snapshot?.propertyTitle ||
                         "Proposta comercial"}
                     </strong>
-                    <p className="cc6-num mt-1 text-xs text-[var(--atlas-texto-fraco)]">
+                    <p className="mt-1 text-xs text-slate-500">
                       {brl.format(proposal.property_price)} · válida até{" "}
                       {new Date(proposal.valid_until).toLocaleString("pt-BR")}
                     </p>
                   </div>
-                  <StatusBadge
+                  <AtlasBadge
                     tone={
                       proposal.status === "accepted"
                         ? "success"
@@ -1614,26 +2473,31 @@ export default function LeadDetailPage() {
                             : "warning"
                     }
                   >
-                    {proposal.status}
-                  </StatusBadge>
+                    {proposal.status.toUpperCase()}
+                  </AtlasBadge>
                 </div>
-                <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
-                  {([
-                    ["Preparação", proposal.preparation_minutes],
-                    ["Revisão", proposal.review_minutes],
-                    ["Resposta", proposal.response_minutes],
-                  ] as const).map(([label, minutes]) => (
-                    <div key={label} className="cc6-panel-quiet p-2">
-                      <dt className="cc6-metric-label">{label}</dt>
-                      <dd className="cc6-num mt-1 text-sm text-[var(--atlas-texto-forte)]">
-                        {minutes ?? "—"} min
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="rounded-xl bg-white/[.03] p-2">
+                    <span className="text-slate-500">Preparação</span>
+                    <strong className="mt-1 block text-white">
+                      {proposal.preparation_minutes ?? "—"} min
+                    </strong>
+                  </div>
+                  <div className="rounded-xl bg-white/[.03] p-2">
+                    <span className="text-slate-500">Revisão</span>
+                    <strong className="mt-1 block text-white">
+                      {proposal.review_minutes ?? "—"} min
+                    </strong>
+                  </div>
+                  <div className="rounded-xl bg-white/[.03] p-2">
+                    <span className="text-slate-500">Resposta</span>
+                    <strong className="mt-1 block text-white">
+                      {proposal.response_minutes ?? "—"} min
+                    </strong>
+                  </div>
+                </div>
                 {proposal.status === "approved" ? (
                   <button
-                    type="button"
                     onClick={() => void updateProposal(proposal.id, "sent")}
                     className="atlas-button-primary mt-4"
                   >
@@ -1641,9 +2505,8 @@ export default function LeadDetailPage() {
                   </button>
                 ) : null}
                 {proposal.status === "sent" ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-4 flex gap-2">
                     <button
-                      type="button"
                       onClick={() =>
                         void updateProposal(proposal.id, "accepted")
                       }
@@ -1652,7 +2515,6 @@ export default function LeadDetailPage() {
                       Cliente aceitou
                     </button>
                     <button
-                      type="button"
                       onClick={() =>
                         void updateProposal(
                           proposal.id,
@@ -1660,7 +2522,7 @@ export default function LeadDetailPage() {
                           "Cliente recusou a condição apresentada.",
                         )
                       }
-                      className="cc6-ghost-btn"
+                      className="atlas-button-secondary"
                     >
                       Cliente recusou
                     </button>
@@ -1669,174 +2531,268 @@ export default function LeadDetailPage() {
               </article>
             ))}
           </div>
-          <p className="cc6-hairline mt-4 pt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-            Preço, estoque e regra continuam governados; o contato com o
-            cliente também fica mensurado.
-          </p>
-        </section>
+        </AtlasCard>
+      ) : null}
+
+      {simulation ? (
+        <AtlasCard>
+          <AtlasCardHeader
+            eyebrow="Fase 46 · Simulação, não promessa"
+            title={`${simulation.rule_snapshot.ruleName} · versão ${simulation.rule_snapshot.version}`}
+            description={`Regra vigente de ${simulation.rule_snapshot.developerName} fotografada no cálculo; mudanças futuras não alteram este histórico.`}
+            action={
+              <AtlasBadge tone="warning">
+                VÁLIDA ATÉ{" "}
+                {new Date(simulation.valid_until).toLocaleString("pt-BR")}
+              </AtlasBadge>
+            }
+          />
+          <div className="mx-5 mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/[.07] p-4 text-xs font-semibold leading-5 text-amber-100 sm:mx-6">
+            {simulation.rule_snapshot.disclaimer}
+          </div>
+          <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-4">
+            {[
+              ["Preço de referência", brl.format(simulation.property_price)],
+              [
+                "Entrada estimada",
+                simulation.down_payment === null
+                  ? "Conforme fluxo"
+                  : brl.format(simulation.down_payment),
+              ],
+              [
+                "Saldo após entrada",
+                simulation.financed_balance === null
+                  ? "A definir"
+                  : brl.format(simulation.financed_balance),
+              ],
+              [
+                "Parcelas lineares estimadas",
+                simulation.installment_amount === null
+                  ? "Conforme regra"
+                  : `${simulation.installments_count} × ${brl.format(simulation.installment_amount)}`,
+              ],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"
+              >
+                <span className="text-xs text-slate-500">{label}</span>
+                <strong className="mt-2 block text-lg text-white">
+                  {value}
+                </strong>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-white/[.06] p-5 sm:p-6">
+            <p className="whitespace-pre-line text-xs leading-5 text-slate-300">
+              {simulation.rule_snapshot.paymentFlow}
+            </p>
+            {simulation.rule_snapshot.balloonPaymentNotes ? (
+              <p className="mt-3 text-xs text-slate-400">
+                <strong>Reforços:</strong>{" "}
+                {simulation.rule_snapshot.balloonPaymentNotes}
+              </p>
+            ) : null}
+            {simulation.rule_snapshot.financingNotes ? (
+              <p className="mt-2 text-xs text-slate-400">
+                <strong>Crédito:</strong>{" "}
+                {simulation.rule_snapshot.financingNotes}
+              </p>
+            ) : null}
+            <p className="mt-4 rounded-xl bg-white/[.025] p-3 text-[10px] leading-5 text-slate-500">
+              Base do cálculo: {simulation.rule_snapshot.calculation}
+            </p>
+            <button
+              onClick={() => void requestProposal()}
+              className="atlas-button-primary mt-4"
+            >
+              Enviar para revisão humana
+            </button>
+          </div>
+        </AtlasCard>
       ) : null}
 
       <section
-        /* ── QUEM É ESTA PESSOA VEM PRIMEIRO ──────────────────────────────
-           MEDIDO na produção, viewport de 900px: o campo Nome começava em
-           2.931px — mais de TRÊS telas de rolagem até o nome de quem se está
-           atendendo, porque oito blocos de análise vinham antes.
-
-           Nenhum deles é inútil. O erro era de ORDEM: análise SOBRE a pessoa
-           apresentada antes da pessoa. O corretor abre a ficha para falar com
-           alguém, não para ler um relatório sobre alguém.
-
-           `order` em vez de mover o JSX: a mudança é de APRESENTAÇÃO, e mover
-           140 linhas de marcação para trocar posição arrisca quebrar aninhamento
-           por ganho nenhum. Reverter é apagar uma classe. */
-        className="order-[-1] cc6-reveal grid gap-4 2xl:grid-cols-[1.15fr_.85fr]"
-        style={{ animationDelay: "210ms" }}
+        className="grid gap-6 2xl:grid-cols-[1.15fr_.85fr]"
+        data-ux-phase="49-lead360-single-decision-flow"
       >
-        <section className="cc6-panel p-5 sm:p-6">
-          <p className="cc6-eyebrow">Perfil do comprador</p>
-          <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
-            Dados e qualificação
-          </h2>
-          <form onSubmit={saveLead} className="mt-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <input
-                className={inputClass}
-                value={lead.name ?? ""}
-                placeholder="Nome"
-                aria-label="Nome"
-                onChange={(e) => setLead({ ...lead, name: e.target.value })}
-              />
-              <input
-                className={inputClass}
-                value={lead.phone ?? ""}
-                placeholder="Telefone"
-                aria-label="Telefone"
-                onChange={(e) => setLead({ ...lead, phone: e.target.value })}
-              />
-              <input
-                className={inputClass}
-                value={lead.email ?? ""}
-                placeholder="E-mail"
-                aria-label="E-mail"
-                onChange={(e) => setLead({ ...lead, email: e.target.value })}
-              />
-              <select
-                className={inputClass}
-                value={lead.status ?? "novo"}
-                aria-label="Etapa do lead"
-                onChange={(e) => setLead({ ...lead, status: e.target.value })}
-              >
-                {/* ── AS TRES ETAPAS DE FECHAMENTO SAIRAM DAQUI ──────────────
-                    Este seletor gravava `leads.status` pela rota da lead — sem
-                    exigir motivo e sem registrar movimento em
-                    `pipeline_stage_moves`. O proprio codigo da rota admite:
-                    "A Lead 360 nao coleta motivo estruturado de descarte."
-
-                    Ou seja: fechar por aqui fazia a lead sumir do funil sem
-                    deixar rastro. Medido em 01/08/2026: dos 144 descartes
-                    registrados, os que passaram por este caminho nao aparecem
-                    em lugar nenhum — nao ha como saber quantos foram.
-
-                    So dava para tirar porque a alternativa passou a existir no
-                    mesmo dia: descarte com motivo na LINHA da lista, alem do
-                    Kanban. Fechar sem oferecer onde seria trocar perda de dado
-                    por corretor sem saida. ── */}
-                {(() => {
-                  const abertas = ["novo", "contato", "qualificacao", "visita", "proposta", "contrato"];
-                  /* Se a lead JA esta fechada, a etapa dela precisa aparecer —
-                     senao o <select> exibiria "novo" para uma lead perdida e
-                     mentiria sobre o estado. Ela entra so para ser LIDA: mudar
-                     para outra coisa daqui continua possivel, o que nao ha e
-                     como fechar por este caminho. */
-                  const atual = lead.status ?? "novo";
-                  return abertas.includes(atual) ? abertas : [...abertas, atual];
-                })().map((status) => (
-                  <option key={status} value={status}>
-                    {status === "comprou_outro"
-                      ? "Comprou em outro lugar"
-                      : status}
-                  </option>
-                ))}
-              </select>
-              <select
-                className={inputClass}
-                value={lead.temperature ?? "frio"}
-                aria-label="Temperatura do lead"
-                onChange={(e) =>
-                  setLead({ ...lead, temperature: e.target.value })
-                }
-              >
-                <option>frio</option>
-                <option>morno</option>
-                <option>quente</option>
-              </select>
-              <input
-                className={inputClass}
-                type="number"
-                value={lead.budget_min ?? ""}
-                placeholder="Orçamento mínimo"
-                aria-label="Orçamento mínimo"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    budget_min: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-              />
-              <input
-                className={inputClass}
-                type="number"
-                value={lead.budget_max ?? ""}
-                placeholder="Orçamento máximo"
-                aria-label="Orçamento máximo"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    budget_max: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-              />
-              <input
-                className={inputClass}
-                type="number"
-                value={lead.bedrooms ?? ""}
-                placeholder="Dormitórios"
-                aria-label="Dormitórios"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    bedrooms: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-              />
-              <input
-                className={inputClass}
-                value={(lead.preferred_regions ?? []).join(", ")}
-                placeholder="Regiões preferidas"
-                aria-label="Regiões preferidas"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    preferred_regions: e.target.value
-                      .split(",")
-                      .map((item) => item.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
+        <AtlasCard>
+          <AtlasCardHeader
+            eyebrow="Customer profile"
+            title="Perfil comercial"
+            description="Dados que sustentam o atendimento, o matching e a evolução da oportunidade."
+          />
+          <form
+            id="lead-commercial-profile"
+            onSubmit={saveLead}
+            className="atlas-lead360-progressive-profile scroll-mt-28 p-5 sm:p-6"
+            data-ux-phase="48-lead360-progressive-profile-edit"
+          >
+            <div className="atlas-lead360-profile-section-heading">
+              <div>
+                <strong>Essencial para conduzir</strong>
+                <p>Atualize apenas o que muda a próxima decisão comercial.</p>
+              </div>
+              <span>4 campos</span>
             </div>
-            <textarea
-              className={`${inputClass} mt-3 min-h-32`}
-              value={lead.notes ?? ""}
-              placeholder="Observações estratégicas"
-              aria-label="Observações estratégicas"
-              onChange={(e) => setLead({ ...lead, notes: e.target.value })}
-            />
-            <p className="mt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-              A origem comercial não é editada aqui — use &quot;Corrigir
-              contexto&quot; acima para alterá-la com justificativa auditável.
-            </p>
-            <div className="mt-4 flex justify-end">
+            <div
+              className="atlas-lead360-profile-essential grid gap-4 sm:grid-cols-2"
+              data-field-priority="essential"
+            >
+              <label>
+                <span>Etapa comercial</span>
+                <select
+                  className={inputClass}
+                  value={lead.status ?? "novo"}
+                  onChange={(e) => setLead({ ...lead, status: e.target.value })}
+                >
+                  {[
+                    "novo",
+                    "contato",
+                    "qualificacao",
+                    "visita",
+                    "proposta",
+                    "contrato",
+                    "ganho",
+                    "perdido",
+                    "comprou_outro",
+                  ].map((status) => (
+                    <option key={status} value={status}>
+                      {status === "comprou_outro"
+                        ? "Comprou em outro lugar"
+                        : status}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Temperatura</span>
+                <select
+                  className={inputClass}
+                  value={lead.temperature ?? "frio"}
+                  onChange={(e) =>
+                    setLead({ ...lead, temperature: e.target.value })
+                  }
+                >
+                  <option>frio</option>
+                  <option>morno</option>
+                  <option>quente</option>
+                </select>
+              </label>
+              <label>
+                <span>Orçamento máximo</span>
+                <input
+                  className={inputClass}
+                  type="number"
+                  value={lead.budget_max ?? ""}
+                  placeholder="Orçamento máximo"
+                  onChange={(e) =>
+                    setLead({
+                      ...lead,
+                      budget_max: e.target.value
+                        ? Number(e.target.value)
+                        : null,
+                    })
+                  }
+                />
+              </label>
+              <label>
+                <span>Regiões preferidas</span>
+                <input
+                  className={inputClass}
+                  value={(lead.preferred_regions ?? []).join(", ")}
+                  placeholder="Regiões preferidas"
+                  onChange={(e) =>
+                    setLead({
+                      ...lead,
+                      preferred_regions: e.target.value
+                        .split(",")
+                        .map((item) => item.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                />
+              </label>
+            </div>
+            <details
+              className="atlas-lead360-profile-complementary"
+              data-field-priority="complementary"
+            >
+              <summary>Dados complementares do perfil</summary>
+              <p className="atlas-lead360-profile-complementary-copy">
+                Identidade, contato, origem, faixa de investimento e contexto
+                continuam editáveis quando necessários.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <input
+                  className={inputClass}
+                  value={lead.name ?? ""}
+                  placeholder="Nome"
+                  aria-label="Nome"
+                  onChange={(e) => setLead({ ...lead, name: e.target.value })}
+                />
+                <input
+                  className={inputClass}
+                  value={lead.phone ?? ""}
+                  placeholder="Telefone"
+                  aria-label="Telefone"
+                  onChange={(e) => setLead({ ...lead, phone: e.target.value })}
+                />
+                <input
+                  className={inputClass}
+                  value={lead.email ?? ""}
+                  placeholder="E-mail"
+                  aria-label="E-mail"
+                  onChange={(e) => setLead({ ...lead, email: e.target.value })}
+                />
+                <input
+                  className={inputClass}
+                  value={lead.source ?? ""}
+                  placeholder="Origem não informada"
+                  readOnly
+                  aria-label="Origem comercial — use a correção governada acima"
+                  title="Use Corrigir contexto para alterar a origem com justificativa auditável."
+                />
+                <input
+                  className={inputClass}
+                  type="number"
+                  value={lead.budget_min ?? ""}
+                  placeholder="Orçamento mínimo"
+                  aria-label="Orçamento mínimo"
+                  onChange={(e) =>
+                    setLead({
+                      ...lead,
+                      budget_min: e.target.value
+                        ? Number(e.target.value)
+                        : null,
+                    })
+                  }
+                />
+                <input
+                  className={inputClass}
+                  type="number"
+                  value={lead.bedrooms ?? ""}
+                  placeholder="Dormitórios"
+                  aria-label="Dormitórios"
+                  onChange={(e) =>
+                    setLead({
+                      ...lead,
+                      bedrooms: e.target.value
+                        ? Number(e.target.value)
+                        : null,
+                    })
+                  }
+                />
+              </div>
+              <textarea
+                className={`${inputClass} mt-4 min-h-32`}
+                value={lead.notes ?? ""}
+                placeholder="Observações estratégicas"
+                aria-label="Observações estratégicas"
+                onChange={(e) => setLead({ ...lead, notes: e.target.value })}
+              />
+            </details>
+            <div className="mt-5 flex justify-end">
               <button
                 disabled={saving}
                 className="atlas-button-primary disabled:opacity-50"
@@ -1845,98 +2801,283 @@ export default function LeadDetailPage() {
               </button>
             </div>
           </form>
-        </section>
+        </AtlasCard>
 
-        <div className="space-y-4">
-          <section id="historico" className="cc6-panel scroll-mt-28 p-5 sm:p-6">
-            <p className="cc6-eyebrow">Registrar</p>
-            <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
-              Acompanhamento do contato
-            </h2>
-            <form onSubmit={addActivity} className="mt-4 space-y-3">
-              <div className="grid gap-3 sm:grid-cols-[1fr_150px]">
-                <input
-                  className={inputClass}
-                  value={activityTitle}
-                  onChange={(e) => setActivityTitle(e.target.value)}
-                  placeholder="Título (opcional — usamos o tipo se ficar vazio)"
-                  aria-label="Título da interação (opcional)"
-                />
-                <select
-                  className={inputClass}
-                  value={activityType}
-                  aria-label="Tipo de interação"
-                  onChange={(e) => setActivityType(e.target.value)}
-                >
-                  <option value="note">Nota</option>
-                  <option value="call">Ligação</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="visit">Visita</option>
-                  <option value="email">E-mail</option>
-                </select>
-              </div>
-              <textarea
-                className={`${inputClass} min-h-24 resize-y`}
-                value={activityDescription}
-                onChange={(e) => setActivityDescription(e.target.value)}
-                placeholder="O que o cliente falou? Ex.: achou o preço alto, prefere outro bairro, precisa financiar ou quer entrega imediata."
-                aria-label="Descrição da interação"
+        <div className="space-y-6">
+          <div id="historico">
+            <AtlasCard>
+              <AtlasCardHeader
+                eyebrow="Operação do relacionamento"
+                title="Rotina e histórico"
+                description="Ações, compromissos e contexto recente em uma única sequência operacional."
               />
-              <div className="flex flex-wrap gap-2">
-                {[
-                  "Preço",
-                  "Localização",
-                  "Financiamento",
-                  "Prazo",
-                  "Produto",
-                  "Concorrência",
-                ].map((signal) => (
-                  <button
-                    key={signal}
-                    type="button"
-                    onClick={() =>
-                      setActivityDescription(
-                        (current) =>
-                          `${current}${current ? " · " : ""}${signal}: `,
-                      )
-                    }
-                    className={chipButtonClass}
-                  >
-                    + {signal}
-                  </button>
-                ))}
-              </div>
-              <p className="text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-                A descrição fica protegida no CRM. A inteligência usa somente
-                categorias anônimas para indicar melhorias de público e
-                criativo.
-              </p>
-              <button className="cc6-ghost-btn w-full justify-center">
-                Salvar acompanhamento e aprendizado
-              </button>
-            </form>
-          </section>
+              <div className="p-5 sm:p-6">
+                <section
+                  className="rounded-2xl border border-white/[.07] bg-black/15 p-4"
+                  data-ux-phase="23-lead-operational-timeline"
+                  aria-labelledby="lead-operational-timeline-title"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3
+                        id="lead-operational-timeline-title"
+                        className="text-sm font-semibold text-white"
+                      >
+                        Linha do tempo operacional
+                      </h3>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Atrasos e próximos compromissos primeiro; registros
+                        recentes preservam o contexto.
+                      </p>
+                    </div>
+                    <Link
+                      href={`/leads/${lead.id}/tasks`}
+                      className="text-xs font-semibold text-cyan-300 transition hover:text-cyan-200"
+                    >
+                      Organizar tarefas →
+                    </Link>
+                  </div>
 
-          <section className="cc6-panel">
-            <div className="flex flex-wrap items-center justify-between gap-3 p-5 pb-0 sm:px-6">
-              <div>
-                <p className="cc6-eyebrow">Timeline</p>
-                <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
-                  Histórico do relacionamento
-                </h2>
+                  {operationalTimeline.length === 0 ? (
+                    <div className="mt-4 rounded-xl border border-dashed border-white/10 px-4 py-5">
+                      <p className="text-sm font-medium text-slate-200">
+                        Nenhuma próxima ação registrada
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Registre o acompanhamento abaixo ou crie uma tarefa
+                        para manter a lead visível na rotina comercial.
+                      </p>
+                    </div>
+                  ) : (
+                    <div
+                      className="atlas-lead360-prioritized-timeline"
+                      data-ux-phase="47-lead360-prioritized-timeline"
+                    >
+                    <ol className="mt-4 space-y-2" aria-label="Ações e contexto prioritários">
+                      {prioritizedOperationalTimeline.visible.map((item) => {
+                        const tone =
+                          item.timing === "overdue"
+                            ? "border-rose-400/20 bg-rose-400/[.055]"
+                            : item.timing === "upcoming"
+                              ? "border-cyan-400/15 bg-cyan-400/[.045]"
+                              : "border-white/[.06] bg-white/[.025]";
+                        const label =
+                          item.timing === "overdue"
+                            ? "Atrasada"
+                            : item.kind === "visit"
+                              ? "Visita registrada"
+                              : item.timing === "upcoming"
+                                ? "Próxima ação"
+                                : "Histórico";
+
+                        return (
+                          <li
+                            key={item.id}
+                            className={`grid gap-2 rounded-xl border px-3.5 py-3 sm:grid-cols-[104px_1fr_auto] sm:items-center ${tone}`}
+                          >
+                            <span
+                              className={`text-[10px] font-bold uppercase tracking-[.12em] ${
+                                item.timing === "overdue"
+                                  ? "text-rose-300"
+                                  : item.timing === "upcoming"
+                                    ? "text-cyan-300"
+                                    : "text-slate-500"
+                              }`}
+                            >
+                              {label}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-semibold text-slate-100">
+                                {item.title}
+                              </p>
+                              <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                                {item.detail}
+                              </p>
+                            </div>
+                            <time
+                              dateTime={item.at || undefined}
+                              className="whitespace-nowrap text-[10px] text-slate-500"
+                            >
+                              {item.at
+                                ? new Date(item.at).toLocaleString("pt-BR", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })
+                                : "Sem prazo"}
+                            </time>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                    {prioritizedOperationalTimeline.remaining.length > 0 ? (
+                      <details className="atlas-lead360-timeline-overflow">
+                        <summary>
+                          Ver mais {prioritizedOperationalTimeline.remaining.length}{" "}
+                          registros desta rotina
+                        </summary>
+                        <ol className="space-y-2" aria-label="Demais registros da rotina">
+                          {prioritizedOperationalTimeline.remaining.map((item) => {
+                            const tone =
+                              item.timing === "overdue"
+                                ? "border-rose-400/20 bg-rose-400/[.055]"
+                                : item.timing === "upcoming"
+                                  ? "border-cyan-400/15 bg-cyan-400/[.045]"
+                                  : "border-white/[.06] bg-white/[.025]";
+                            const label =
+                              item.timing === "overdue"
+                                ? "Atrasada"
+                                : item.kind === "visit"
+                                  ? "Visita registrada"
+                                  : item.timing === "upcoming"
+                                    ? "Próxima ação"
+                                    : "Histórico";
+
+                            return (
+                              <li
+                                key={item.id}
+                                className={`grid gap-2 rounded-xl border px-3.5 py-3 sm:grid-cols-[104px_1fr_auto] sm:items-center ${tone}`}
+                              >
+                                <span
+                                  className={`text-[10px] font-bold uppercase tracking-[.12em] ${
+                                    item.timing === "overdue"
+                                      ? "text-rose-300"
+                                      : item.timing === "upcoming"
+                                        ? "text-cyan-300"
+                                        : "text-slate-500"
+                                  }`}
+                                >
+                                  {label}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="truncate text-xs font-semibold text-slate-100">
+                                    {item.title}
+                                  </p>
+                                  <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                                    {item.detail}
+                                  </p>
+                                </div>
+                                <time
+                                  dateTime={item.at || undefined}
+                                  className="whitespace-nowrap text-[10px] text-slate-500"
+                                >
+                                  {item.at
+                                    ? new Date(item.at).toLocaleString("pt-BR", {
+                                        day: "2-digit",
+                                        month: "short",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
+                                    : "Sem prazo"}
+                                </time>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      </details>
+                    ) : null}
+                    </div>
+                  )}
+                </section>
+                <div className="mt-4">
+                  <AssistedInteractionCapture
+                    leadId={leadId}
+                    onConfirmed={async () => {
+                      setMessage("Atendimento revisado e registrado no histórico.");
+                      await load();
+                    }}
+                  />
+                </div>
+                <details className="mt-4 rounded-2xl border border-white/10 bg-white/[.02] p-4">
+                  <summary className="cursor-pointer text-sm font-medium text-slate-300">
+                    Registrar acompanhamento manual
+                  </summary>
+                <form onSubmit={addActivity} className="mt-4 space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-[1fr_150px]">
+                    <input
+                      className={inputClass}
+                      value={activityTitle}
+                      onChange={(e) => setActivityTitle(e.target.value)}
+                      placeholder="Registrar ligação, mensagem ou visita"
+                    />
+                    <select
+                      className={inputClass}
+                      value={activityType}
+                      onChange={(e) => setActivityType(e.target.value)}
+                    >
+                      <option value="note">Nota</option>
+                      <option value="call">Ligação</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="visit">Visita</option>
+                      <option value="email">E-mail</option>
+                    </select>
+                  </div>
+                  <textarea
+                    className={`${inputClass} min-h-24 resize-y`}
+                    value={activityDescription}
+                    onChange={(e) => setActivityDescription(e.target.value)}
+                    placeholder="O que o cliente falou? Ex.: achou o preço alto, prefere outro bairro, precisa financiar ou quer entrega imediata."
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "Preço",
+                      "Localização",
+                      "Financiamento",
+                      "Prazo",
+                      "Produto",
+                      "Concorrência",
+                    ].map((signal) => (
+                      <button
+                        key={signal}
+                        type="button"
+                        onClick={() =>
+                          setActivityDescription(
+                            (current) =>
+                              `${current}${current ? " · " : ""}${signal}: `,
+                          )
+                        }
+                        className="rounded-full border border-white/10 bg-white/[.03] px-3 py-1.5 text-[11px] text-slate-300 hover:border-violet-400/30"
+                      >
+                        + {signal}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] leading-5 text-slate-500">
+                    A descrição fica protegida no CRM. A inteligência usa
+                    somente categorias anônimas para indicar melhorias de
+                    público e criativo.
+                  </p>
+                  <button
+                    type="submit"
+                    disabled={activitySaving || activityTitle.trim().length === 0}
+                    className="atlas-button-secondary w-full disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {activitySaving
+                      ? "Registrando acompanhamento..."
+                      : "Salvar acompanhamento e aprendizado"}
+                  </button>
+                </form>
+                </details>
               </div>
-              <span className="cc6-chip" title="Eventos registrados">
-                {activities.length}
-              </span>
-            </div>
-            <div className="mt-4 max-h-[420px] overflow-y-auto px-5 pb-5 sm:px-6 sm:pb-6">
+            </AtlasCard>
+          </div>
+
+          <AtlasDetailDisclosure label="Ver histórico completo do relacionamento">
+            <AtlasCard>
+              <AtlasCardHeader
+                eyebrow="Timeline"
+                title="Histórico do relacionamento"
+                description="Interações, mudanças e eventos recentes."
+              />
+            <div className="max-h-[420px] overflow-y-auto px-5 pb-5 sm:px-6 sm:pb-6">
               {activities.length === 0 ? (
                 <AtlasEmpty
                   title="Nenhuma interação"
                   description="Registre o primeiro contato para iniciar a memória comercial."
                 />
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {activities.map((activity) => {
                     const contextCorrection =
                       activity.type === "commercial_context_corrected"
@@ -1948,31 +3089,32 @@ export default function LeadDetailPage() {
                     return (
                       <article
                         key={activity.id}
-                        className="cc6-panel-quiet cc6-interativo p-4"
+                        className="relative rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4 pl-12"
                       >
+                        <span className="absolute left-4 top-4 grid h-7 w-7 place-items-center rounded-full border border-sky-400/20 bg-sky-400/10 text-xs text-sky-300">
+                          •
+                        </span>
                         <div className="flex items-start justify-between gap-3">
-                          <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
-                            {activity.title}
-                          </p>
-                          <span className="cc6-chip shrink-0">
-                            {activity.type}
-                          </span>
+                          <div>
+                            <p className="font-medium text-white">
+                              {activity.title}
+                            </p>
+                            {!contextCorrection && activity.description ? (
+                              <p className="mt-1 text-xs leading-5 text-slate-400">
+                                {activity.description}
+                              </p>
+                            ) : null}
+                          </div>
+                          <AtlasBadge tone="info">{activity.type}</AtlasBadge>
                         </div>
-                        {!contextCorrection && activity.description ? (
-                          <p className="mt-1.5 text-corpo leading-6 text-[var(--atlas-texto-medio)]">
-                            {activity.description}
-                          </p>
-                        ) : null}
                         {contextCorrection ? (
                           <CommercialContextTimelineEntry
                             correction={contextCorrection}
                           />
                         ) : null}
-                        <p className="cc6-num mt-3 text-micro uppercase tracking-wider text-[var(--atlas-texto-fraco)]">
+                        <p className="mt-3 text-[10px] uppercase tracking-wider text-slate-600">
                           {activity.authorName || "Equipe Atlas"} ·{" "}
-                          {new Date(activity.occurred_at).toLocaleString(
-                            "pt-BR",
-                          )}
+                          {new Date(activity.occurred_at).toLocaleString("pt-BR")}
                         </p>
                       </article>
                     );
@@ -1980,122 +3122,95 @@ export default function LeadDetailPage() {
                 </div>
               )}
             </div>
-          </section>
+            </AtlasCard>
+          </AtlasDetailDisclosure>
         </div>
       </section>
 
-      {/* ── Drill-down colapsável: auditoria de qualidade/fontes e contexto de
-          campanha Meta — fora do fluxo de decisão, sem repetir a identidade. ── */}
-      {dataQuality && unifiedProfile ? (
-        <details className="cc6-panel-quiet group">
-          <summary className={summaryClass}>
-            <span className="cc6-eyebrow">Qualidade e fontes dos dados</span>
-            <span className="cc6-num text-xs text-[var(--atlas-texto-medio)]">
-              {dataQuality.completeness}% · {dataQuality.completedFields}/
-              {dataQuality.totalFields} campos
-              <span
-                aria-hidden="true"
-                className="ml-2 inline-block text-[var(--atlas-texto-fraco)] transition-transform group-open:rotate-180"
-              >
-                ▾
-              </span>
-            </span>
-          </summary>
-          <div className="cc6-hairline space-y-4 p-4 sm:p-5">
-            <AtlasProgress
-              value={dataQuality.completeness}
-              label="Completude para personalização"
-            />
-            <div className="flex flex-wrap gap-2">
-              {unifiedProfile.sources.map((source) => (
-                <span key={source} className="cc6-chip uppercase">
-                  {source}
-                </span>
-              ))}
+      <AtlasDetailDisclosure label="Ver imóveis recomendados">
+        <div id="matching">
+          <AtlasCard>
+          <AtlasCardHeader
+          eyebrow="Matching Atlas"
+          title="Imóveis recomendados"
+          description="Ranking de aderência entre perfil, orçamento, tipologia e localização."
+          action={
+            <Link
+              href="/properties"
+              className="text-xs font-semibold text-sky-300"
+            >
+              Ver estoque →
+            </Link>
+          }
+          />
+          <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3 sm:p-6">
+          {matches.length === 0 ? (
+            <div className="md:col-span-2 xl:col-span-3">
+              <AtlasEmpty
+                title="Nenhum match encontrado"
+                description="Complete orçamento, dormitórios e regiões para melhorar o matching."
+              />
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                ["Conversas", unifiedProfile.conversations.length],
-                ["Tarefas", unifiedProfile.tasks.length],
-                ["Sinais de campanha", unifiedProfile.campaignEvents.length],
-              ] as const).map(([label, value]) => (
-                <div key={label} className="cc6-panel-quiet p-3 text-center">
-                  <span className="cc6-metric-value text-lg">{value}</span>
-                  <p className="cc6-metric-label mt-1">{label}</p>
+          ) : (
+            matches.map(({ property, match }) => (
+              <article
+                key={property.id}
+                className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 transition hover:-translate-y-1 hover:border-sky-400/20"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="atlas-eyebrow">Aderência comercial</p>
+                    <h3 className="mt-2 font-semibold text-white">
+                      {property.title || "Imóvel sem título"}
+                    </h3>
+                  </div>
+                  <AtlasBadge
+                    tone={
+                      match.score >= 75
+                        ? "success"
+                        : match.score >= 50
+                          ? "warning"
+                          : "info"
+                    }
+                  >
+                    {match.score}%
+                  </AtlasBadge>
                 </div>
-              ))}
-            </div>
-            {dataQuality.inconsistencies.length ? (
-              <div
-                className="cc6-sev-band pl-3"
-                style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
-              >
-                <p className="cc6-eyebrow cc6-crit text-micro">
-                  Revisão humana necessária
+                <p className="mt-2 text-sm text-slate-400">
+                  {property.city || "Localização não informada"}
+                  {property.state ? ` · ${property.state}` : ""}
                 </p>
-                <ul className="mt-2 space-y-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">
-                  {dataQuality.inconsistencies.map((item) => (
-                    <li key={item}>• {item}</li>
+                <p className="mt-4 text-xl font-semibold text-white">
+                  {property.price
+                    ? brl.format(property.price)
+                    : "Preço sob consulta"}
+                </p>
+                <ul className="mt-4 space-y-1.5 text-xs text-slate-400">
+                  {match.reasons.slice(0, 3).map((reason) => (
+                    <li key={reason}>• {reason}</li>
                   ))}
                 </ul>
-              </div>
-            ) : null}
-            <p className="text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-              Cadastros ambíguos nunca são fundidos sem revisão humana.
-            </p>
-          </div>
-        </details>
-      ) : null}
-
-      {lead.source === "Meta Lead Ads" ? (
-        <details className="cc6-panel-quiet group">
-          <summary className={summaryClass}>
-            <span className="cc6-eyebrow">
-              Origem Meta · campanha e aprendizado
-            </span>
-            <span
-              aria-hidden="true"
-              className="text-[var(--atlas-texto-fraco)] transition-transform group-open:rotate-180"
-            >
-              ▾
-            </span>
-          </summary>
-          <div className="cc6-hairline p-4 sm:p-5">
-            <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              {[
-                ["Origem", lead.metadata?.meta?.sourceName || "Meta Lead Ads"],
-                [
-                  "Campanha",
-                  lead.metadata?.meta?.campaignId || "Não identificada",
-                ],
-                [
-                  "Conjunto",
-                  lead.metadata?.meta?.adsetId || "Não identificado",
-                ],
-                ["Anúncio", lead.metadata?.meta?.adId || "Não identificado"],
-                [
-                  "Aprendizado",
-                  lead.metadata?.meta?.dataSharingConsent
-                    ? "Autorizado"
-                    : "Sem autorização",
-                ],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt className="cc6-eyebrow text-micro">{label}</dt>
-                  <dd className="cc6-num mt-1.5 break-all text-sm text-[var(--atlas-texto-forte)]">
-                    {value}
-                  </dd>
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => void createOpportunity(property.id)}
+                    className="atlas-button-secondary"
+                  >
+                    Oportunidade
+                  </button>
+                  <button
+                    onClick={() => void simulate(property.id)}
+                    className="atlas-button-primary"
+                  >
+                    Simular fluxo
+                  </button>
                 </div>
-              ))}
-            </dl>
-            <p className="cc6-hairline mt-4 pt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-              O corretor só mantém estágio e acompanhamento atualizados; o CRM
-              transforma essas ações em sinais estruturados. Textos livres e
-              dados pessoais não aparecem nos relatórios de campanha.
-            </p>
+              </article>
+            ))
+          )}
           </div>
-        </details>
-      ) : null}
+          </AtlasCard>
+        </div>
+      </AtlasDetailDisclosure>
     </div>
   );
 }

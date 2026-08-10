@@ -1,0 +1,21 @@
+{
+  "phase": 370,
+  "name": "WhatsApp memory human review",
+  "status": "implemented_local",
+  "scope": "authenticated_organization",
+  "audience": ["admin", "director"],
+  "mutates_remote_state": false,
+  "contains_pii": false,
+  "reads_message_content": false,
+  "automatic_decision": false,
+  "requires_authenticated_director": true,
+  "approval_persisted": false,
+  "evidence": [
+    "technical release gate",
+    "real traffic counts",
+    "full traceability coverage",
+    "privacy boundary",
+    "explicit evidence limitations"
+  ],
+  "promotion_gate": "authenticated_director_decision_workflow_pending"
+}

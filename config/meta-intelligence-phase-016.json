@@ -1,0 +1,73 @@
+{
+  "phase": 16,
+  "program": "meta-andromeda-automation",
+  "mode": "sanitized_isolated_evidence_reconciliation",
+  "status": "reconciliation_pipeline_ready",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-015.json",
+  "evidenceTemplate": "config/fixtures/meta-auth-reconciliation-evidence-template.json",
+  "reconciliationRunner": "scripts/run-meta-auth-evidence-reconciliation.mjs",
+  "evidencePreflight": "scripts/preflight-meta-auth-reconciliation.mjs",
+  "staticAudit": "scripts/audit-meta-auth-reconciliation.mjs",
+  "documentation": "docs/META_AUTH_EVIDENCE_RECONCILIATION.md",
+  "currentDocumentation": {
+    "branching": "https://supabase.com/docs/guides/deployment/branching",
+    "branchIsolation": "https://supabase.com/docs/guides/deployment/branching/working-with-branches",
+    "apiSecurity": "https://supabase.com/docs/guides/database/secure-data",
+    "dataApiBreakingChange": "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically",
+    "breakingChanges": "https://supabase.com/changelog?tags=breaking-change"
+  },
+  "environmentAudit": {
+    "isolatedCredentialsDetected": false,
+    "supabaseCliDetected": false,
+    "containerRuntimeDetected": false,
+    "remoteCallsExecuted": false,
+    "reason": "Nenhum branch Supabase isolado foi disponibilizado. A reconciliacao esta pronta, mas nao foi executada remotamente."
+  },
+  "evidenceControls": {
+    "sanitizedJsonOnly": true,
+    "rawLogsPersisted": false,
+    "tokensPersisted": false,
+    "credentialsPersisted": false,
+    "projectIdentifiersPersisted": false,
+    "canonicalSourceHash": "sha256",
+    "archiveOptInRequired": true,
+    "archiveDirectoryMode": "0700",
+    "archiveFileMode": "0600",
+    "archiveOnFailure": false,
+    "zeroResidualRequiredForArchive": true
+  },
+  "reconciliationContract": {
+    "organizations": 2,
+    "authUsers": 9,
+    "profiles": 9,
+    "leads": 4,
+    "minimumScenarios": 15,
+    "zeroDriftRequired": true,
+    "zeroResidualRequired": true
+  },
+  "releaseGate": {
+    "phase15AutomationReady": true,
+    "phase16StaticAuditPassed": true,
+    "isolatedCloneExecuted": false,
+    "sanitizedEvidenceArchived": false,
+    "zeroResidualVerifiedRemotely": false,
+    "dataApiExposureVerified": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "databaseMutation": false,
+    "migrationApplication": false,
+    "productionAccess": false,
+    "realMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 17,
+    "objective": "Verificar grants explicitos da Data API, RLS e exposicao autenticada no branch isolado antes do primeiro ensaio de eventos Meta em modo somente validacao."
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "phase": 151,
+  "name": "Kanban V30 Assisted Execution Runway",
+  "status": "implemented",
+  "objective": "Converter o brief do lote prioritário em uma esteira visual de execução assistida, reduzindo botões soltos e orientando o corretor em passos sequenciais.",
+  "businessImpact": [
+    "Corretor sabe a ordem correta de trabalho: revisar contexto, preparar contato, agendar próxima ação e registrar resultado.",
+    "Gerente ganha padronização sem automatizar contato com cliente.",
+    "A operação melhora histórico e aprendizado da IA porque a saída esperada fica explícita."
+  ],
+  "technicalScope": [
+    "Reaproveitar lote seguro, matriz de qualificação e brief proativo.",
+    "Criar esteira de execução determinística com quatro passos.",
+    "Adicionar CTAs contextuais para qualidade de dados, Copilot, tarefas e registro de resultado.",
+    "Manter aprovação humana obrigatória, sem alteração de banco, migration, API externa ou disparo automático."
+  ],
+  "validation": [
+    "npm run evolution:phase-151:check",
+    "npm run typecheck",
+    "npm run lint"
+  ],
+  "files": [
+    "app/(crm)/pipeline/page.tsx",
+    "app/globals.css",
+    "docs/EVOLUTION_PHASE_151_KANBAN_V30_ASSISTED_EXECUTION_RUNWAY.md",
+    "scripts/check-evolution-phase-151.mjs",
+    "config/evolution-program-3000.json",
+    "package.json"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": "atlas.10x.phase-001.v1",
+  "phase": 1,
+  "total_phases": 24,
+  "name": "Linha de base operacional",
+  "objective": "Separar capacidade construída, validação local e evidência real antes de avançar o Atlas para produção.",
+  "build_policy": "build_only_on_release_package",
+  "production_policy": "blocked_until_runtime_evidence",
+  "code_checks": [
+    "enterprise:check",
+    "security:secrets",
+    "typecheck",
+    "lint",
+    "final-pipeline:check",
+    "final-crm:check",
+    "final-dashboards:check",
+    "final-ai:check",
+    "integration-health:check",
+    "meta:phase-099:check",
+    "first-contact-sla:check"
+  ],
+  "runtime_checks": [
+    "audit:runtime-schema",
+    "audit:auth-hierarchy",
+    "audit:release-data-compatibility",
+    "smoke:v3"
+  ],
+  "required_evidence": [
+    "ambiente de homologação configurado",
+    "schema remoto compatível",
+    "autenticação e hierarquia validadas",
+    "fluxo autenticado testado no navegador",
+    "SLA do primeiro contato percorrendo API, Kanban e gestão",
+    "Meta/CAPI comprovada em Test Events antes de produção"
+  ],
+  "next_phase": {
+    "phase": 2,
+    "name": "Backup, restauração e rollback comprovados"
+  }
+}

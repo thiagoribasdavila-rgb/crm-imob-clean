@@ -1,0 +1,117 @@
+name: Atlas Meta Phase 30 - Local Ephemeral Rehearsal
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rehearse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate static contract
+        run: node scripts/audit-meta-repeatability-sample-02-local-runtime.mjs
+      - name: Validate fail-closed preflight
+        run: node scripts/preflight-meta-repeatability-sample-02-local-runtime.mjs --self-test
+      - name: Rehearse only in local ephemeral database
+        env:
+          ATLAS_PHASE30_HUMAN_APPROVAL: EXECUTE_PHASE30_LOCAL_EPHEMERAL_ONLY
+          ATLAS_PHASE30_EVIDENCE_FILE: artifacts/meta-phase30-local-runtime-evidence.json
+        run: node scripts/run-meta-repeatability-sample-02-local-runtime.mjs
+      - name: Validate ordered and fingerprinted runtime evidence
+        env:
+          ATLAS_PHASE31_RUNTIME_EVIDENCE_FILE: artifacts/meta-phase30-local-runtime-evidence.json
+          ATLAS_PHASE31_RECONCILIATION_FILE: artifacts/meta-phase31-runtime-evidence-reconciliation.json
+        run: node scripts/run-meta-repeatability-sample-02-runtime-evidence-reconciliation.mjs
+      - name: Validate PostgreSQL 17 compatibility contract
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-pg17-compatibility.mjs
+          node scripts/preflight-meta-repeatability-sample-02-pg17-compatibility.mjs --self-test
+      - name: Rehearse compatibility only in a fresh PostgreSQL 17 database
+        env:
+          ATLAS_PHASE32_HUMAN_APPROVAL: EXECUTE_PHASE32_PG17_LOCAL_EPHEMERAL_ONLY
+          ATLAS_PHASE31_RUNTIME_EVIDENCE_FILE: artifacts/meta-phase30-local-runtime-evidence.json
+          ATLAS_PHASE31_RECONCILIATION_FILE: artifacts/meta-phase31-runtime-evidence-reconciliation.json
+          ATLAS_PHASE32_EVIDENCE_FILE: artifacts/meta-phase32-pg17-compatibility-evidence.json
+        run: node scripts/run-meta-repeatability-sample-02-pg17-compatibility.mjs
+      - name: Validate and reconcile PostgreSQL 15 x 17 evidence
+        env:
+          ATLAS_PHASE31_RUNTIME_EVIDENCE_FILE: artifacts/meta-phase30-local-runtime-evidence.json
+          ATLAS_PHASE31_RECONCILIATION_FILE: artifacts/meta-phase31-runtime-evidence-reconciliation.json
+          ATLAS_PHASE32_EVIDENCE_FILE: artifacts/meta-phase32-pg17-compatibility-evidence.json
+          ATLAS_PHASE33_RECONCILIATION_FILE: artifacts/meta-phase33-cross-major-reconciliation.json
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-cross-major-reconciliation.mjs
+          node scripts/preflight-meta-repeatability-sample-02-cross-major-reconciliation.mjs --self-test
+          node scripts/run-meta-repeatability-sample-02-cross-major-reconciliation.mjs
+      - name: Assess migration readiness without production access
+        env:
+          ATLAS_PHASE33_RECONCILIATION_FILE: artifacts/meta-phase33-cross-major-reconciliation.json
+          ATLAS_PHASE34_READINESS_FILE: artifacts/meta-phase34-migration-readiness.json
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-migration-readiness.mjs
+          node scripts/preflight-meta-repeatability-sample-02-migration-readiness.mjs --self-test
+          node scripts/run-meta-repeatability-sample-02-migration-readiness.mjs
+      - name: Validate Phase 35 isolated restore contract without restoring
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-isolated-restore-rehearsal.mjs
+          node scripts/preflight-meta-repeatability-sample-02-isolated-restore-rehearsal.mjs --self-test
+      - name: Validate Phase 36 local restore executor without restoring
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-ephemeral-restore-execution.mjs
+          node scripts/preflight-meta-repeatability-sample-02-ephemeral-restore-execution.mjs --self-test
+      - name: Validate Phase 37 restore evidence reconciler without reconciling
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-local-restore-evidence-reconciliation.mjs
+          node scripts/preflight-meta-repeatability-sample-02-local-restore-evidence-reconciliation.mjs --self-test
+      - name: Validate Phase 38 readiness evidence projector without projecting
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-readiness-evidence-projection.mjs
+          node scripts/preflight-meta-repeatability-sample-02-readiness-evidence-projection.mjs --self-test
+      - name: Validate Phase 39 isolated staging replay contract without building it
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-isolated-staging-replay-contract.mjs
+          node scripts/preflight-meta-repeatability-sample-02-isolated-staging-replay-contract.mjs --self-test
+      - name: Validate Phase 40 isolated staging replay execution packet without building or executing it
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-isolated-staging-replay-execution-packet.mjs
+          node scripts/preflight-meta-repeatability-sample-02-isolated-staging-replay-execution-packet.mjs --self-test
+      - name: Validate Phase 41 one-time staging replay adapter without building or executing it
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-isolated-staging-one-time-replay-adapter.mjs
+          node scripts/preflight-meta-repeatability-sample-02-isolated-staging-one-time-replay-adapter.mjs --self-test
+      - name: Validate Phase 42 ephemeral staging replay supervisor without building or executing it
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-ephemeral-staging-replay-supervisor.mjs
+          node scripts/preflight-meta-repeatability-sample-02-ephemeral-staging-replay-supervisor.mjs --self-test
+      - name: Validate Phase 43 atomic staging replay permit without issuing or consuming it
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-atomic-replay-execution-permit.mjs
+          node scripts/preflight-meta-repeatability-sample-02-atomic-replay-execution-permit.mjs --self-test
+      - name: Validate Phase 44 atomic consumer worker without preparing, consuming, arming or executing it
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-atomic-consumer-worker.mjs
+          node scripts/preflight-meta-repeatability-sample-02-atomic-consumer-worker.mjs --self-test
+      - name: Validate Phase 45 commit-unknown reconciler and final authorization without preparing or executing it
+        run: |
+          node scripts/audit-meta-repeatability-sample-02-commit-unknown-final-authorization.mjs
+          node scripts/preflight-meta-repeatability-sample-02-commit-unknown-final-authorization.mjs --self-test
+      - name: Upload sanitized rehearsal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-meta-phase30-local-runtime-evidence
+          path: |
+            artifacts/meta-phase30-local-runtime-evidence.json
+            artifacts/meta-phase31-runtime-evidence-reconciliation.json
+            artifacts/meta-phase32-pg17-compatibility-evidence.json
+            artifacts/meta-phase33-cross-major-reconciliation.json
+            artifacts/meta-phase34-migration-readiness.json
+          if-no-files-found: error
+          retention-days: 7

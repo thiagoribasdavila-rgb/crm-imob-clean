@@ -1,0 +1,49 @@
+{
+  "phase": 202,
+  "name": "Release Evidence Intake Contract",
+  "status": "implemented",
+  "objective": "Receber e colocar em quarentena ou revisão de procedência os recibos de evidência, sem executar gates nem promover release.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "modules": 2,
+    "gates": 8,
+    "requiredEvidenceItems": 14,
+    "acceptedChannels": 3,
+    "maxRecordsPerIntake": 50,
+    "maxClockSkewSeconds": 300,
+    "intakesReceived": 0,
+    "recordsReceived": 0,
+    "provenanceVerified": false,
+    "evidenceMatrixEvaluated": false,
+    "gatesExecuted": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "policyHash": "034f73e437a8f5dc64b80dcb588348f40da66609c478d32175d2053a67f9cf22"
+  },
+  "intakeRules": {
+    "atomicIntake": true,
+    "exactDecisionAndPlanRequired": true,
+    "exactOwnerRoleRequired": true,
+    "validityWindowRequired": true,
+    "replayProtectionRequired": true,
+    "safeArtifactReferenceRequired": true,
+    "provenanceRequiredBeforeMatrix": true,
+    "automaticGateExecution": false,
+    "automaticReleasePromotion": false
+  },
+  "safety": {
+    "remoteAccess": false,
+    "databaseMutation": false,
+    "migrationApplied": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 203,
+    "name": "Evidence provenance verification contract",
+    "objective": "Verificar autoria, integridade e origem dos recibos aceitos antes de permitir avaliação pela matriz de gates."
+  }
+}

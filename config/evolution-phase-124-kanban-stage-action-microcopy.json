@@ -1,0 +1,24 @@
+{
+  "phase": 124,
+  "name": "Kanban stage action microcopy",
+  "status": "implemented",
+  "area": "pipeline",
+  "priority": "P1-lead-conversion",
+  "objective": "Transformar cada etapa do Kanban em uma mini orientação de decisão com ação recomendada por perfil.",
+  "businessImpact": [
+    "Corretor entende rapidamente qual lead ou ação priorizar na coluna.",
+    "Gerente identifica cadência descoberta e filas que exigem cobrança do time.",
+    "Diretor enxerga risco de receita e forecast diretamente na etapa do funil."
+  ],
+  "technicalScope": [
+    "Adiciona StageActionMicrocopy com mensagens por lente comercial.",
+    "Reutiliza stageEfficiency, effectiveKanbanLens e dados reais do Kanban.",
+    "Inclui bloco visual compacto em cada coluna sem criar nova dependência.",
+    "Não altera banco, APIs, RBAC ou automações."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-124:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

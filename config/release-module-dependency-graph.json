@@ -1,0 +1,25 @@
+{
+  "schema": "atlas.release-module-dependency-graph.v1",
+  "sourceMemoryHash": "01d5ae4dc4a1710a3d0c51e6c343adff06937073cc5157a1943f0b343fc428cb",
+  "modules": [
+    {
+      "moduleId": "conversion-core-capture-governance",
+      "revision": 1,
+      "entryHash": "fd0bcb541a7e8c4ba944aab6f13c9f6c8c84affb0c3bc60717a0c8d9efb61666",
+      "dependencies": []
+    },
+    {
+      "moduleId": "conversion-core-isolated-readiness",
+      "revision": 1,
+      "entryHash": "5d76302e95051f129bc2d191c0c44548790361f2882c4276c93a9140b50a9577",
+      "dependencies": [
+        {
+          "moduleId": "conversion-core-capture-governance",
+          "revision": 1,
+          "entryHash": "fd0bcb541a7e8c4ba944aab6f13c9f6c8c84affb0c3bc60717a0c8d9efb61666"
+        }
+      ]
+    }
+  ],
+  "configurationHash": "1d9cd3be85a461c105974e0e29cffae5baa9a3cccd2103ab10a47bbee3a14f4d"
+}

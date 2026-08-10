@@ -1,0 +1,60 @@
+{
+  "format": "atlas_meta_repeatability_authorization_draft_gate_v1",
+  "phase": 24,
+  "mode": "disposable_authorization_draft_no_delivery",
+  "environment": "staging_clone",
+  "requiredSourcePhase": 23,
+  "sourceSignalContract": "config/meta-validation-only-signal-contract.json",
+  "targetSlot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2,
+    "requiredInitialStatus": "awaiting_new_authorization"
+  },
+  "validity": {
+    "maximumMinutes": 30,
+    "clockSkewSeconds": 300,
+    "expiresClosed": true,
+    "singleUse": true
+  },
+  "eventScope": {
+    "sameCanonicalEventRequired": true,
+    "syntheticRecordOnly": true,
+    "maximumDeliveries": 1,
+    "newEventIdFingerprintRequired": true,
+    "baselineEventIdReuseAllowed": false,
+    "syntheticRecordFingerprintRequired": true,
+    "realCustomerDataAllowed": false
+  },
+  "humanGovernance": {
+    "roles": ["director", "security", "operator", "reviewer"],
+    "minimumIndependentRoles": 4,
+    "distinctReferencesRequired": true,
+    "baselineReferenceReuseAttestationRequired": true,
+    "justInTimeReconfirmationRequired": true,
+    "draftMayActivateAuthorization": false
+  },
+  "persistedEvidence": {
+    "sourceFingerprintAllowed": true,
+    "eventFingerprintAllowedAfterDraftApproval": true,
+    "syntheticRecordFingerprintAllowedAfterDraftApproval": true,
+    "hashedRoleReferencesAllowed": true,
+    "rawRoleReferencesAllowed": false,
+    "rawPayloadAllowed": false,
+    "rawResponseAllowed": false,
+    "temporaryCodeAllowed": false,
+    "personalDataAllowed": false,
+    "projectIdentifiersAllowed": false,
+    "screenshotsAllowed": false
+  },
+  "releaseGate": {
+    "authorizationActivationAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  }
+}

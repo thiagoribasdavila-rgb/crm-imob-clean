@@ -1,0 +1,131 @@
+{
+  "schemaVersion": "1.0.0",
+  "phase": "operational-ux-002",
+  "capturedAt": "2026-08-04",
+  "timeZone": "America/Sao_Paulo",
+  "status": "instrumented-awaiting-real-sample",
+  "scope": "Medição anônima e tenant-safe do tempo, cliques, mudanças de contexto e intenção de envio nas jornadas operacionais críticas.",
+  "productionDataModified": false,
+  "databaseSchemaModified": false,
+  "goals": {
+    "maximumClicksAfterRecordLocated": 3,
+    "nextActionVisibleWithinSeconds": 3,
+    "minimumCompletedSamplesPerRole": 10,
+    "inventedBehaviorMetricAllowed": false
+  },
+  "eventContract": {
+    "source": "atlas.web.navigation",
+    "aggregateType": "product_usage",
+    "events": [
+      {
+        "eventType": "atlas.page_viewed",
+        "fields": ["route", "role"],
+        "purpose": "contar a entrada em uma superfície sem capturar query string ou identificador real"
+      },
+      {
+        "eventType": "atlas.navigation_completed",
+        "fields": ["fromRoute", "toRoute", "role", "durationMs"],
+        "purpose": "medir a mudança de contexto entre rotas internas"
+      },
+      {
+        "eventType": "atlas.route_session_completed",
+        "fields": [
+          "route",
+          "role",
+          "durationMs",
+          "durationClamped",
+          "clickCount",
+          "internalNavigationCount",
+          "submitIntentCount",
+          "controlCounts",
+          "exitReason"
+        ],
+        "purpose": "medir esforço de interação agregado por permanência na rota"
+      }
+    ]
+  },
+  "privacy": {
+    "authenticatedOnly": true,
+    "organizationResolvedServerSide": true,
+    "doNotTrackRespected": true,
+    "personalDataCaptured": false,
+    "queryStringsCaptured": false,
+    "dynamicIdentifiersCaptured": false,
+    "fieldValuesCaptured": false,
+    "controlLabelsCaptured": false,
+    "freeTextCaptured": false,
+    "maximumSessionDurationMinutes": 30
+  },
+  "journeys": [
+    {
+      "id": "capturar-nova-lead",
+      "label": "Capturar nova lead",
+      "roles": ["director", "superintendent", "manager", "broker"],
+      "startRoute": "/dashboard",
+      "endRoute": "/leads/new",
+      "maximumClicks": 2,
+      "measurementMode": "navigation-proxy",
+      "completionEvidence": "navegação concluída até o formulário; a criação persistida exige evidência de domínio separada"
+    },
+    {
+      "id": "agir-na-prioridade",
+      "label": "Abrir a lead prioritária",
+      "roles": ["director", "superintendent", "manager", "broker"],
+      "startRoute": "/dashboard",
+      "endRoute": "/leads/:id",
+      "maximumClicks": 2,
+      "measurementMode": "navigation-proxy",
+      "completionEvidence": "navegação concluída até Lead 360; contato ou próxima ação persistida exige evidência de domínio separada"
+    },
+    {
+      "id": "avancar-oportunidade",
+      "label": "Avançar oportunidade no pipeline",
+      "roles": ["director", "superintendent", "manager", "broker"],
+      "startRoute": "/pipeline",
+      "endRoute": "/pipeline",
+      "maximumClicks": 2,
+      "measurementMode": "route-interaction-baseline",
+      "completionEvidence": "esforço agregado na rota; movimentação persistida permanece dependente do evento de domínio"
+    },
+    {
+      "id": "localizar-material-vigente",
+      "label": "Localizar material vigente",
+      "roles": ["director", "superintendent", "manager", "broker"],
+      "startRoute": "/developments",
+      "endRoute": "/developments/materials",
+      "maximumClicks": 3,
+      "measurementMode": "navigation-proxy",
+      "completionEvidence": "biblioteca aberta; visualização ou download do arquivo exige evidência de domínio separada"
+    },
+    {
+      "id": "distribuir-lead",
+      "label": "Distribuir lead",
+      "roles": ["director", "superintendent", "manager"],
+      "startRoute": "/distribution",
+      "endRoute": "/distribution",
+      "maximumClicks": 2,
+      "measurementMode": "route-interaction-baseline",
+      "completionEvidence": "esforço agregado na rota; atribuição persistida permanece dependente do ledger de distribuição"
+    },
+    {
+      "id": "diagnosticar-integracao",
+      "label": "Diagnosticar integração",
+      "roles": ["director", "superintendent", "manager"],
+      "startRoute": "/integrations",
+      "endRoute": "/integrations/health",
+      "maximumClicks": 3,
+      "measurementMode": "navigation-proxy",
+      "completionEvidence": "health center aberto; teste real do provedor continua sendo a prova operacional"
+    }
+  ],
+  "runtimeBaseline": {
+    "status": "awaiting-real-sample",
+    "sourceAvailableInCurrentEnvironment": false,
+    "reason": "O ambiente local não possui credenciais operacionais disponíveis para uma consulta autenticada e nenhuma métrica foi estimada.",
+    "sampledEvents": null,
+    "medianNavigationDurationMs": null,
+    "p95NavigationDurationMs": null,
+    "medianClicksPerRouteSession": null,
+    "completionRate": null
+  }
+}

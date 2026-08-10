@@ -1,0 +1,25 @@
+{
+  "phase": 36,
+  "scope": "unified_kanban_movement",
+  "interactionMethods": [
+    "drag",
+    "keyboard",
+    "selector",
+    "quick_action",
+    "undo",
+    "decision"
+  ],
+  "feedbackContract": ["method", "lead", "origin", "destination", "state"],
+  "preservedSafeguards": [
+    "single_in_flight_move",
+    "terminal_stage_confirmation",
+    "optimistic_rollback",
+    "timeline_history",
+    "undo",
+    "keyboard_access"
+  ],
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

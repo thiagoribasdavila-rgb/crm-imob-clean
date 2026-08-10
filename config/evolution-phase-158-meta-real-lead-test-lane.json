@@ -1,0 +1,31 @@
+{
+  "phase": 158,
+  "name": "Meta Real Lead Test Lane",
+  "status": "implemented",
+  "objective": "Criar uma régua operacional para validar uma lead real de campanha Meta até qualificação, handoff comercial e feedback de conversão.",
+  "businessImpact": [
+    "Diretor enxerga se a campanha realmente gera comprador, não apenas lead bruto.",
+    "Marketing, CRM, corretor e diretoria passam a compartilhar o mesmo checklist de teste real.",
+    "A operação reduz risco de escalar campanha sem sinal comercial suficiente.",
+    "O aprendizado do Andromeda fica conectado a sinais limpos de qualificação, visita, proposta e venda."
+  ],
+  "technicalScope": [
+    "Adicionar esteira visual de teste real de lead Meta na página de campanhas.",
+    "Calcular prontidão do teste a partir de sinais já disponíveis no snapshot de campanhas.",
+    "Adicionar checklist do diretor para aprovar validação real antes de escala.",
+    "Não acionar APIs externas, não alterar campanhas reais, não criar migrations e não expor segredos."
+  ],
+  "validation": [
+    "npm run evolution:phase-158:check",
+    "npm run typecheck",
+    "npm run lint"
+  ],
+  "files": [
+    "app/(crm)/marketing/campaigns/page.tsx",
+    "docs/EVOLUTION_PHASE_158_META_REAL_LEAD_TEST_LANE.md",
+    "scripts/check-evolution-phase-158.mjs",
+    "config/evolution-phase-158-meta-real-lead-test-lane.json",
+    "config/evolution-program-3000.json",
+    "package.json"
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "phase": 174,
+  "name": "Conversion Core Isolated Authenticated E2E Gate",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Preparar uma prova autenticada descartável que recuse produção, não use service role no executor e só homologue a jornada quando interface, API e persistência local estiverem disponíveis.",
+  "evidenceLevel": "isolated_e2e_gate_ready_runtime_blocked",
+  "runtimeHomologated": false,
+  "environmentContract": {
+    "dedicatedVariablesOnly": true,
+    "loopbackOnly": true,
+    "distinctAccountsPerRole": true,
+    "genericCredentialFallback": false,
+    "serviceRoleAccepted": false,
+    "secretValuesPrinted": false
+  },
+  "runtimeEvidence": {
+    "dockerAvailable": false,
+    "localSupabaseAvailable": false,
+    "workspaceEnvIsolated": false,
+    "authenticatedJourneyExecuted": false,
+    "reason": "Docker e a pilha Supabase local descartável não estão disponíveis neste host; o workspace também contém .env.local e, por segurança, não pode iniciar o servidor E2E isolado diretamente."
+  },
+  "journey": {
+    "source": "tests/e2e/authenticated-journeys.spec.mjs",
+    "roles": ["ADMIN", "DIRETOR", "GERENTE", "CORRETOR"],
+    "routes": ["/dashboard", "/leads", "/pipeline", "/tasks", "/calendar", "/customers", "/developments"]
+  },
+  "safety": {
+    "productionCredentialsUsed": false,
+    "productionDatabaseTouched": false,
+    "externalIntegrationsCalled": false,
+    "serviceRoleForwardedToPlaywright": false,
+    "buildExecuted": false,
+    "zipGenerated": false
+  },
+  "runtimeBlockers": [
+    {
+      "id": "docker-runtime-unavailable",
+      "reason": "A CLI Supabase local depende de containers e Docker não está disponível."
+    },
+    {
+      "id": "workspace-env-not-isolated",
+      "reason": "O Next.js carrega .env.local automaticamente; a prova deverá rodar em cópia descartável sem esse arquivo para impedir acesso acidental à operação."
+    },
+    {
+      "id": "source-traceability-missing",
+      "reason": "O diretório canônico atual não contém metadados Git; release permanece sem proveniência comprovável."
+    }
+  ],
+  "releaseGate": {
+    "contractsPassed": true,
+    "authenticatedIsolatedRuntimePassed": false,
+    "sourceTraceabilityPassed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Disponibilizar Docker/Supabase local, preencher exclusivamente as variáveis ATLAS_E2E_ISOLATED_* e executar o gate autenticado antes do build único do módulo."
+}

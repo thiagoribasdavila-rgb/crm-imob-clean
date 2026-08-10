@@ -1,0 +1,25 @@
+{
+  "schema": "atlas.meta-external-test-operator-gate.v1",
+  "status": "pending_operator_confirmation",
+  "approvalReference": null,
+  "operatorReference": null,
+  "environment": "staging",
+  "testEventOnly": true,
+  "executionWindow": {
+    "opensAt": null,
+    "closesAt": null
+  },
+  "execution": {
+    "manuallyConfirmed": false,
+    "dispatchEnabled": false,
+    "productionAllowed": false,
+    "automaticRetryAllowed": false
+  },
+  "forbidden": {
+    "serviceRoleInClient": true,
+    "secretsInRequest": true,
+    "customerPayloadInLogs": true,
+    "multipleEvents": true,
+    "automaticCampaignChange": true
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "phase": 53,
+  "scope": "meta_capi_dead_letter_operational_queue",
+  "canonicalRoute": "/integrations/health",
+  "directorSupervisionRequired": true,
+  "tenantIsolationPreserved": true,
+  "rawPayloadReturned": false,
+  "rawProviderErrorReturned": false,
+  "campaignMutation": false,
+  "budgetMutation": false,
+  "automaticRetryFromUi": false,
+  "existingRetryEndpointReused": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDeliveryDuringPhase": false,
+  "buildExecuted": false
+}

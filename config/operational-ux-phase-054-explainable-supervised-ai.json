@@ -1,0 +1,16 @@
+{
+  "phase": 54,
+  "scope": "explainable_supervised_ai_recommendations",
+  "canonicalRoute": "/decision-center",
+  "evidenceVisible": true,
+  "confidenceVisible": true,
+  "uncalibratedConfidenceInvented": false,
+  "scorePresentedAsConfidence": false,
+  "humanConfirmationRequired": true,
+  "automaticCommercialAction": false,
+  "rawPersonalDataAdded": false,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDeliveryDuringPhase": false,
+  "buildExecuted": false
+}

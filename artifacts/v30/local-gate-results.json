@@ -1,0 +1,1022 @@
+{
+  "program": "ATLAS V30 — Consolidação Operacional 10/10",
+  "generatedAt": "2026-07-23T16:24:38.383Z",
+  "range": {
+    "from": 1,
+    "to": 28
+  },
+  "policy": {
+    "fullBuildExecuted": false,
+    "packageCreated": false,
+    "realEnvironmentTestsExecuted": false
+  },
+  "summary": {
+    "phases": 28,
+    "approvedLocally": 26,
+    "waitingEnvironment": 2,
+    "waitingInstallation": 0,
+    "blocked": 0,
+    "reservedFinalGate": 0,
+    "uniqueTests": 94,
+    "passedTests": 88,
+    "failedTests": 0
+  },
+  "phases": [
+    {
+      "id": 1,
+      "title": "Fonte única e inventário consolidado",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "inventory:v3",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 581,
+          "stdoutTail": "HASE44_CONSUMER_WORKER_ATTESTATION\",\n      \"ATLAS_PHASE44_HUMAN_AUTHORIZATION\",\n      \"ATLAS_PHASE44_OUTPUT\",\n      \"ATLAS_PHASE45_CONSUMER_PLAN\",\n      \"ATLAS_PHASE45_FINAL_AUTHORIZATION\",\n      \"ATLAS_PHASE45_OUTPUT\",\n      \"ATLAS_PHASE45_TRANSACTION_ATTESTATION\",\n      \"ATLAS_PIPELINE_STAGE_SETTINGS_ENABLED\",\n      \"ATLAS_PREFLIGHT_IGNORE_LOCAL_ENV\",\n      \"ATLAS_PRODUCTION_SUPABASE_URL\",\n      \"ATLAS_READINESS_DECISION_FILE\",\n      \"ATLAS_RECOVERY_INBOX\",\n      \"ATLAS_RESEARCH_MODEL\",\n      \"ATLAS_RLS_REHEARSAL_EVIDENCE_PATH\",\n      \"ATLAS_RLS_TEST_MUTATION_APPROVED\",\n      \"ATLAS_SMOKE_BASE_URL\",\n      \"ATLAS_TEST_EMAIL\",\n      \"ATLAS_TEST_PASSWORD\",\n      \"DATABASE_URL\",\n      \"GOOGLE_ADS_DEVELOPER_TOKEN\",\n      \"GOOGLE_CALENDAR_CLIENT_ID\",\n      \"GOOGLE_CALENDAR_CLIENT_SECRET\",\n      \"GOOGLE_CALENDAR_REDIRECT_URI\",\n      \"HOME\",\n      \"META_ADS_ACCESS_TOKEN\",\n      \"META_AD_ACCOUNT_ID\",\n      \"META_APP_SECRET\",\n      \"META_CONVERSIONS_ACCESS_TOKEN\",\n      \"META_GRAPH_API_VERSION\",\n      \"META_LEAD_ACCESS_TOKEN\",\n      \"META_WEBHOOK_VERIFY_TOKEN\",\n      \"MICROSOFT_CALENDAR_CLIENT_ID\",\n      \"MICROSOFT_CALENDAR_CLIENT_SECRET\",\n      \"MICROSOFT_CALENDAR_REDIRECT_URI\",\n      \"NEXT_PHASE\",\n      \"NODE_APP_INSTANCE\",\n      \"NODE_ENV\",\n      \"OPENAI_API_KEY\",\n      \"PATH\",\n      \"PERPLEXITY_API_KEY\",\n      \"SUPABASE_SERVICE_ROLE_KEY\",\n      \"SUPABASE_URL\",\n      \"TIKTOK_ADS_ACCESS_TOKEN\",\n      \"TMPDIR\",\n      \"WHATSAPP_ACCESS_TOKEN\",\n      \"WHATSAPP_NIGHTLY_APPROACH_TEMPLATE\",\n      \"WHATSAPP_PHONE_NUMBER_ID\",\n      \"WHATSAPP_TEST_RECIPIENT\"\n    ]\n  },\n  \"boundaries\": {\n    \"productionTarget\": \"Hostinger Node.js 22+ (Node 24 recomendado)\",\n    \"databaseAuthStorage\": \"Supabase\",\n    \"historicalV2Dependency\": false,\n    \"legacyPrototypePathsExcludedFromPackage\": 30\n  }\n}",
+          "stderrTail": ""
+        },
+        {
+          "name": "architecture:canonical",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 198,
+          "stdoutTail": "ATLAS CANONICAL ENTITIES: PASSED (12 entidades, 12 tabelas únicas, tenant organization_id)",
+          "stderrTail": ""
+        },
+        {
+          "name": "architecture:modules",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 220,
+          "stdoutTail": "ATLAS MODULE BOUNDARIES: PASSED (8 módulos, 12 entidades com dono único, 59 raízes)",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Runtime e dependências",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "doctor",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 364,
+          "stdoutTail": "ATLAS AI — Diagnóstico local\n\n✅ Projeto: atlas-ai-real-estate-os@3.0.0-rc.2\n✅ Origem: snapshot-fonte validável sem metadados Git\n✅ Node: v24.18.0\n✅ npm: 11.16.0\n✅ Script release:check: disponível\n✅ Arquivo .env.local: encontrado\n⚠️  NEXT_PUBLIC_SUPABASE_URL: não carregada no processo atual\n⚠️  Chave pública Supabase: configure NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY\n\nSequência recomendada:\n\n# Snapshot local: confirme o fingerprint da fonte antes de publicar\nnpm run consolidation:30:check\nnpm ci\nnpm run doctor\nnpm run release:check\nnpm run dev",
+          "stderrTail": ""
+        },
+        {
+          "name": "next16:runtime-contract:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 729,
+          "stdoutTail": "ATLAS Next 16 runtime: contrato aprovado. 542 fontes ativas inspecionadas; 141 fontes legadas ignoradas; params assíncronos validados; clientes externos lazy; proxy e cookies compatíveis.",
+          "stderrTail": ""
+        },
+        {
+          "name": "preflight:contract:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 266,
+          "stdoutTail": "ATLAS production preflight contract: fail-closed, mensagens acionáveis e smoke externo protegido.",
+          "stderrTail": ""
+        },
+        {
+          "name": "security:dependencies:offline",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 620,
+          "stdoutTail": "found 0 vulnerabilities",
+          "stderrTail": ""
+        },
+        {
+          "name": "environment:variables",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 252,
+          "stdoutTail": "ATLAS ENVIRONMENT VARIABLES: PASSED (100 explícitas + 4 famílias; 130 usos estáticos; 9 obrigatórias; 22 temporárias)",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Contrato Hostinger reproduzível",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "consolidation:30:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 1215,
+          "stdoutTail": "ATLAS V30 consolidação: 30/30 fases contratadas; Node, Hostinger, testes e gate único de build aprovados.\nTask schema compatibility: PASS (5 caminhos críticos verificados)\nATLAS rotas ativas: contrato aprovado. 286 arquivos de rota ativos. 137 arquivos de rota legados isolados. 136 páginas ativas e 32 destinos oficiais verificados. 78 links internos estáticos verificados. 0 páginas expondo erro bruto do banco. 9 grupos de componentes demonstrativos isolados. 0 colisões ativas.\nATLAS V30 lapidação: 94/94 verificações aprovadas. Transferência, perfil, Kanban, comissões, atividades, autenticação e proteção distribuída preservados.\nContrato de grants Supabase: 63/63 verificações aprovadas. Leituras tenant-safe e tabelas internas server-only estão separadas.\nATLAS Next 16 runtime: contrato aprovado. 542 fontes ativas inspecionadas; 141 fontes legadas ignoradas; params assíncronos validados; clientes externos lazy; proxy e cookies compatíveis.",
+          "stderrTail": ""
+        },
+        {
+          "name": "environments:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 196,
+          "stdoutTail": "ATLAS ENVIRONMENTS: PASSED (development, homologation e production isolados; Node.js 22+)",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Superfície canônica e quarentena",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "navigation-architecture:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 534,
+          "stdoutTail": "✓ Fase 021 concluída sem mutação de runtime\n✓ Todas as rotas CRM foram classificadas\n✓ Buckets fecham o inventário\n✓ Catálogo canônico possui cobertura integral\n✓ Rotas dinâmicas permanecem contextuais\n✓ Rotas profundas permanecem de apoio\n✓ Superfícies de topo foram classificadas\n✓ Ambiguidades críticas estão explícitas\n✓ Entrada autenticada continua no dashboard\n✓ Shell persistente continua governado pelo layout\n✓ Conteúdo de página reinicia por caminho\n✓ Relatório preserva rotas e dados\n✓ Gate anterior não foi contornado\nFase 021 aprovada: arquitetura de navegação inventariada sem alterar rotas ou dados.",
+          "stderrTail": ""
+        },
+        {
+          "name": "navigation-outcomes:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 411,
+          "stdoutTail": "✓ Fase 022 concluída sem alteração de runtime\n✓ Inventário anterior está concluído\n✓ Todos os destinos canônicos possuem resultado\n✓ Dezenove destinos principais estão definidos\n✓ Seis comandos contextuais estão definidos\n✓ Pergunta, ação e evidência são obrigatórias\n✓ Jornadas críticas respeitam até três ações\n✓ Decisões ambíguas preservam compatibilidade\n✓ Pipeline e conversas possuem conceito principal\n✓ Métricas inventadas e decisão automática continuam proibidas\n✓ Relatório deixa a próxima fase explícita\n✓ Gate da Fase 020 continua bloqueado\nFase 022 aprovada: cada destino canônico conduz a um resultado comercial verificável.",
+          "stderrTail": ""
+        },
+        {
+          "name": "navigation-deduplication:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 202,
+          "stdoutTail": "✓ Fase 024 concluída com mudança reversível\n✓ Sete conceitos ambíguos foram consolidados\n✓ Decisões da Fase 022 foram preservadas\n✓ Registro governado contém todos os aliases\n✓ Destinos canônicos existem\n✓ Aliases encaminham sem interface duplicada\n✓ Compatibilidade usa redirecionamento temporário\n✓ Rotas CRM compatíveis saíram da quarentena\n✓ Referências ativas usam destinos canônicos\n✓ Diagnóstico de integração ganhou acesso contextual\n✓ Nenhuma rota ou dado foi apagado\n✓ Métrica comportamental não foi inventada\n✓ Relatório documenta compatibilidade e limite\n✓ Evolução anterior foi preservada sem contornar staging\nFase 024 aprovada: sete aliases consolidados, destinos antigos preservados e navegação interna canônica.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Cobertura TypeScript real",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 15802,
+          "stdoutTail": "",
+          "stderrTail": ""
+        },
+        {
+          "name": "lint",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 24646,
+          "stdoutTail": "",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Ledger de migrations e backup",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "atlas:migration-readiness:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 1466,
+          "stdoutTail": "PASS contrato da Fase 9 está versionado\nPASS avaliação bloqueia projeto remoto e vinculado\nPASS migration nova ou renomeada depende de prova\nPASS backup, histórico e prova RLS são obrigatórios\nPASS toolchain do Supabase é fixa e isolada\nPASS três versões duplicadas estão inventariadas\nPASS duplicidades só podem ser corrigidas após reconciliação remota\nPASS contrato do backup é sanitizado e local\nPASS avaliador verifica runtime e CLI sem telemetria\nPASS avaliador impede cadeia local divergente\nPASS avaliação encadeia a prova da Fase 8 e rollback\nPASS comandos de avaliação e gate estão publicados\nPASS runbook explica a sequência segura\nPASS resultado não alega execução nem release\nPASS autoteste do avaliador\nPASS estado real permanece bloqueado sem ambiente isolado\nPASS avaliação confirma as três colisões reais\nPASS bloqueios materiais são fail-closed\nPASS avaliação permanece local e sem release\nATLAS CONTROLLED MIGRATION READINESS CHECK: PASSED (19/19)",
+          "stderrTail": ""
+        },
+        {
+          "name": "atlas:remote-ledger:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 343,
+          "stdoutTail": "PASS contrato da Fase 10 está versionado\nPASS somente metadados remotos são permitidos\nPASS repair, push e rename permanecem bloqueados\nPASS snapshot identifica o ambiente saudável sem expor o ref\nPASS contagens do ledger remoto estão registradas\nPASS divergência entre ledger remoto e cadeia local é explícita\nPASS seis aplicações remotas reconciliam as três colisões locais\nPASS intenção canônica é conhecida sem autorizar renomeio\nPASS baseline novo preserva histórico existente\nPASS baseline depende de clone, RLS e aprovação\nPASS consulta adicional bloqueada não é alegada como evidência\nPASS snapshot não persiste segredos, refs, SQL bruto ou dados pessoais\nPASS avaliador fecha ações incompatíveis com o ledger\nPASS autoteste rejeita mutante com versão remota duplicada\nPASS comandos da Fase 10 estão publicados\nPASS runbook explica a divergência e a decisão segura\nPASS runbook registra a semântica de versionamento\nPASS resultado não alega mutações nem release\nPASS autoteste e teste mutante\nPASS ledger remoto reconciliado com gate completo\nPASS inventário local real permanece fail-closed\nPASS conclusão autoriza somente o desenho do baseline isolado\nPASS execução permanece sem escrita, build ou pacote\nATLAS REMOTE LEDGER RECONCILIATION CHECK: PASSED (23/23)",
+          "stderrTail": ""
+        },
+        {
+          "name": "atlas:recovery:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 269,
+          "stdoutTail": "✓ contrato versionado\n✓ rollback aponta para versão anterior do V3\n✓ V2 legado não é aceito\n✓ produção falha fechada\n✓ avaliação exposta no package\n✓ verificador exposto no package\n✓ evidência V3 possui marcador inequívoco\n✓ Storage possui evidência separada\n✓ pacote imutável é obrigatório\n✓ rollback V2 antigo não qualifica a listagem\n✓ rollback V2 antigo não qualifica aceite executivo\n✓ aprovação exige health check válido\n✓ interface explica a estratégia atual\n✓ interface solicita evidência do Storage\n✓ governança diferencia backup e restauração\n✓ limite do backup documentado\n✓ automação não altera ambiente remoto\n✓ resultado mantém produção bloqueada\n✓ autoteste do avaliador\n\nFase 2/24 aprovada estruturalmente: 19 controles de recuperação.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Schema canônico e adapters",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "atlas:schema-parity:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 374,
+          "stdoutTail": "✓ contrato versionado\n✓ homologação V3 é o alvo inequívoco\n✓ ambiente legado está separado\n✓ auditoria é somente leitura\n✓ avaliação exposta no package\n✓ verificador exposto no package\n✓ snapshot remoto sanitizado\n✓ cobertura RLS observada\n✓ tenant operacional ausente é explícito\n✓ colisões locais são detectadas\n✓ drift bidirecional é explícito\n✓ gate falha fechado\n✓ avaliador não contém escrita remota\n✓ relatório distingue estrutura e operação\n✓ resultado preserva o gate de release\n✓ autoteste do avaliador\n✓ estado real permanece bloqueado\n✓ execução real permaneceu somente leitura\n\nFase 3/24 aprovada estruturalmente: 18 controles de paridade.",
+          "stderrTail": ""
+        },
+        {
+          "name": "contracts:data",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 203,
+          "stdoutTail": "ATLAS DATA CONTRACTS: PASSED (8 normalizadores, 9 etapas canônicas)",
+          "stderrTail": ""
+        },
+        {
+          "name": "architecture:canonical",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 198,
+          "stdoutTail": "ATLAS CANONICAL ENTITIES: PASSED (12 entidades, 12 tabelas únicas, tenant organization_id)",
+          "stderrTail": "",
+          "reused": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "RLS e segurança do banco",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "rls:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 219,
+          "stdoutTail": "RLS Fase 17: aprovado — 7 superfícies críticas, 5 dimensões e 4 tabelas internas protegidas.",
+          "stderrTail": ""
+        },
+        {
+          "name": "atlas:rls-matrix:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 456,
+          "stdoutTail": "PASS contrato da fase 7 está versionado\nPASS alvo é homologação e execução remota está bloqueada\nPASS clone, ACL e aprovação humana são gates obrigatórios\nPASS 12 tabelas estão classificadas como acesso interno\nPASS 10 funções e 3 gatilhos têm contrato explícito\nPASS matriz cobre hierarquia e negação cross-tenant\nPASS consumidores residuais de projects foram removidos\nPASS consumidores usam developments canônico\nPASS candidato exige clone, detecta drift e sempre reverte\nPASS 12 policies explícitas de negação estão presentes\nPASS grants server-only estão explícitos\nPASS candidato não contém DDL destrutivo\nPASS rollback falha fechado sem snapshot de ACL\nPASS contrato pgTAP é isolado e reversível\nPASS gates estão expostos no package\nPASS runbook explica contrato, legado e próxima prova\nPASS resultado mantém release bloqueado\nPASS autoteste do avaliador\nPASS estado real aguarda ensaio isolado\nPASS avaliação comprova escopo e limpeza do legado\nPASS avaliação permanece local e sem release\nPASS provas dinâmicas ausentes bloqueiam corretamente\nATLAS RLS ACCESS MATRIX CHECK: PASSED (22/22)",
+          "stderrTail": ""
+        },
+        {
+          "name": "atlas:rls-dynamic:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 406,
+          "stdoutTail": "PASS contrato da Fase 8 está versionado\nPASS ensaio aceita apenas clone isolado e bloqueia projeto vinculado\nPASS loopback, dois tenants e aprovação são obrigatórios\nPASS fixtures vêm do clone sanitizado e não são persistidas\nPASS matriz dinâmica cobre cinco personas e dez cenários\nPASS pgTAP falha fechado sem clone ou fixtures mínimas\nPASS pgTAP impersona toda a hierarquia e o segundo tenant\nPASS RPCs críticas têm provas negativas\nPASS ensaio é transacional e sempre reverte\nPASS ensaio não cria nem remove fixtures\nPASS snapshot de ACL é completo e somente leitura\nPASS executor bloqueia remoto e nunca usa --linked\nPASS evidência do executor é sanitizada\nPASS comandos de avaliação, execução e gate estão publicados\nPASS runbook explica camadas de acesso e sequência segura\nPASS resultado não alega execução ou release\nPASS autoteste do avaliador\nPASS estado real aguarda prova dinâmica\nPASS avaliação reporta a cobertura correta\nPASS avaliação permanece local e sem release\nPASS ausência de evidência mantém gates fechados\nPASS mutante com host remoto é rejeitado antes de qualquer execução\nATLAS ISOLATED RLS REHEARSAL CHECK: PASSED (22/22)",
+          "stderrTail": ""
+        },
+        {
+          "name": "security:governance",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 247,
+          "stdoutTail": "ATLAS SECRET GOVERNANCE: PASSED (23 segredos; 6 responsáveis; cliente sem acesso privado)",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Login, sessão, RBAC e hierarquia",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "login:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 208,
+          "stdoutTail": "ATLAS LOGIN: PASSED (14 controles; timeout 15000ms; rota /login)",
+          "stderrTail": ""
+        },
+        {
+          "name": "post-login:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 196,
+          "stdoutTail": "ATLAS POST LOGIN: PASSED (Auth → contexto oficial no servidor → organização/RBAC → dashboard adaptativo)",
+          "stderrTail": ""
+        },
+        {
+          "name": "password-recovery:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 195,
+          "stdoutTail": "ATLAS PASSWORD RECOVERY: PASSED (15 min; senha 12-128; revogação global)",
+          "stderrTail": ""
+        },
+        {
+          "name": "auth-rbac:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 195,
+          "stdoutTail": "ATLAS AUTH RBAC OFICIAL: PASSED (4 perfis; 6 acessos; RLS; reset reversível; credenciais locais protegidas)",
+          "stderrTail": ""
+        },
+        {
+          "name": "hierarchy-enforcement:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 198,
+          "stdoutTail": "ATLAS HIERARCHY ENFORCEMENT: PASSED (6 camadas; 4 perfis; decisões e exportações governadas)",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Qualidade, deduplicação e privacidade",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "lead-identity:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 204,
+          "stdoutTail": "IDENTIDADE Fase 72: aprovada — match exato, contato mascarado, decisão humana, registro principal e histórico preservado.",
+          "stderrTail": ""
+        },
+        {
+          "name": "contact-consent:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 200,
+          "stdoutTail": "CONSENTIMENTO Fase 73: aprovado — 4 canais, evidência, validade, janela, opt-out e trava de IA/envio.",
+          "stderrTail": ""
+        },
+        {
+          "name": "inactive-memory:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 203,
+          "stdoutTail": "ATLAS INACTIVE MEMORY: APROVADO — memória fria isolada, classificação local em tempo real e promoção somente humana. Inventário local não incluído no pacote.",
+          "stderrTail": ""
+        },
+        {
+          "name": "data-completeness:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 220,
+          "stdoutTail": "DADOS INCOMPLETOS Fase 30: aprovado — 10 dimensões, priorização comercial e custo LLM zero.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Leads operacionais",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "lead-registration:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 209,
+          "stdoutTail": "LEAD REGISTRATION: aprovado — 9 validações; escrita compatível com banco ativo; deduplicação por tenant; histórico real; cadastro progressivo.",
+          "stderrTail": ""
+        },
+        {
+          "name": "lead-360:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 201,
+          "stdoutTail": "LEAD 360 Fase 26: aprovado — 10 áreas unificadas; registro canônico; RLS; mapa de contexto e próxima ação.",
+          "stderrTail": ""
+        },
+        {
+          "name": "smart-search:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 205,
+          "stdoutTail": "SMART SEARCH Fase 27: aprovado — 8 campos; RLS hierárquico; busca explicável; paleta e página unificadas.",
+          "stderrTail": ""
+        },
+        {
+          "name": "commercial-filters:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 202,
+          "stdoutTail": "FILTROS COMERCIAIS Fase 28: aprovado — 4 atalhos, 7 dimensões e escopo hierárquico preservado.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Pipeline e Kanban de decisão",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "modern-kanban:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 206,
+          "stdoutTail": "KANBAN MODERNO Fase 32: aprovado — 10 controles, mobile por etapa e três formas de movimentação.",
+          "stderrTail": ""
+        },
+        {
+          "name": "safe-movement:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 195,
+          "stdoutTail": "MOVIMENTAÇÃO SEGURA Fase 33: aprovado — trava otimista, 3 registros vivos, rollback compensatório e desfazer causal.",
+          "stderrTail": ""
+        },
+        {
+          "name": "pipeline-decision-contract:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 197,
+          "stdoutTail": "✓ app/(crm)/pipeline/page.tsx: const pipelineAttention = useMemo\n✓ app/(crm)/pipeline/page.tsx: new Map(\n✓ app/(crm)/pipeline/page.tsx: pipelineAttention.critical\n✓ app/(crm)/pipeline/page.tsx: pipelineAttention.hotUnprotected\n✓ app/(crm)/pipeline/page.tsx: pipelineAttention.valueAtRisk\n✓ app/(crm)/pipeline/page.tsx: data-pipeline-decision-contract=\"unique-attention\"\n✓ app/(crm)/pipeline/page.tsx: setFocus(decisionCommand.focus)\n✓ app/(crm)/pipeline/page.tsx: setSort(decisionCommand.sort)\n✓ app/(crm)/pipeline/page.tsx: setFocusMode(decisionCommand.focusMode)\n✓ app/(crm)/pipeline/page.tsx: setCompact(decisionCommand.compact)\n✓ app/(crm)/pipeline/page.tsx: setHideEmpty(decisionCommand.hideEmpty)\n✓ app/(crm)/pipeline/page.tsx: compactBrl.format(pipelineAttention.valueAtRisk)\n✓ app/globals.css: .atlas-decision-command-action:focus-visible\n✓ app/globals.css: font-variant-numeric: tabular-nums\n✓ docs/PIPELINE_UNIQUE_ATTENTION_DECISION_CONTRACT.md: atenção única\n✓ docs/PIPELINE_UNIQUE_ATTENTION_DECISION_CONTRACT.md: comando operacional\n✓ docs/PIPELINE_UNIQUE_ATTENTION_DECISION_CONTRACT.md: sem alteração de banco\n\nContrato decisório do Pipeline aprovado: 17 verificações.",
+          "stderrTail": ""
+        },
+        {
+          "name": "pipeline-aging:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 200,
+          "stdoutTail": "AGING DO PIPELINE Fase 39: aprovado — tempo por etapa, gargalos, cobertura e fila de ação governada.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Tarefas, agenda e SLA",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "task-center:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 206,
+          "stdoutTail": "CENTRAL DE TAREFAS Fase 41: aprovado — prioridade, responsáveis, prazos e ações governadas.",
+          "stderrTail": ""
+        },
+        {
+          "name": "commercial-calendar:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 195,
+          "stdoutTail": "AGENDA COMERCIAL Fase 46: aprovada — 2 fontes ativas, visitas opcionais e 5 períodos.",
+          "stderrTail": ""
+        },
+        {
+          "name": "follow-up-sla:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 196,
+          "stdoutTail": "SLA DE FOLLOW-UP Fase 35: aprovado — 5 estados, 7 interações válidas e 4 indicadores.",
+          "stderrTail": ""
+        },
+        {
+          "name": "recurring-tasks:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 197,
+          "stdoutTail": "TAREFAS RECORRENTES Fase 43: aprovado — término, limite, atomicidade e worker sem duplicação.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Cliente 360 e timeline",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "unified-timeline:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 201,
+          "stdoutTail": "TIMELINE Fase 29: aprovado — 6 categorias, 6 fontes canônicas, autoria e privacidade preservadas.",
+          "stderrTail": ""
+        },
+        {
+          "name": "customer-relationship-workspace:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 197,
+          "stdoutTail": "✓ Fase 041 concluída sem mutação de dados ou schema\n✓ Fase anterior encaminha Clientes 360\n✓ Clientes 360 declara relacionamento como primeira leitura\n✓ Primeira visão mostra quatro sinais observados\n✓ Revisão humana limita três relacionamentos\n✓ Cinco vínculos permanecem pesquisáveis e paginados\n✓ Cada linha expõe contexto e acesso ao Lead 360\n✓ Base fria permanece separada da carteira ativa\n✓ API usa contexto autenticado, organização e RLS\n✓ Enriquecimento preserva perfis e projetos pela camada compatível\n✓ API é somente leitura e não devolve metadados brutos\n✓ Cliente não consulta banco diretamente no navegador\n✓ Nenhuma execução comercial automática foi adicionada\n✓ Layout possui responsividade, toque e movimento reduzido\n✓ Relatório registra limites e próxima fase\n✓ RBAC, tenant, RLS e reativação foram preservados\n✓ Gate de homologação não foi contornado\nFase 041 verificada: Customer 360 unificado, hierárquico e orientado ao próximo atendimento.",
+          "stderrTail": ""
+        },
+        {
+          "name": "lead-360:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 201,
+          "stdoutTail": "LEAD 360 Fase 26: aprovado — 10 áreas unificadas; registro canônico; RLS; mapa de contexto e próxima ação.",
+          "stderrTail": "",
+          "reused": true
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Projetos, incorporadoras e materiais",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "development-registry:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 202,
+          "stdoutTail": "EMPREENDIMENTOS Fase 62: aprovada — incorporadora canônica, localização, produto, faixas, datas, ciclo e auditoria.",
+          "stderrTail": ""
+        },
+        {
+          "name": "development-catalog:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 196,
+          "stdoutTail": "CATÁLOGO Fase 63: aprovado — tipologias para matching e diferenciais verificados para IA comercial.",
+          "stderrTail": ""
+        },
+        {
+          "name": "material-center:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 194,
+          "stdoutTail": "MATERIAIS Fase 67: aprovada — incorporadoras, cobertura, vigência, revisão, links privados e atualização simples.",
+          "stderrTail": ""
+        },
+        {
+          "name": "inventory-import:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 200,
+          "stdoutTail": "IMPORTAÇÃO Fase 65: aprovada — XLSX/CSV, reconciliação, prévia, conflitos, aprovação humana e aplicação atômica.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Saúde e roteamento das IAs",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "ai-orchestrator:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 203,
+          "stdoutTail": "ORQUESTRADOR Fase 81: aprovado — 4 tarefas, 3 classes, 7 provedores e fallback local.",
+          "stderrTail": ""
+        },
+        {
+          "name": "ai-guardrails:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 195,
+          "stdoutTail": "✓ lib/ai/instruction-output-guard.ts: instruction_override\n✓ lib/ai/instruction-output-guard.ts: secret_exfiltration\n✓ lib/ai/instruction-output-guard.ts: tool_escalation\n✓ lib/ai/instruction-output-guard.ts: possible_secret\n✓ lib/ai/instruction-output-guard.ts: unsafe_guarantee\n✓ lib/ai/instruction-output-guard.ts: autonomous_external_action\n✓ lib/ai/instruction-output-guard.ts: AI_GUARD_SYSTEM_POLICY\n✓ lib/ai/provider-router.ts: assessAIInput\n✓ lib/ai/provider-router.ts: inspectAndSanitizeAIOutput\n✓ lib/ai/provider-router.ts: inputGuard.blocked\n✓ lib/ai/provider-router.ts: ai_guardrail_events\n✓ lib/ai/provider-router.ts: guardedInput\n✓ supabase/migrations/20260719100000_phase_84_ai_instruction_output_guard.sql: ai_guardrail_events\n✓ supabase/migrations/20260719100000_phase_84_ai_instruction_output_guard.sql: finding_codes\n✓ supabase/migrations/20260719100000_phase_84_ai_instruction_output_guard.sql: human_review_required\n✓ supabase/migrations/20260719100000_phase_84_ai_instruction_output_guard.sql: current_organization_id\n✓ app/api/v1/ai/guardrails/route.ts: promptInjectionDefense:true\n✓ app/api/v1/ai/guardrails/route.ts: noPromptOrResponseLogged:true\n✓ app/api/v1/ai/guardrails/route.ts: simulationOnly:true\n✓ app/api/v1/ai/guardrails/route.ts: contentStored:false\n✓ app/(crm)/settings/ai-guardrails/page.tsx: 84-ai-instruction-output-guard\n✓ app/(crm)/settings/ai-guardrails/page.tsx: PROMPT INJECTION BLOQUEADO\n✓ app/(crm)/settings/ai-guardrails/page.tsx: SEGREDOS PROTEGIDOS\n✓ app/(crm)/settings/ai-guardrails/page.tsx: AÇÃO EXTERNA: APROVAÇÃO HUMANA\n\nFase 84 aprovada: 24 controles de entrada e saída da IA.",
+          "stderrTail": ""
+        },
+        {
+          "name": "integration-health:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 197,
+          "stdoutTail": "✓ lib/integrations/operational-health.ts: ready_to_test\n✓ lib/integrations/operational-health.ts: sync_stale\n✓ lib/integrations/operational-health.ts: failed_queue_items\n✓ lib/integrations/operational-health.ts: secretsExposed:false\n✓ supabase/migrations/20260719193000_phase_97_integration_operational_health.sql: integration_health_snapshots\n✓ supabase/migrations/20260719193000_phase_97_integration_operational_health.sql: snapshot_hash\n✓ supabase/migrations/20260719193000_phase_97_integration_operational_health.sql: integration_health_director_read\n✓ app/api/v1/governance/integration-health/route.ts: valuesReturned: false\n✓ app/api/v1/governance/integration-health/route.ts: secretsExposed: false\n✓ app/api/v1/governance/integration-health/route.ts: connectedRequiresVerifiedTest: true\n✓ app/api/v1/governance/integration-health/route.ts: healthRequiresFreshEvidence: true\n✓ app/api/v1/governance/integration-health/route.ts: connection?.status || null\n✓ app/api/v1/governance/integration-health/route.ts: productionReady\n✓ app/api/v1/governance/integration-health/route.ts: duplicatePrevented\n✓ app/(crm)/integrations/health/page.tsx: 97-integration-operational-health\n✓ app/(crm)/integrations/health/page.tsx: HOSTINGER · APIS · FILAS · WEBHOOKS\n✓ app/(crm)/integrations/health/page.tsx: SEGREDOS MASCARADOS\n✓ app/(crm)/integrations/health/page.tsx: TESTE REAL OBRIGATÓRIO\n✓ app/(crm)/integrations/health/page.tsx: sem armazenar segredos\n✓ config/integration-operational-health.json: \"phase\":97\n✓ config/integration-operational-health.json: \"automatic_status_promotion\":false\n✓ config/integration-operational-health.json: \"director_only\":true\n\nFase 97 aprovada: 22 controles de saúde operacional.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Memória e conhecimento",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "commercial-memory:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 199,
+          "stdoutTail": "✓ supabase/migrations/20260719093000_phase_83_safe_commercial_memory.sql: lead_commercial_memory_states\n✓ supabase/migrations/20260719093000_phase_83_safe_commercial_memory.sql: unique(organization_id,lead_id)\n✓ supabase/migrations/20260719093000_phase_83_safe_commercial_memory.sql: record_structured_copilot_memory\n✓ supabase/migrations/20260719093000_phase_83_safe_commercial_memory.sql: legacyEntriesPurged\n✓ supabase/migrations/20260719093000_phase_83_safe_commercial_memory.sql: sync_structured_memory_owner\n✓ supabase/migrations/20260719093000_phase_83_safe_commercial_memory.sql: 180 days\n✓ supabase/migrations/20260719093000_phase_83_safe_commercial_memory.sql: private.can_view_lead\n✓ app/api/ai/copilot/route.ts: record_structured_copilot_memory\n✓ app/api/ai/copilot/route.ts: rawConversationStored: false\n✓ app/api/ai/copilot/route.ts: structuredMemoryFromGovernedContext\n✓ Copiloto não grava pergunta/resposta bruta\n✓ app/api/v1/leads/[id]/commercial-memory/route.ts: structuredOnly:true\n✓ app/api/v1/leads/[id]/commercial-memory/route.ts: rawConversationStored:false\n✓ app/api/v1/leads/[id]/commercial-memory/route.ts: retentionDays:180\n✓ app/api/v1/leads/[id]/commercial-memory/route.ts: reset_structured_copilot_memory\n✓ app/(crm)/leads/[id]/memory/page.tsx: 83-safe-commercial-memory\n✓ app/(crm)/leads/[id]/memory/page.tsx: MEMÓRIA SEM CONVERSA BRUTA\n✓ app/(crm)/leads/[id]/memory/page.tsx: NUNCA MISTURA CLIENTES\n✓ app/(crm)/leads/[id]/memory/page.tsx: RETENÇÃO 180 DIAS\n\nFase 83 aprovada: 19 controles de memória comercial segura.",
+          "stderrTail": ""
+        },
+        {
+          "name": "ai-context:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 195,
+          "stdoutTail": "CONTEXTO Fase 82: aprovado — 6 seções, manifesto, fingerprint e zero identificadores diretos.",
+          "stderrTail": ""
+        },
+        {
+          "name": "ai-playbooks:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 200,
+          "stdoutTail": "d-real-estate-playbooks.ts: apresentacao\n✓ lib/ai/versioned-real-estate-playbooks.ts: simulacao\n✓ lib/ai/versioned-real-estate-playbooks.ts: visita\n✓ lib/ai/versioned-real-estate-playbooks.ts: proposta\n✓ lib/ai/versioned-real-estate-playbooks.ts: fechamento\n✓ lib/ai/versioned-real-estate-playbooks.ts: reativacao\n✓ lib/ai/versioned-real-estate-playbooks.ts: resolveActivePlaybook\n✓ lib/ai/versioned-real-estate-playbooks.ts: playbookForPrompt\n✓ supabase/migrations/20260719103000_phase_85_versioned_real_estate_playbooks.sql: commercial_ai_playbooks\n✓ supabase/migrations/20260719103000_phase_85_versioned_real_estate_playbooks.sql: one_active\n✓ supabase/migrations/20260719103000_phase_85_versioned_real_estate_playbooks.sql: publish_commercial_ai_playbook\n✓ supabase/migrations/20260719103000_phase_85_versioned_real_estate_playbooks.sql: playbook_director_only\n✓ supabase/migrations/20260719103000_phase_85_versioned_real_estate_playbooks.sql: status='retired'\n✓ supabase/migrations/20260719103000_phase_85_versioned_real_estate_playbooks.sql: current_organization_id\n✓ app/api/ai/copilot/route.ts: resolveActivePlaybook\n✓ app/api/ai/copilot/route.ts: Playbook imobiliário ativo e aprovado\n✓ app/api/ai/copilot/route.ts: playbookForPrompt\n✓ app/api/v1/ai/playbooks/route.ts: directorPublishes:true\n✓ app/api/v1/ai/playbooks/route.ts: oneActivePerScope:true\n✓ app/api/v1/ai/playbooks/route.ts: developerOverride:true\n✓ app/api/v1/ai/playbooks/route.ts: humanApproval:true\n✓ app/(crm)/settings/ai-playbooks/page.tsx: 85-versioned-real-estate-playbooks\n✓ app/(crm)/settings/ai-playbooks/page.tsx: 8 ETAPAS COMERCIAIS\n✓ app/(crm)/settings/ai-playbooks/page.tsx: VERSÃO ATIVA ÚNICA\n✓ app/(crm)/settings/ai-playbooks/page.tsx: DIRETORIA APROVA\n\nFase 85 aprovada: 28 controles de playbooks imobiliários.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Score, calibração e explicabilidade",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "conversion-dataset:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 203,
+          "stdoutTail": "DATASET Fase 76: aprovado — janelas 30/60/90/180 dias, versão de features/rótulos, backfill e amostra mínima governada.",
+          "stderrTail": ""
+        },
+        {
+          "name": "conversion-calibration:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 198,
+          "stdoutTail": "CALIBRAÇÃO Fase 77: aprovada — reliability_bins, Brier/ECE, fallback e promoção humana exclusiva.",
+          "stderrTail": ""
+        },
+        {
+          "name": "prediction-explainability:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 199,
+          "stdoutTail": "EXPLICABILIDADE Fase 78: aprovada — 13 fatores, 7 ações, hierarquia, confiança e zero LLM.",
+          "stderrTail": ""
+        },
+        {
+          "name": "prediction-drift:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 197,
+          "stdoutTail": "DRIFT Fase 79: aprovado — PSI 0.1/0.25, Brier delta 0.02/0.05 e revisão humana.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "title": "Copilot por papel",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "proactive-copilot:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 204,
+          "stdoutTail": "✓ Fase 044 concluída sem mutação de dados ou schema\n✓ Fase anterior encaminha Copilot\n✓ Copilot declara operação proativa e humana\n✓ Três playbooks cobrem SLA, inércia e estoque\n✓ Prompt proíbe execução automática\n✓ Contexto enviado é agregado\n✓ Fallback local e governança existentes permanecem\n✓ Falha técnica usa recuperação segura\n✓ Relatório registra decisão humana\nFase 044 verificada: Copilot proativo prepara decisões sem executar ações comerciais.",
+          "stderrTail": ""
+        },
+        {
+          "name": "conversational-qualification:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 201,
+          "stdoutTail": ".sql: lead_qualification_profiles\n✓ supabase/migrations/20260719110000_phase_86_structured_conversational_qualification.sql: lead_qualification_events\n✓ supabase/migrations/20260719110000_phase_86_structured_conversational_qualification.sql: record_structured_qualification\n✓ supabase/migrations/20260719110000_phase_86_structured_conversational_qualification.sql: qualification_owner_only\n✓ supabase/migrations/20260719110000_phase_86_structured_conversational_qualification.sql: sync_qualification_owner\n✓ supabase/migrations/20260719110000_phase_86_structured_conversational_qualification.sql: rawConversationStored\n✓ supabase/migrations/20260719110000_phase_86_structured_conversational_qualification.sql: private.can_view_lead\n✓ supabase/migrations/20260719110000_phase_86_structured_conversational_qualification.sql: qualificationAnswers\n✓ app/api/v1/leads/[id]/conversational-qualification/route.ts: structuredOnly:true\n✓ app/api/v1/leads/[id]/conversational-qualification/route.ts: oneQuestionAtATime:true\n✓ app/api/v1/leads/[id]/conversational-qualification/route.ts: brokerConfirmation:true\n✓ app/api/v1/leads/[id]/conversational-qualification/route.ts: rawConversationStored:false\n✓ app/api/v1/leads/[id]/conversational-qualification/route.ts: noAutomaticInference:true\n✓ app/api/ai/copilot/route.ts: lead_qualification_profiles\n✓ app/api/ai/copilot/route.ts: qualificationProgress\n✓ app/api/ai/copilot/route.ts: brokerConfirmed: true\n✓ app/(crm)/leads/[id]/qualification/page.tsx: 86-structured-conversational-qualification\n✓ app/(crm)/leads/[id]/qualification/page.tsx: UMA PERGUNTA POR VEZ\n✓ app/(crm)/leads/[id]/qualification/page.tsx: CORRETOR CONFIRMA\n✓ app/(crm)/leads/[id]/qualification/page.tsx: CONVERSA BRUTA: ZERO\n\nFase 86 aprovada: 24 controles de qualificação conversacional.",
+          "stderrTail": ""
+        },
+        {
+          "name": "visit-proposal:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 195,
+          "stdoutTail": "l-assistant.ts: VISIT_OBJECTIONS\n✓ lib/commercial/visit-proposal-assistant.ts: VISIT_NEXT_STEPS\n✓ lib/commercial/visit-proposal-assistant.ts: recommendedPostVisitAction\n✓ lib/commercial/visit-proposal-assistant.ts: externalActionAllowed:false\n✓ supabase/migrations/20260719120000_phase_88_visit_proposal_assistant.sql: preparation_snapshot\n✓ supabase/migrations/20260719120000_phase_88_visit_proposal_assistant.sql: outcome_key\n✓ supabase/migrations/20260719120000_phase_88_visit_proposal_assistant.sql: objection_keys\n✓ supabase/migrations/20260719120000_phase_88_visit_proposal_assistant.sql: next_step_key\n✓ supabase/migrations/20260719120000_phase_88_visit_proposal_assistant.sql: visit_assistance_events\n✓ supabase/migrations/20260719120000_phase_88_visit_proposal_assistant.sql: record_structured_visit_result\n✓ supabase/migrations/20260719120000_phase_88_visit_proposal_assistant.sql: visit_result_owner_only\n✓ supabase/migrations/20260719120000_phase_88_visit_proposal_assistant.sql: private.can_view_lead\n✓ app/api/v1/leads/[id]/visit-assistant/route.ts: structuredResult:true\n✓ app/api/v1/leads/[id]/visit-assistant/route.ts: noAutomaticProposal:true\n✓ app/api/v1/leads/[id]/visit-assistant/route.ts: noAutomaticMessage:true\n✓ app/api/v1/leads/[id]/visit-assistant/route.ts: humanConfirmation:true\n✓ app/api/v1/leads/[id]/visit-assistant/route.ts: activeMaterialsOnly:true\n✓ app/api/v1/leads/[id]/visit-assistant/route.ts: availableInventoryOnly:true\n✓ app/(crm)/leads/[id]/visit-assistant/page.tsx: 88-visit-proposal-assistant\n✓ app/(crm)/leads/[id]/visit-assistant/page.tsx: VISITA PREPARADA\n✓ app/(crm)/leads/[id]/visit-assistant/page.tsx: RESULTADO ESTRUTURADO\n✓ app/(crm)/leads/[id]/visit-assistant/page.tsx: PROPOSTA COM APROVAÇÃO\n\nFase 88 aprovada: 24 controles de visita e proposta.",
+          "stderrTail": ""
+        },
+        {
+          "name": "team-conversion-support:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 194,
+          "stdoutTail": "✓ Fase 045 concluída sem mutação de dados ou schema\n✓ Fase anterior encaminha gestão da equipe\n✓ Equipe declara apoio à conversão\n✓ Fila limita três carteiras sem ranking\n✓ Sinais de carga são explicáveis\n✓ API usa sessão autenticada e RLS\n✓ Compatibilidade não remove organização\n✓ Dados de contato não são devolvidos\n✓ Copilot usa somente sinais agregados\n✓ Relatório registra apoio não punitivo\nFase 045 verificada: gestão enxerga bloqueios de carteira sem ranking punitivo.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Outbox e confiabilidade",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "observability:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 202,
+          "stdoutTail": "ATLAS OBSERVABILITY: PASSED (7 campos; 9 métricas; logs sanitizados e correlacionados)",
+          "stderrTail": ""
+        },
+        {
+          "name": "abuse-protection:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 193,
+          "stdoutTail": "ABUSE Fase 19: aprovado — 3 limites distribuídos; 2 webhooks assinados e deduplicados; 1 comando externo idempotente; 5 controles no banco.",
+          "stderrTail": ""
+        },
+        {
+          "name": "reliability-gate:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 197,
+          "stdoutTail": "bility-release-gate.ts: e.oldestPendingMinutes <= 15\n✓ lib/governance/reliability-release-gate.ts: e.aiP95LatencyMs <= 15000\n✓ lib/governance/reliability-release-gate.ts: \"ready_for_homologation\"\n✓ lib/governance/reliability-release-gate.ts: automaticPublish: false\n✓ supabase/migrations/20260719203000_phase_98_reliability_release_gate.sql: integration_outbox_org_status_available_idx\n✓ supabase/migrations/20260719203000_phase_98_reliability_release_gate.sql: ai_usage_org_created_latency_idx\n✓ supabase/migrations/20260719203000_phase_98_reliability_release_gate.sql: reliability_release_snapshots\n✓ supabase/migrations/20260719203000_phase_98_reliability_release_gate.sql: snapshot_hash\n✓ app/api/v1/governance/reliability-gate/route.ts: rawLogsReturned: false\n✓ app/api/v1/governance/reliability-gate/route.ts: secretsReturned: false\n✓ app/api/v1/governance/reliability-gate/route.ts: humanReleaseApprovalRequired: true\n✓ app/api/v1/governance/reliability-gate/route.ts: missingEvidenceBlocks: true\n✓ app/api/v1/governance/reliability-gate/route.ts: duplicatePrevented\n✓ app/api/v1/governance/reliability-gate/route.ts: productionPublished: false\n✓ app/(crm)/atlas-v3/reliability/page.tsx: 98-final-reliability-release-gate\n✓ app/(crm)/atlas-v3/reliability/page.tsx: SEGURANÇA · DESEMPENHO · OBSERVABILIDADE\n✓ app/(crm)/atlas-v3/reliability/page.tsx: Publicação bloqueada\n✓ app/(crm)/atlas-v3/reliability/page.tsx: nenhuma publicação foi executada\n✓ config/final-reliability-release-gate.json: \"phase\":98\n✓ config/final-reliability-release-gate.json: \"missing_evidence_blocks\":true\n✓ config/final-reliability-release-gate.json: \"automatic_publish\":false\n✓ config/final-reliability-release-gate.json: \"human_release_approval_required\":true\n\nFase 98 aprovada: 24 controles de confiabilidade final.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "WhatsApp oficial",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "reactivation-governance:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 204,
+          "stdoutTail": "on-policy.ts: officialApiOnly:true\n✓ supabase/migrations/20260719123000_phase_89_consented_reactivation_governance.sql: maximum_attempts\n✓ supabase/migrations/20260719123000_phase_89_consented_reactivation_governance.sql: cooling_off_hours\n✓ supabase/migrations/20260719123000_phase_89_consented_reactivation_governance.sql: broker_preference\n✓ supabase/migrations/20260719123000_phase_89_consented_reactivation_governance.sql: reactivation_governance_events\n✓ supabase/migrations/20260719123000_phase_89_consented_reactivation_governance.sql: stop_reactivation_on_suppression\n✓ supabase/migrations/20260719123000_phase_89_consented_reactivation_governance.sql: private.can_view_commercial_profile\n✓ app/api/v1/crm/reactivation/route.ts: evaluateReactivationPlan\n✓ app/api/v1/crm/reactivation/route.ts: message_templates\n✓ app/api/v1/crm/reactivation/route.ts: WHATSAPP_PHONE_NUMBER_ID\n✓ app/api/v1/crm/reactivation/route.ts: approval_requested\n✓ app/api/v1/crm/reactivation/route.ts: policy_snapshot\n✓ app/api/v1/crm/reactivation/governance/route.ts: officialApiOnly:true\n✓ app/api/v1/crm/reactivation/governance/route.ts: stopOnReply:true\n✓ app/api/v1/crm/reactivation/governance/route.ts: stopOnOptOut:true\n✓ app/api/v1/crm/reactivation/governance/route.ts: stopOnInvalidPhone:true\n✓ app/api/v1/crm/reactivation/governance/route.ts: humanApproval:true\n✓ app/api/v1/crm/reactivation/governance/route.ts: simulationOnly:true\n✓ app/(crm)/leads/reactivation-governance/page.tsx: 89-consented-reactivation-governance\n✓ app/(crm)/leads/reactivation-governance/page.tsx: WHATSAPP OFICIAL\n✓ app/(crm)/leads/reactivation-governance/page.tsx: CONSENTIMENTO OBRIGATÓRIO\n✓ app/(crm)/leads/reactivation-governance/page.tsx: RESPOSTA INTERROMPE CADÊNCIA\n\nFase 89 aprovada: 29 controles de reativação consentida.",
+          "stderrTail": ""
+        },
+        {
+          "name": "nightly-copilot:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 196,
+          "stdoutTail": "copilot.ts: humanApprovalEveryOutbound:true\n✓ lib/ai/governed-nightly-copilot.ts: morningHandoff\n✓ supabase/migrations/20260719130000_phase_90_governed_nightly_copilot.sql: maximum_automated_stage\n✓ supabase/migrations/20260719130000_phase_90_governed_nightly_copilot.sql: morning_handoff_required\n✓ supabase/migrations/20260719130000_phase_90_governed_nightly_copilot.sql: nightly_broker_handoffs\n✓ supabase/migrations/20260719130000_phase_90_governed_nightly_copilot.sql: acknowledge_nightly_handoff\n✓ supabase/migrations/20260719130000_phase_90_governed_nightly_copilot.sql: handoff_owner_only\n✓ supabase/migrations/20260719130000_phase_90_governed_nightly_copilot.sql: private.can_view_commercial_profile\n✓ app/api/v2/ai/nightly-sales/route.ts: evaluateNightlyEligibility\n✓ app/api/v2/ai/nightly-sales/route.ts: message_templates\n✓ app/api/v2/ai/nightly-sales/route.ts: check_lead_contact_eligibility\n✓ app/api/v2/ai/nightly-sales/route.ts: maximumAutomatedStage:\"qualification\"\n✓ app/api/v2/ai/nightly-sales/route.ts: proposalAllowed:false\n✓ app/api/v2/ai/nightly-handoff/route.ts: morningHandoff\n✓ app/api/v2/ai/nightly-handoff/route.ts: messagesSent:false\n✓ app/api/v2/ai/nightly-handoff/route.ts: proposalsCreated:false\n✓ app/api/v1/ai/nightly-handoffs/route.ts: oneLeadOneBroker:true\n✓ app/api/v1/ai/nightly-handoffs/route.ts: simulationDraftOnly:true\n✓ app/api/v1/ai/nightly-handoffs/route.ts: proposalAllowed:false\n✓ app/api/v1/ai/nightly-handoffs/route.ts: everyOutboundApproved:true\n✓ app/(crm)/leads/nightly-handoffs/page.tsx: 90-governed-nightly-copilot\n✓ app/(crm)/leads/nightly-handoffs/page.tsx: 22H–07H\n✓ app/(crm)/leads/nightly-handoffs/page.tsx: ATÉ QUALIFICAÇÃO\n✓ app/(crm)/leads/nightly-handoffs/page.tsx: MANHÃ COM CORRETOR\n\nFase 90 aprovada: 28 controles do Copiloto noturno.",
+          "stderrTail": ""
+        },
+        {
+          "name": "integration-health:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 197,
+          "stdoutTail": "✓ lib/integrations/operational-health.ts: ready_to_test\n✓ lib/integrations/operational-health.ts: sync_stale\n✓ lib/integrations/operational-health.ts: failed_queue_items\n✓ lib/integrations/operational-health.ts: secretsExposed:false\n✓ supabase/migrations/20260719193000_phase_97_integration_operational_health.sql: integration_health_snapshots\n✓ supabase/migrations/20260719193000_phase_97_integration_operational_health.sql: snapshot_hash\n✓ supabase/migrations/20260719193000_phase_97_integration_operational_health.sql: integration_health_director_read\n✓ app/api/v1/governance/integration-health/route.ts: valuesReturned: false\n✓ app/api/v1/governance/integration-health/route.ts: secretsExposed: false\n✓ app/api/v1/governance/integration-health/route.ts: connectedRequiresVerifiedTest: true\n✓ app/api/v1/governance/integration-health/route.ts: healthRequiresFreshEvidence: true\n✓ app/api/v1/governance/integration-health/route.ts: connection?.status || null\n✓ app/api/v1/governance/integration-health/route.ts: productionReady\n✓ app/api/v1/governance/integration-health/route.ts: duplicatePrevented\n✓ app/(crm)/integrations/health/page.tsx: 97-integration-operational-health\n✓ app/(crm)/integrations/health/page.tsx: HOSTINGER · APIS · FILAS · WEBHOOKS\n✓ app/(crm)/integrations/health/page.tsx: SEGREDOS MASCARADOS\n✓ app/(crm)/integrations/health/page.tsx: TESTE REAL OBRIGATÓRIO\n✓ app/(crm)/integrations/health/page.tsx: sem armazenar segredos\n✓ config/integration-operational-health.json: \"phase\":97\n✓ config/integration-operational-health.json: \"automatic_status_promotion\":false\n✓ config/integration-operational-health.json: \"director_only\":true\n\nFase 97 aprovada: 22 controles de saúde operacional.",
+          "stderrTail": "",
+          "reused": true
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Meta Lead Ads e atribuição",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "lead-attribution:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 199,
+          "stdoutTail": "ATRIBUIÇÃO Fase 74: aprovada — 4 tipos, first-touch imutável, timeline, backfill e IDs de mídia.",
+          "stderrTail": ""
+        },
+        {
+          "name": "andromeda-loop:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 196,
+          "stdoutTail": "-loop.ts: directorDecisionRequired: true\n✓ supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql: meta_andromeda_learning_cycles\n✓ supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql: evidence_hash\n✓ supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql: andromeda_director_required\n✓ supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql: externalChangeExecuted\n✓ supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql: decision_reason\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: [\"director\", \"superintendent\"]\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: roles:[\"director\"]\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: consentRequired:true\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: negativeSignalsInternalOnly:true\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: automaticAudienceChanges:false\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: approvedCycleExecutesExternalChange:false\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: duplicatePrevented\n✓ app/(crm)/integrations/meta/andromeda/page.tsx: 92-meta-andromeda-learning-loop\n✓ app/(crm)/integrations/meta/andromeda/page.tsx: CONSENTIMENTO OBRIGATÓRIO\n✓ app/(crm)/integrations/meta/andromeda/page.tsx: DECISÃO EXCLUSIVA DO DIRETOR\n✓ app/(crm)/integrations/meta/andromeda/page.tsx: não executa público, verba ou campanha\n✓ config/meta-andromeda-learning-loop.json: \"phase\": 92\n✓ config/meta-andromeda-learning-loop.json: \"mode\": \"test_only\"\n✓ config/meta-andromeda-learning-loop.json: \"negative_signals\": \"internal_only\"\n✓ config/meta-andromeda-learning-loop.json: \"automatic_budget_changes\": false\n\nFase 92 aprovada: 25 controles do loop Meta/Andromeda.",
+          "stderrTail": ""
+        },
+        {
+          "name": "integration-health:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 197,
+          "stdoutTail": "✓ lib/integrations/operational-health.ts: ready_to_test\n✓ lib/integrations/operational-health.ts: sync_stale\n✓ lib/integrations/operational-health.ts: failed_queue_items\n✓ lib/integrations/operational-health.ts: secretsExposed:false\n✓ supabase/migrations/20260719193000_phase_97_integration_operational_health.sql: integration_health_snapshots\n✓ supabase/migrations/20260719193000_phase_97_integration_operational_health.sql: snapshot_hash\n✓ supabase/migrations/20260719193000_phase_97_integration_operational_health.sql: integration_health_director_read\n✓ app/api/v1/governance/integration-health/route.ts: valuesReturned: false\n✓ app/api/v1/governance/integration-health/route.ts: secretsExposed: false\n✓ app/api/v1/governance/integration-health/route.ts: connectedRequiresVerifiedTest: true\n✓ app/api/v1/governance/integration-health/route.ts: healthRequiresFreshEvidence: true\n✓ app/api/v1/governance/integration-health/route.ts: connection?.status || null\n✓ app/api/v1/governance/integration-health/route.ts: productionReady\n✓ app/api/v1/governance/integration-health/route.ts: duplicatePrevented\n✓ app/(crm)/integrations/health/page.tsx: 97-integration-operational-health\n✓ app/(crm)/integrations/health/page.tsx: HOSTINGER · APIS · FILAS · WEBHOOKS\n✓ app/(crm)/integrations/health/page.tsx: SEGREDOS MASCARADOS\n✓ app/(crm)/integrations/health/page.tsx: TESTE REAL OBRIGATÓRIO\n✓ app/(crm)/integrations/health/page.tsx: sem armazenar segredos\n✓ config/integration-operational-health.json: \"phase\":97\n✓ config/integration-operational-health.json: \"automatic_status_promotion\":false\n✓ config/integration-operational-health.json: \"director_only\":true\n\nFase 97 aprovada: 22 controles de saúde operacional.",
+          "stderrTail": "",
+          "reused": true
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "title": "Meta CAPI e aprendizado de conversão",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "behavior-events:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 203,
+          "stdoutTail": "EVENTOS Fase 75: aprovada — 19 eventos em 5 categorias, captura automática, backfill e zero PII.",
+          "stderrTail": ""
+        },
+        {
+          "name": "andromeda-loop:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 196,
+          "stdoutTail": "-loop.ts: directorDecisionRequired: true\n✓ supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql: meta_andromeda_learning_cycles\n✓ supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql: evidence_hash\n✓ supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql: andromeda_director_required\n✓ supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql: externalChangeExecuted\n✓ supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql: decision_reason\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: [\"director\", \"superintendent\"]\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: roles:[\"director\"]\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: consentRequired:true\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: negativeSignalsInternalOnly:true\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: automaticAudienceChanges:false\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: approvedCycleExecutesExternalChange:false\n✓ app/api/v1/integrations/meta/andromeda-loop/route.ts: duplicatePrevented\n✓ app/(crm)/integrations/meta/andromeda/page.tsx: 92-meta-andromeda-learning-loop\n✓ app/(crm)/integrations/meta/andromeda/page.tsx: CONSENTIMENTO OBRIGATÓRIO\n✓ app/(crm)/integrations/meta/andromeda/page.tsx: DECISÃO EXCLUSIVA DO DIRETOR\n✓ app/(crm)/integrations/meta/andromeda/page.tsx: não executa público, verba ou campanha\n✓ config/meta-andromeda-learning-loop.json: \"phase\": 92\n✓ config/meta-andromeda-learning-loop.json: \"mode\": \"test_only\"\n✓ config/meta-andromeda-learning-loop.json: \"negative_signals\": \"internal_only\"\n✓ config/meta-andromeda-learning-loop.json: \"automatic_budget_changes\": false\n\nFase 92 aprovada: 25 controles do loop Meta/Andromeda.",
+          "stderrTail": "",
+          "reused": true
+        },
+        {
+          "name": "revenue-engine:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 194,
+          "stdoutTail": "✓ lib/revenue/revenue-engine.ts: 22:00–06:59\n✓ lib/revenue/revenue-engine.ts: maximumAutomatedStage: \"qualification\"\n✓ lib/revenue/revenue-engine.ts: automaticAudienceChanges: false\n✓ lib/revenue/revenue-engine.ts: directorDecisionRequired: true\n✓ app/api/v1/revenue-engine/route.ts: meta_conversion_events\n✓ app/api/v1/revenue-engine/route.ts: ai_sales_journeys\n✓ app/api/v1/revenue-engine/route.ts: nightly_broker_handoffs\n✓ app/api/v1/revenue-engine/route.ts: realNightTestRequired: true\n✓ app/(crm)/revenue-engine/page.tsx: CONVERSÃO 24/7\n✓ app/(crm)/revenue-engine/page.tsx: Meta, Andromeda e atendimento\n✓ app/(crm)/revenue-engine/page.tsx: Funil de aprendizado\n✓ app/(crm)/revenue-engine/page.tsx: Night Sales · 22h–07h\n✓ app/(crm)/revenue-engine/page.tsx: Recuperar sem poluir a carteira\n✓ app/api/v2/ai/nightly-sales/route.ts: 22h e 6h59\n✓ app/api/v2/ai/nightly-sales/route.ts: afterHour: 22\n✓ app/api/v2/ai/nightly-sales/route.ts: requiresApproval: true\n✓ docs/ATLAS_META_INTEGRATION_REPORT.md: Andromeda não é uma API direta\n✓ docs/ATLAS_META_INTEGRATION_REPORT.md: Não aprovado sem teste real\n✓ docs/ATLAS_REVENUE_ENGINE_REPORT.md: Modo supervisionado\n✓ docs/ATLAS_REVENUE_ENGINE_REPORT.md: Teste noturno controlado\n✓ docs/ATLAS_REVENUE_ENGINE_REPORT.md: Nenhuma oportunidade esfria sem resposta\n\nRevenue Engine aprovado: 21 controles verificados.",
+          "stderrTail": ""
+        },
+        {
+          "name": "campaign-intelligence:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 195,
+          "stdoutTail": "se/migrations/20260719133000_phase_91_multichannel_campaign_intelligence.sql: multichannel_campaign_daily_facts\n✓ supabase/migrations/20260719133000_phase_91_multichannel_campaign_intelligence.sql: snapshot_version\n✓ supabase/migrations/20260719133000_phase_91_multichannel_campaign_intelligence.sql: is_current\n✓ supabase/migrations/20260719133000_phase_91_multichannel_campaign_intelligence.sql: source_hash\n✓ supabase/migrations/20260719133000_phase_91_multichannel_campaign_intelligence.sql: ingest_multichannel_campaign_fact\n✓ supabase/migrations/20260719133000_phase_91_multichannel_campaign_intelligence.sql: campaign_ingest_forbidden\n✓ supabase/migrations/20260719133000_phase_91_multichannel_campaign_intelligence.sql: campaign_development_out_of_scope\n✓ supabase/migrations/20260719133000_phase_91_multichannel_campaign_intelligence.sql: campaign_date_out_of_range\n✓ app/api/v1/campaign-intelligence/route.ts: crmIsConversionTruth: true\n✓ app/api/v1/campaign-intelligence/route.ts: platformReportedSeparated: true\n✓ app/api/v1/campaign-intelligence/route.ts: minimumCrmLeadsForRanking: 30\n✓ app/api/v1/campaign-intelligence/route.ts: automaticBudgetChanges: false\n✓ app/(crm)/marketing/campaign-intelligence/page.tsx: 91-multichannel-campaign-intelligence\n✓ app/(crm)/marketing/campaign-intelligence/page.tsx: CRM É A VERDADE DA CONVERSÃO\n✓ app/(crm)/marketing/campaign-intelligence/page.tsx: RANKING COM AMOSTRA MÍNIMA\n✓ app/(crm)/marketing/campaign-intelligence/page.tsx: META · GOOGLE · TIKTOK · YOUTUBE · PORTAIS\n✓ config/multichannel-campaign-intelligence.json: \"phase\": 91\n✓ config/multichannel-campaign-intelligence.json: \"pii_allowed\": false\n✓ config/multichannel-campaign-intelligence.json: \"automatic_budget_changes\": false\n\nFase 91 aprovada: 23 controles de campanhas multicanal.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "title": "Command Center e relatórios por papel",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "broker-dashboard:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 202,
+          "stdoutTail": "BROKER DASHBOARD Fase 21: aprovado — 8 blocos diários; 6 sinais explicáveis; carteira própria; RLS; decisão humana.",
+          "stderrTail": ""
+        },
+        {
+          "name": "manager-dashboard:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 200,
+          "stdoutTail": "MANAGER DASHBOARD Fase 22: aprovado — 10 áreas; time direto; estruturas paralelas excluídas; amostra mínima; intervenções somente recomendadas.",
+          "stderrTail": ""
+        },
+        {
+          "name": "director-dashboard:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 198,
+          "stdoutTail": "DIRECTOR DASHBOARD Fase 24: aprovado — 8 áreas; organização isolada; forecast explicável; amostras mínimas; decisão humana.",
+          "stderrTail": ""
+        },
+        {
+          "name": "executive-marketing-reports:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 197,
+          "stdoutTail": "✓ lib/analytics/multichannel-executive-report.ts: campaigns\n✓ lib/analytics/multichannel-executive-report.ts: projects\n✓ lib/analytics/multichannel-executive-report.ts: developers\n✓ lib/analytics/multichannel-executive-report.ts: amostra_global_insuficiente\n✓ lib/analytics/multichannel-executive-report.ts: crmIsConversionTruth:true\n✓ lib/analytics/multichannel-executive-report.ts: automaticDecision:false\n✓ supabase/migrations/20260719183000_phase_96_multichannel_executive_reports.sql: multichannel_executive_reports\n✓ supabase/migrations/20260719183000_phase_96_multichannel_executive_reports.sql: period_type\n✓ supabase/migrations/20260719183000_phase_96_multichannel_executive_reports.sql: source_hash\n✓ supabase/migrations/20260719183000_phase_96_multichannel_executive_reports.sql: review_multichannel_executive_report\n✓ supabase/migrations/20260719183000_phase_96_multichannel_executive_reports.sql: report_director_required\n✓ app/api/v1/analytics/executive-marketing/route.ts: [\"day\",\"week\",\"month\"]\n✓ app/api/v1/analytics/executive-marketing/route.ts: factsAndAlertsSeparated:true\n✓ app/api/v1/analytics/executive-marketing/route.ts: duplicatePrevented\n✓ app/api/v1/analytics/executive-marketing/route.ts: automaticDecision:false\n✓ app/(crm)/reports/marketing/page.tsx: 96-multichannel-executive-reports\n✓ app/(crm)/reports/marketing/page.tsx: DIA · SEMANA · MÊS\n✓ app/(crm)/reports/marketing/page.tsx: Campanhas, projetos e incorporadoras\n✓ app/(crm)/reports/marketing/page.tsx: sem executar decisões automáticas\n✓ config/multichannel-executive-reports.json: \"phase\":96\n✓ config/multichannel-executive-reports.json: \"source_of_truth\":\"crm\"\n✓ config/multichannel-executive-reports.json: \"automatic_decision\":false\n\nFase 96 aprovada: 22 controles de relatórios executivos.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "title": "Experiência V30, mobile e acessibilidade",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "final-design-system:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 209,
+          "stdoutTail": "✓ config/final-design-system.json: \"phase\": 2\n✓ config/final-design-system.json: \"status\": \"completed\"\n✓ config/final-design-system.json: \"canonical_components\"\n✓ config/final-10-phases-improvement.json: fase atual não regrediu\n✓ config/final-10-phases-improvement.json: fases 1 e 2 concluídas\n✓ components/atlas/metric-card.tsx: AtlasMetric\n✓ components/atlas/metric-card.tsx: canonicalTone\n✓ components/atlas/status-badge.tsx: AtlasBadge\n✓ components/atlas/empty-state.tsx: AtlasEmpty\n✓ components/ui/AtlasUI.tsx: role=\"status\"\n✓ components/ui/AtlasUI.tsx: role=\"progressbar\"\n✓ app/globals.css: :focus-visible\n✓ app/globals.css: prefers-reduced-motion: reduce\n✓ docs/FINAL_PHASE_2_DESIGN_SYSTEM.md: Componentes oficiais\n✓ docs/FINAL_PHASE_2_DESIGN_SYSTEM.md: Critério de aceite\n\nDesign system aprovado: 15 controles; Fase Final 2 concluída.",
+          "stderrTail": ""
+        },
+        {
+          "name": "final-navigation:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 198,
+          "stdoutTail": "✓ config/final-navigation-mobile.json: \"phase\": 3\n✓ config/final-navigation-mobile.json: \"mobile_reference_width\": 390\n✓ config/final-navigation-mobile.json: \"role_aware_sidebar\": true\n✓ config/final-10-phases-improvement.json: fase atual não regrediu\n✓ config/final-10-phases-improvement.json: fases 1 a 3 concluídas\n✓ components/atlas/app-shell.tsx: MobileDock\n✓ components/atlas/mobile-dock.tsx: aria-label=\"Navegação e ação rápida\"\n✓ components/atlas/mobile-dock.tsx: getAtlasTaskActionForPathname\n✓ components/atlas/mobile-dock.tsx: aria-current\n✓ components/atlas/topbar.tsx: atlas:open-command-palette\n✓ components/atlas/topbar.tsx: aria-label=\"Buscar em toda a plataforma\"\n✓ components/atlas/sidebar.tsx: visibleItems\n✓ components/atlas/sidebar.tsx: getAtlasNavigationForIdentity\n✓ components/atlas/sidebar.tsx: aria-current\n✓ components/CommandPalette.tsx: keepFocusInside\n✓ components/CommandPalette.tsx: role=\"dialog\"\n✓ components/CommandPalette.tsx: document.body.style.overflow\n✓ app/globals.css: env(safe-area-inset-bottom)\n✓ app/globals.css: .atlas-mobile-dock\n✓ app/globals.css: 100dvh\n✓ docs/FINAL_PHASE_3_NAVIGATION_MOBILE.md: Referência de homologação: 390 px\n✓ docs/FINAL_PHASE_3_NAVIGATION_MOBILE.md: Continuidade operacional\n\nNavegação aprovada: 22 controles; Fase Final 3 concluída.",
+          "stderrTail": ""
+        },
+        {
+          "name": "navigation-mobile-workspace:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 201,
+          "stdoutTail": "✓ Fase 034 concluída sem mutação comercial\n✓ Fase anterior encaminha para mobile\n✓ Base touch-first da Fase 014 permanece\n✓ Shell publica o contrato thumb-first\n✓ Tokens móveis governam margem e alvos\n✓ Ação contextual reutiliza fonte governada\n✓ Fallback evita duplicidade e mantém Novo lead\n✓ Dock distribui dois destinos, ação e dois destinos\n✓ Ação central possui nome acessível completo\n✓ Destinos continuam semânticos e identificam o atual\n✓ Topbar remove somente a ação duplicada\n✓ Dock e área segura protegem a zona de toque\n✓ Ações frequentes evitam atraso de toque\n✓ Celulares estreitos mantêm rótulos\n✓ Implementação React não cria estado ou efeito\n✓ Melhoria estrutural não vira conversão inventada\n✓ Relatório registra alcance, limite e próxima fase\n✓ Tablet, desktop, RBAC e gate permanecem intactos\nFase 034 aprovada: dock móvel com quatro destinos governados, ação contextual central e topbar sem ação duplicada.",
+          "stderrTail": ""
+        },
+        {
+          "name": "performance:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 335,
+          "stdoutTail": "ATLAS PERFORMANCE BUDGET\n{\n  \"javascriptChunks\": 360,\n  \"totalBytes\": 3830925,\n  \"largestChunkBytes\": 465641,\n  \"largestChunkGzipBytes\": 139056,\n  \"runtimeEvidencePending\": [\n    \"public_hostinger_url\",\n    \"authenticated_mobile_navigation\",\n    \"database_p95\",\n    \"api_p95\",\n    \"core_web_vitals\"\n  ]\n}\nPERFORMANCE Fase 7: orçamento estático aprovado; latência real permanece pendente de homologação.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "title": "Arquitetura de testes unificada",
+      "status": "approved_locally",
+      "tests": [
+        {
+          "name": "test",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 378,
+          "stdoutTail": "✔ normaliza etapas comerciais legadas sem perder o significado (1.010917ms)\n✔ usa colunas existentes no banco V3 para ordenação (0.082625ms)\n✔ converte lead legado em oportunidade sem inventar probabilidade (1.838333ms)\n✔ compatibiliza score, temperatura, próxima ação e preferências do lead (0.248041ms)\n✔ compatibiliza prazo de tarefa usando due_date antes de created_at (0.098708ms)\n✔ compatibiliza projeto e perfil sem exigir colunas novas (0.143125ms)\n✔ aceita somente destinos internos seguros (0.910291ms)\n✔ bloqueia redirecionamentos externos e caminhos de autenticação (0.074125ms)\n✔ respeita fallback explícito (0.067125ms)\nℹ tests 9\nℹ suites 0\nℹ pass 9\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 167.5255",
+          "stderrTail": ""
+        },
+        {
+          "name": "security:secrets",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 609,
+          "stdoutTail": "ATLAS SECRET SCAN: PASSED (3106 arquivos rastreados, 0 credenciais detectadas)",
+          "stderrTail": ""
+        },
+        {
+          "name": "test:e2e:contract",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 205,
+          "stdoutTail": "ATLAS E2E CONTRACT: configuração, login público e quatro jornadas autenticadas presentes.",
+          "stderrTail": ""
+        },
+        {
+          "name": "test:e2e:dependencies",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 433,
+          "stdoutTail": "ATLAS E2E DEPENDENCIES: Playwright e Chromium disponíveis no executor.",
+          "stderrTail": ""
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "Jornadas E2E autenticadas",
+      "status": "waiting_environment",
+      "tests": [
+        {
+          "name": "test:e2e",
+          "status": "waiting_environment",
+          "exitCode": 1,
+          "durationMs": 342,
+          "stdoutTail": "",
+          "stderrTail": "ATLAS E2E: ambiente ainda não está pronto.\n- NEXT_PUBLIC_SUPABASE_URL ausente para o teste local\n- chave pública do Supabase ausente para o teste local (NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY)\n- SUPABASE_SERVICE_ROLE_KEY ausente para o teste local\n- credenciais E2E do ADMIN ausentes (ATLAS_E2E_ADMIN_* ou ATLAS_TEST_*)\n- ATLAS_E2E_DIRECTOR_EMAIL ausente\n- ATLAS_E2E_DIRECTOR_PASSWORD ausente\n- ATLAS_E2E_MANAGER_EMAIL ausente\n- ATLAS_E2E_MANAGER_PASSWORD ausente\n- ATLAS_E2E_BROKER_EMAIL ausente\n- ATLAS_E2E_BROKER_PASSWORD ausente",
+          "reason": "gate executado e bloqueado somente por dependências do ambiente real"
+        },
+        {
+          "name": "smoke:v3",
+          "status": "waiting_environment",
+          "reason": "depende de aplicação executando em URL de homologação"
+        },
+        {
+          "name": "routes:real",
+          "status": "waiting_environment",
+          "reason": "depende de URL, Supabase e conta de teste reais"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Carga, segurança e recuperação",
+      "status": "waiting_environment",
+      "tests": [
+        {
+          "name": "security:audit",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 212,
+          "stdoutTail": "SECURITY Fase 20: aprovado — 6 áreas; 9 gates; 6 cabeçalhos; 6 controles de upload; autorização fora de user_metadata.",
+          "stderrTail": ""
+        },
+        {
+          "name": "security:dependencies",
+          "status": "waiting_environment",
+          "reason": "depende do registry npm para auditoria atualizada"
+        },
+        {
+          "name": "performance:check",
+          "status": "passed",
+          "exitCode": 0,
+          "durationMs": 335,
+          "stdoutTail": "ATLAS PERFORMANCE BUDGET\n{\n  \"javascriptChunks\": 360,\n  \"totalBytes\": 3830925,\n  \"largestChunkBytes\": 465641,\n  \"largestChunkGzipBytes\": 139056,\n  \"runtimeEvidencePending\": [\n    \"public_hostinger_url\",\n    \"authenticated_mobile_navigation\",\n    \"database_p95\",\n    \"api_p95\",\n    \"core_web_vitals\"\n  ]\n}\nPERFORMANCE Fase 7: orçamento estático aprovado; latência real permanece pendente de homologação.",
+          "stderrTail": "",
+          "reused": true
+        },
+        {
+          "name": "preflight:production",
+          "status": "waiting_environment",
+          "exitCode": 1,
+          "durationMs": 267,
+          "stdoutTail": "ATLAS AI — Production Preflight\n\n✅ Ambiente Atlas: development\n✅ Identidade do ambiente: configurada\n✅ Banco isolado: banco marcado como development; deve corresponder a ATLAS_ENV\n✅ URL segura: localhost permitido somente em desenvolvimento\n✅ Domínio público real: não exigido em desenvolvimento\n✅ URLs da aplicação: ATLAS_BASE_URL e NEXT_PUBLIC_APP_URL alinhadas\n❌ NEXT_PUBLIC_SUPABASE_URL: configure NEXT_PUBLIC_SUPABASE_URL\n❌ Chave pública Supabase: configure NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY\n❌ SUPABASE_SERVICE_ROLE_KEY: configure SUPABASE_SERVICE_ROLE_KEY somente no servidor\n❌ DATABASE_URL: informe uma URL postgresql válida para backup e migrations\n❌ ATLAS_CRON_SECRET: gere um segredo forte exclusivo para workers e cron\n❌ IA comercial: configure OPENAI_API_KEY\n⚠️ Pesquisa web: opcional: configure PERPLEXITY_API_KEY\n⚠️ IAs econômicas: opcional: configure chave e modelo de ao menos um provedor\n✅ Roteamento de modelos: modelos rápido, comercial e pesquisa definidos\n⚠️ Custos de IA: configure preços atuais para medir custo real\n✅ Ambiente Hostinger: não exigido no desenvolvimento\n⚠️ ATLAS_BOOTSTRAP_SECRET: necessária somente até criar o primeiro admin\n⚠️ META_APP_SECRET: opcional para teste inicial\n⚠️ Meta Conversions: necessária para fechar o ciclo CRM → Andromeda\n⚠️ Meta Insights: necessária para custo e ranking real\n⚠️ WHATSAPP_ACCESS_TOKEN: opcional para teste inicial\n❌ Login: fetch failed\n❌ Health: fetch failed\n❌ Readiness: fetch failed\n❌ V1/V2 status: fetch failed\n❌ V3 status: fetch failed\n❌ Dashboard protection: fetch failed\n❌ Launch OS protection: fetch failed\n\nResumo\n\nBase URL: http://localhost:3000\nObrigatórios aprovados: 8\nObrigatórios pendentes: 13",
+          "stderrTail": "❌ Preflight bloqueado. Corrija os itens obrigatórios antes do teste real.",
+          "reason": "gate executado e bloqueado somente por dependências do ambiente real"
+        },
+        {
+          "name": "runtime:evidence:check",
+          "status": "waiting_environment",
+          "exitCode": 1,
+          "durationMs": 199,
+          "stdoutTail": "",
+          "stderrTail": "ATLAS RUNTIME EVIDENCE: homologação e decisão humana ainda pendentes.\n- cadeia técnica F02–F16: upstream_technical_chain_blocked (artifacts/runtime/human-gates/f02-f16-upstream-readiness-evidence.json)\n- cadeia de decisão F17–F21: human_gate_chain_blocked (artifacts/runtime/human-gates/f17-f21-readiness-evidence.json)\n- ambiente de ensaio isolado F22: local_rehearsal_environment_blocked (artifacts/runtime/phase-022/environment-readiness-evidence.json)\n- dossiê sanitizado F23: homologation_evidence_not_generated (artifacts/runtime/phase-023/sanitized-homologation-evidence-dossier.json)\n- decisão humana final F24: final_homologation_decision_contract_ready_phase_023_dossier_and_human_decision_required (artifacts/runtime/phase-024/final-human-homologation-decision-evidence.json)",
+          "reason": "gate executado e bloqueado somente por dependências do ambiente real"
+        }
+      ]
+    }
+  ]
+}

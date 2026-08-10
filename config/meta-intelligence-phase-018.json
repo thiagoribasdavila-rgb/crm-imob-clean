@@ -1,0 +1,63 @@
+{
+  "phase": 18,
+  "program": "meta-andromeda-automation",
+  "mode": "validation_only_payload_contract",
+  "status": "validation_contract_ready_branch_gate_closed",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-017.json",
+  "sourceEventContract": "config/meta-intelligence-phase-003.json",
+  "signalContract": "config/meta-validation-only-signal-contract.json",
+  "eventInputTemplate": "config/fixtures/meta-validation-event-template.json",
+  "evidenceTemplate": "config/fixtures/meta-validation-only-evidence-template.json",
+  "payloadRunner": "scripts/run-meta-validation-only-payload.mjs",
+  "evidencePreflight": "scripts/preflight-meta-validation-only-payload.mjs",
+  "staticAudit": "scripts/audit-meta-validation-only-payload.mjs",
+  "documentation": "docs/META_VALIDATION_ONLY_SIGNAL_CONTRACT.md",
+  "officialReferences": {
+    "metaConversionsApi": "https://www.facebook.com/business/help/AboutConversionsAPI",
+    "metaAdvantagePlusLeads": "https://www.facebook.com/business/ads/meta-advantage-plus/leads",
+    "supabaseSecureData": "https://supabase.com/docs/guides/database/secure-data"
+  },
+  "commercialSignalPolicy": {
+    "activityIsNotConversion": true,
+    "scoreAloneIsNotQualification": true,
+    "contactAttemptIsNotContact": true,
+    "externalPurchaseIsNotAtlasSale": true,
+    "confirmedOutcomeRequiredForConvertedLead": true,
+    "humanOrGovernedFactRequired": true
+  },
+  "environmentAudit": {
+    "phase17ApprovedEvidenceDetected": false,
+    "remoteCallsExecuted": false,
+    "metaPayloadDelivered": false,
+    "databaseMutationExecuted": false,
+    "reason": "A Fase 17 continua sem evidencia aprovada do branch Supabase isolado. O construtor foi validado somente com fixture sintetica em memoria."
+  },
+  "releaseGate": {
+    "phase17EvidenceApproved": false,
+    "localSignalContractPassed": true,
+    "localPrivacyContractPassed": true,
+    "localDeduplicationContractPassed": true,
+    "syntheticPayloadSelfTestPassed": true,
+    "validationEvidenceGeneratedFromBranch": false,
+    "testEventDeliveryReady": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "databaseMutation": false,
+    "productionAccess": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "rawIdentifiersPersisted": false,
+    "hashedIdentifiersPersistedInEvidence": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 19,
+    "objective": "Depois da evidencia aprovada da Fase 17, gerar a primeira prova validation-only com evento sintetico e comparar a estrutura no ambiente de teste, ainda sem entrega Meta."
+  }
+}

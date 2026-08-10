@@ -1,0 +1,31 @@
+{
+  "schema": "atlas.human-release-gate-decision-policy.v1",
+  "compositionId": "conversion-core-candidate",
+  "compositionDecisionHash": "468bcb65ac7ff6412df595580d8ac328644c646301b0c77cf55c787ad6b5bc8c",
+  "evidencePlanHash": "c42803abb3c0c0d68c958db17edcfdc43f93acd04d6c2e90b8f40b0373d42a95",
+  "provenancePolicyHash": "101483b0f07f1daf5e948d411459c4938f3ec97739b283428ff06d44fb13f9ca",
+  "reviewPacketPolicyHash": "cb13e2e4e22d668bc25e53a2ca706fdac640c98e6f12491de6a7e43644d1db8c",
+  "signatureAlgorithm": "ed25519",
+  "allowedOutcomes": [
+    "approved",
+    "rejected"
+  ],
+  "maxDecisionDelaySeconds": 1800,
+  "maxRecordingDelaySeconds": 300,
+  "minReasonLength": 12,
+  "exactPacketBindingRequired": true,
+  "exactModuleGateBindingRequired": true,
+  "exactReviewerRoleRequired": true,
+  "uniqueDecisionPerModuleGateRequired": true,
+  "completeReviewRequiresEveryEligibleGate": true,
+  "reasonRequired": true,
+  "signatureRequired": true,
+  "humanReviewRequired": true,
+  "automaticGateExecution": false,
+  "automaticReleaseApproval": false,
+  "automaticReleaseMemoryUpdate": false,
+  "automaticPackageGeneration": false,
+  "automaticDeploy": false,
+  "automaticReleasePromotion": false,
+  "policyHash": "c30603b77ad359f2235c3293eafed53ce0fde4e69d52c96e162bd5bdf509f75a"
+}

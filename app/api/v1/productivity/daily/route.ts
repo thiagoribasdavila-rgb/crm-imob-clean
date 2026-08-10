@@ -2,11 +2,9 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
-  LIVE_LEAD_SELECT,
-  mapLegacyLead,
-  mapLegacyTask,
-  type CompatRow,
-} from "@/lib/compat/legacy-v2";
+  readCompatibleLeads,
+  readCompatibleTasks,
+} from "@/lib/atlas/core-v2/live-repositories";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +30,14 @@ const time = (value: unknown) => {
 type Step = {
   id: string;
   kind: "task" | "lead" | "visit";
+  signal:
+    | "first_contact_sla"
+    | "follow_up_sla"
+    | "task_due_at"
+    | "visit_time"
+    | "priority"
+    | "temperature"
+    | "score";
   title: string;
   reason: string;
   action: string;
@@ -53,28 +59,29 @@ export async function GET(request: NextRequest) {
 
   const organizationId = identity.access.organization.id;
   const actorId = identity.access.profile.id;
+  const maximumSteps = 7;
   const now = Date.now();
   const today = new Date();
   today.setHours(23, 59, 59, 999);
-  const [taskResult, leadResult] = await Promise.all([
+  const [taskResult, leadResult, visitResult] = await Promise.all([
+    readCompatibleTasks(identity.supabase, {
+      organizationId,
+      limit: 500,
+    }),
+    readCompatibleLeads(identity.supabase, {
+      organizationId,
+      limit: 500,
+    }),
     identity.supabase
-      .from("tasks")
-      .select(
-        "id,title,description,status,user_id,lead_id,created_at,organization_id,priority,due_date",
-      )
+      .from("lead_visits")
+      .select("id,lead_id,broker_id,scheduled_at,status,format,location")
       .eq("organization_id", organizationId)
-      .eq("user_id", actorId)
-      .order("due_date", { ascending: true, nullsFirst: false })
-      .limit(500),
-    identity.supabase
-      .from("leads")
-      .select(LIVE_LEAD_SELECT)
-      .eq("organization_id", organizationId)
-      .eq("assigned_user_id", actorId)
+      .eq("broker_id", actorId)
+      .order("scheduled_at", { ascending: true })
       .limit(500),
   ]);
 
-  if (taskResult.error || leadResult.error) {
+  if (!taskResult.ok || !leadResult.ok) {
     return apiError(
       "PRODUCTIVITY_LOAD_FAILED",
       "Não foi possível preparar seu dia.",
@@ -83,12 +90,17 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const tasks = ((taskResult.data ?? []) as unknown as CompatRow[]).map(
-    mapLegacyTask,
+  // RLS already limits visibility. These explicit owner filters make the daily
+  // assistant personal even for managers with a broader commercial scope.
+  const tasks = taskResult.rows.filter(
+    (task) => String(task.assigned_to || "") === actorId,
   );
-  const leads = ((leadResult.data ?? []) as unknown as CompatRow[]).map(
-    mapLegacyLead,
+  const leads = leadResult.rows.filter(
+    (lead) => String(lead.assigned_to || "") === actorId,
   );
+  // Visits are optional until the corresponding DDL is applied. Their absence
+  // must not block tasks, follow-ups or first-contact SLAs.
+  const visits = visitResult.error ? [] : visitResult.data ?? [];
   const steps: Step[] = [];
 
   for (const task of tasks) {
@@ -100,6 +112,7 @@ export async function GET(request: NextRequest) {
     steps.push({
       id: String(task.id),
       kind: "task",
+      signal: high ? "priority" : "task_due_at",
       title: String(task.title || "Tarefa comercial"),
       reason: overdue
         ? "Prazo vencido"
@@ -135,6 +148,15 @@ export async function GET(request: NextRequest) {
     steps.push({
       id: String(lead.id),
       kind: "lead",
+      signal: firstLate
+        ? "first_contact_sla"
+        : followLate
+          ? "follow_up_sla"
+          : hot
+            ? normalize(lead.temperature) === "quente"
+              ? "temperature"
+              : "score"
+            : "follow_up_sla",
       title: String(lead.name || "Lead sem nome"),
       reason: firstLate
         ? "Lead novo aguardando contato"
@@ -159,6 +181,40 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  for (const visit of visits) {
+    if (
+      ["completed", "cancelled", "no_show"].includes(
+        normalize(visit.status),
+      )
+    ) {
+      continue;
+    }
+    const visitAt = time(visit.scheduled_at);
+    if (visitAt === null) continue;
+    const overdue = visitAt < now;
+    const isToday = visitAt <= today.getTime();
+    if (!overdue && !isToday) continue;
+    const lead = leads.find(
+      (item) => String(item.id) === String(visit.lead_id),
+    );
+    steps.push({
+      id: String(visit.id),
+      kind: "visit",
+      signal: "visit_time",
+      title: `${visit.format === "video" ? "Videochamada" : "Visita"} com ${String(lead?.name || "cliente")}`,
+      reason: overdue ? "Visita com horário vencido" : "Visita de hoje",
+      action: overdue
+        ? "Registrar o resultado ou reagendar"
+        : "Preparar materiais e confirmar presença",
+      href: visit.lead_id ? `/leads/${visit.lead_id}/schedule` : "/calendar",
+      dueAt: String(visit.scheduled_at),
+      urgency: overdue ? "now" : "today",
+      weight:
+        (overdue ? 700 : 420) +
+        Math.max(0, 48 - Math.floor((visitAt - now) / 3_600_000)),
+    });
+  }
+
   const sequence = steps
     .sort(
       (left, right) =>
@@ -166,10 +222,11 @@ export async function GET(request: NextRequest) {
         (time(left.dueAt) ?? Number.MAX_SAFE_INTEGER) -
           (time(right.dueAt) ?? Number.MAX_SAFE_INTEGER),
     )
-    .slice(0, 7)
+    .slice(0, maximumSteps)
     .map((step, index) => ({
       id: step.id,
       kind: step.kind,
+      signal: step.signal,
       title: step.title,
       reason: step.reason,
       action: step.action,
@@ -193,17 +250,24 @@ export async function GET(request: NextRequest) {
         llmCost: 0,
         explainable: true,
         signals: [
-          "new_lead_age",
-          "next_contact",
-          "due_date",
+          "first_contact_sla",
+          "follow_up_sla",
+          "task_due_at",
+          "visit_time",
           "priority",
           "temperature",
-          "score_ia",
+          "score",
         ],
         humanDecisionRequired: true,
         peopleRanking: false,
+        automaticExecution: false,
       },
-      compatibility: "live-schema-safe",
+      sources: {
+        tasks: taskResult.source,
+        leads: leadResult.source,
+        visits: visitResult.error ? "awaiting-ddl" : "public.lead_visits",
+      },
+      compatibility: "v2-v3-live-schema-safe",
       generatedAt: new Date().toISOString(),
     },
     identity.meta,

@@ -1,0 +1,69 @@
+{
+  "format": "atlas_meta_repeatability_atomic_ledger_gate_v1",
+  "phase": 27,
+  "mode": "atomic_single_use_ledger_contract_no_persistence_no_issue_no_delivery",
+  "environment": "staging_clone",
+  "requiredSourcePhase": 26,
+  "sourceSignalContract": "config/meta-validation-only-signal-contract.json",
+  "targetSlot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2,
+    "requiredContractStatus": "contract_prepared_not_issued"
+  },
+  "ledgerPolicy": {
+    "strategy": "compare_and_set",
+    "initialRevision": 0,
+    "proposedRevision": 1,
+    "singleWinnerRequired": true,
+    "duplicateReservationRejected": true,
+    "atomicConsumptionRequired": true,
+    "appendOnlyAuditRequired": true,
+    "durablePersistenceRequiredBeforeIssuance": true,
+    "ledgerMayPersistReservation": false,
+    "ledgerMayIssuePermit": false,
+    "ledgerMayConsumePermit": false
+  },
+  "uniqueIdentity": {
+    "contractFingerprintRequired": true,
+    "contractReferenceFingerprintRequired": true,
+    "permitNonceFingerprintRequired": true,
+    "idempotencyFingerprintRequired": true,
+    "eventFingerprintRequired": true,
+    "syntheticRecordFingerprintRequired": true,
+    "allFingerprintsMustBeDistinctWhereApplicable": true
+  },
+  "rehearsal": {
+    "inMemoryOnly": true,
+    "minimumConcurrentAttempts": 2,
+    "expectedWinnerCount": 1,
+    "expectedDuplicateRejectionCount": 1,
+    "databaseConnectionAllowed": false,
+    "filesystemLedgerAllowed": false,
+    "networkAllowed": false
+  },
+  "persistedEvidence": {
+    "sanitizedReportAllowed": true,
+    "fingerprintsAllowed": true,
+    "rawReferencesAllowed": false,
+    "rawPayloadAllowed": false,
+    "rawResponseAllowed": false,
+    "temporaryCodeAllowed": false,
+    "personalDataAllowed": false,
+    "projectIdentifiersAllowed": false,
+    "screenshotsAllowed": false
+  },
+  "releaseGate": {
+    "ledgerPersistenceAllowed": false,
+    "permitIssuanceAllowed": false,
+    "permitConsumptionAllowed": false,
+    "authorizationActivationAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  }
+}

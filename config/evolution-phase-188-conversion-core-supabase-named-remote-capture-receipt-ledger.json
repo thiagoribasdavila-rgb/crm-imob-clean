@@ -1,0 +1,54 @@
+{
+  "phase": 188,
+  "name": "Conversion Core Supabase Named Remote Capture Receipt Ledger",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Verificar localmente a integridade e o replay determinístico do conjunto privado de recibos consumidos, sem persistir evidência bruta ou criar capacidade remota.",
+  "evidenceLevel": "local_receipt_ledger_integrity_contract_tested_remote_capture_not_performed",
+  "runtimeHomologated": false,
+  "currentState": {
+    "receiptLedgerSchemaPrepared": true,
+    "strictDirectoryContractEnforced": true,
+    "privateFileModeVerified": true,
+    "innerReceiptHashVerified": true,
+    "deterministicReplaySupported": true,
+    "duplicateDetectionEnforced": true,
+    "rawCapturePersisted": false,
+    "remoteExecutorAvailable": false,
+    "receiptLedgerVerifiedInAssessment": false,
+    "currentNamedRemoteEvidenceCollected": false
+  },
+  "safety": {
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationPushExecuted": false,
+    "migrationHistoryRepaired": false,
+    "migrationFileRenamed": false,
+    "databaseReset": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "secretsPersisted": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "authorizationRecorded": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "procedureExecuted": false,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "limitations": [
+    "O ledger só é verificado quando o chamador informa explicitamente um diretório físico privado dentro da raiz.",
+    "O resultado expõe somente contagens, intervalo temporal e SHA-256; nunca expõe capturas, SQL, migrations, credenciais ou identificadores crus.",
+    "Esta fase não coleta evidência, não executa operação remota e não altera o Supabase operacional."
+  ],
+  "nextAction": "Na fase 189, criar um checkpoint local imutável do hash do ledger para comparação auditável entre execuções, ainda sem contato remoto ou alteração operacional."
+}

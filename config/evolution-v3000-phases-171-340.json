@@ -1,0 +1,60 @@
+{
+  "program": "ATLAS ONE V3000",
+  "version": "1.0.0",
+  "phaseStart": 171,
+  "phaseEnd": 340,
+  "phaseCount": 170,
+  "currentProgramPhaseAtPlanning": 165,
+  "entryGate": "close-or-explicitly-carry-phases-166-170",
+  "objective": "Close the measurable loop from campaign to sale, Meta signal, supervised learning and director decision without expanding the product surface unnecessarily.",
+  "principles": [
+    "conversion-before-feature-count",
+    "consolidate-existing-capabilities-first",
+    "real-data-without-fake-production-metrics",
+    "tenant-isolation-by-default",
+    "observe-recommend-execute-with-approval",
+    "no-external-action-without-explicit-gate",
+    "one-full-build-at-wave-close",
+    "installable-wave-with-rollback",
+    "digital-twin-shadow-mode-only",
+    "evidence-required-for-progress"
+  ],
+  "phaseDefinitionOfDone": [
+    "observable-operational-change",
+    "persisted-evidence-when-applicable",
+    "organization-isolation-when-applicable",
+    "targeted-test",
+    "before-after-or-technical-receipt",
+    "safe-disable-or-rollback",
+    "no-regression-in-lead-to-sale-flow"
+  ],
+  "waves": [
+    { "id": 1, "phases": [171, 180], "name": "Commercial truth and baseline", "release": "ATLAS_ONE_V3000_W01_P180_HOSTINGER.zip", "primaryMetric": "reconciled-kpi-coverage" },
+    { "id": 2, "phases": [181, 190], "name": "Lossless lead intake", "release": "ATLAS_ONE_V3000_W02_P190_HOSTINGER.zip", "primaryMetric": "ingestion-loss-and-duplication" },
+    { "id": 3, "phases": [191, 200], "name": "Governed intelligent distribution", "release": "ATLAS_ONE_V3000_W03_P200_HOSTINGER.zip", "primaryMetric": "eligible-assignment-and-response-time" },
+    { "id": 4, "phases": [201, 210], "name": "Decisive broker workspace", "release": "ATLAS_ONE_V3000_W04_P210_HOSTINGER.zip", "primaryMetric": "time-to-next-action" },
+    { "id": 5, "phases": [211, 220], "name": "WhatsApp conversation memory", "release": "ATLAS_ONE_V3000_W05_P220_HOSTINGER.zip", "primaryMetric": "official-conversation-capture" },
+    { "id": 6, "phases": [221, 230], "name": "Proactive supervised Copilot", "release": "ATLAS_ONE_V3000_W06_P230_HOSTINGER.zip", "primaryMetric": "useful-recommendation-acceptance-and-outcome" },
+    { "id": 7, "phases": [231, 240], "name": "Meta CAPI and Andromeda signal", "release": "ATLAS_ONE_V3000_W07_P240_HOSTINGER.zip", "primaryMetric": "accepted-deduplicated-crm-signals" },
+    { "id": 8, "phases": [241, 250], "name": "Campaign revenue lab", "release": "ATLAS_ONE_V3000_W08_P250_HOSTINGER.zip", "primaryMetric": "cost-per-commercial-outcome" },
+    { "id": 9, "phases": [251, 260], "name": "Projects inventory and materials", "release": "ATLAS_ONE_V3000_W09_P260_HOSTINGER.zip", "primaryMetric": "current-material-and-inventory-use" },
+    { "id": 10, "phases": [261, 270], "name": "Outcome-based team management", "release": "ATLAS_ONE_V3000_W10_P270_HOSTINGER.zip", "primaryMetric": "managed-sla-and-stage-advancement" },
+    { "id": 11, "phases": [271, 280], "name": "Director command room", "release": "ATLAS_ONE_V3000_W11_P280_HOSTINGER.zip", "primaryMetric": "decision-time-and-resolution" },
+    { "id": 12, "phases": [281, 290], "name": "Responsible reactivation", "release": "ATLAS_ONE_V3000_W12_P290_HOSTINGER.zip", "primaryMetric": "incremental-qualified-reactivation" },
+    { "id": 13, "phases": [291, 300], "name": "Forecast sale and commission integrity", "release": "ATLAS_ONE_V3000_W13_P300_HOSTINGER.zip", "primaryMetric": "forecast-and-receivable-reconciliation" },
+    { "id": 14, "phases": [301, 310], "name": "Hostinger reliability and security", "release": "ATLAS_ONE_V3000_W14_P310_HOSTINGER.zip", "primaryMetric": "deterministic-build-and-recovery" },
+    { "id": 15, "phases": [311, 320], "name": "Premium fast inclusive experience", "release": "ATLAS_ONE_V3000_W15_P320_HOSTINGER.zip", "primaryMetric": "task-time-error-rate-and-perceived-performance" },
+    { "id": 16, "phases": [321, 330], "name": "Commercial Digital Twin shadow mode", "release": "ATLAS_ONE_V3000_W16_P330_HOSTINGER.zip", "primaryMetric": "scenario-reproducibility-and-observed-error" },
+    { "id": 17, "phases": [331, 340], "name": "Real homologation and V3000 release", "release": "ATLAS_ONE_V3000_W17_P340_HOSTINGER.zip", "primaryMetric": "evidence-backed-production-readiness" }
+  ],
+  "releasePolicy": {
+    "buildsInsideWave": 0,
+    "fullBuildsAtWaveClose": 1,
+    "requiresRegression": true,
+    "requiresManifest": true,
+    "requiresChecksum": true,
+    "requiresRollback": true,
+    "requiresHumanPromotionApproval": true
+  },
+  "documentation": "docs/ATLAS_ONE_V3000_MASTER_PLAN_PHASES_171_340.md"
+}

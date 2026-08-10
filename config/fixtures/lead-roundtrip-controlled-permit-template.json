@@ -1,0 +1,56 @@
+{
+  "schema": "atlas.lead-roundtrip-controlled-permit.v1",
+  "status": "awaiting_controlled_execution_authorization",
+  "scenarioReference": "lead-roundtrip-synthetic-001",
+  "target": {
+    "environment": "homologation",
+    "baseUrlVariable": "ATLAS_BASE_URL",
+    "databaseEnvironmentVariable": "ATLAS_DATABASE_ENVIRONMENT",
+    "dedicatedTenantReference": null
+  },
+  "authorization": {
+    "granted": false,
+    "confirmationPhrase": null,
+    "approverReference": null,
+    "approvedAt": null
+  },
+  "operation": {
+    "operatorReference": null,
+    "observerReference": null,
+    "windowReference": null,
+    "syntheticDatasetReviewed": false,
+    "dedicatedTenantVerified": false,
+    "databaseEnvironmentVerified": false,
+    "monitoringReady": false
+  },
+  "cleanup": {
+    "ownerReference": null,
+    "method": "transaction-rollback-or-tagged-record-removal",
+    "rollbackReviewed": false,
+    "cleanupDeadlineDefined": false
+  },
+  "execution": {
+    "enabled": false,
+    "controlledHomologationOnly": true,
+    "customerDataAllowed": false,
+    "productionAllowed": false,
+    "metaEmissionAllowed": false,
+    "providerPayloadAllowed": false
+  },
+  "requiredEvidence": {
+    "intakeReceipt": false,
+    "deduplicationReceipt": false,
+    "tenantReceipt": false,
+    "assignmentReceipt": false,
+    "activityReceipt": false,
+    "pipelineReceipt": false,
+    "signalMappingReceipt": false,
+    "cleanupReceipt": false
+  },
+  "externalState": {
+    "databaseTouched": false,
+    "stagingTouched": false,
+    "productionTouched": false,
+    "metaTouched": false
+  }
+}

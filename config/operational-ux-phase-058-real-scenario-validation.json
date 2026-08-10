@@ -1,0 +1,18 @@
+{
+  "phase": 58,
+  "scope": "real_scenario_validation",
+  "canonicalRoute": "/decision-center",
+  "canonicalLedger": "atlas_decisions",
+  "realSourceRequired": true,
+  "organizationIsolationPreserved": true,
+  "explicitAssumptionRequired": true,
+  "expectedOutcomeRequired": true,
+  "baselineFrozenAtDecision": true,
+  "posteriorObservationRequired": true,
+  "evaluationWindowEnforced": true,
+  "automaticCommercialAction": false,
+  "migrationCreated": false,
+  "remoteDataChangedDuringPhase": false,
+  "externalDeliveryDuringPhase": false,
+  "buildExecuted": false
+}

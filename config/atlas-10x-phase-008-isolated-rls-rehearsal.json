@@ -1,0 +1,178 @@
+{
+  "schema_version": "atlas.10x.phase-008.v1",
+  "phase": 8,
+  "total_phases": 24,
+  "name": "Clone isolado, fixtures multi-tenant e prova dinâmica de RLS",
+  "objective": "Provar, com identidades reais do clone e JWT impersonado no PostgreSQL, os caminhos positivos da hierarquia e as negações entre organizações antes de qualquer alteração remota.",
+  "target_environment": "isolated_clone",
+  "build_policy": "build_only_on_release_package",
+  "status": "runtime_rehearsal_pending",
+  "execution_policy": {
+    "default_mode": "local_static_assessment",
+    "remote_execution_enabled": false,
+    "linked_project_execution_enabled": false,
+    "requires_loopback_database": true,
+    "requires_restored_reference_data": true,
+    "requires_two_organizations": true,
+    "requires_acl_snapshot": true,
+    "requires_human_approval": true,
+    "allows_fixture_creation": false,
+    "allows_remote_user_changes": false,
+    "allows_remote_business_writes": false,
+    "allows_build": false,
+    "allows_release_package": false
+  },
+  "reference_fixture_contract": {
+    "organization_a": {
+      "active_director_root": 1,
+      "active_manager_reporting_to_director": 1,
+      "active_broker_reporting_to_manager": 1,
+      "lead_assigned_to_broker": 1
+    },
+    "organization_b": {
+      "active_profile": 1,
+      "lead_assigned_to_active_profile": 1
+    },
+    "fixture_source": "sanitized_restored_clone",
+    "fixture_values_persisted_in_evidence": false,
+    "missing_fixture_behavior": "fail_closed"
+  },
+  "personas": [
+    {
+      "persona": "anon",
+      "organization": null,
+      "expected": "no_business_data"
+    },
+    {
+      "persona": "broker_a",
+      "organization": "a",
+      "expected": "own_profile_and_own_lead_only"
+    },
+    {
+      "persona": "manager_a",
+      "organization": "a",
+      "expected": "self_and_descendant_broker_scope"
+    },
+    {
+      "persona": "director_a",
+      "organization": "a",
+      "expected": "organization_wide_scope"
+    },
+    {
+      "persona": "actor_b",
+      "organization": "b",
+      "expected": "organization_b_only"
+    }
+  ],
+  "dynamic_scenarios": [
+    {
+      "id": "anonymous_business_access_denied",
+      "gate": "anon_denial_passed",
+      "type": "negative"
+    },
+    {
+      "id": "broker_own_profile_and_lead_visible",
+      "gate": "positive_owner_path_passed",
+      "type": "positive"
+    },
+    {
+      "id": "broker_supervisor_and_cross_tenant_hidden",
+      "gate": "authenticated_role_matrix_passed",
+      "type": "negative"
+    },
+    {
+      "id": "manager_descendant_visible",
+      "gate": "positive_manager_path_passed",
+      "type": "positive"
+    },
+    {
+      "id": "director_organization_scope_visible",
+      "gate": "positive_director_path_passed",
+      "type": "positive"
+    },
+    {
+      "id": "cross_tenant_leads_hidden_both_directions",
+      "gate": "cross_tenant_denial_passed",
+      "type": "negative"
+    },
+    {
+      "id": "lead_create_rpc_rejects_owner_spoofing",
+      "gate": "rpc_actor_spoofing_denial_passed",
+      "type": "negative"
+    },
+    {
+      "id": "project_write_rpc_rejects_cross_tenant_actor",
+      "gate": "project_rpc_tenant_denial_passed",
+      "type": "negative"
+    },
+    {
+      "id": "server_rpc_execute_surface_denied",
+      "gate": "server_rpc_surface_denial_passed",
+      "type": "negative"
+    },
+    {
+      "id": "transaction_rollback_preserves_reference_data",
+      "gate": "rollback_rehearsal_passed",
+      "type": "recovery"
+    }
+  ],
+  "required_gates": [
+    "loopback_target_confirmed",
+    "explicit_execution_approval",
+    "reference_fixture_contract_satisfied",
+    "acl_snapshot_available",
+    "pgtap_execution_passed",
+    "anon_denial_passed",
+    "authenticated_role_matrix_passed",
+    "positive_owner_path_passed",
+    "positive_manager_path_passed",
+    "positive_director_path_passed",
+    "cross_tenant_denial_passed",
+    "rpc_actor_spoofing_denial_passed",
+    "project_rpc_tenant_denial_passed",
+    "server_rpc_surface_denial_passed",
+    "rollback_rehearsal_passed",
+    "evidence_sanitized"
+  ],
+  "runtime_evidence": {
+    "loopback_target_confirmed": false,
+    "explicit_execution_approval": false,
+    "reference_fixture_contract_satisfied": false,
+    "acl_snapshot_available": false,
+    "pgtap_execution_passed": false,
+    "anon_denial_passed": false,
+    "authenticated_role_matrix_passed": false,
+    "positive_owner_path_passed": false,
+    "positive_manager_path_passed": false,
+    "positive_director_path_passed": false,
+    "cross_tenant_denial_passed": false,
+    "rpc_actor_spoofing_denial_passed": false,
+    "project_rpc_tenant_denial_passed": false,
+    "server_rpc_surface_denial_passed": false,
+    "rollback_rehearsal_passed": false,
+    "evidence_sanitized": false
+  },
+  "evidence_contract": {
+    "format": "atlas_rls_isolated_rehearsal_evidence_v1",
+    "contains_secrets": false,
+    "contains_personal_data": false,
+    "contains_fixture_identifiers": false,
+    "contains_database_url": false,
+    "contains_access_tokens": false
+  },
+  "forbidden_operations_in_phase_008": [
+    "use --linked",
+    "target a non-loopback database",
+    "apply a remote migration",
+    "create or delete remote users",
+    "write remote business data",
+    "persist fixture identifiers",
+    "print database credentials",
+    "build",
+    "create release zip"
+  ],
+  "next_phase": {
+    "phase": 9,
+    "name": "Correções de segurança aprovadas e migração controlada de homologação"
+  }
+}

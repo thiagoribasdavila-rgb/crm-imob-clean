@@ -1,0 +1,29 @@
+{
+  "phase": 162,
+  "name": "Meta Test Connector Readiness Gate",
+  "status": "implemented",
+  "stream": "meta-andromeda-conversion-automation",
+  "objective": "Exibir uma validação segura de ambiente antes do ensaio oficial da Meta Conversions API.",
+  "businessProblem": "O diretor precisava saber se o conector Meta estava pronto sem depender de prints, logs técnicos ou tentativa real de envio.",
+  "implemented": [
+    "Nova API de readiness sem disparo real para Meta",
+    "Checagem de presença de variáveis críticas e opcionais sem expor valores",
+    "Painel de readiness dentro da tela de campanhas",
+    "Próxima ação clara para diretor antes do ensaio oficial",
+    "Guardrails visíveis: não aciona Meta API, não mostra segredo e não move campanha"
+  ],
+  "acceptanceCriteria": [
+    "A tela de campanhas mostra Gate de conector Meta",
+    "A API retorna mode readiness_only_no_delivery",
+    "Nenhum token, app secret ou código de teste é serializado para o cliente",
+    "O usuário consegue revalidar o ambiente pela interface",
+    "O envio real continua bloqueado até aprovação e ensaio oficial"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-162:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint",
+    "build": "deferred-to-release-close"
+  },
+  "nextPhaseRecommendation": "Criar uma ponte visual entre candidatos de evento e o ensaio oficial real, mostrando apenas leads elegíveis e com consentimento."
+}

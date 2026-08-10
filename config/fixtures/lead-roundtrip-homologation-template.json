@@ -1,0 +1,71 @@
+{
+  "schema": "atlas.lead-roundtrip-homologation-plan.v1",
+  "status": "ready_for_authorized_local_rehearsal",
+  "environment": "homologation",
+  "scenarioReference": "lead-roundtrip-synthetic-001",
+  "dataset": {
+    "kind": "synthetic",
+    "containsPersonalData": false,
+    "customerRecordUsed": false,
+    "providerPayloadUsed": false
+  },
+  "tenancy": {
+    "organizationResolutionRequired": true,
+    "organizationReference": "homologation-tenant-placeholder",
+    "crossTenantAccessAllowed": false
+  },
+  "route": [
+    { "order": 1, "step": "intake", "expectedEvidence": "synthetic_lead_received" },
+    { "order": 2, "step": "deduplication", "expectedEvidence": "duplicate_check_completed" },
+    { "order": 3, "step": "tenant_resolution", "expectedEvidence": "organization_scope_confirmed" },
+    { "order": 4, "step": "unique_assignment", "expectedEvidence": "single_broker_and_copilot_confirmed" },
+    { "order": 5, "step": "commercial_activity", "expectedEvidence": "activity_and_next_action_recorded" },
+    { "order": 6, "step": "pipeline_progression", "expectedEvidence": "stage_history_preserved" },
+    { "order": 7, "step": "aggregate_signal_mapping", "expectedEvidence": "signal_prepared_without_emission" },
+    { "order": 8, "step": "cleanup", "expectedEvidence": "rollback_or_tagged_cleanup_prepared" }
+  ],
+  "invariants": {
+    "deduplicateBeforeCreate": true,
+    "singleOrganization": true,
+    "singleBroker": true,
+    "singleCopilot": true,
+    "auditTrailRequired": true,
+    "humanApprovalRequired": true
+  },
+  "execution": {
+    "authorized": false,
+    "mode": "plan-only",
+    "databaseWritesAllowed": false,
+    "externalWritesAllowed": false,
+    "stagingTouched": false,
+    "productionTouched": false
+  },
+  "signals": {
+    "aggregateOnly": true,
+    "metaEmissionEnabled": false,
+    "providerReceiptRequired": true,
+    "customerDataIncluded": false
+  },
+  "cleanup": {
+    "required": true,
+    "method": "transaction-rollback-or-tagged-record-removal",
+    "verified": false
+  },
+  "evidence": {
+    "intakeVerified": false,
+    "deduplicationVerified": false,
+    "tenantVerified": false,
+    "assignmentVerified": false,
+    "activityVerified": false,
+    "pipelineVerified": false,
+    "signalMappingVerified": false,
+    "cleanupVerified": false
+  },
+  "release": {
+    "localPlanValidated": true,
+    "realRehearsalAllowed": false,
+    "metaTestAllowed": false,
+    "productionAllowed": false,
+    "zipAllowed": false
+  }
+}

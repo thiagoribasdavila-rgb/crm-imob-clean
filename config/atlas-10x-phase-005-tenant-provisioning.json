@@ -1,0 +1,150 @@
+{
+  "schema_version": "atlas.10x.phase-005.v1",
+  "phase": 5,
+  "total_phases": 24,
+  "name": "Provisionamento controlado do tenant de homologação",
+  "objective": "Preparar uma sequência única, idempotente e auditável para criar o tenant e sua hierarquia inicial sem escrever remotamente enquanto os gates de schema, segurança e identidade estiverem bloqueados.",
+  "target_environment": "atlas-v3-homologacao",
+  "build_policy": "build_only_on_release_package",
+  "remote_write_policy": "disabled_until_all_gates_and_human_approval",
+  "execution_policy": {
+    "default_mode": "plan_only",
+    "remote_execution_enabled": false,
+    "requires_exact_target_fingerprint": true,
+    "requires_one_time_permit": true,
+    "requires_human_approval": true,
+    "allows_user_deletion": false,
+    "allows_history_deletion": false,
+    "allows_default_tenant_fallback": false
+  },
+  "secret_policy": {
+    "trusted_server_only": true,
+    "preferred_supabase_key": "SUPABASE_SECRET_KEY",
+    "legacy_key_to_retire": "SUPABASE_SERVICE_ROLE_KEY",
+    "never_allowed_in_public_env": true,
+    "never_print_values": true,
+    "never_store_passwords": true,
+    "invite_or_recovery_link_preferred": true
+  },
+  "required_environment_variable_names": [
+    "ATLAS_ENV",
+    "ATLAS_DATABASE_ENVIRONMENT",
+    "ATLAS_BASE_URL",
+    "ATLAS_AUTH_ORGANIZATION_ID",
+    "ATLAS_RECOVERY_INBOX",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "SUPABASE_SECRET_KEY"
+  ],
+  "canonical_identity_slots": [
+    {
+      "slot": "platform_admin",
+      "email_env": "ATLAS_INITIAL_ADMIN_EMAIL",
+      "access_role": "admin",
+      "commercial_role": "director",
+      "reports_to": null
+    },
+    {
+      "slot": "executive_director",
+      "email_env": "ATLAS_INITIAL_DIRECTOR_EMAIL",
+      "access_role": "director_decisor",
+      "commercial_role": "director",
+      "reports_to": null
+    },
+    {
+      "slot": "superintendent",
+      "email_env": "ATLAS_INITIAL_SUPERINTENDENT_EMAIL",
+      "access_role": "director",
+      "commercial_role": "superintendent",
+      "reports_to": "executive_director"
+    },
+    {
+      "slot": "manager",
+      "email_env": "ATLAS_INITIAL_MANAGER_EMAIL",
+      "access_role": "director",
+      "commercial_role": "manager",
+      "reports_to": "superintendent"
+    },
+    {
+      "slot": "broker",
+      "email_env": "ATLAS_INITIAL_BROKER_EMAIL",
+      "access_role": "broker",
+      "commercial_role": "broker",
+      "reports_to": "manager"
+    }
+  ],
+  "ordered_steps": [
+    "pin_exact_target_and_url_fingerprint",
+    "prove_phase_003_migration_parity",
+    "prove_phase_004_identity_rbac",
+    "review_rls_policies_and_privileged_grants",
+    "capture_backup_and_restore_receipt",
+    "create_or_resolve_single_homologation_organization",
+    "invite_or_resolve_auth_users_server_side",
+    "upsert_profiles_with_auth_primary_keys",
+    "link_hierarchy_parent_before_child",
+    "verify_auth_profile_parity",
+    "verify_role_visibility_matrix",
+    "verify_cross_tenant_denial",
+    "verify_login_and_recovery",
+    "store_sanitized_provisioning_receipt",
+    "revoke_one_time_permit_and_bootstrap_secret"
+  ],
+  "idempotency_contract": {
+    "organization_key": "organization_slug",
+    "auth_user_key": "normalized_email",
+    "profile_key": "auth_user_id",
+    "hierarchy_order": [
+      "executive_director",
+      "superintendent",
+      "manager",
+      "broker"
+    ],
+    "repeated_execution": "resolve_existing_then_reconcile",
+    "partial_failure": "stop_without_deleting_history"
+  },
+  "rollback_contract": {
+    "revoke_sessions_first": true,
+    "ban_auth_access": true,
+    "deactivate_profiles": true,
+    "clear_active_reports_to_when_required": true,
+    "preserve_leads_tasks_events_and_audit_history": true,
+    "delete_auth_users": false,
+    "delete_organization": false,
+    "requires_restore_test": true
+  },
+  "required_gates": [
+    "phase_003_schema_parity_ready",
+    "phase_004_identity_rbac_ready",
+    "target_fingerprint_pinned",
+    "migration_history_reproducible",
+    "remote_auth_trigger_state_verified",
+    "rls_policy_coverage_clean",
+    "privileged_function_grants_reviewed",
+    "canonical_four_level_hierarchy_active",
+    "single_provisioning_entrypoint",
+    "canonical_roster_approved",
+    "recovery_destination_approved",
+    "backup_restore_receipt_approved",
+    "isolated_rehearsal_passed",
+    "cross_tenant_denial_passed",
+    "role_login_matrix_passed",
+    "rollback_rehearsal_passed",
+    "human_execution_approval"
+  ],
+  "forbidden_operations_in_phase_005": [
+    "create auth user",
+    "invite auth user",
+    "apply migration",
+    "execute remote DDL",
+    "change remote policy",
+    "write organization or profile",
+    "delete auth user",
+    "copy production identity",
+    "build",
+    "create release zip"
+  ],
+  "next_phase": {
+    "phase": 6,
+    "name": "Hardening de policies, grants e funções privilegiadas"
+  }
+}

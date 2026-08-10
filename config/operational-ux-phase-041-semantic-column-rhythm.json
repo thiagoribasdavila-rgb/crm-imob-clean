@@ -1,0 +1,16 @@
+{
+  "phase": 41,
+  "scope": "semantic_kanban_column_rhythm",
+  "rhythmZones": [
+    "stage_decision",
+    "stage_opportunities"
+  ],
+  "decorativeHeaderDividerRemoved": true,
+  "priorityTransitionPreserved": true,
+  "compactDensitySupported": true,
+  "cardMovementPreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

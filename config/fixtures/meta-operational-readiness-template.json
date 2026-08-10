@@ -1,0 +1,29 @@
+{
+  "schema": "atlas.meta-operational-readiness.v1",
+  "status": "assessment_required",
+  "assessmentReference": null,
+  "controls": {
+    "governanceValidated": false,
+    "memoryGoverned": false,
+    "humanApprovalFlowValidated": false,
+    "copilotBoundaryValidated": false
+  },
+  "realEvidence": {
+    "leadRoundTripTested": false,
+    "metaSignalReceiptVerified": false,
+    "rollbackTested": false,
+    "productionMonitoringVerified": false
+  },
+  "release": {
+    "homologationAllowed": false,
+    "productionAllowed": false,
+    "externalChangesAllowed": false
+  },
+  "forbidden": {
+    "assumedEvidence": true,
+    "automaticProductionRelease": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

@@ -1,0 +1,265 @@
+{
+  "program": "ATLAS V30 — Consolidação Operacional 10/10",
+  "version": "1.0.0",
+  "releaseTarget": "Hostinger Node.js 24",
+  "databaseTarget": "Supabase homologation isolated",
+  "principles": [
+    "conversão antes de volume de funcionalidades",
+    "dados reais sem dados fictícios",
+    "DDL antes do código dependente",
+    "autorização em cada rota e não apenas no proxy",
+    "uma lead, um corretor e um Copilot responsáveis",
+    "IA supervisionada antes de qualquer autonomia",
+    "um único build completo no gate de release",
+    "ZIP sem segredos e somente após regressão aprovada"
+  ],
+  "phases": [
+    {
+      "id": 1,
+      "title": "Fonte única e inventário consolidado",
+      "objective": "Definir a pasta oficial, inventariar módulos, rotas, APIs, migrations, scripts e artefatos e congelar duplicidades.",
+      "acceptance": ["inventário reproduzível", "rotas canônicas identificadas", "nenhum ZIP tratado como fonte"],
+      "tests": ["inventory:v3", "architecture:canonical", "architecture:modules"],
+      "buildAllowed": false
+    },
+    {
+      "id": 2,
+      "title": "Runtime e dependências",
+      "objective": "Unificar Node 24, engines, Next.js, React, Supabase, Prisma e instalação limpa.",
+      "acceptance": ["Node mínimo 22", "Node 24 recomendado", "npm ci sem divergência", "dependências críticas auditadas"],
+      "tests": ["doctor", "next16:runtime-contract:check", "preflight:contract:check", "security:dependencies:offline", "environment:variables"],
+      "buildAllowed": false
+    },
+    {
+      "id": 3,
+      "title": "Contrato Hostinger reproduzível",
+      "objective": "Remover instruções de outro provedor, padronizar deploy Hostinger e tornar o pacote rastreável por commit ou hash de conteúdo.",
+      "acceptance": ["README Hostinger", "manifesto rastreável", "segredos excluídos", "runtime correto"],
+      "tests": ["consolidation:30:check", "environments:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 4,
+      "title": "Superfície canônica e quarentena",
+      "objective": "Manter somente as jornadas vendáveis no menu e retirar protótipos conceituais do build e do ZIP.",
+      "acceptance": ["19 resultados canônicos", "zero rota duplicada", "quarentena reversível"],
+      "tests": ["navigation-architecture:check", "navigation-outcomes:check", "navigation-deduplication:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 5,
+      "title": "Cobertura TypeScript real",
+      "objective": "Eliminar exclusões indevidas e fazer o typecheck cobrir CRM, autenticação, IA, domínio, serviços e APIs ativos.",
+      "acceptance": ["cobertura ativa medida", "zero erro TypeScript no código publicado", "exclusões justificadas"],
+      "tests": ["typecheck", "lint"],
+      "buildAllowed": false
+    },
+    {
+      "id": 6,
+      "title": "Ledger de migrations e backup",
+      "objective": "Comparar migrations locais e remotas, criar backup restaurável, ordenar DDL e definir rollback.",
+      "acceptance": ["delta conhecido", "backup identificado", "restore ensaiado", "ordem DDL aprovada"],
+      "tests": ["atlas:migration-readiness:check", "atlas:remote-ledger:check", "atlas:recovery:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 7,
+      "title": "Schema canônico e adapters",
+      "objective": "Consolidar leads, projects, tasks, opportunities, events e insights sem quebrar a base histórica.",
+      "acceptance": ["adapters explícitos", "atlas_events disponível", "campos legados compatíveis", "zero query para coluna inexistente"],
+      "tests": ["atlas:schema-parity:check", "contracts:data", "architecture:canonical"],
+      "buildAllowed": false
+    },
+    {
+      "id": 8,
+      "title": "RLS e segurança do banco",
+      "objective": "Revisar políticas, grants, funções, storage e isolamento real entre organizações.",
+      "acceptance": ["RLS em tabelas expostas", "funções privilegiadas restritas", "dois tenants isolados", "service role apenas no servidor"],
+      "tests": ["rls:check", "atlas:rls-matrix:check", "atlas:rls-dynamic:check", "security:governance"],
+      "buildAllowed": false
+    },
+    {
+      "id": 9,
+      "title": "Login, sessão, RBAC e hierarquia",
+      "objective": "Comprovar autenticação, pós-login, recuperação de senha e visibilidade por ADMIN, diretor, gerente e corretor.",
+      "acceptance": ["sessão persistente", "redirecionamento por papel", "recuperação real", "hierarquia sem vazamento"],
+      "tests": ["login:check", "post-login:check", "password-recovery:check", "auth-rbac:check", "hierarchy-enforcement:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 10,
+      "title": "Qualidade, deduplicação e privacidade",
+      "objective": "Normalizar contatos, bloquear duplicados, telefone inválido, opt-out e reentrada indevida, preservando histórico.",
+      "acceptance": ["deduplicação determinística", "lista de supressão", "LGPD auditável", "base inativa isolada"],
+      "tests": ["lead-identity:check", "contact-consent:check", "inactive-memory:check", "data-completeness:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 11,
+      "title": "Leads operacionais",
+      "objective": "Fechar cadastro, busca, filtros, paginação, responsável único, próxima ação e histórico da lead.",
+      "acceptance": ["CRUD real", "responsável único", "próxima ação obrigatória", "dados do escopo correto"],
+      "tests": ["lead-registration:check", "lead-360:check", "smart-search:check", "commercial-filters:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 12,
+      "title": "Pipeline e Kanban de decisão",
+      "objective": "Entregar Kanban rápido, minimalista, persistente, auditável e orientado à próxima ação.",
+      "acceptance": ["drag persistido", "concorrência segura", "SLA e risco visíveis", "ações em massa governadas"],
+      "tests": ["modern-kanban:check", "safe-movement:check", "pipeline-decision-contract:check", "pipeline-aging:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 13,
+      "title": "Tarefas, agenda e SLA",
+      "objective": "Unificar tarefas, visitas, follow-ups, lembretes e recorrências sem duplicidade.",
+      "acceptance": ["criação e conclusão reais", "atrasos corretos", "agenda responsiva", "SLA calculado"],
+      "tests": ["task-center:check", "commercial-calendar:check", "follow-up-sla:check", "recurring-tasks:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 14,
+      "title": "Cliente 360 e timeline",
+      "objective": "Consolidar perfil, interesses, interações, documentos, tarefas, propostas e origem em uma visão pesquisável.",
+      "acceptance": ["fonte única", "timeline explicável", "dados financeiros protegidos", "próxima ação clara"],
+      "tests": ["unified-timeline:check", "customer-relationship-workspace:check", "lead-360:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 15,
+      "title": "Projetos, incorporadoras e materiais",
+      "objective": "Fechar cadastro, estoque, VGV, tabela, book, espelho, fluxos de pagamento e SLA de comissão.",
+      "acceptance": ["projeto pesquisável", "material privado versionado", "estoque conciliado", "regras por incorporadora"],
+      "tests": ["development-registry:check", "development-catalog:check", "material-center:check", "inventory-import:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 16,
+      "title": "Saúde e roteamento das IAs",
+      "objective": "Validar provedores, modelos, custos, latência, fallback e modo sem crédito sem expor chaves.",
+      "acceptance": ["health por provedor", "fallback comprovado", "limites de custo", "dados pessoais protegidos"],
+      "tests": ["ai-orchestrator:check", "ai-guardrails:check", "integration-health:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 17,
+      "title": "Memória e conhecimento",
+      "objective": "Indexar materiais aprovados, guardar decisões e resultados e impedir que memória arquivada polua a operação.",
+      "acceptance": ["memória por tenant", "fontes citáveis", "retenção e exclusão", "base inativa separada"],
+      "tests": ["commercial-memory:check", "ai-context:check", "ai-playbooks:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 18,
+      "title": "Score, calibração e explicabilidade",
+      "objective": "Transformar score em evidência calibrada com cobertura, confiança, motivos e feedback de resultado.",
+      "acceptance": ["dataset supervisionado", "drift medido", "explicação por lead", "aprovação humana"],
+      "tests": ["conversion-dataset:check", "conversion-calibration:check", "prediction-explainability:check", "prediction-drift:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 19,
+      "title": "Copilot por papel",
+      "objective": "Entregar assistente proativo para corretor, gerente e diretor com ações supervisionadas e contexto correto.",
+      "acceptance": ["respostas por escopo", "próxima ação útil", "nenhuma ação externa autônoma", "feedback salvo"],
+      "tests": ["proactive-copilot:check", "conversational-qualification:check", "visit-proposal:check", "team-conversion-support:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 20,
+      "title": "Outbox e confiabilidade",
+      "objective": "Unificar eventos externos com idempotência, retries, dead letter, rate limit, logs e correlação.",
+      "acceptance": ["sem envio duplicado", "retry limitado", "dead letter recuperável", "observabilidade sem PII"],
+      "tests": ["observability:check", "abuse-protection:check", "reliability-gate:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 21,
+      "title": "WhatsApp oficial",
+      "objective": "Comprovar webhook, templates, consentimento, envio, recebimento, status e handoff para humano.",
+      "acceptance": ["template aprovado", "opt-out respeitado", "status reconciliado", "histórico no Cliente 360"],
+      "tests": ["reactivation-governance:check", "nightly-copilot:check", "integration-health:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 22,
+      "title": "Meta Lead Ads e atribuição",
+      "objective": "Receber lead real, deduplicar, preservar campanha/conjunto/anúncio e distribuir com SLA.",
+      "acceptance": ["webhook verificado", "lead real único", "atribuição imutável", "tempo de resposta medido"],
+      "tests": ["lead-attribution:check", "andromeda-loop:check", "integration-health:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 23,
+      "title": "Meta CAPI e aprendizado de conversão",
+      "objective": "Enviar eventos testados e deduplicados do CRM até venda, medir qualidade e alimentar otimização de público.",
+      "acceptance": ["test_event_code aprovado", "event_id deduplicado", "consentimento válido", "recibo Meta salvo", "produção exige decisão do diretor"],
+      "tests": ["behavior-events:check", "andromeda-loop:check", "revenue-engine:check", "campaign-intelligence:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 24,
+      "title": "Command Center e relatórios por papel",
+      "objective": "Mostrar poucas decisões relevantes para cada papel com dados do dia, semana e mês.",
+      "acceptance": ["diretor vê operação completa", "gerente vê equipe", "corretor vê carteira", "métricas reconciliadas"],
+      "tests": ["broker-dashboard:check", "manager-dashboard:check", "director-dashboard:check", "executive-marketing-reports:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 25,
+      "title": "Experiência V30, mobile e acessibilidade",
+      "objective": "Consolidar design minimalista, estados de loading/erro/vazio, teclado, contraste, responsividade e performance percebida.",
+      "acceptance": ["zero erro técnico na tela", "fluxos mobile", "navegação por teclado", "sem ruído redundante"],
+      "tests": ["final-design-system:check", "final-navigation:check", "navigation-mobile-workspace:check", "performance:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 26,
+      "title": "Arquitetura de testes unificada",
+      "objective": "Criar um comando de testes comportamentais e instalar somente a dependência E2E necessária.",
+      "acceptance": ["testes unitários e integração", "Playwright instalado", "fixtures sem dados reais", "relatório único"],
+      "tests": ["test", "security:secrets", "test:e2e:contract", "test:e2e:dependencies"],
+      "installations": ["@playwright/test como devDependency", "navegador Chromium do Playwright no executor de QA"],
+      "buildAllowed": false
+    },
+    {
+      "id": 27,
+      "title": "Jornadas E2E autenticadas",
+      "objective": "Testar login e operação completa para quatro papéis em ambiente semelhante à produção.",
+      "acceptance": ["lead até venda", "projeto e material", "tarefa e agenda", "isolamento de tenant", "evidência visual"],
+      "tests": ["test:e2e", "smoke:v3", "routes:real"],
+      "buildAllowed": false
+    },
+    {
+      "id": 28,
+      "title": "Carga, segurança e recuperação",
+      "objective": "Comprovar latência, concorrência, rate limit, headers, backup, restauração e rollback.",
+      "acceptance": ["SLO medido", "sem vazamento", "restore aprovado", "rollback cronometrado"],
+      "tests": ["security:audit", "security:dependencies", "performance:check", "preflight:production", "runtime:evidence:check"],
+      "buildAllowed": false
+    },
+    {
+      "id": 29,
+      "title": "Gate único, build e artefato",
+      "objective": "Executar regressão completa, um único build limpo e gerar ZIP determinístico com manifesto e checksums.",
+      "acceptance": ["regressão verde", "build limpo", "inventário interno", "checksum externo", "zero segredo"],
+      "tests": ["release:prebuild-check", "package:hostinger", "package:hostinger:clean-build"],
+      "buildAllowed": true
+    },
+    {
+      "id": 30,
+      "title": "Implantação e teste real",
+      "objective": "Aplicar DDL aprovado, publicar na Hostinger, executar smoke real e obter decisão humana de promoção.",
+      "acceptance": ["HTTPS e health", "quatro papéis", "lead real controlada", "WhatsApp controlado", "Meta CAPI test event", "IA real controlada", "GO ou rollback documentado"],
+      "tests": ["smoke:all", "routes:real", "executive-acceptance:check"],
+      "buildAllowed": false
+    }
+  ],
+  "releaseGates": {
+    "singleFullBuildPhase": 29,
+    "artifactPhase": 29,
+    "realDeploymentPhase": 30,
+    "productionPromotionRequiresHumanApproval": true
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "atlas.lead-roundtrip-environment-attestation.v1",
+  "status": "assessment_required",
+  "assessedAt": null,
+  "checks": {
+    "atlasHomologation": false,
+    "databaseHomologation": false,
+    "environmentIdentityPresent": false,
+    "secureBaseUrl": false,
+    "applicationUrlsAligned": false,
+    "dedicatedTenantReferencePresent": false,
+    "syntheticTestAccountPresent": false,
+    "supabasePublicConfigurationPresent": false,
+    "supabaseServerCredentialPresent": false,
+    "postgresConnectionStructurallyValid": false,
+    "serviceCredentialServerOnly": false
+  },
+  "network": {
+    "connectionAttempted": false,
+    "databaseQueryExecuted": false,
+    "authenticationAttempted": false,
+    "httpRequestExecuted": false
+  },
+  "release": {
+    "permitMayBeCompleted": false,
+    "executionAllowed": false,
+    "productionAllowed": false,
+    "metaEmissionAllowed": false,
+    "zipAllowed": false
+  }
+}

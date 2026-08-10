@@ -10,7 +10,7 @@
   "nextCheckpoint": 100,
   "latestClosedCheckpoint": 47,
   "artifactPattern": "atlas-v3-phase-{phase}-hostinger.zip",
-  "target": "Hostinger Node.js 20.9+",
+  "target": "Hostinger Node.js 22+ (Node 24 recomendado)",
   "preservePreviousArtifacts": true,
   "requiredValidation": ["phase check", "evolution-2000 check", "typecheck", "lint", "build", "package integrity"],
   "privateDataPolicy": {

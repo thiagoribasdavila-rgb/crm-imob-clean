@@ -1,0 +1,14 @@
+{
+  "phase": 40,
+  "scope": "kanban_command_to_priority_flow",
+  "duplicateStageActionBlockRemoved": true,
+  "commandAndPriorityUnified": true,
+  "primaryLeadMarkedInBoard": true,
+  "stageFocusPreserved": true,
+  "leadPrimaryActionPreserved": true,
+  "cardMovementPreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

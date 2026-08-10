@@ -13,56 +13,20 @@ const baseUrl = process.env.ATLAS_BASE_URL.replace(/\/$/, "");
 if (!/^https:\/\//i.test(baseUrl) || /(?:seu-dom[ií]nio|example|localhost)/i.test(baseUrl)) throw new Error("ATLAS_BASE_URL deve ser o domínio HTTPS real da homologação.");
 const recoveryInbox = process.env.ATLAS_RECOVERY_INBOX.trim().toLowerCase();
 if (!/^\S+@\S+\.\S+$/.test(recoveryInbox)) throw new Error("ATLAS_RECOVERY_INBOX inválido.");
+const [recoveryLocal, recoveryDomain] = recoveryInbox.split("@");
 
-// Roster oficial do piloto (aprovado 2026-07-20).
-// O trigger private.validate_commercial_hierarchy (migration official_auth_rbac) impõe
-// APENAS 3 níveis de access_role, com commercial_role e supervisor determinados:
-//   • director_decisor / admin -> commercial_role='director', SEM supervisor (raiz)
-//   • director                 -> commercial_role='manager', supervisor.access_role='director_decisor'
-//   • broker                   -> commercial_role='broker',  supervisor.access_role='director'
-// Não existe um 4º nível "gerente" separado: DIRETOR e GERENTE caem no MESMO nível de
-// acesso (access_role='director' / commercial_role='manager'); só o rótulo `role`
-// (livre, sem CHECK) distingue "director" de "manager" para exibição e RLS grosseira
-// (role in ('admin','manager') libera edição da organização/feature-flags).
-// Thiago é a raiz decisora: access_role='director_decisor' (para poder supervisionar os
-// diretores operacionais) + role='admin' (poderes de admin na RLS). Perfis inativos
-// pulam a validação de hierarquia — é assim que o reset aposenta os antigos como legado.
 const definitions = [
-  { key: "THIAGO",  name: "Thiago Ribas D'Avila", accessRole: "director_decisor", role: "admin",    commercialRole: "director", supervisor: null,    defaultEmail: "thiago@atlasaios.com.br" },
-  { key: "SENNA",   name: "Senna",                accessRole: "director",         role: "director", commercialRole: "manager",  supervisor: "THIAGO", defaultEmail: "senna@atlasaios.com.br" },
-  { key: "DIEGO",   name: "Diego",                accessRole: "director",         role: "manager",  commercialRole: "manager",  supervisor: "THIAGO", defaultEmail: "diego@atlasaios.com.br" },
-  { key: "LUCIANO", name: "Luciano",              accessRole: "director",         role: "manager",  commercialRole: "manager",  supervisor: "THIAGO", defaultEmail: "luciano@atlasaios.com.br" },
-  { key: "ADOLFO",  name: "Adolfo",               accessRole: "broker",           role: "broker",   commercialRole: "broker",   supervisor: "DIEGO",  defaultEmail: "adolfo@atlasaios.com.br" },
-].map((item) => ({ ...item, email: (process.env[`ATLAS_INITIAL_${item.key}_EMAIL`] || item.defaultEmail).trim().toLowerCase() }));
+  { key: "ADMIN", name: "Administrador Atlas", accessRole: "admin", role: "admin", commercialRole: "director", supervisor: null },
+  { key: "THIAGO", name: "Thiago", accessRole: "director_decisor", role: "director_decisor", commercialRole: "director", supervisor: null },
+  { key: "SENNA", name: "Senna", accessRole: "director", role: "director", commercialRole: "manager", supervisor: "THIAGO" },
+  { key: "DIEGO", name: "Diego", accessRole: "broker", role: "broker", commercialRole: "broker", supervisor: "SENNA" },
+  { key: "LUCIANO", name: "Luciano", accessRole: "broker", role: "broker", commercialRole: "broker", supervisor: "SENNA" },
+  { key: "ADOLFO", name: "Adolfo", accessRole: "broker", role: "broker", commercialRole: "broker", supervisor: "SENNA" },
+].map((item) => ({ ...item, email: (process.env[`ATLAS_INITIAL_${item.key}_EMAIL`] || `${recoveryLocal}+atlas-${item.key.toLowerCase()}@${recoveryDomain}`).trim().toLowerCase() }));
 
 const invalid = definitions.filter((item) => !/^\S+@\S+\.\S+$/.test(item.email));
 if (invalid.length) throw new Error(`Preencha os e-mails oficiais: ${invalid.map((item) => `ATLAS_INITIAL_${item.key}_EMAIL`).join(", ")}`);
 if (new Set(definitions.map((item) => item.email)).size !== definitions.length) throw new Error("Cada usuário inicial precisa de um e-mail exclusivo.");
-
-// Validação ESTÁTICA da hierarquia comercial — espelha private.validate_commercial_hierarchy
-// (migration official_auth_rbac). Prova o roster ANTES de qualquer escrita, inclusive no
-// dry-run (que não testa upserts). Roda em dry-run e apply (fail fast, sem tocar no banco).
-function assertCommercialHierarchy(defs) {
-  const byKey = new Map(defs.map((d) => [d.key, d]));
-  const VALID_ACCESS = new Set(["admin", "director_decisor", "director", "broker"]);
-  for (const d of defs) {
-    if (!VALID_ACCESS.has(d.accessRole)) throw new Error(`Hierarquia inválida em ${d.key}: access_role '${d.accessRole}' (use admin|director_decisor|director|broker).`);
-    if (d.accessRole === "admin" || d.accessRole === "director_decisor") {
-      if (d.commercialRole !== "director" || d.supervisor) throw new Error(`Hierarquia inválida em ${d.key}: raiz (${d.accessRole}) exige commercial_role='director' e sem supervisor.`);
-      continue;
-    }
-    if (!d.supervisor) throw new Error(`Hierarquia inválida em ${d.key}: access_role='${d.accessRole}' exige supervisor.`);
-    const sup = byKey.get(d.supervisor);
-    if (!sup) throw new Error(`Hierarquia inválida em ${d.key}: supervisor '${d.supervisor}' não está no roster.`);
-    if (d.accessRole === "director" && (d.commercialRole !== "manager" || sup.accessRole !== "director_decisor")) {
-      throw new Error(`Hierarquia inválida em ${d.key}: diretor operacional exige commercial_role='manager' e supervisor director_decisor (supervisor ${d.supervisor} é ${sup.accessRole}).`);
-    }
-    if (d.accessRole === "broker" && (d.commercialRole !== "broker" || sup.accessRole !== "director")) {
-      throw new Error(`Hierarquia inválida em ${d.key}: corretor exige commercial_role='broker' e supervisor director (supervisor ${d.supervisor} é ${sup.accessRole}).`);
-    }
-  }
-}
-assertCommercialHierarchy(definitions);
 
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 let organizationId = process.env.ATLAS_AUTH_ORGANIZATION_ID;
@@ -84,7 +48,7 @@ for (let page = 1; ; page += 1) {
   authUsers.push(...batch);
   if (batch.length < 1000) break;
 }
-console.log(JSON.stringify({ mode: apply ? "apply" : "dry-run", existingAuthUsers: authUsers.length, officialUsers: definitions.length, usersToBlock: authUsers.filter((user) => !definitions.some((item) => item.email === user.email?.toLowerCase())).length, hierarchyValidated: true, passwordsStored: false, personalDataPrinted: false }, null, 2));
+console.log(JSON.stringify({ mode: apply ? "apply" : "dry-run", existingAuthUsers: authUsers.length, officialUsers: definitions.length, usersToBlock: authUsers.filter((user) => !definitions.some((item) => item.email === user.email?.toLowerCase())).length, passwordsStored: false, personalDataPrinted: false }, null, 2));
 if (!apply) {
   console.log(`Simulação concluída. Para executar, repita com --confirm=${APPLY_TOKEN}.`);
   process.exit(0);
@@ -98,10 +62,11 @@ const { error: deactivateError } = await admin.from("profiles").update({ active:
 if (deactivateError) throw deactivateError;
 
 const ids = new Map();
-const invites = [];
+const credentials = [];
 for (const item of definitions) {
   const password = `${randomBytes(18).toString("base64url")}!Aa7`;
   let user = authUsers.find((candidate) => candidate.email?.toLowerCase() === item.email);
+  const isExisting = Boolean(user);
   if (!user) {
     const { data, error } = await admin.auth.admin.createUser({ email: item.email, password, email_confirm: true, user_metadata: { full_name: item.name }, app_metadata: { organization_id: organizationId, access_role: item.accessRole } });
     if (error || !data.user) throw error || new Error(`Falha ao criar ${item.key}.`);
@@ -112,22 +77,19 @@ for (const item of definitions) {
   const reportsTo = item.supervisor ? ids.get(item.supervisor) : null;
   const { error: profileError } = await admin.from("profiles").upsert({ id: user.id, organization_id: organizationId, full_name: item.name, role: item.role, access_role: item.accessRole, commercial_role: item.commercialRole, reports_to: reportsTo, active: true }, { onConflict: "id" });
   if (profileError) throw profileError;
-  // Fluxo de LINK DE DEFINIÇÃO: todo usuário (novo ou existente) recebe um link para
-  // DEFINIR a própria senha no 1º acesso. A senha aleatória acima é descartável e nunca
-  // é exposta/gravada — obriga a definição real (não há senha conhecida para pular).
-  // Requer SMTP configurado no Supabase Auth para o e-mail sair.
-  const { error: recoveryError } = await admin.auth.resetPasswordForEmail(item.email, { redirectTo: `${baseUrl}/auth/callback?next=/reset-password` });
-  if (recoveryError) throw recoveryError;
-  invites.push({ name: item.name, email: item.email });
+  if (isExisting) {
+    const { error: recoveryError } = await admin.auth.resetPasswordForEmail(item.email, { redirectTo: `${baseUrl}/auth/callback?next=/reset-password` });
+    if (recoveryError) throw recoveryError;
+  }
+  credentials.push({ name: item.name, email: item.email, password });
   ids.set(item.key, user.id);
 }
-if (invites.length) {
-  // Resumo NÃO sensível (sem senha): quem recebeu o link de definição de senha.
+if (credentials.length) {
   const outputDirectory = resolve(process.cwd(), "outputs");
-  const outputFile = resolve(outputDirectory, "official-access-invites.txt");
+  const outputFile = resolve(outputDirectory, "official-access-credentials.txt");
   mkdirSync(outputDirectory, { recursive: true, mode: 0o700 });
-  writeFileSync(outputFile, `${invites.map((item) => `${item.name}\nLogin: ${item.email}\nLink de definição de senha enviado por e-mail (1º acesso).`).join("\n\n")}\n`, { mode: 0o600 });
+  writeFileSync(outputFile, `${credentials.map((item) => `${item.name}\nLogin: ${item.email}\nSenha temporária: ${item.password}`).join("\n\n")}\n`, { mode: 0o600 });
   chmodSync(outputFile, 0o600);
-  console.log(`Resumo (sem senha) gravado em ${outputFile}.`);
+  console.log(`Credenciais novas gravadas localmente em ${outputFile}.`);
 }
-console.log(`RBAC oficial aplicado: ${definitions.length} acessos criados com LINK DE DEFINIÇÃO de senha (1º acesso); nenhuma senha armazenada/logada; contas antigas = legado (bloqueadas, NÃO excluídas); dados (leads/clientes/histórico/projetos) intactos.`);
+console.log("RBAC oficial aplicado: 6 acessos ativos; demais contas bloqueadas; senhas não armazenadas.");

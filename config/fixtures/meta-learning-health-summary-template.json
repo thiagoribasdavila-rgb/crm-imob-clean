@@ -1,0 +1,28 @@
+{
+  "schema": "atlas.meta-learning-health-summary.v1",
+  "status": "not_calculated",
+  "period": "current_snapshot",
+  "counts": {
+    "valid": 0,
+    "expiring": 0,
+    "blocked": 0,
+    "revoked": 0
+  },
+  "display": {
+    "aggregateOnly": true,
+    "humanReviewRequired": true,
+    "recommendedAction": "review_blocked_or_expiring"
+  },
+  "execution": {
+    "memoryChanged": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "customerData": true,
+    "providerPayload": true,
+    "automaticReinstatement": true,
+    "automaticOptimization": true,
+    "secrets": true
+  }
+}

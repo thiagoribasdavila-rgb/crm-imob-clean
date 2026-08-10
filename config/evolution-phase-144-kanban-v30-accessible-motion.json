@@ -1,0 +1,19 @@
+{
+  "phase": 144,
+  "name": "Kanban V30 Accessible Motion",
+  "status": "implemented",
+  "area": "pipeline-kanban",
+  "priority": "P2-commercial-productivity",
+  "objective": "Melhorar microinterações, foco, orientação por teclado e feedback do Kanban sem aumentar ruído visual.",
+  "businessImpact": [
+    "Reduz curva de aprendizado do corretor",
+    "Torna movimentações mais claras e confiáveis",
+    "Ajuda usuários a recuperar controle do quadro rapidamente",
+    "Melhora uso real em desktop e mobile com menos dependência de treinamento"
+  ],
+  "validation": [
+    "npm run evolution:phase-144:check",
+    "npm run typecheck",
+    "npm run lint"
+  ]
+}

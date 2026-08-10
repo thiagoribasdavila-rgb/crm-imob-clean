@@ -1,0 +1,59 @@
+{
+  "phase": 191,
+  "name": "Conversion Core Supabase Named Remote Capture Receipt Ledger Checkpoint Chain Proof",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Gerar uma prova local portátil e redigida da completude da cadeia de checkpoints contendo somente hashes, contagens e metadados técnicos mínimos, sem recibos brutos, credenciais, dados pessoais ou contato remoto.",
+  "evidenceLevel": "local_redacted_checkpoint_chain_proof_contract_tested_remote_capture_not_performed",
+  "runtimeHomologated": false,
+  "currentState": {
+    "proofSchemaPrepared": true,
+    "standaloneIntegrityVerification": true,
+    "sourceChainComparison": true,
+    "hashInventoryIncluded": true,
+    "rawReceiptsIncluded": false,
+    "checkpointPayloadsIncluded": false,
+    "credentialsIncluded": false,
+    "personalDataIncluded": false,
+    "privateDirectoryModeEnforced": true,
+    "privateFileModeEnforced": true,
+    "remoteExecutorAvailable": false,
+    "proofCreatedInAssessment": false,
+    "currentNamedRemoteEvidenceCollected": false
+  },
+  "safety": {
+    "localProofWritten": false,
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "databaseWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationPushExecuted": false,
+    "migrationHistoryRepaired": false,
+    "migrationFileRenamed": false,
+    "databaseReset": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "secretsPersisted": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "authorizationRecorded": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "procedureExecuted": false,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "limitations": [
+    "A prova só é criada quando o chamador informa explicitamente uma cadeia íntegra, seu head e um diretório privado.",
+    "A prova confirma integridade e correspondência criptográfica, mas não substitui a cadeia fonte nem comprova execução remota.",
+    "Esta fase não coleta evidência remota, não altera o Supabase operacional e não executa build, ZIP ou deploy."
+  ],
+  "nextAction": "Na fase 192, criar um registro local de custódia da prova com finalidade e revisor pseudonimizados por hash, sem dados pessoais, segredo criptográfico ou contato remoto."
+}

@@ -1,0 +1,32 @@
+{
+  "phase": 140,
+  "slug": "kanban-v30-action-mode",
+  "status": "implemented",
+  "title": "Kanban V30 Action Mode",
+  "objective": "Transformar cada coluna do Kanban em um bloco de decisão ativa, destacando a próxima melhor ação e o lead mais relevante da etapa.",
+  "businessImpact": [
+    "Corretor sabe por onde começar sem procurar card por card",
+    "Gerente enxerga o primeiro gargalo de cada etapa com mais clareza",
+    "Diretor consegue ler risco e forecast com menos ruído",
+    "Pipeline passa de quadro passivo para instrumento de execução comercial"
+  ],
+  "implemented": [
+    "Novo helper de próxima melhor ação por etapa",
+    "Resumo acionável acima dos cards da coluna",
+    "Ação direta para WhatsApp, Copilot, agenda ou proposta conforme contexto",
+    "Sinalização visual por tom de urgência",
+    "CSS premium e compacto para não poluir o Kanban"
+  ],
+  "safety": [
+    "Não altera banco",
+    "Não movimenta leads automaticamente",
+    "Não dispara mensagens",
+    "Não altera permissões",
+    "Apenas recomenda e facilita a ação humana"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-140:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

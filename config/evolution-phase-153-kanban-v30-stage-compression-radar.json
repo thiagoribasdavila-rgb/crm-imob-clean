@@ -1,0 +1,30 @@
+{
+  "phase": 153,
+  "name": "Kanban V30 Stage Compression Radar",
+  "status": "implemented",
+  "objective": "Evoluir o radar de gargalos do Kanban para uma leitura comprimida de decisão por etapa, reduzindo ruído e acelerando foco operacional.",
+  "businessImpact": [
+    "Corretor e gerente identificam rapidamente qual etapa do funil precisa de ação.",
+    "O clique no gargalo já reorganiza o Kanban para foco, prioridade e visão compacta.",
+    "A gestão passa a enxergar urgentes, parados, sem ação e quentes sem abrir cada coluna."
+  ],
+  "technicalScope": [
+    "Reaproveitar stageBottleneckRanking existente sem criar novo endpoint ou nova fonte de dados.",
+    "Adicionar foco operacional por gargalo usando os filtros já existentes do Kanban.",
+    "Compactar sinais de etapa em chips de urgência, parados, sem ação e hot.",
+    "Manter aprovação humana obrigatória, sem alteração de banco, migration, API externa ou disparo automático."
+  ],
+  "validation": [
+    "npm run evolution:phase-153:check",
+    "npm run typecheck",
+    "npm run lint"
+  ],
+  "files": [
+    "app/(crm)/pipeline/page.tsx",
+    "app/globals.css",
+    "docs/EVOLUTION_PHASE_153_KANBAN_V30_STAGE_COMPRESSION_RADAR.md",
+    "scripts/check-evolution-phase-153.mjs",
+    "config/evolution-program-3000.json",
+    "package.json"
+  ]
+}

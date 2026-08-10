@@ -1,0 +1,217 @@
+{
+  "schema_version": "atlas.10x.phase-011.v1",
+  "phase": 11,
+  "total_phases": 24,
+  "name": "Pacote canônico de baseline reproduzível",
+  "objective": "Definir um baseline estrutural sanitizado, reproduzível em PostgreSQL 17 e validado em ambiente isolado, sem alterar a homologação nem seu ledger de migrations.",
+  "target_environment": "isolated_clone_or_loopback_pg17",
+  "source_environment_alias": "atlas-v3-homologacao",
+  "build_policy": "build_only_on_release_package",
+  "status": "canonical_baseline_package_prepared_execution_blocked",
+  "supabase_cli_contract": {
+    "verified_version": "2.109.1",
+    "isolated_home_required": true,
+    "telemetry_disabled": true,
+    "explicit_target_flag_required": true,
+    "allowed_target_flags": [
+      "--local",
+      "--db-url"
+    ],
+    "linked_target_allowed_only_for_disposable_isolated_project": true,
+    "live_homologation_db_pull_allowed": false,
+    "live_homologation_db_dump_allowed": false,
+    "live_homologation_migration_list_allowed_in_phase": false,
+    "live_homologation_migration_repair_allowed": false,
+    "live_homologation_db_push_allowed": false,
+    "notes": [
+      "db pull creates a local migration and may record it as applied on the linked target; therefore it is permitted only against a disposable isolated target",
+      "db reset replays migrations and seed in a local environment and must never target homologation",
+      "generated schema diffs require manual review before they become canonical"
+    ]
+  },
+  "source_contract": {
+    "remote_ledger_evidence_path": "artifacts/runtime/phase-010/remote-migration-ledger-summary.json",
+    "expected_project_health": "ACTIVE_HEALTHY",
+    "expected_postgres_major": 17,
+    "expected_remote_migration_count": 179,
+    "must_exclude_project_ref": true,
+    "must_exclude_credentials": true,
+    "must_exclude_database_url": true,
+    "must_exclude_personal_data": true,
+    "must_exclude_business_rows": true
+  },
+  "local_history_contract": {
+    "directory": "supabase/migrations",
+    "expected_file_count": 126,
+    "expected_duplicate_version_count": 3,
+    "history_is_immutable_reference": true,
+    "archive_before_canonical_cutover": true,
+    "rename_existing_files": false,
+    "repair_remote_history": false
+  },
+  "baseline_content_contract": {
+    "required_schemas": [
+      "public"
+    ],
+    "conditional_schemas": [
+      "auth",
+      "storage"
+    ],
+    "conditional_schema_rule": "include only Atlas-owned custom objects, triggers or policies; never copy managed records",
+    "required_structural_objects": [
+      "extensions",
+      "enums_and_domains",
+      "tables_and_columns",
+      "primary_and_foreign_keys",
+      "checks_and_unique_constraints",
+      "indexes",
+      "sequences_and_identity",
+      "views_and_materialized_views",
+      "functions_and_procedures",
+      "triggers",
+      "rls_enablement_and_policies",
+      "roles_grants_and_default_privileges",
+      "storage_policy_metadata_when_customized"
+    ],
+    "required_security_invariants": [
+      "rls_enabled_on_every_exposed_table",
+      "rls_and_data_api_grants_validated_separately",
+      "update_policies_have_select_visibility_using_and_with_check",
+      "policies_use_explicit_to_roles",
+      "tenant_predicates_do_not_trust_user_metadata",
+      "security_definer_functions_have_explicit_search_path_and_execute_audit",
+      "exposed_views_use_security_invoker_or_are inaccessible_to_api_roles",
+      "cross_tenant_access_is_denied",
+      "anonymous_business_access_is_denied"
+    ],
+    "canonical_entities": [
+      "organizations",
+      "profiles",
+      "leads",
+      "developments",
+      "tasks",
+      "activities",
+      "ai_insights",
+      "atlas_events"
+    ],
+    "business_data_allowed": false,
+    "personal_data_allowed": false,
+    "auth_user_rows_allowed": false,
+    "synthetic_fixtures_only": true,
+    "comments_require_privacy_scan": true
+  },
+  "required_package_artifacts": [
+    "canonical_baseline.sql",
+    "schema_inventory.json",
+    "roles_acl_snapshot.json",
+    "schema_diff_review.json",
+    "rls_rehearsal_evidence.json",
+    "baseline_replay_evidence.json",
+    "rollback_rehearsal_evidence.json",
+    "synthetic_seed.sql",
+    "checksums.sha256",
+    "manual_approval_receipt.json"
+  ],
+  "required_runtime_gates": [
+    "cli_contract_verified",
+    "remote_ledger_evidence_present",
+    "postgres_17_target_confirmed",
+    "project_config_present",
+    "container_runtime_available",
+    "isolated_target_available",
+    "sanitized_schema_snapshot_available",
+    "schema_inventory_available",
+    "acl_snapshot_available",
+    "dynamic_rls_rehearsal_passed",
+    "schema_diff_reviewed",
+    "baseline_sql_generated",
+    "baseline_replay_passed",
+    "synthetic_seed_replay_passed",
+    "rollback_rehearsal_passed",
+    "manual_approval_present",
+    "evidence_sanitized",
+    "remote_write_not_executed",
+    "live_db_pull_not_executed",
+    "live_migration_history_not_changed",
+    "business_data_not_copied",
+    "auth_user_data_not_copied",
+    "build_not_executed",
+    "release_package_not_created"
+  ],
+  "execution_policy": {
+    "remote_metadata_read_enabled": false,
+    "remote_schema_read_enabled": false,
+    "remote_ddl_enabled": false,
+    "remote_dml_enabled": false,
+    "migration_repair_enabled": false,
+    "migration_push_enabled": false,
+    "migration_rename_enabled": false,
+    "branch_creation_enabled": false,
+    "backup_restore_enabled": false,
+    "allows_remote_user_changes": false,
+    "allows_remote_business_writes": false,
+    "allows_build": false,
+    "allows_release_package": false
+  },
+  "workflow": [
+    {
+      "order": 1,
+      "name": "authorize_isolated_target",
+      "requires_human_approval": true
+    },
+    {
+      "order": 2,
+      "name": "initialize_supabase_project_config",
+      "requires_cli_help_revalidation": true
+    },
+    {
+      "order": 3,
+      "name": "capture_sanitized_structure_from_isolated_clone",
+      "forbids_live_homologation_target": true
+    },
+    {
+      "order": 4,
+      "name": "inventory_and_privacy_review",
+      "requires_business_row_count": 0
+    },
+    {
+      "order": 5,
+      "name": "generate_and_manually_review_baseline",
+      "requires_diff_review": true
+    },
+    {
+      "order": 6,
+      "name": "replay_on_fresh_pg17_target",
+      "requires_synthetic_seed_only": true
+    },
+    {
+      "order": 7,
+      "name": "run_dynamic_rls_and_acl_rehearsal",
+      "requires_phase_008_gate": true
+    },
+    {
+      "order": 8,
+      "name": "rehearse_recovery_and_collect_checksums",
+      "requires_rollback_evidence": true
+    },
+    {
+      "order": 9,
+      "name": "human_go_no_go",
+      "requires_human_approval": true
+    }
+  ],
+  "forbidden_operations_in_phase_011": [
+    "run db pull against atlas-v3-homologacao",
+    "run db dump against atlas-v3-homologacao",
+    "run migration repair",
+    "run db push",
+    "rename historical migrations",
+    "copy auth users, personal data or business rows",
+    "persist project refs, database URLs, credentials or access tokens",
+    "create a paid branch without explicit approval",
+    "create, delete or reset remote users",
+    "run a release build",
+    "create a deployment package"
+  ],
+  "next_phase": "Fase 12/24: provisionar o ambiente isolado aprovado e executar a captura estrutural sanitizada, se e somente se os bloqueios externos forem removidos."
+}

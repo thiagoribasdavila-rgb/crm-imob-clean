@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-decision-impact-simulation.v1",
+  "status": "not_simulated",
+  "briefReference": null,
+  "scenario": {
+    "changeClass": null,
+    "impactBand": null,
+    "confidenceBand": null,
+    "isEstimate": true,
+    "humanReviewRequired": true
+  },
+  "execution": {
+    "budgetChanged": false,
+    "audienceChanged": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "presentedAsFact": true,
+    "automaticOptimization": true,
+    "automaticBudgetChange": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

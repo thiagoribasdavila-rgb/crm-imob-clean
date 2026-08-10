@@ -1,0 +1,48 @@
+{
+  "phase": 210,
+  "name": "Release Gate Result Adjudication",
+  "status": "implemented",
+  "objective": "Submeter o conjunto exato de recibos assinados da execução a uma adjudicação humana independente e verificável, sem aprovar, empacotar, publicar ou promover a release.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "adjudicationPolicyHash": "5d6993af43a39cf1c24f527a9aa07c750af9a5e93c0d27e6af335534cd6d8c39",
+    "trustedAdjudicatorsConfigured": 0,
+    "verifiedExecutionRegisterAvailable": false,
+    "adjudicationRegisterAvailable": false,
+    "acceptedGateCount": 0,
+    "rejectedGateCount": 0,
+    "resultSetAdjudicated": false,
+    "gateResultsAccepted": false,
+    "releaseApproved": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "adjudicationRules": {
+    "exactExecutionRegisterBindingRequired": true,
+    "exactReceiptSetRequired": true,
+    "explicitPerGateDecisionRequired": true,
+    "passedReceiptRequiredForAcceptance": true,
+    "executorAdjudicatorSeparationRequired": true,
+    "authorizerAdjudicatorSeparationRequired": true,
+    "adjudicatorRole": "release-gate-adjudicator",
+    "maximumAdjudicationDelaySeconds": 1800,
+    "signatureRequired": true
+  },
+  "safety": {
+    "remoteAccess": false,
+    "databaseMutation": false,
+    "migrationApplied": false,
+    "gateExecution": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 211,
+    "name": "Final Release Approval Decision",
+    "objective": "Consumir somente uma adjudicação assinada e integralmente aceita para preparar uma decisão final humana, ainda sem pacote, deploy ou promoção automática."
+  }
+}

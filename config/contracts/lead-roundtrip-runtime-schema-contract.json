@@ -1,0 +1,70 @@
+{
+  "schema": "atlas.lead-roundtrip-runtime-schema-contract.v1",
+  "purpose": "minimum_readiness_for_supervised_homologation_roundtrip",
+  "objects": [
+    {
+      "table": "organizations",
+      "required": true,
+      "rlsRequired": true,
+      "requiredColumns": ["id", "active"]
+    },
+    {
+      "table": "profiles",
+      "required": true,
+      "rlsRequired": true,
+      "requiredColumns": ["id", "organization_id", "role", "active"]
+    },
+    {
+      "table": "leads",
+      "required": true,
+      "rlsRequired": true,
+      "requiredColumns": ["id", "organization_id", "name", "email", "phone", "status", "source", "created_at", "updated_at"],
+      "anyOfColumnGroups": [["assigned_to", "assigned_user_id"]]
+    },
+    {
+      "table": "lead_identity_registry",
+      "required": true,
+      "rlsRequired": true,
+      "requiredColumns": ["organization_id", "lead_id", "identity_type", "identity_value"]
+    },
+    {
+      "table": "lead_attribution_touches",
+      "required": true,
+      "rlsRequired": true,
+      "requiredColumns": ["organization_id", "lead_id", "source", "event_key", "occurred_at"]
+    },
+    {
+      "table": "pipeline_stage_moves",
+      "required": true,
+      "rlsRequired": true,
+      "requiredColumns": ["organization_id", "lead_id", "to_stage", "occurred_at"]
+    },
+    {
+      "table": "activities",
+      "required": true,
+      "rlsRequired": true,
+      "requiredColumns": ["organization_id", "lead_id", "type", "occurred_at"]
+    },
+    {
+      "table": "tasks",
+      "required": true,
+      "rlsRequired": true,
+      "requiredColumns": ["id", "organization_id", "lead_id", "status"],
+      "anyOfColumnGroups": [["due_at", "created_at"]]
+    }
+  ],
+  "anyOfObjects": [
+    {
+      "name": "project_registry",
+      "minimumPresent": 1,
+      "tables": ["developments", "projects"]
+    }
+  ],
+  "security": {
+    "catalogOnly": true,
+    "readsBusinessRows": false,
+    "readsAuthUsers": false,
+    "writesDatabase": false,
+    "requiresHumanPermitAfterApproval": true
+  }
+}

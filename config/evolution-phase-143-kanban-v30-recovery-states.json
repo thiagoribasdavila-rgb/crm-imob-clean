@@ -1,0 +1,19 @@
+{
+  "phase": 143,
+  "name": "Kanban V30 Recovery States",
+  "status": "implemented",
+  "area": "pipeline-kanban",
+  "priority": "P1-lead-conversion",
+  "objective": "Transformar estados de erro, vazio e filtros sem resultado em orientação operacional com ações de recuperação.",
+  "businessImpact": [
+    "Reduz sensação de tela quebrada",
+    "Ajuda corretor a voltar ao fluxo de venda rapidamente",
+    "Preserva contexto sem expor erro técnico",
+    "Diminui ruído quando etapas ficam vazias"
+  ],
+  "validation": [
+    "npm run evolution:phase-143:check",
+    "npm run typecheck",
+    "npm run lint"
+  ]
+}

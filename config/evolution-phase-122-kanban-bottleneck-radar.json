@@ -1,0 +1,24 @@
+{
+  "phase": 122,
+  "name": "Kanban bottleneck radar",
+  "status": "implemented",
+  "area": "pipeline",
+  "priority": "P1-lead-conversion",
+  "objective": "Mostrar um ranking compacto das etapas com maior pressão operacional no Kanban para acelerar decisões de gerente e corretor.",
+  "businessImpact": [
+    "Ajuda liderança a enxergar onde o funil está travando sem abrir relatório separado.",
+    "Prioriza etapas por urgência, leads parados e ausência de próxima ação.",
+    "Reduz ruído visual porque mostra apenas os três gargalos mais relevantes do recorte atual."
+  ],
+  "technicalScope": [
+    "Reaproveita stageData, stageEfficiency e dados reais do Kanban.",
+    "Adiciona métricas agregadas de leads parados por etapa.",
+    "Cria ranking visual clicável sem alterar banco ou migrations.",
+    "Mantém compatibilidade com filtros, visão mobile e esconder etapas vazias."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-122:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

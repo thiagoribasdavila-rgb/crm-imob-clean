@@ -1,0 +1,118 @@
+{
+  "schema_version": "atlas.10x.phase-012.v1",
+  "phase": 12,
+  "total_phases": 24,
+  "name": "Captura estrutural sanitizada em alvo isolado",
+  "objective": "Executar uma captura canônica somente contra PostgreSQL 17 descartável em loopback, mediante autorização vinculada ao alvo, sem copiar dados e sem tocar na homologação.",
+  "status": "isolated_baseline_capture_preflight_ready_runtime_blocked",
+  "build_policy": "build_only_on_release_package",
+  "source_policy": {
+    "allowed_target_kind": "isolated_loopback_pg17",
+    "allowed_hosts": [
+      "localhost",
+      "127.0.0.1",
+      "::1"
+    ],
+    "expected_postgres_major": 17,
+    "requires_disposable_target": true,
+    "requires_schema_only_or_synthetic_profile": true,
+    "live_homologation_allowed": false,
+    "linked_project_allowed": false,
+    "remote_project_ref_allowed": false
+  },
+  "authorization_contract": {
+    "receipt_path": "artifacts/runtime/phase-012/manual-capture-approval-receipt.json",
+    "schema_version": "atlas.phase012.capture_approval.v1",
+    "explicit_approval_required": true,
+    "target_fingerprint_required": true,
+    "expires_at_required": true,
+    "approver_role": "authorized_operator",
+    "database_url_must_not_be_persisted": true
+  },
+  "tooling_contract": {
+    "supabase_cli_version": "2.109.1",
+    "supabase_cli_path": "node_modules/.bin/supabase",
+    "project_config_path": "supabase/config.toml",
+    "docker_compatible_runtime_required": true,
+    "psql_required_for_server_version_check": true,
+    "isolated_home_required": true,
+    "telemetry_disabled": true,
+    "command": "supabase db dump",
+    "required_flags": [
+      "--db-url",
+      "--schema",
+      "--file"
+    ],
+    "forbidden_commands": [
+      "supabase link",
+      "supabase db pull",
+      "supabase db push",
+      "supabase migration repair",
+      "supabase db reset --linked"
+    ],
+    "forbidden_flags": [
+      "--linked",
+      "--data-only"
+    ]
+  },
+  "capture_contract": {
+    "output_directory": "artifacts/runtime/phase-012/execution",
+    "partial_sql_path": "artifacts/runtime/phase-012/execution/canonical_baseline.public.partial.sql",
+    "final_sql_path": "artifacts/runtime/phase-012/execution/canonical_baseline.public.sql",
+    "inventory_path": "artifacts/runtime/phase-012/execution/schema_inventory.json",
+    "checksums_path": "artifacts/runtime/phase-012/execution/checksums.sha256",
+    "evidence_path": "artifacts/runtime/phase-012/isolated-baseline-capture-evidence.json",
+    "schema": "public",
+    "business_rows_allowed": false,
+    "auth_user_rows_allowed": false,
+    "raw_cli_output_allowed_in_evidence": false,
+    "comments_require_privacy_scan": true,
+    "overwrite_existing_capture": false
+  },
+  "required_runtime_gates": [
+    "phase_011_contract_passed",
+    "supabase_cli_version_verified",
+    "db_dump_contract_verified",
+    "project_config_present",
+    "container_runtime_available",
+    "container_runtime_responding",
+    "psql_available",
+    "approval_receipt_valid",
+    "approval_not_expired",
+    "approved_target_is_loopback",
+    "target_fingerprint_matches",
+    "postgres_17_confirmed",
+    "isolated_target_disposable",
+    "schema_only_or_synthetic_profile",
+    "target_connection_verified",
+    "schema_dump_executed",
+    "schema_dump_exit_zero",
+    "schema_dump_contains_public",
+    "schema_dump_has_no_data_statements",
+    "schema_dump_privacy_scan_passed",
+    "schema_inventory_created",
+    "checksum_created",
+    "evidence_sanitized",
+    "remote_write_not_executed",
+    "live_homologation_not_touched",
+    "linked_command_not_used",
+    "build_not_executed",
+    "package_not_created"
+  ],
+  "execution_policy": {
+    "allows_schema_read_from_approved_loopback": true,
+    "allows_remote_schema_read": false,
+    "allows_remote_metadata_read": false,
+    "allows_remote_ddl": false,
+    "allows_remote_dml": false,
+    "allows_migration_repair": false,
+    "allows_migration_push": false,
+    "allows_link": false,
+    "allows_data_dump": false,
+    "allows_auth_user_copy": false,
+    "allows_business_data_copy": false,
+    "allows_build": false,
+    "allows_release_package": false
+  },
+  "next_phase": "Fase 13/24: gerar inventário de ACL, grants, default privileges, views, funções SECURITY DEFINER e políticas RLS a partir da captura estrutural aprovada."
+}

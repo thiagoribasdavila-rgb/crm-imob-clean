@@ -1,0 +1,85 @@
+{
+  "phase": 33,
+  "program": "meta-andromeda-automation",
+  "sourcePhase": 32,
+  "environment": "local_evidence_reconciliation",
+  "schemaVersion": "phase33.cross-major-reconciliation.v1",
+  "maximumInputBytes": 1048576,
+  "maximumRuntimeMinutes": 20,
+  "sourceSchemas": {
+    "phase30Evidence": "phase31.runtime-evidence.v1",
+    "phase31Receipt": "phase31.runtime-reconciliation.v1",
+    "phase32Evidence": "phase32.pg17-compatibility-evidence.v1"
+  },
+  "runtimes": {
+    "pg15": {
+      "postgresImage": "supabase/postgres:15.14.1.149",
+      "postgresMajor": 15,
+      "targetIdentity": "127.0.0.1:55432/atlas_phase30"
+    },
+    "pg17": {
+      "postgresImage": "supabase/postgres:17.6.1.149",
+      "postgresMajor": 17,
+      "targetIdentity": "127.0.0.1:55433/atlas_phase32",
+      "currentUser": "postgres"
+    }
+  },
+  "requiredPhase32EventSequence": [
+    "source_evidence_verified",
+    "runtime_started",
+    "baseline_applied",
+    "migration_applied",
+    "pg17_compatibility_verified",
+    "security_verified",
+    "rollback_started",
+    "rollback_verified",
+    "runtime_destroyed"
+  ],
+  "requiredPhase32Artifacts": {
+    "compose": "infra/meta-phase32/compose.pg17.yaml",
+    "baseline": "supabase/tests/fixtures/phase_030_meta_permit_ledger_baseline.sql",
+    "migration": "supabase/migrations/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
+    "pg17Verification": "supabase/tests/database/phase_032_meta_permit_ledger_pg17_verify.sql",
+    "securityVerification": "supabase/tests/database/phase_030_meta_permit_ledger_verify.sql",
+    "rollback": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.rollback.sql",
+    "cleanupVerification": "supabase/tests/database/phase_030_meta_permit_ledger_cleanup_verify.sql"
+  },
+  "sharedArtifactMapping": {
+    "baseline": "baseline",
+    "migration": "migration",
+    "securityVerification": "verification",
+    "rollback": "rollback",
+    "cleanupVerification": "cleanupVerification"
+  },
+  "blockedPg17Extensions": [
+    "timescaledb",
+    "plv8",
+    "plcoffee",
+    "plls"
+  ],
+  "requiredPhase32RehearsalState": {
+    "baselineApplied": true,
+    "migrationApplied": true,
+    "securityVerified": true,
+    "permitReservationExecuted": false,
+    "rollbackAttempted": true,
+    "rollbackApproved": true,
+    "finalLedgerObjectsAbsent": true,
+    "volumesDestroyed": true
+  },
+  "requiredPhase32ReleaseGates": {
+    "sourceEvidenceProven": true,
+    "isolatedRuntimeProven": true,
+    "pg17CompatibilityApproved": true,
+    "securityRehearsalApproved": true,
+    "rollbackRehearsalApproved": true,
+    "cleanupApproved": true
+  },
+  "prohibitedClaims": {
+    "remoteDatabaseTouched": true,
+    "metaTouched": true,
+    "buildExecuted": true,
+    "permitReservationExecuted": true,
+    "productionCompatibilityApproved": true
+  }
+}

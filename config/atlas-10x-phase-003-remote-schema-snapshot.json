@@ -1,0 +1,187 @@
+{
+  "schema_version": "atlas.10x.phase-003.remote-snapshot.v1",
+  "observed_at": "2026-07-23",
+  "source": "supabase_mcp_read_only",
+  "contains_personal_data": false,
+  "target": {
+    "name": "atlas-v3-homologacao",
+    "status": "ACTIVE_HEALTHY",
+    "region": "sa-east-1",
+    "postgres_version": "17.6.1.147",
+    "migration_records": 179,
+    "logical_migrations": 144,
+    "logical_duplicate_names": 30,
+    "tables": 177,
+    "rls_enabled_tables": 177,
+    "rls_disabled_tables": 0,
+    "estimated_rows": 145,
+    "selected_rows": {
+      "organizations": 0,
+      "profiles": 0,
+      "leads": 0,
+      "tasks": 0,
+      "projects": 0,
+      "developments": 0,
+      "opportunities": 0,
+      "atlas_events": 0,
+      "meta_conversion_events": 0,
+      "meta_executions": 0
+    },
+    "required_tables_present": [
+      "organizations",
+      "profiles",
+      "leads",
+      "tasks",
+      "projects",
+      "developments",
+      "opportunities",
+      "atlas_events",
+      "meta_conversion_events",
+      "meta_executions"
+    ],
+    "observed_core_columns": {
+      "organizations": ["id", "name", "slug", "status", "created_at", "active"],
+      "profiles": [
+        "id",
+        "name",
+        "email",
+        "role",
+        "active",
+        "organization_id",
+        "full_name",
+        "commercial_role",
+        "reports_to",
+        "access_role"
+      ],
+      "leads": [
+        "id",
+        "name",
+        "status",
+        "score",
+        "score_ia",
+        "assigned_to",
+        "organization_id",
+        "development_id",
+        "next_action_at",
+        "first_contact_due_at",
+        "identity_key",
+        "data_quality_status"
+      ],
+      "tasks": [
+        "id",
+        "title",
+        "status",
+        "organization_id",
+        "priority",
+        "due_date"
+      ],
+      "developments": ["id", "organization_id", "name", "status"],
+      "opportunities": [
+        "id",
+        "organization_id",
+        "lead_id",
+        "stage",
+        "status"
+      ],
+      "atlas_events": [
+        "id",
+        "organization_id",
+        "event_type",
+        "occurred_at"
+      ],
+      "meta_conversion_events": [
+        "id",
+        "organization_id",
+        "lead_id",
+        "event_name",
+        "status"
+      ],
+      "meta_executions": [
+        "idempotency_key",
+        "organization_id",
+        "result"
+      ]
+    }
+  },
+  "legacy": {
+    "name": "atlas-ai-crm-v1",
+    "status": "ACTIVE_HEALTHY",
+    "region": "us-west-2",
+    "postgres_version": "17.6.1.141",
+    "migration_records": 33,
+    "tables": 23,
+    "rls_enabled_tables": 23,
+    "rls_disabled_tables": 0,
+    "estimated_rows": 18003,
+    "selected_rows": {
+      "organizations": 2,
+      "profiles": 5,
+      "leads": 17151,
+      "tasks": 2,
+      "projects": 3
+    }
+  },
+  "local_comparison": {
+    "migration_files": 124,
+    "logical_migrations": 124,
+    "unique_versions": 121,
+    "inventory_sha256": "bf019a9a171c166c8464ef87a3d0d65ee54ad1190165f5ab3e7955d7534c5668",
+    "exact_remote_name_matches": 115,
+    "logical_remote_matches": 122,
+    "local_logical_missing_remotely": [
+      "add_missing_foreign_key_indexes",
+      "phase_029_meta_permit_atomic_ledger"
+    ],
+    "remote_logical_not_in_local": [
+      "atlas_v3_foundation_base_tables",
+      "atlas_v3_canonical_base_tables",
+      "atlas_v3_canonical_second_layer",
+      "portal_lead_ingestion",
+      "rbac_enterprise_foundation",
+      "whatsapp_conversation_intelligence",
+      "kaizen",
+      "product_budgets",
+      "ai_calibration",
+      "meta_executions",
+      "outbox_token_health",
+      "private_can_view_lead",
+      "public_search_knowledge_chunks",
+      "security_revoke_anon_knowledge_search",
+      "ai_projection_ledger",
+      "reapply_phase_17_after_tenant_policies",
+      "rls_policies_tabelas_sem_politica",
+      "rls_policies_tabelas_sem_politica_helper_lead_scope",
+      "fix_current_organization_id_claim_bypass",
+      "fix_auth_profile_provisioning",
+      "distribution_rules_configuraveis",
+      "fix_lead_contract_array_literal"
+    ],
+    "duplicate_local_versions": {
+      "20260716235900": [
+        "20260716235900_meta_director_daily_reports.sql",
+        "20260716235900_omnichannel_integrations.sql"
+      ],
+      "20260717203000": [
+        "20260717203000_expand_project_material_catalog.sql",
+        "20260717203000_phase_35_follow_up_sla_cycles.sql"
+      ],
+      "20260717213000": [
+        "20260717213000_phase_36_visit_sla.sql",
+        "20260717213000_v3_legacy_runtime_schema_bridge.sql"
+      ]
+    }
+  },
+  "privilege_evidence": {
+    "policies_verified": false,
+    "grants_verified": false,
+    "security_definer_functions_verified": false,
+    "reason": "aggregate SQL inspection was not authorized in this read-only session"
+  },
+  "conclusion": {
+    "schema_surface_present": true,
+    "migration_history_reproducible": false,
+    "operational_tenant_present": false,
+    "operational_data_present": false,
+    "production_ready": false
+  }
+}

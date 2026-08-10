@@ -1,0 +1,19 @@
+{
+  "schema": "atlas.publication-execution-evidence-adjudication-memory.v1",
+  "policyHash": "3c1e11db602529c8c44e166fc272653ace3980c65772e821b742b0f0013a104c",
+  "entries": [],
+  "summary": {
+    "recordedDecisions": 0,
+    "acceptedEvidence": 0,
+    "rejectedEvidence": 0,
+    "latestEntryHash": null,
+    "evidenceAccepted": false,
+    "externalPublicationAuthorized": false,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "5018d0ded3255a0d836d7beb3a07b248497783ec2218c693645c6e71763e2e11"
+}

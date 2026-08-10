@@ -1,0 +1,21 @@
+{
+  "phase": 12,
+  "objective": "Consolidar tipografia, espaçamento, densidade, raios e sombras em uma fonte visual única sem alterar fluxos funcionais.",
+  "tokenGroups": ["color", "spacing", "typography", "radius", "shadow", "density", "motion"],
+  "requirements": {
+    "singleSemanticSource": true,
+    "legacyAliasesPreserved": true,
+    "compactDensityPreserved": true,
+    "comfortableDensityPreserved": true,
+    "canonicalShellUsesTokens": true,
+    "responsiveBehaviorPreserved": true
+  },
+  "infrastructureMutation": {
+    "schema": false,
+    "data": false,
+    "rls": false,
+    "authentication": false,
+    "integrations": false,
+    "release": false
+  }
+}

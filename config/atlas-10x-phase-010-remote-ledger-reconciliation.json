@@ -1,0 +1,119 @@
+{
+  "schema_version": "atlas.10x.phase-010.v1",
+  "phase": 10,
+  "total_phases": 24,
+  "name": "Reconciliação do ledger remoto e estratégia de baseline",
+  "objective": "Provar como a homologação registrou as migrations, impedir reparos destrutivos e exigir um baseline canônico isolado antes de qualquer novo DDL.",
+  "target_environment": "atlas-v3-homologacao",
+  "build_policy": "build_only_on_release_package",
+  "status": "remote_ledger_reconciled_baseline_required",
+  "execution_policy": {
+    "remote_metadata_read_enabled": true,
+    "remote_schema_query_enabled": false,
+    "remote_ddl_enabled": false,
+    "remote_dml_enabled": false,
+    "migration_repair_enabled": false,
+    "migration_push_enabled": false,
+    "migration_rename_enabled": false,
+    "branch_creation_enabled": false,
+    "backup_restore_enabled": false,
+    "allows_remote_user_changes": false,
+    "allows_remote_business_writes": false,
+    "allows_build": false,
+    "allows_release_package": false
+  },
+  "remote_ledger_contract": {
+    "evidence_path": "artifacts/runtime/phase-010/remote-migration-ledger-summary.json",
+    "project_alias": "atlas-v3-homologacao",
+    "expected_health": "ACTIVE_HEALTHY",
+    "expected_postgres_major": 17,
+    "expected_remote_migration_count": 179,
+    "expected_unique_remote_versions": 179,
+    "expected_names_with_embedded_version": 141,
+    "must_exclude_project_ref": true,
+    "must_exclude_credentials": true,
+    "must_exclude_personal_data": true,
+    "must_exclude_raw_sql_results": true
+  },
+  "local_ledger_contract": {
+    "directory": "supabase/migrations",
+    "expected_file_count": 125,
+    "snapshot_file_count": 124,
+    "known_post_snapshot_additions": [
+      "20260723090000_explicit_data_api_grants.sql"
+    ],
+    "version_pattern": "^[0-9]{14}$",
+    "expected_duplicate_version_count": 3,
+    "direct_cli_parity_expected": false,
+    "reason": "remote versions are application-time timestamps while most original authored versions are embedded in remote migration names; the explicit Data API grants migration was added locally after the sanitized remote snapshot and remains pending environment validation"
+  },
+  "collision_reconciliation": [
+    {
+      "local_version": "20260716235900",
+      "first_local_file": "20260716235900_meta_director_daily_reports.sql",
+      "second_local_file": "20260716235900_omnichannel_integrations.sql",
+      "remote_first_name": "20260716235900_meta_director_daily_reports",
+      "remote_second_name": "20260716235901_omnichannel_integrations",
+      "canonical_intent_for_second": "20260716235901",
+      "rename_authorized": false
+    },
+    {
+      "local_version": "20260717203000",
+      "first_local_file": "20260717203000_expand_project_material_catalog.sql",
+      "second_local_file": "20260717203000_phase_35_follow_up_sla_cycles.sql",
+      "remote_first_name": "20260717203000_expand_project_material_catalog",
+      "remote_second_name": "20260717203001_phase_35_follow_up_sla_cycles",
+      "canonical_intent_for_second": "20260717203001",
+      "rename_authorized": false
+    },
+    {
+      "local_version": "20260717213000",
+      "first_local_file": "20260717213000_phase_36_visit_sla.sql",
+      "second_local_file": "20260717213000_v3_legacy_runtime_schema_bridge.sql",
+      "remote_first_name": "20260717213000_phase_36_visit_sla",
+      "remote_second_name": "20260717213001_v3_legacy_runtime_schema_bridge",
+      "canonical_intent_for_second": "20260717213001",
+      "rename_authorized": false
+    }
+  ],
+  "baseline_strategy": {
+    "required": true,
+    "recommended": "capture_remote_schema_in_isolated_environment_then_create_new_canonical_baseline",
+    "archive_existing_migrations": true,
+    "preserve_remote_history": true,
+    "requires_sanitized_clone": true,
+    "requires_dynamic_rls_rehearsal": true,
+    "requires_schema_diff_review": true,
+    "requires_human_approval": true,
+    "branch_creation_requires_explicit_authorization": true
+  },
+  "required_gates": [
+    "remote_snapshot_present",
+    "remote_project_healthy",
+    "remote_postgres_17",
+    "remote_versions_unique",
+    "remote_counts_match_contract",
+    "embedded_version_strategy_confirmed",
+    "all_collision_mappings_confirmed",
+    "local_inventory_matches_contract",
+    "local_duplicates_still_fail_closed",
+    "direct_cli_parity_rejected",
+    "baseline_strategy_required",
+    "remote_repair_prohibited",
+    "local_rename_prohibited",
+    "remote_write_not_executed",
+    "evidence_sanitized"
+  ],
+  "forbidden_operations_in_phase_010": [
+    "run supabase migration repair",
+    "run supabase db push",
+    "rename local migration files",
+    "apply DDL or DML remotely",
+    "create a paid branch without explicit approval",
+    "persist project refs, credentials, raw SQL output or personal data",
+    "create, delete or reset remote users",
+    "run a release build",
+    "create a deployment package"
+  ],
+  "next_phase": "Fase 11/24: desenhar e preparar o baseline canônico em ambiente isolado, sem tocar na homologação."
+}

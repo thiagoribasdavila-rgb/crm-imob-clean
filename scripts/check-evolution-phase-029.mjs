@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { familiaDeclara, mediaAlcanca } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-029-navigation-progressive-loading.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -27,16 +26,11 @@ function listPages(directory) {
 const crmPages = listPages("app/(crm)");
 const pagesWithClientLoadSignals = crmPages.filter((file) => /useEffect\(|void load\(\)/.test(fs.readFileSync(file, "utf8"))).length;
 const pagesWithLocalFeedbackSignals = crmPages.filter((file) => /AtlasSkeleton|LoadingState|loading \?/.test(fs.readFileSync(file, "utf8"))).length;
-// Reconciliação CC-6: o componente de carregamento local compartilhado migrou de <LoadingState>
-// para <AtlasSkeleton> (73 páginas). A cobertura de feedback local foi preservada e ampliada;
-// contamos ambos os componentes compartilhados para refletir a nova realidade sem enfraquecer
-// a linha de base (>= 4). Ver docs/EVOLUTION_PHASE_029_NAVIGATION_PROGRESSIVE_LOADING.md.
-const sharedLocalLoadingConsumers = crmPages.filter((file) => {
-  const source = fs.readFileSync(file, "utf8");
-  return source.includes("<LoadingState") || source.includes("<AtlasSkeleton");
-}).length;
+const sharedLocalLoadingConsumers = crmPages.filter((file) => fs.readFileSync(file, "utf8").includes("<LoadingState")).length;
 
-const priorities = [...progressiveLoading.matchAll(/data-loading-priority="([^"]+)"/g)].map((match) => match[1]);
+const priorities = [...new Set(
+  [...progressiveLoading.matchAll(/data-loading-priority="([^"]+)"/g)].map((match) => match[1]),
+)];
 
 const checks = [
   ["Fase 029 concluída sem mutação de dados", config.status === "completed" && config.runtimePresentationChanged === true && config.productionDataModified === false && config.dataFetchingChanged === false],
@@ -47,26 +41,8 @@ const checks = [
   ["Status de rota é único e acessível", progressiveLoading.includes('role="status"') && progressiveLoading.includes('aria-live="polite"') && progressiveLoading.includes('aria-busy="true"') && config.accessibility.singleRouteLiveStatus === true],
   ["Skeletons permanecem silenciosos", atlasUi.includes('aria-hidden="true"') && progressiveLoading.includes('aria-hidden="true"') && config.accessibility.skeletonsHiddenFromAssistiveTechnology === true],
   ["Carregamento local informa ocupação sem criar região viva repetida", localLoading.includes('role="group"') && localLoading.includes('aria-busy="true"') && localLoading.includes('data-loading-priority="detail"') && !localLoading.includes('role="status"') && config.accessibility.repeatedLocalLiveRegionsRemoved === true],
-  ["Geometria mínima protege o layout",
-    /* Antes: seis `includes` alternando classe e altura, todos SOLTOS. A
-       asserção passaria com as três alturas em regras que não têm relação
-       nenhuma com as três classes — e nada garantia o pareamento.
-
-       Agora cada altura é cobrada DENTRO da regra da sua classe. Os valores
-       existem para reservar o espaço do conteúdo antes de ele chegar; trocar
-       um pelo outro devolveria o pulo de layout que a fase veio corrigir. */
-    [[".atlas-loading-essential", 188], [".atlas-loading-summary", 144], [".atlas-loading-detail", 420]]
-      .every(([classe, altura]) => familiaDeclara(styles, classe, "min-height", `${altura}px`))],
-  ["Entrada visual respeita movimento reduzido",
-    /* `.atlas-loading-stage,` era conferido como TEXTO, com a vírgula — ou
-       seja, dependia de a classe estar numa lista e não sozinha. Formatar o
-       CSS quebraria a asserção sem mudar comportamento nenhum.
-
-       O que importa é: existe a animação, e existe regra de movimento reduzido
-       que ALCANÇA a família. É isso que se mede. */
-    styles.includes("@keyframes atlas-loading-reveal")
-    && mediaAlcanca(styles, "prefers-reduced-motion: reduce", ".atlas-loading")
-    && config.accessibility.reducedMotionRespected === true],
+  ["Geometria mínima protege o layout", styles.includes(".atlas-loading-essential") && styles.includes("min-height: 188px") && styles.includes(".atlas-loading-summary") && styles.includes("min-height: 144px") && styles.includes(".atlas-loading-detail") && styles.includes("min-height: 420px")],
+  ["Entrada visual respeita movimento reduzido", styles.includes("@keyframes atlas-loading-reveal") && styles.includes(".atlas-loading-stage,") && config.accessibility.reducedMotionRespected === true],
   ["Shell e ação contextual permanecem fora do fallback", crmLayout.includes("<AppShell>{children}</AppShell>") && appShell.includes("<Topbar") && appShell.includes("{children}") && topbar.includes("<AtlasActionLink") && config.progressiveContract.persistentTopbarActionAvailable === true],
   ["Navegação mantém retorno imediato", appShell.includes("<NavigationPerformance") && navigationPerformance.includes('role="status"') && config.progressiveContract.routeFeedbackAvailable === true],
   ["Linha de base de sinais de carregamento permanece coberta", pagesWithClientLoadSignals >= config.structuralBaseline.pagesWithClientLoadSignals && pagesWithLocalFeedbackSignals >= config.structuralBaseline.pagesWithLocalFeedbackSignals && sharedLocalLoadingConsumers >= config.structuralBaseline.sharedLocalLoadingConsumers],

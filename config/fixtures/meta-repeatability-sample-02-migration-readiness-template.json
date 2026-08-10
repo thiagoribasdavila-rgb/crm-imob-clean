@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "phase34.migration-readiness.v1",
+  "phase": 34,
+  "sourcePhase": 33,
+  "status": "not_assessed",
+  "assessedAt": null,
+  "sourceReceiptFingerprint": null,
+  "controls": {
+    "source_chain_integrity": false,
+    "cross_major_artifact_equivalence": false,
+    "security_equivalence": false,
+    "rollback_equivalence": false,
+    "extension_compatibility": false,
+    "immutable_backup_verified": false,
+    "restore_drill_verified": false,
+    "isolated_staging_replay_verified": false,
+    "data_integrity_verified": false,
+    "performance_baseline_verified": false,
+    "observability_ready": false,
+    "security_advisor_verified": false,
+    "performance_advisor_verified": false,
+    "production_rollback_runbook_verified": false,
+    "human_change_approval_verified": false
+  },
+  "evidenceCoverage": {
+    "verifiedControls": 0,
+    "requiredControls": 15,
+    "percent": 0
+  },
+  "stagingMigrationAllowed": false,
+  "productionMigrationAllowed": false,
+  "productionCompatibilityApproved": false,
+  "remoteDatabaseTouched": false,
+  "metaTouched": false,
+  "buildExecuted": false
+}

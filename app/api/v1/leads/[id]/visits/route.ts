@@ -1,7 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { NextResponse } from "next/server";
+import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { enforceRateLimit } from "@/lib/api/security";
 
 type RouteContext = { params: Promise<{ id: string }> };
 const STATES = new Set(["scheduled", "confirmed", "completed", "cancelled", "no_show"]);
@@ -11,14 +10,8 @@ const TRANSITIONS: Record<string, Set<string>> = {
 };
 
 function unauthorized(error: unknown) {
-  // O agendamento insere com `broker_id = lead.assigned_to`: sem esta recusa, um
-  // corretor plantava visita e `next_action_at` na AGENDA DO COLEGA. Medido em
-  // 2026-07-29: HTTP 201, visita criada em nome da vítima.
-  if (ehLeadForaDaCarteira(error)) {
-    return NextResponse.json({ error: error.message, code: "VISIT_OUT_OF_SCOPE" }, { status: 403 });
-  }
   const message = error instanceof Error ? error.message : "Não autorizado.";
-  const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
+  const status = /sessão|token|autenticação/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   return NextResponse.json({ error: message }, { status });
 }
 
@@ -33,10 +26,7 @@ export async function GET(request: Request, context: RouteContext) {
   } catch (error) { return unauthorized(error); }
 }
 
-export async function POST(request: NextRequest, context: RouteContext) {
-  // Agendamento escreve em lead_visits e mexe na próxima ação da lead.
-  const rate = enforceRateLimit(request, { limit: 30, windowMs: 60_000, scope: "lead.visits" });
-  if (!rate.ok) return rate.response;
+export async function POST(request: Request, context: RouteContext) {
   try {
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;

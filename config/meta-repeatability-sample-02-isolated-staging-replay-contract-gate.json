@@ -1,0 +1,156 @@
+{
+  "phase": 39,
+  "program": "meta-andromeda-automation",
+  "sourcePhase": 38,
+  "environment": "offline_isolated_staging_replay_contract",
+  "schemaVersion": "phase39.isolated-staging-replay-contract-gate.v1",
+  "maximumInputBytes": 1048576,
+  "maximumApprovalValidityHours": 24,
+  "requiredSources": {
+    "readinessProjection": {
+      "schemaVersion": "phase38.readiness-projection-receipt.v1",
+      "phase": 38,
+      "sourcePhase": 37,
+      "baselinePhase": 34,
+      "status": "projected_readiness_blocked",
+      "projectionApproved": true,
+      "verifiedControls": 8,
+      "requiredControls": 15,
+      "coveragePercent": 53
+    },
+    "stagingTarget": {
+      "schemaVersion": "phase39.isolated-staging-target-manifest.v1",
+      "status": "verified_for_contract",
+      "environment": "staging"
+    },
+    "rollbackPlan": {
+      "schemaVersion": "phase39.staging-rollback-plan.v1",
+      "status": "reviewed_for_contract"
+    },
+    "humanApproval": {
+      "schemaVersion": "phase39.staging-replay-contract-approval.v1",
+      "status": "approved_for_contract_preparation_only",
+      "scope": "prepare_phase39_isolated_staging_replay_contract",
+      "decision": "APPROVE_CONTRACT_ONLY",
+      "approverRole": "DIRETOR_DECISOR"
+    }
+  },
+  "requiredControlOrder": [
+    "source_chain_integrity",
+    "cross_major_artifact_equivalence",
+    "security_equivalence",
+    "rollback_equivalence",
+    "extension_compatibility",
+    "immutable_backup_verified",
+    "restore_drill_verified",
+    "isolated_staging_replay_verified",
+    "data_integrity_verified",
+    "performance_baseline_verified",
+    "observability_ready",
+    "security_advisor_verified",
+    "performance_advisor_verified",
+    "production_rollback_runbook_verified",
+    "human_change_approval_verified"
+  ],
+  "requiredVerifiedControls": [
+    "source_chain_integrity",
+    "cross_major_artifact_equivalence",
+    "security_equivalence",
+    "rollback_equivalence",
+    "extension_compatibility",
+    "immutable_backup_verified",
+    "restore_drill_verified",
+    "data_integrity_verified"
+  ],
+  "requiredBlockedControls": [
+    "isolated_staging_replay_verified",
+    "performance_baseline_verified",
+    "observability_ready",
+    "security_advisor_verified",
+    "performance_advisor_verified",
+    "production_rollback_runbook_verified",
+    "human_change_approval_verified"
+  ],
+  "requiredTargetProperties": {
+    "isolated": true,
+    "disposable": true,
+    "separateProject": true,
+    "productionTarget": false,
+    "containsProductionData": false,
+    "sanitizedDataOnly": true,
+    "authIsolated": true,
+    "storageIsolated": true,
+    "realtimeIsolated": true,
+    "credentialsEmbedded": false,
+    "destructionRequired": true
+  },
+  "requiredRollbackProperties": {
+    "isolatedStagingOnly": true,
+    "productionRollback": false,
+    "preReplaySnapshotRequired": true,
+    "stopOnError": true,
+    "rollbackOnFailure": true,
+    "migrationHistoryVerification": true,
+    "dataIntegrityVerification": true,
+    "rlsAuthStorageVerification": true,
+    "targetDestructionAfterReplay": true,
+    "humanExecutionApprovalRequired": true
+  },
+  "orderedReplayStages": [
+    "verify_source_fingerprints",
+    "verify_isolated_target",
+    "capture_pre_replay_snapshot",
+    "apply_migrations_stop_on_error",
+    "run_database_lint",
+    "run_pgtap_rls_negative_tests",
+    "verify_auth_storage_realtime_data_api",
+    "capture_performance_baseline",
+    "run_security_and_performance_advisors",
+    "execute_rollback_dry_run",
+    "reconcile_evidence",
+    "destroy_disposable_target"
+  ],
+  "contractRules": {
+    "exactSourceFingerprints": true,
+    "exactControlSet": true,
+    "isolatedStagingRequired": true,
+    "productionDataForbidden": true,
+    "sanitizedDataOnly": true,
+    "approvalIsContractOnly": true,
+    "executionRequiresSeparateApproval": true,
+    "approvalMustBeUnexpired": true,
+    "approvalCannotBeInferred": true,
+    "rollbackMustBeReviewed": true,
+    "sensitiveEvidenceRejected": true,
+    "dataRowsRejected": true,
+    "contractDoesNotAuthorizeReplay": true
+  },
+  "requiredBlockedState": {
+    "replayExecuted": false,
+    "replayExecutionAllowed": false,
+    "stagingMigrationAllowed": false,
+    "productionMigrationAllowed": false,
+    "productionCompatibilityApproved": false,
+    "metaDeliveryAllowed": false,
+    "buildAllowed": false
+  },
+  "prohibitedActions": {
+    "databaseAccess": true,
+    "dockerExecution": true,
+    "remoteDatabaseAccess": true,
+    "linkedProjectAccess": true,
+    "stagingMutation": true,
+    "productionMutation": true,
+    "supabaseDbPush": true,
+    "supabaseDbResetLinked": true,
+    "credentialCollection": true,
+    "permitReservation": true,
+    "permitIssuance": true,
+    "permitConsumption": true,
+    "realMetaEventDelivery": true,
+    "testMetaEventDelivery": true,
+    "campaignMutation": true,
+    "deployment": true,
+    "buildExecution": true
+  }
+}

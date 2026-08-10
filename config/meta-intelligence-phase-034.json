@@ -1,0 +1,88 @@
+{
+  "phase": 34,
+  "program": "meta-andromeda-automation",
+  "mode": "sample_02_evidence_driven_migration_readiness_matrix",
+  "status": "migration_readiness_matrix_prepared_source_evidence_missing",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-033.json",
+  "readinessGate": "config/meta-repeatability-sample-02-migration-readiness-gate.json",
+  "readinessTemplate": "config/fixtures/meta-repeatability-sample-02-migration-readiness-template.json",
+  "preflight": "scripts/preflight-meta-repeatability-sample-02-migration-readiness.mjs",
+  "assessor": "scripts/run-meta-repeatability-sample-02-migration-readiness.mjs",
+  "staticAudit": "scripts/audit-meta-repeatability-sample-02-migration-readiness.mjs",
+  "documentation": "docs/META_REPEATABILITY_SAMPLE_02_MIGRATION_READINESS.md",
+  "manualWorkflow": ".github/workflows/atlas-meta-phase30-local-rehearsal.yml",
+  "readinessContract": {
+    "sourceReceiptRequired": true,
+    "sourceReceiptHashRequired": true,
+    "postgres15And17EvidenceRequired": true,
+    "inheritedControls": 5,
+    "productionControls": 15,
+    "maximumEvidenceCoverageAfterValidSourcePercent": 33,
+    "coverageIsNotProductionApproval": true,
+    "humanApprovalRequired": true
+  },
+  "toolAudit": {
+    "officialDocsVerifiedAt": "2026-07-19",
+    "projectNodeRuntime": 24,
+    "postgres15Image": "supabase/postgres:15.14.1.149",
+    "postgres17Image": "supabase/postgres:17.6.1.149",
+    "containerRuntimeDetectedInCurrentWorkspace": false,
+    "productionChecklistReviewed": true,
+    "databaseMigrationGuidanceReviewed": true,
+    "postgres17UpgradeGuidanceReviewed": true
+  },
+  "environmentAudit": {
+    "staticReadinessContractApproved": true,
+    "negativeMutationSelfTestsPrepared": true,
+    "readOnlyAssessmentRunnerPrepared": true,
+    "manualWorkflowUpdated": true,
+    "phase33ReceiptReceived": false,
+    "readinessAssessmentExecuted": false,
+    "currentEvidenceCoveragePercent": 0,
+    "databaseMutationExecuted": false,
+    "metaMutationExecuted": false,
+    "buildExecuted": false
+  },
+  "releaseGate": {
+    "staticReadinessContractApproved": true,
+    "sourceEvidenceReceived": false,
+    "sourceEvidenceApproved": false,
+    "currentEvidenceCoveragePercent": 0,
+    "stagingMigrationAllowed": false,
+    "productionMigrationAllowed": false,
+    "productionCompatibilityApproved": false,
+    "nextPhaseAllowed": false
+  },
+  "governance": {
+    "evidenceReadOnlyAssessment": true,
+    "sourceFilesMustRemainInsideWorkspace": true,
+    "symbolicLinksRejected": true,
+    "maximumSourceEvidenceBytes": 1048576,
+    "receiptPermissions": "0600",
+    "remoteDatabaseAccess": false,
+    "productionAccess": false,
+    "linkedProjectAccess": false,
+    "localDatabaseAccess": false,
+    "containerRuntimeAccess": false,
+    "supabaseDbPush": false,
+    "permitReservation": false,
+    "permitIssuance": false,
+    "permitConsumption": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 35,
+    "objective": "Preparar o contrato de ensaio isolado de restauracao em staging somente depois de receber um recibo real e aprovado da Fase 33, backup imutavel verificavel e aprovacao humana explicita.",
+    "blockedUntil": [
+      "recibo real e aprovado da Fase 33",
+      "backup imutavel identificado e verificado",
+      "plano de restauracao e rollback revisado",
+      "ambiente de staging isolado e descartavel",
+      "aprovacao humana explicita da janela de ensaio"
+    ]
+  }
+}

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-const allowedTypes = new Set(["book", "price_table", "sales_mirror", "floor_plan", "presentation", "technical_memorial", "registration_form", "video", "site_plan", "other"]);
+const allowedTypes = new Set(["book", "price_table", "sales_mirror", "floor_plan", "presentation", "technical_memorial", "registration_form", "site_plan", "other"]);
 const allowedMimeTypes = new Set([
   "application/pdf",
   "application/vnd.ms-excel",
@@ -17,12 +17,9 @@ const allowedMimeTypes = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
-  "video/mp4",
-  "video/quicktime",
 ]);
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
-const MAX_VIDEO_SIZE = 200 * 1024 * 1024;
-const MAX_REQUEST_SIZE = MAX_VIDEO_SIZE + 1024 * 1024;
+const MAX_REQUEST_SIZE = MAX_FILE_SIZE + 1024 * 1024;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function validDate(value: string | null) {
@@ -40,9 +37,6 @@ async function hasExpectedSignature(file: File) {
   if (file.type === "image/webp") return String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
   if (file.type === "application/vnd.ms-excel") return bytes.slice(0, 8).every((value, index) => value === [0xd0,0xcf,0x11,0xe0,0xa1,0xb1,0x1a,0xe1][index]);
   if (file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") return bytes[0] === 0x50 && bytes[1] === 0x4b;
-  if (file.type === "video/mp4" || file.type === "video/quicktime") {
-    return String.fromCharCode(...bytes.slice(4, 8)) === "ftyp";
-  }
   return false;
 }
 
@@ -80,13 +74,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (!development) return NextResponse.json({ error: "Empreendimento não encontrado." }, { status: 404 });
 
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin
+  let query = admin
     .from("project_materials")
     .select("id,material_type,title,description,file_name,mime_type,file_size,version,valid_from,valid_until,is_current,review_status,verified_at,review_note,created_at,storage_provider,storage_bucket,storage_path")
     .eq("organization_id", access.access.organization.id)
-    .eq("development_id", id)
-    .eq("is_current", true)
-    .order("material_type");
+    .eq("development_id", id);
+  if (request.nextUrl.searchParams.get("history") !== "1") query = query.eq("is_current", true);
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: "Não foi possível carregar os materiais." }, { status: 500 });
 
@@ -115,7 +109,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const contentLength = Number(request.headers.get("content-length"));
   if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_SIZE) {
-    return NextResponse.json({ error: "O envio ultrapassa o limite máximo de 200 MB." }, { status: 413 });
+    return NextResponse.json({ error: "O envio ultrapassa o limite máximo de 50 MB." }, { status: 413 });
   }
 
   const form = await request.formData();
@@ -129,9 +123,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (!(file instanceof File) || !allowedTypes.has(materialType) || title.length < 2) {
     return NextResponse.json({ error: "Informe tipo, título e arquivo do material." }, { status: 400 });
   }
-  const maximumSize = file.type.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_FILE_SIZE;
-  if (!allowedMimeTypes.has(file.type) || file.size < 1 || file.size > maximumSize) {
-    return NextResponse.json({ error: "Use PDF, Excel ou imagem com até 50 MB, ou vídeo MP4/MOV com até 200 MB." }, { status: 400 });
+  if (!allowedMimeTypes.has(file.type) || file.size < 1 || file.size > MAX_FILE_SIZE) {
+    return NextResponse.json({ error: "Use PDF, Excel, JPG, PNG ou WEBP com até 50 MB." }, { status: 400 });
   }
   if (!(await hasExpectedSignature(file))) return NextResponse.json({ error: "O conteúdo do arquivo não corresponde ao formato informado." }, { status: 400 });
   if (!validDate(validFrom) || !validDate(validUntil) || (validFrom && validUntil && validUntil < validFrom)) {

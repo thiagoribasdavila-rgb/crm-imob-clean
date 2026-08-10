@@ -26,6 +26,10 @@ const requiredBlockers = [
   "project-write-signoff-not-recorded",
 ];
 
+const validatesCurrentOrganization =
+  migration.includes("p_organization_id <> private.current_organization_id()") ||
+  migration.includes("p_organization_id <> (select public.current_organization_id())");
+
 const checks = [
   ["Fase 98 foi preservada", previous.phase === 98 && previous.status === "completed"],
   ["Fase contínua 99 concluiu somente o desenho local", phase.phase === 99 && phase.program === "continuous" && phase.status === "completed" && phase.productionDataModified === false && phase.databaseSchemaChanged === false && phase.authenticationChanged === false && phase.migrationDraftCreated === true && phase.migrationApplied === false],
@@ -38,7 +42,7 @@ const checks = [
   ["RLS do evento é forçada e leitura é explícita", migration.includes("force row level security") && migration.includes("create policy crm_project_events_select_managers") && migration.includes("grant select on table public.crm_project_events to authenticated") && migration.includes("revoke all on table public.crm_project_events from authenticated")],
   ["DML direto e exclusão continuam bloqueados", migration.includes("revoke insert, update, delete, truncate, references, trigger") && migration.includes("Initial rollout deliberately has no DELETE policy") && !/create policy[\s\S]{0,120}for delete/i.test(migration)],
   ["Comando de projeto aceita somente criação e atualização", migration.includes("function public.mutate_crm_project_v1") && migration.includes("v_operation not in ('create', 'update')") && migration.includes("unsupported-project-operation") && !migration.includes("v_operation = 'delete'")],
-  ["Comando valida autenticação, tenant e papel", migration.includes("authentication-required") && migration.includes("p_organization_id <> private.current_organization_id()") && migration.includes("not private.can_manage_projects(p_organization_id)")],
+  ["Comando valida autenticação, tenant e papel", migration.includes("authentication-required") && validatesCurrentOrganization && migration.includes("not private.can_manage_projects(p_organization_id)")],
   ["Comando é atômico, auditado e idempotente", migration.includes("project-idempotency-key-conflict") && migration.includes("request_fingerprint") && migration.includes("insert into public.crm_project_events") && migration.includes("'replayed', true") && migration.includes("'replayed', false")],
   ["Execução da RPC é explicitamente restrita", migration.includes("revoke all on function public.mutate_crm_project_v1") && migration.includes("from public") && migration.includes("from anon") && migration.includes("to authenticated")],
   ["Contrato local mantém ativação negada sem evidência", homologation.includes("design-approved-awaiting-controlled-application") && homologation.includes("activationAllowed") && homologation.includes("directDmlAllowed: false") && homologation.includes("deleteAllowed: false") && homologation.includes("EMPTY_LIVE_DEVELOPMENT_WRITE_EVIDENCE")],

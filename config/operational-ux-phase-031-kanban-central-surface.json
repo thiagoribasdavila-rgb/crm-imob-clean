@@ -1,0 +1,26 @@
+{
+  "phase": 31,
+  "scope": "kanban_central_surface",
+  "canonicalSurface": "pipeline-kanban",
+  "visiblePriorityQueue": "atlas-pipeline-priority-queue",
+  "collapsedBeforeBoard": [
+    "atlas-pipeline-v30-decision-layer",
+    "atlas-kanban-v30-next-move-strip"
+  ],
+  "preservedCapabilities": [
+    "filters",
+    "drag_and_drop",
+    "keyboard_movement",
+    "undo",
+    "stage_change",
+    "lead_360",
+    "tasks",
+    "copilot",
+    "contact_actions",
+    "diagnostics"
+  ],
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

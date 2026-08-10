@@ -1,0 +1,72 @@
+{
+  "format": "atlas_meta_repeatability_durable_ledger_preparation_v1",
+  "phase": 28,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "containsTemporaryCode": false,
+  "payloadPersisted": false,
+  "rawResponsePersisted": false,
+  "databaseTouched": false,
+  "networkTouched": false,
+  "sourceEvidence": {
+    "phase27Approved": false,
+    "phase27Fingerprint": null,
+    "phase27GeneratedAt": null,
+    "phase25ExpiresAt": null
+  },
+  "artifacts": {
+    "adapterFingerprint": null,
+    "migrationDraftFingerprint": null,
+    "rollbackDraftFingerprint": null,
+    "staticAssertionCount": 0,
+    "staticAssertionsPassed": 0
+  },
+  "databaseContract": {
+    "privateSchema": "atlas_private",
+    "tenantIsolated": false,
+    "rowLevelSecurityEnabled": false,
+    "rowLevelSecurityForced": false,
+    "serviceRoleOnly": false,
+    "singleTransactionReservation": false,
+    "duplicateFailsClosed": false,
+    "appendOnlyAudit": false,
+    "safeRollbackDrafted": false
+  },
+  "lifecycle": {
+    "status": "not_prepared",
+    "migrationPromoted": false,
+    "migrationExecuted": false,
+    "rollbackExecuted": false,
+    "reservationPersisted": false,
+    "permitIssued": false,
+    "permitUsable": false,
+    "permitConsumed": false,
+    "actionExecuted": false,
+    "eventDelivered": false
+  },
+  "releaseGates": {
+    "durableAdapterDraftPrepared": false,
+    "phase27LedgerLinked": false,
+    "migrationPromotionAllowed": false,
+    "migrationExecutionAllowed": false,
+    "rollbackExecutionAllowed": false,
+    "ledgerPersistenceAllowed": false,
+    "permitIssuanceAllowed": false,
+    "permitConsumptionAllowed": false,
+    "authorizationActivationAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  },
+  "issueCodes": ["phase27_preparation_or_phase28_request_missing"],
+  "errorCode": "phase27_preparation_or_phase28_request_missing"
+}

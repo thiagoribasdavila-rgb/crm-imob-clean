@@ -1,0 +1,19 @@
+{
+  "schema": "atlas.controlled-external-publication-execution-handoff-memory.v1",
+  "policyHash": "4b3cf80ba28da599e8ad59cf051ddf228cbaf0d0b70e71b9f0efb78a433cd444",
+  "entries": [],
+  "summary": {
+    "recordedHandoffs": 0,
+    "distinctConsumedAuthorizations": 0,
+    "latestEntryHash": null,
+    "handoffPrepared": false,
+    "executionAccepted": false,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "edbbc6c5b145d89ae96f8b711fac99c154f2f70415caf0ad8fe1750bbfea8dc3"
+}

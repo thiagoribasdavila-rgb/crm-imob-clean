@@ -1,0 +1,16 @@
+{
+  "phase": 45,
+  "scope": "kanban_progressive_card_actions",
+  "primaryActionVisible": true,
+  "secondaryActionsPreserved": true,
+  "tertiaryUtilitiesConsolidated": true,
+  "contactShortcutsPreserved": true,
+  "copilotShortcutsPreserved": true,
+  "executionShortcutsPreserved": true,
+  "keyboardDisclosurePreserved": true,
+  "cardMovementPreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

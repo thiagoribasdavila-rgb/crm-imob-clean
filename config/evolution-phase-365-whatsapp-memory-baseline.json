@@ -1,0 +1,17 @@
+{
+  "phase": 365,
+  "name": "WhatsApp official factual memory baseline",
+  "status": "implemented_local",
+  "scope": "authenticated_organization",
+  "audience": ["admin", "director"],
+  "mutates_remote_state": false,
+  "contains_pii": false,
+  "evidence": [
+    "registered and connected official lines",
+    "WhatsApp conversations linked and unlinked to leads",
+    "assigned and unassigned conversations",
+    "inbound, outbound and externally confirmed messages",
+    "latest internal evidence timestamps"
+  ],
+  "promotion_gate": "authenticated_runtime_proof_pending"
+}

@@ -1,0 +1,97 @@
+{
+  "phase": 33,
+  "program": "meta-andromeda-automation",
+  "mode": "sample_02_pg15_pg17_evidence_reconciliation",
+  "status": "cross_major_reconciliation_prepared_runtime_evidence_missing",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-032.json",
+  "reconciliationGate": "config/meta-repeatability-sample-02-cross-major-reconciliation-gate.json",
+  "reconciliationTemplate": "config/fixtures/meta-repeatability-sample-02-cross-major-reconciliation-template.json",
+  "preflight": "scripts/preflight-meta-repeatability-sample-02-cross-major-reconciliation.mjs",
+  "reconciler": "scripts/run-meta-repeatability-sample-02-cross-major-reconciliation.mjs",
+  "staticAudit": "scripts/audit-meta-repeatability-sample-02-cross-major-reconciliation.mjs",
+  "documentation": "docs/META_REPEATABILITY_SAMPLE_02_CROSS_MAJOR_RECONCILIATION.md",
+  "manualWorkflow": ".github/workflows/atlas-meta-phase30-local-rehearsal.yml",
+  "comparisonContract": {
+    "sourceChainFingerprintRequired": true,
+    "postgres15RuntimeEvidenceRequired": true,
+    "postgres15ReconciliationRequired": true,
+    "postgres17RuntimeEvidenceRequired": true,
+    "exactRuntimeImagesRequired": true,
+    "distinctRuntimeTargetsRequired": true,
+    "sharedArtifactFingerprintsRequired": true,
+    "securityEquivalenceRequired": true,
+    "rollbackEquivalenceRequired": true,
+    "blockedExtensionAbsenceRequired": true,
+    "secretFreeReceiptRequired": true
+  },
+  "toolAudit": {
+    "officialDocsVerifiedAt": "2026-07-19",
+    "projectNodeRuntime": 24,
+    "postgres15Image": "supabase/postgres:15.14.1.149",
+    "postgres17Image": "supabase/postgres:17.6.1.149",
+    "containerRuntimeDetectedInCurrentWorkspace": false,
+    "physicalPostgres15VolumeReuseByPostgres17Allowed": false,
+    "blockedPostgres17ExtensionsReviewed": [
+      "timescaledb",
+      "plv8",
+      "plcoffee",
+      "plls"
+    ]
+  },
+  "environmentAudit": {
+    "staticComparisonContractApproved": true,
+    "sourceChainValidationPrepared": true,
+    "negativeMutationSelfTestsPrepared": true,
+    "readOnlyReconciliationRunnerPrepared": true,
+    "manualWorkflowUpdated": true,
+    "phase30RuntimeEvidenceReceived": false,
+    "phase31ReconciliationReceived": false,
+    "phase32RuntimeEvidenceReceived": false,
+    "crossMajorReconciliationExecuted": false,
+    "databaseMutationExecuted": false,
+    "metaMutationExecuted": false,
+    "buildExecuted": false
+  },
+  "releaseGate": {
+    "staticComparisonContractApproved": true,
+    "sourceChainContractApproved": true,
+    "crossMajorArtifactContractApproved": true,
+    "securityAndRollbackContractApproved": true,
+    "sourceEvidenceReceived": false,
+    "sourceEvidenceApproved": false,
+    "crossMajorCompatibilityApproved": false,
+    "productionCompatibilityApproved": false,
+    "nextPhaseAllowed": false
+  },
+  "governance": {
+    "evidenceReadOnlyReconciliation": true,
+    "sourceFilesMustRemainInsideWorkspace": true,
+    "symbolicLinksRejected": true,
+    "maximumSourceEvidenceBytes": 1048576,
+    "receiptPermissions": "0600",
+    "remoteDatabaseAccess": false,
+    "productionAccess": false,
+    "linkedProjectAccess": false,
+    "localDatabaseAccess": false,
+    "containerRuntimeAccess": false,
+    "permitReservation": false,
+    "permitIssuance": false,
+    "permitConsumption": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 34,
+    "objective": "Criar a matriz de prontidao de migracao e o gate operacional de producao somente depois de uma conciliacao PG15 x PG17 real, integra e aprovada.",
+    "blockedUntil": [
+      "evidencia real e aprovada da Fase 30",
+      "recibo real e aprovado da Fase 31",
+      "evidencia real e aprovada da Fase 32",
+      "cadeia criptografica PG15 e PG17 reconciliada",
+      "seguranca, rollback e extensoes equivalentes comprovados"
+    ]
+  }
+}

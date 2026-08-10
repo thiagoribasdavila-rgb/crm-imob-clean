@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { assessLeadCompleteness } from "@/lib/ai/data-completeness";
 import {
   buildGovernedLeadContextAuditMetadata,
@@ -7,15 +7,12 @@ import {
   sameGovernedLeadCommercialContext,
   validateGovernedLeadContextCorrection,
 } from "@/lib/atlas/governed-lead-context-correction";
-import { commercialOutcomeFromStages } from "@/lib/ai/learning-loop";
-import { LIVE_LEAD_SELECT, LIVE_LEAD_SELECT_WITH_SLA, canonicalLeadStatus, isMissingColumn, isMissingRelation, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
-import { liveLeadUpdatePayload, mapLiveLeadEvent, recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
-import { computeAttentionSignalsForLead } from "@/lib/atlas/attention-signals";
+import { isPropertyAvailable } from "@/lib/atlas/property-availability";
+import { LIVE_LEAD_SELECT, canonicalLeadStatus, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
+import { liveLeadUpdatePayload, mapLiveLeadEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { logger } from "@/lib/observability/logger";
-import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { enforceRateLimit } from "@/lib/api/security";
-import { tarefaEncerrada } from "@/lib/crm/task-status";
 
 export const dynamic = "force-dynamic";
 
@@ -23,15 +20,8 @@ type RouteContext = { params: Promise<{ id: string }> };
 type JsonRow = Record<string, unknown>;
 
 function requestError(error: unknown) {
-  // Lead de outra carteira é RECUSA, não falha de sessão nem dado inválido: a
-  // Lead 360 escreve o MESMO campo que o Kanban (`leads.status`) e por aqui não
-  // havia trava nenhuma — medido em 2026-07-29, um corretor de carteira vazia
-  // renomeou, reescreveu e DESCARTOU a lead de um colega com 200.
-  if (ehLeadForaDaCarteira(error)) {
-    return NextResponse.json({ error: error.message, code: "LEAD_OUT_OF_SCOPE" }, { status: 403 });
-  }
   const message = error instanceof Error ? error.message : "Não foi possível concluir a operação.";
-  const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
+  const status = /sessão|token|autenticação/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   return NextResponse.json({ error: message }, { status });
 }
 
@@ -56,36 +46,46 @@ export async function GET(request: Request, context: RouteContext) {
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;
     await requireLeadAccess(identity, id);
-    const admin = getSupabaseAdmin();
 
-    // As colunas de SLA vêm no select estendido; o banco legado não as tem e
-    // responde 42703. Sem esta degradação, ligar a medição na ficha derrubaria a
-    // ficha inteira — que é justamente o erro que a fase 34 pagou caro para achar.
-    const lerLead = (colunas: string) => admin
+    const leadResult = await identity.supabase
       .from("leads")
-      .select(colunas)
+      .select(LIVE_LEAD_SELECT)
       .eq("id", id)
       .eq("organization_id", identity.organizationId)
       .maybeSingle();
+    if (leadResult.error || !leadResult.data) return NextResponse.json({ error: "Lead fora do seu escopo comercial." }, { status: 403 });
 
-    let slaMensuravel = true;
-    let { data: storedLead, error: leadError } = await lerLead(LIVE_LEAD_SELECT_WITH_SLA);
-    if (leadError && isMissingColumn(leadError)) {
-      slaMensuravel = false;
-      ({ data: storedLead, error: leadError } = await lerLead(LIVE_LEAD_SELECT));
-    }
-    if (leadError || !storedLead) return NextResponse.json({ error: "Lead fora do seu escopo comercial." }, { status: 403 });
-
-    const lead = mapLegacyLead(storedLead as unknown as JsonRow);
-    const [eventResult, taskResult, ownerResult, projectResult, projectOptionsResult, oportunidadesResult] = await Promise.all([
-      admin
+    const lead = mapLegacyLead(leadResult.data as unknown as JsonRow);
+    const [
+      eventResult,
+      activityResult,
+      taskResult,
+      ownerResult,
+      developmentResult,
+      campaignLookupResult,
+      opportunityResult,
+      conversationResult,
+      projectOptionsResult,
+      proposalResult,
+      assignmentReservationResult,
+      propertyResult,
+      experienceSignalResult,
+    ] = await Promise.all([
+      identity.supabase
         .from("lead_events")
         .select("id,lead_id,event_type,type,description,metadata,created_by,created_at")
         .eq("lead_id", id)
         .eq("organization_id", identity.organizationId)
         .order("created_at", { ascending: false })
         .limit(100),
-      admin
+      identity.supabase
+        .from("activities")
+        .select("id,user_id,title,description,type,metadata,occurred_at")
+        .eq("lead_id", id)
+        .eq("organization_id", identity.organizationId)
+        .order("occurred_at", { ascending: false })
+        .limit(100),
+      identity.supabase
         .from("tasks")
         .select("id,title,description,status,due_date,priority,user_id,created_at")
         .eq("lead_id", id)
@@ -93,117 +93,114 @@ export async function GET(request: Request, context: RouteContext) {
         .order("due_date", { ascending: true, nullsFirst: false })
         .limit(100),
       lead.assigned_to
-        ? admin.from("profiles").select("id,name,role,team").eq("id", lead.assigned_to).eq("organization_id", identity.organizationId).maybeSingle()
+        ? identity.supabase.from("profiles").select("id,name,role,team").eq("id", lead.assigned_to).eq("organization_id", identity.organizationId).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
       lead.development_id
-        ? admin.from("crm_projects").select("id,name,developer_name,status,city").eq("id", lead.development_id).eq("organization_id", identity.organizationId).maybeSingle()
+        ? identity.supabase.from("crm_projects").select("id,name,developer_name,status,city").eq("id", lead.development_id).eq("organization_id", identity.organizationId).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
-      admin
+      lead.campaign_id
+        ? identity.supabase.from("marketing_campaigns").select("id,name,platform,status").eq("id", lead.campaign_id).eq("organization_id", identity.organizationId).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      identity.supabase
+        .from("opportunities")
+        .select("id,lead_id,stage,value,expected_close_at,won_at,created_at")
+        .eq("lead_id", id)
+        .eq("organization_id", identity.organizationId)
+        .order("created_at", { ascending: false })
+        .limit(50),
+      identity.supabase.from("conversations")
+        .select("id,channel,status,assigned_to,last_message_at,unread_count,created_at")
+        .eq("lead_id", id)
+        .eq("organization_id", identity.organizationId)
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(50),
+      identity.supabase
         .from("crm_projects")
         .select("id,name,developer_name,status,city")
         .eq("organization_id", identity.organizationId)
         .order("name", { ascending: true })
         .limit(500),
-      // Esta rota devolvia `opportunities: []` FIXO. Não era um bloco morto: a
-      // tela usa o tamanho desta lista para pontuar prontidão (+10) e para
-      // classificar risco. Com `[]` cravado, NENHUMA lead podia ser "risco
-      // baixo" — o ramo era inalcançável — e a prontidão tinha teto de 90 para
-      // todo mundo. Número errado que o corretor lê e usa é pior que bloco
-      // vazio: bloco vazio se percebe, número plausível não.
-      admin
-        .from("opportunities")
-        .select("id,stage,value,probability,expected_close_at,property_id,created_at")
+      identity.supabase
+        .from("commercial_simulations")
+        .select("id,property_id,property_price,down_payment,financed_balance,installment_amount,installments_count,scenario_type,rule_snapshot,status,valid_until,preparation_minutes,review_minutes,response_minutes,created_at")
+        .eq("lead_id", id)
+        .eq("organization_id", identity.organizationId)
+        .order("created_at", { ascending: false })
+        .limit(50),
+      identity.supabase
+        .from("lead_assignment_reservations")
+        .select("id,broker_id,status,reserved_at,expires_at,accepted_at,released_at,release_reason")
+        .eq("lead_id", id)
+        .eq("organization_id", identity.organizationId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      lead.development_id
+        ? identity.supabase
+          .from("properties")
+          .select("id,title,price,city,state,bedrooms,bathrooms,parking_spaces,area,status,development_id")
+          .eq("organization_id", identity.organizationId)
+          .eq("development_id", lead.development_id)
+          .limit(500)
+        : identity.supabase
+          .from("properties")
+          .select("id,title,price,city,state,bedrooms,bathrooms,parking_spaces,area,status,development_id")
+          .eq("organization_id", identity.organizationId)
+          .limit(100),
+      identity.supabase
+        .from("lead_experience_signals")
+        .select("id,signal_type,severity,confidence,evidence,recommendation,status,decision_reason,decided_at,created_at")
         .eq("lead_id", id)
         .eq("organization_id", identity.organizationId)
         .order("created_at", { ascending: false })
         .limit(50),
     ]);
 
-    if (oportunidadesResult.error) {
-      logger.warn("lead.opportunities.read_failed", { leadId: id, code: oportunidadesResult.error.code });
-    }
-
-    // As propostas da fase 37 vivem em commercial_simulations (a fase acrescentou
-    // status, marcos e os três tempos àquela tabela). Esta rota devolvia
-    // `proposals: []` cravado — a tela do lead tem o tipo completo, renderiza
-    // preparação/revisão/resposta e nunca teve o que mostrar. É o mesmo padrão
-    // do relógio que não fechava: a peça existe, a ligação não.
-    //
-    // Banco sem a fase 37 (relação ou coluna ausente) devolve lista vazia com
-    // aviso, em vez de derrubar a ficha inteira.
-    const COLUNAS_DE_PROPOSTA =
-      "id,status,property_price,valid_until,review_requested_at,approved_at,sent_at,responded_at,expired_at,preparation_minutes,review_minutes,response_minutes,response_note,rule_snapshot,created_at";
-    const propostas = await admin
-      .from("commercial_simulations")
-      .select(COLUNAS_DE_PROPOSTA)
-      .eq("lead_id", id)
-      .eq("organization_id", identity.organizationId)
-      .order("created_at", { ascending: false })
-      .limit(50);
-    const propostasMensuraveis = !propostas.error
-      || !(isMissingColumn(propostas.error) || isMissingRelation(propostas.error));
-    if (propostas.error && propostasMensuraveis) {
-      logger.warn("lead.proposals.read_failed", { leadId: id, code: propostas.error.code });
-    }
-
-    /**
-     * ── OS EVENTOS DE CAMPANHA ERAM DESCARTADOS ────────────────────────────
-     *
-     * `campaignEvents: []` estava cravado no perfil unificado — três linhas abaixo
-     * do comentário que diz "zero em cima de ausência é o erro que esta rota já
-     * cometia". A lição estava escrita e o defeito logo ali.
-     *
-     * Medido em 2026-07-30: `campaign_events` tem 24 linhas, TODAS com `lead_id`
-     * — 21 sinais de qualificação e 3 de criação. Não era ausência de dado: era
-     * dado real jogado fora antes de chegar na tela.
-     *
-     * Relação ausente degrada para lista vazia com aviso, como as outras leituras
-     * desta rota — o que não pode acontecer é o zero silencioso voltar.
-     */
-    const eventosDeCampanha = await admin
-      .from("campaign_events")
-      .select("id,campaign_id,event_type,source,value,currency,occurred_at,created_at")
-      .eq("lead_id", id)
-      .eq("organization_id", identity.organizationId)
-      .order("occurred_at", { ascending: false, nullsFirst: false })
-      .limit(50);
-    const campanhaMensuravel =
-      !eventosDeCampanha.error
-      || !(isMissingColumn(eventosDeCampanha.error) || isMissingRelation(eventosDeCampanha.error));
-    if (eventosDeCampanha.error && campanhaMensuravel) {
-      logger.warn("lead.campaign_events.read_failed", { leadId: id, code: eventosDeCampanha.error.code });
-    }
-
-    // Reserva pendente de aceite (fase 58). Relação ausente não derruba a ficha.
-    const reserva = await admin
-      .from("lead_assignment_reservations")
-      .select("id,lead_id,broker_id,status,reserved_at,expires_at,accepted_at")
-      .eq("lead_id", id)
-      .eq("organization_id", identity.organizationId)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (reserva.error && !isMissingRelation(reserva.error)) {
-      logger.warn("lead.reservation.read_failed", { leadId: id, code: reserva.error.code });
-    }
-
     const eventRows = (eventResult.data ?? []) as JsonRow[];
-    const authorIds = [...new Set(eventRows.map((row) => String(row.created_by || "")).filter(Boolean))];
+    const activityRows = (activityResult.data ?? []) as JsonRow[];
+    const authorIds = [...new Set([
+      ...eventRows.map((row) => String(row.created_by || "")).filter(Boolean),
+      ...activityRows.map((row) => String(row.user_id || "")).filter(Boolean),
+    ])];
     const { data: authors } = authorIds.length
-      ? await admin.from("profiles").select("id,name").eq("organization_id", identity.organizationId).in("id", authorIds)
+      ? await identity.supabase.from("profiles").select("id,name").eq("organization_id", identity.organizationId).in("id", authorIds)
       : { data: [] as Array<{ id: string; name: string | null }> };
     const authorNames = new Map((authors ?? []).map((profile) => [profile.id, profile.name || "Equipe Atlas"]));
-    const activities = eventRows.map((row) => ({
-      ...mapLiveLeadEvent(row),
-      authorName: row.created_by ? authorNames.get(String(row.created_by)) || "Equipe Atlas" : "Automação Atlas",
-    }));
+    const activities = [
+      ...activityRows.map((row) => ({
+        id: row.id,
+        type: row.type,
+        title: row.title,
+        description: row.description,
+        metadata: row.metadata,
+        occurred_at: row.occurred_at,
+        authorName: row.user_id ? authorNames.get(String(row.user_id)) || "Equipe Atlas" : "Automação Atlas",
+        source: "activities",
+      })),
+      ...eventRows.map((row) => ({
+        ...mapLiveLeadEvent(row),
+        authorName: row.created_by ? authorNames.get(String(row.created_by)) || "Equipe Atlas" : "Automação Atlas",
+        source: "lead_events",
+      })),
+    ].sort((left, right) => Date.parse(String(right.occurred_at || "")) - Date.parse(String(left.occurred_at || "")));
+    const conversations = (conversationResult.data ?? []) as JsonRow[];
+    const conversationIds = conversations.map((conversation) => String(conversation.id || "")).filter(Boolean);
+    const messageResult = conversationIds.length
+      ? await identity.supabase.from("messages")
+        .select("id,conversation_id,direction,channel,status,content,sent_at,delivered_at,read_at,created_at")
+        .eq("organization_id", identity.organizationId)
+        .in("conversation_id", conversationIds)
+        .order("created_at", { ascending: false })
+        .limit(250)
+      : { data: [] as JsonRow[], error: null };
+    const messages = (messageResult.data ?? []) as JsonRow[];
+    const opportunities = (opportunityResult.data ?? []) as JsonRow[];
     const tasks = (taskResult.data ?? []).map((task) => ({
       ...task,
       due_at: task.due_date ?? task.created_at ?? null,
       assigned_to: task.user_id ?? null,
     }));
-    const openTasks = tasks.filter((task) => !tarefaEncerrada(task.status));
+    const openTasks = tasks.filter((task) => !["done", "concluida", "concluído", "completed", "cancelado"].includes(String(task.status || "").toLowerCase()));
     const completeness = assessLeadCompleteness(completenessInput(lead), activities.length > 0);
     const inconsistencies = [
       lead.budget_min != null && lead.budget_max != null && Number(lead.budget_min) > Number(lead.budget_max) ? "Orçamento mínimo maior que o máximo" : null,
@@ -211,59 +208,78 @@ export async function GET(request: Request, context: RouteContext) {
     ].filter((value): value is string => Boolean(value));
     const missing = completeness.fields.filter((field) => !field.complete).map(({ key, label }) => ({ key, label }));
     const owner = ownerResult.data ? mapLegacyProfile(ownerResult.data as JsonRow) : null;
-    const project = projectResult.data ?? null;
+    const development = developmentResult.data ?? null;
+    const campaign = campaignLookupResult.data ?? null;
+    const unreadMessages = conversations.reduce((total, conversation) => total + Number(conversation.unread_count || 0), 0);
+    const inboundMessages = messages.filter((message) => String(message.direction || "").toLowerCase() === "inbound").length;
+    const outboundMessages = messages.filter((message) => String(message.direction || "").toLowerCase() === "outbound").length;
+    const channels = [...new Set([
+      ...conversations.map((conversation) => String(conversation.channel || "")).filter(Boolean),
+      ...messages.map((message) => String(message.channel || "")).filter(Boolean),
+    ])];
+    const lastMessageAt = messages[0]?.sent_at
+      || messages[0]?.created_at
+      || conversations[0]?.last_message_at
+      || null;
+    const communications = {
+      conversations: conversations.length,
+      messages: messages.length,
+      inbound: inboundMessages,
+      outbound: outboundMessages,
+      unread: unreadMessages,
+      channels,
+      lastMessageAt,
+    };
+    const conversationsWithMessages = conversations.map((conversation) => {
+      const conversationMessages = messages.filter((message) => message.conversation_id === conversation.id);
+      return {
+        ...conversation,
+        messageCount: conversationMessages.length,
+        lastMessage: conversationMessages[0] ?? null,
+      };
+    });
     const nextTask = openTasks[0];
     const nextAction = typeof lead.next_action_label === "string" ? lead.next_action_label : "Validar interesse atual e combinar a próxima ação com data.";
-
-    // Fase 100 · Sinais de atenção proativos para este lead específico (etapa
-    // parada, follow-up vencido, quente sem contato recente). Mesma função
-    // usada em broker-daily e no contexto do Copilot — nada duplicado aqui.
-    const attentionSignals = await computeAttentionSignalsForLead(admin, identity.organizationId, {
-      id: String(lead.id),
-      status: String(lead.status || "novo"),
-      score: Number(lead.score || 0),
-      temperature: typeof lead.temperature === "string" ? lead.temperature : null,
-      createdAt: typeof lead.created_at === "string" ? lead.created_at : null,
-    });
+    let proposals = (proposalResult.data ?? []) as JsonRow[];
+    let proposalMeasurementStatus = "measured";
+    if (proposalResult.error) {
+      const fallback = await identity.supabase
+        .from("commercial_simulations")
+        .select("id,property_id,property_price,down_payment,financed_balance,installment_amount,installments_count,scenario_type,rule_snapshot,status,valid_until,created_at")
+        .eq("lead_id", id)
+        .eq("organization_id", identity.organizationId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      proposals = (fallback.data ?? []) as JsonRow[];
+      proposalMeasurementStatus = fallback.error ? "unavailable" : "awaiting-ddl";
+    }
 
     return NextResponse.json({
       lead,
       activities,
-      opportunities: oportunidadesResult.data ?? [],
-      // `?? []` sozinho recriaria o defeito: leitura que FALHOU viraria zero, e
-      // zero silencioso é o que a tela lê como "sem oportunidade". A tela precisa
-      // distinguir "nenhuma" de "não deu para medir" — mesma disciplina das
-      // propostas, logo acima.
-      opportunitiesMensuraveis: !oportunidadesResult.error,
-      attentionSignals: attentionSignals.map((signal) => ({
-        kind: signal.kind,
-        severity: signal.severity,
-        reason: signal.reason,
-        detail: signal.detail,
-        since: signal.since,
-        metric: signal.metric,
-      })),
-      proposals: propostas.data ?? [],
-      // A tela precisa distinguir "nenhuma proposta" de "este banco não guarda
-      // proposta". Zero em cima de ausência é o erro que esta rota já cometia.
-      proposalsMensuraveis: propostasMensuraveis,
+      properties: propertyResult.data ?? [],
+      opportunities,
+      experienceSignals: experienceSignalResult.data ?? [],
+      proposals,
       unifiedProfile: {
-        conversations: [],
+        conversations: conversationsWithMessages,
         tasks,
-        campaignEvents: eventosDeCampanha.data ?? [],
-        /** `false` = a leitura FALHOU. Lista vazia com isto `true` é ausência de verdade. */
-        campaignEventsMensuraveis: campanhaMensuravel,
+        campaignEvents: [],
         historicalMemories: [],
-        sources: ["CRM", ...(lead.import_batch_id ? ["Base histórica"] : []), ...(activities.length ? ["Histórico comercial"] : [])],
+        sources: [
+          "CRM",
+          ...(lead.import_batch_id ? ["Base histórica"] : []),
+          ...(activities.length ? ["Histórico comercial"] : []),
+          ...(conversations.length ? ["Comunicações"] : []),
+          ...(campaign ? ["Campanha"] : []),
+        ],
       },
       relationshipContext: {
         owner,
-        development: project,
-        campaign: null,
-        communications: { conversations: 0, messages: 0, inbound: 0, outbound: 0, unread: 0, channels: [], lastMessageAt: null },
-        // A contagem também era zero cravado — e é ela que a tela mostra no
-        // resumo de origem, ao lado da lista.
-        origin: { source: lead.source || "Não informada", createdAt: lead.created_at || null, campaignEvents: (eventosDeCampanha.data ?? []).length, historicalMemories: lead.import_batch_id ? 1 : 0 },
+        development,
+        campaign,
+        communications,
+        origin: { source: lead.source || "Não informada", createdAt: lead.created_at || null, campaignEvents: 0, historicalMemories: lead.import_batch_id ? 1 : 0 },
       },
       dataQuality: {
         completeness: completeness.completeness,
@@ -275,35 +291,34 @@ export async function GET(request: Request, context: RouteContext) {
         recommendation: inconsistencies[0] || completeness.nextQuestion?.question || "Perfil consistente e pronto para personalização.",
         nextQuestion: completeness.nextQuestion,
         questions: completeness.questions,
-        calculation: "weighted_commercial_completeness_live_v2",
+        calculation: "weighted_commercial_completeness_v1",
+        sourceContract: "live_v2",
       },
       contactBriefing: {
-        unreadMessages: 0,
+        unreadMessages,
         openTasks: openTasks.length,
-        activeOpportunities: 0,
-        lastInteractionAt: activities[0]?.occurred_at || lead.last_interaction_at || null,
+        activeOpportunities: opportunities.filter((opportunity) => !opportunity.won_at && !["won", "lost", "ganho", "perdido"].includes(String(opportunity.stage || "").toLowerCase())).length,
+        lastInteractionAt: lastMessageAt || activities[0]?.occurred_at || lead.last_interaction_at || null,
         context: activities[0]?.description || activities[0]?.title || "Ainda não há interação registrada com este cliente.",
         actions: [nextTask?.due_at ? `Concluir a próxima tarefa prevista para ${new Date(String(nextTask.due_at)).toLocaleDateString("pt-BR")}.` : null, nextAction].filter((value): value is string => Boolean(value)).slice(0, 3),
         generatedBy: "Atlas Intelligence local",
         requiresApproval: true,
       },
-      // A reserva de aceite da fase 58 vinha cravada em null. A tela do lead tem o
-      // bloco inteiro pronto — "Reserva aguardando aceite", contagem e o botão
-      // "Aceitar lead" — e ele nunca aparecia, porque nada era buscado.
-      assignmentReservation: reserva.data ?? null,
-      // O relógio de primeiro contato, exposto para a tela poder mostrar quanto
-      // falta e oferecer o registro em 1 clique. `mensuravel: false` significa
-      // "este banco não mede", que é diferente de "ninguém contatou ainda".
-      firstContactSla: {
-        mensuravel: slaMensuravel,
-        prazo: lead.first_contact_due_at ?? null,
-        contatadoEm: lead.first_contacted_at ?? null,
-        minutosDePrazo: lead.first_contact_sla_minutes ?? null,
-        minutosDeResposta: lead.first_response_minutes ?? null,
-        dentroDoPrazo: lead.first_contact_sla_met ?? null,
-      },
+      assignmentReservation: assignmentReservationResult.data ?? null,
       projectOptions: projectOptionsResult.data ?? [],
-      compatibility: { source: "live_v2", history: "lead_events", projects: "crm_projects" },
+      compatibility: {
+        source: "live_v2",
+        history: "lead_events",
+        projects: "crm_projects",
+        proposalMeasurements: {
+          status: proposalMeasurementStatus,
+          fields: [
+            "preparation_minutes",
+            "review_minutes",
+            "response_minutes",
+          ],
+        },
+      },
     });
   } catch (error) {
     logger.warn("lead.intelligence.read_failed", { error: error instanceof Error ? error.message : String(error) });
@@ -311,11 +326,7 @@ export async function GET(request: Request, context: RouteContext) {
   }
 }
 
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  // A escrita mais frequente do CRM. Teto alto o bastante para o corretor
-    // trabalhar sem tropeçar, e baixo o bastante para barrar laço de UI.
-  const rate = enforceRateLimit(request, { limit: 60, windowMs: 60_000, scope: "lead.patch" });
-  if (!rate.ok) return rate.response;
+export async function PATCH(request: Request, context: RouteContext) {
   try {
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;
@@ -324,35 +335,20 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const admin = getSupabaseAdmin();
     const { data: currentLead } = await admin
       .from("leads")
-      /**
-       * `name`, `email` e `phone` entram na leitura porque `liveLeadUpdatePayload`
-       * preserva o valor ATUAL quando o campo não vem no corpo — e ele só pode
-       * preservar o que estiver aqui. Sem os três, um PATCH parcial montava um
-       * payload sem nome nem contato, e a validação logo abaixo o recusava com
-       * 400: "Informe um nome válido".
-       *
-       * Achado executando, não lendo: o contrato da regra pura estava verde e a
-       * rota devolvia 400 em todas as chamadas de um campo só.
-       */
-      .select("name,email,phone,status,source,temperature,score_ia,budget_min,budget_max,preferred_bedrooms,preferred_neighborhoods,notes")
+      .select("status,source")
       .eq("id", id)
       .eq("organization_id", identity.organizationId)
       .maybeSingle();
     if (!currentLead) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
 
-    const previousStatus = canonicalLeadStatus(currentLead.status);
     const nextStatus = canonicalLeadStatus(body.status || currentLead.status);
     const notes = String(body.notes || "").trim();
     if (nextStatus === "comprou_outro" && notes.length < 10) {
       return NextResponse.json({ error: "Descreva o acompanhamento da compra em outro lugar no campo de observações." }, { status: 400 });
     }
-    // O registro atual entra na conta para que campo ausente no PATCH preserve o
-    // valor gravado (e o score seja recalculado sobre o lead consolidado, não
-    // sobre o pedaço que a tela enviou).
     const update = liveLeadUpdatePayload(
       { ...body, source: currentLead.source, status: nextStatus },
       currentLead.status,
-      currentLead as JsonRow,
     );
     if (!update.name || String(update.name).length < 2) return NextResponse.json({ error: "Informe um nome válido." }, { status: 400 });
     if (!update.phone && !update.email) return NextResponse.json({ error: "Informe pelo menos telefone ou e-mail." }, { status: 400 });
@@ -360,30 +356,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "O orçamento mínimo não pode superar o máximo." }, { status: 400 });
     }
 
-    // Guarda de concorrência espelhando a do Kanban: sem o `.eq("status", …)`,
-    // duas requisições simultâneas liam o mesmo status anterior e gravavam DOIS
-    // eventos de aprendizado para a mesma transição, inflando aquele desfecho.
-    // Só a requisição que de fato mudou a linha ensina alguma coisa.
-    const guarded = admin
+    const { data: stored, error } = await admin
       .from("leads")
       .update(update)
       .eq("id", id)
-      .eq("organization_id", identity.organizationId);
-    // `.eq(coluna, null)` não casa em SQL; linha sem status precisa de `.is`.
-    const { data: stored, error } = await (currentLead.status == null
-      ? guarded.is("status", null)
-      : guarded.eq("status", currentLead.status))
+      .eq("organization_id", identity.organizationId)
       .select(LIVE_LEAD_SELECT)
-      .maybeSingle();
-    if (error) return NextResponse.json({ error: "Não foi possível salvar este lead agora." }, { status: 400 });
-    if (!stored) {
-      return NextResponse.json(
-        { error: "A etapa deste lead mudou em outra sessão. Recarregue a ficha antes de salvar.", code: "LEAD_STATUS_CONFLICT" },
-        { status: 409 },
-      );
-    }
-    const storedRow = stored as unknown as JsonRow;
-    const lead = mapLegacyLead(storedRow);
+      .single();
+    if (error || !stored) return NextResponse.json({ error: "Não foi possível salvar este lead agora." }, { status: 400 });
+    const lead = mapLegacyLead(stored as unknown as JsonRow);
     const event = await recordLiveLeadEvent(admin, {
       organizationId: identity.organizationId,
       leadId: id,
@@ -391,56 +372,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       type: "lead_updated",
       title: "Dados do lead atualizados",
       description: "Perfil comercial revisado no Lead 360.",
-      metadata: { previousStatus, status: lead.status },
+      metadata: { previousStatus: canonicalLeadStatus(currentLead.status), status: lead.status },
     });
     if (event.error) logger.warn("lead.update_event_failed", { leadId: id, message: event.error.message });
-
-    // Memória de operação: metade da operação move o lead no Kanban e a outra
-    // metade troca o status aqui na ficha. Instrumentar só um dos caminhos
-    // produziria amostra torta — e verba decidida sobre amostra torta custa mais
-    // caro do que não decidir. O núcleo puro filtra o que não é desfecho nem
-    // avanço (retrocesso, arquivamento, status inalterado).
-    const learningOutcome = commercialOutcomeFromStages(previousStatus, nextStatus);
-    if (learningOutcome) {
-      const [learning] = await Promise.allSettled([
-        recordCommercialLearningEvent(admin, {
-          organizationId: identity.organizationId,
-          leadId: id,
-          actorId: identity.userId,
-          outcome: learningOutcome,
-          fromStage: previousStatus,
-          // O fato nasce do que foi PERSISTIDO, não da intenção da requisição:
-          // o update é condicionado ao status lido, então `storedRow.status` é a
-          // única etapa que existe de verdade no banco neste instante.
-          toStage: canonicalLeadStatus(storedRow.status) || nextStatus,
-          // A Lead 360 não coleta motivo estruturado de descarte. null aqui
-          // significa "não coletado por este caminho" — e `writePath: lead_360`
-          // no metadata é o que separa isso de "o corretor não informou".
-          reasonKey: null,
-          source: typeof storedRow.source === "string" ? storedRow.source : null,
-          campaignId: storedRow.campaign_id == null ? null : String(storedRow.campaign_id),
-          writePath: "lead_360",
-        }),
-      ]);
-      const learningError: unknown = learning.status === "rejected" ? learning.reason : learning.value.error;
-      if (learningError) {
-        // Mesma regra do Kanban: schema ausente é erro permanente e sobe como
-        // erro; o resto é aviso.
-        const drift = learning.status === "fulfilled" && learning.value.drift === true;
-        const payload = {
-          leadId: id,
-          outcome: learningOutcome,
-          table: "ai_learning_events",
-          message: learningError instanceof Error
-            ? learningError.message
-            : typeof (learningError as { message?: unknown })?.message === "string"
-              ? String((learningError as { message: string }).message)
-              : String(learningError),
-        };
-        if (drift) logger.error("lead.learning_event_schema_drift", payload);
-        else logger.warn("lead.learning_event_failed", payload);
-      }
-    }
     return NextResponse.json({ lead });
   } catch (error) {
     logger.warn("lead.intelligence.update_failed", { error: error instanceof Error ? error.message : String(error) });
@@ -635,52 +569,141 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ activity: mapLiveLeadEvent(event.data as JsonRow) }, { status: 201 });
     }
 
-    if (body.action === "accept_assignment") {
-      if (lead.assigned_user_id && lead.assigned_user_id !== identity.userId) {
-        return NextResponse.json({ error: "Esta lead já possui um responsável. Solicite a transferência ao gestor." }, { status: 409 });
+    if (body.action === "property_presentation") {
+      const propertyIds = Array.isArray(body.propertyIds)
+        ? [...new Set(body.propertyIds.filter((value): value is string =>
+          typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value),
+        ))].slice(0, 3)
+        : [];
+      if (!propertyIds.length) {
+        return NextResponse.json({ error: "Selecione de um a três imóveis." }, { status: 400 });
       }
+      const { data: properties, error: propertyError } = await admin
+        .from("properties")
+        .select("id,title,status")
+        .eq("organization_id", identity.organizationId)
+        .in("id", propertyIds);
+      if (propertyError || properties?.length !== propertyIds.length) {
+        return NextResponse.json({ error: "Um ou mais imóveis não pertencem ao portfólio acessível." }, { status: 404 });
+      }
+      if (properties.some((property) => !isPropertyAvailable(property.status))) {
+        return NextResponse.json({
+          error: "O estoque mudou. Atualize a seleção antes de registrar a apresentação.",
+        }, { status: 409 });
+      }
+      const { data: activity, error } = await admin
+        .from("activities")
+        .insert({
+          organization_id: identity.organizationId,
+          lead_id: id,
+          user_id: identity.userId,
+          type: "property_presentation",
+          title: "Imóveis apresentados ao cliente",
+          description: `${properties.length} ${properties.length === 1 ? "imóvel foi apresentado" : "imóveis foram apresentados"} com aprovação humana.`,
+          metadata: {
+            propertyIds,
+            channel: String(body.channel || "whatsapp"),
+            source: "ai_matching_studio",
+            requiresHumanApproval: true,
+          },
+          occurred_at: new Date().toISOString(),
+        })
+        .select("id,user_id,title,description,type,metadata,occurred_at")
+        .single();
+      if (error || !activity) {
+        return NextResponse.json({
+          error: /indisponível|estoque|portfolio|portfólio/i.test(error?.message ?? "")
+            ? "O estoque mudou. Atualize a seleção antes de registrar a apresentação."
+            : "Não foi possível registrar a apresentação agora.",
+        }, { status: 409 });
+      }
+      logger.info("lead.property_presentation_recorded", {
+        leadId: id,
+        actorId: identity.userId,
+        propertyCount: propertyIds.length,
+      });
+      return NextResponse.json({ activity }, { status: 201 });
+    }
 
-      // O aceite passa por accept_lead_assignment, que é atômico: trava a
-      // reserva, confere validade e dono único, marca 'accepted' e libera a
-      // capacidade — tudo numa transação.
-      //
-      // O caminho anterior atribuía a lead na mão e NÃO fechava a reserva. Ela
-      // ficava 'pending' para sempre e o worker de expiração acabaria devolvendo
-      // uma lead que o corretor já tinha aceitado.
-      const aceite = await admin.rpc("accept_lead_assignment", {
+    if (body.action === "property_feedback") {
+      const propertyId = typeof body.propertyId === "string" && /^[0-9a-f-]{36}$/i.test(body.propertyId)
+        ? body.propertyId
+        : null;
+      const signal = body.signal === "interested" || body.signal === "rejected" ? body.signal : null;
+      const allowedReasons = new Set(["price", "location", "typology", "payment", "delivery", "product", "other"]);
+      const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim() : null;
+      if (!propertyId || !signal) {
+        return NextResponse.json({ error: "Informe o imóvel e o retorno comercial." }, { status: 400 });
+      }
+      if (signal === "rejected" && (!reason || !allowedReasons.has(reason))) {
+        return NextResponse.json({ error: "Informe o principal motivo da não aderência." }, { status: 400 });
+      }
+      const { data: presentations, error: presentationError } = await admin
+        .from("activities")
+        .select("id")
+        .eq("organization_id", identity.organizationId)
+        .eq("lead_id", id)
+        .eq("type", "property_presentation")
+        .contains("metadata", { propertyIds: [propertyId] })
+        .limit(1);
+      if (presentationError || !presentations?.length) {
+        return NextResponse.json({
+          error: "Registre a apresentação deste imóvel antes de salvar o retorno.",
+          propertyIds: [propertyId],
+        }, { status: 409 });
+      }
+      const description = signal === "interested"
+        ? "Cliente demonstrou interesse no imóvel apresentado."
+        : `Cliente rejeitou o imóvel apresentado. Motivo principal: ${reason}.`;
+      const { data: activity, error } = await admin
+        .from("activities")
+        .insert({
+          organization_id: identity.organizationId,
+          lead_id: id,
+          user_id: identity.userId,
+          type: "property_feedback",
+          title: signal === "interested" ? "Interesse confirmado" : "Imóvel não aderente",
+          description,
+          metadata: { propertyId, signal, reason, source: "ai_matching_studio" },
+          occurred_at: new Date().toISOString(),
+        })
+        .select("id,user_id,title,description,type,metadata,occurred_at")
+        .single();
+      if (error || !activity) {
+        return NextResponse.json({
+          error: /apresentação prévia/i.test(error?.message ?? "")
+            ? "Registre a apresentação deste imóvel antes de salvar o retorno."
+            : "Não foi possível registrar o retorno agora.",
+        }, { status: 409 });
+      }
+      logger.info("lead.property_feedback_recorded", {
+        leadId: id,
+        actorId: identity.userId,
+        propertyId,
+        signal,
+        reason,
+      });
+      return NextResponse.json({ activity }, { status: 201 });
+    }
+
+    if (body.action === "accept_assignment") {
+      const accepted = await admin.rpc("accept_lead_assignment", {
         p_actor_id: identity.userId,
         p_organization_id: identity.organizationId,
         p_lead_id: id,
       });
-
-      if (!aceite.error) {
-        await recordLiveLeadEvent(admin, { organizationId: identity.organizationId, leadId: id, actorId: identity.userId, type: "assignment_accepted", title: "Responsabilidade aceita", description: "Lead assumida pelo corretor no Atlas." });
-        return NextResponse.json({ reservation: aceite.data });
+      if (accepted.error || !accepted.data) {
+        const reason = accepted.error?.message ?? "";
+        const error = /expired/i.test(reason)
+          ? "O prazo desta reserva terminou. Atualize a tela para consultar a fila."
+          : /not_found/i.test(reason)
+            ? "Não existe uma reserva pendente para este corretor."
+            : /owner_changed/i.test(reason)
+              ? "O responsável mudou antes do aceite. Atualize a tela."
+              : "Não foi possível confirmar o aceite agora.";
+        return NextResponse.json({ error }, { status: 409 });
       }
-
-      // Erros de regra vêm da própria RPC e devem chegar ao corretor com nome.
-      const motivo = String(aceite.error.message || "");
-      if (/reservation_not_found/.test(motivo) && lead.assigned_user_id === identity.userId) {
-        return NextResponse.json({ error: "Esta lead já está com você — não há reserva pendente para aceitar." }, { status: 409 });
-      }
-      if (/reservation_expired/.test(motivo)) {
-        return NextResponse.json({ error: "A reserva expirou e a lead voltou para a distribuição." }, { status: 409 });
-      }
-
-      // Banco sem a fase 58: o aceite continua possível pelo caminho simples.
-      const semReserva = aceite.error.code === "42883" || aceite.error.code === "PGRST202" || /reservation_not_found/.test(motivo);
-      if (!semReserva) {
-        logger.warn("lead.assignment_accept_failed", { leadId: id, code: aceite.error.code, message: motivo });
-        return NextResponse.json({ error: "Não foi possível aceitar a lead agora." }, { status: 409 });
-      }
-      if (!lead.assigned_user_id) {
-        // As DUAS colunas de dono. Aceitar a lead gravando só uma deixava o
-        // corretor dono numa tela e a lead órfã na outra — logo depois de ele
-        // clicar em "assumir", que é o pior momento possível para duvidar.
-        await admin.from("leads").update({ assigned_to: identity.userId, assigned_user_id: identity.userId }).eq("id", id).eq("organization_id", identity.organizationId).is("assigned_user_id", null);
-      }
-      await recordLiveLeadEvent(admin, { organizationId: identity.organizationId, leadId: id, actorId: identity.userId, type: "assignment_accepted", title: "Responsabilidade aceita", description: "Lead assumida pelo corretor no Atlas." });
-      return NextResponse.json({ reservation: { lead_id: id, broker_id: identity.userId, status: "accepted", accepted_at: new Date().toISOString() } });
+      return NextResponse.json({ assignmentReservation: accepted.data });
     }
 
     if (body.action === "opportunity") {

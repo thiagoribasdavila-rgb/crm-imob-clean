@@ -1,0 +1,51 @@
+{
+  "phase": 209,
+  "name": "Authorized Release Gate Execution",
+  "status": "implemented",
+  "objective": "Consumir uma autorização válida uma única vez, executar apenas handlers confiáveis para os gates autorizados em isolamento local e registrar recibos assinados, sem aprovar ou promover a release.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "executionPolicyHash": "b81d2a352eeefd7e7e0ac6446bfefdb5b2ca02b810209d6103c3929608482cfb",
+    "trustedGateExecutorsConfigured": 0,
+    "trustedGateHandlersConfigured": 0,
+    "humanDecisionRegisterAvailable": false,
+    "executionAuthorizationAvailable": false,
+    "authorizationConsumed": false,
+    "executionRegisterAvailable": false,
+    "executedGateCount": 0,
+    "failedGateCount": 0,
+    "gatesExecuted": false,
+    "releaseApproved": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "executionRules": {
+    "authorizationMustBeValid": true,
+    "atomicOneShotClaimRequired": true,
+    "exactAuthorizedTargetSetRequired": true,
+    "trustedHandlerCatalogRequired": true,
+    "executorRole": "release-gate-executor",
+    "isolationMode": "ephemeral-local-sandbox",
+    "maximumGateDurationSeconds": 900,
+    "networkAccessAllowed": false,
+    "databaseMutationAllowed": false,
+    "arbitraryCommandExecutionAllowed": false
+  },
+  "safety": {
+    "remoteAccess": false,
+    "databaseMutation": false,
+    "migrationApplied": false,
+    "gateExecution": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 210,
+    "name": "Release Gate Result Adjudication",
+    "objective": "Submeter os recibos assinados da execução a uma adjudicação humana independente antes de qualquer aprovação, atualização de memória, pacote, deploy ou promoção."
+  }
+}

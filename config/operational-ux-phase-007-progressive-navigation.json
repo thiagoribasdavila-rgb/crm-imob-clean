@@ -1,0 +1,20 @@
+{
+  "phase": 7,
+  "objective": "Aplicar divulgação progressiva aos destinos menos frequentes sem reduzir acesso.",
+  "alwaysVisible": ["roleRoutine", "favorites", "currentSecondaryRoute"],
+  "secondaryAccess": ["more", "search", "deepLink"],
+  "requirements": {
+    "searchUsesAllPermittedRoutes": true,
+    "currentSecondaryRouteIdentified": true,
+    "noDuplicateDestinations": true,
+    "rbacPreserved": true
+  },
+  "infrastructureMutation": {
+    "schema": false,
+    "data": false,
+    "rls": false,
+    "authentication": false,
+    "integrations": false,
+    "release": false
+  }
+}

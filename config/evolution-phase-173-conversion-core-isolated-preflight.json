@@ -1,0 +1,75 @@
+{
+  "phase": 173,
+  "name": "Conversion Core Isolated Preflight",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Comprovar por contratos e rastreabilidade estática que os dados essenciais permanecem contínuos entre entrada, Lead 360, pipeline e tarefas, sem tocar na operação real.",
+  "evidenceLevel": "static_and_contract_preflight",
+  "runtimeHomologated": false,
+  "continuityChain": [
+    {
+      "id": "lead-intake-persists-operational-context",
+      "source": "app/api/v1/leads/route.ts",
+      "requiredEvidence": ["organization_id", "assigned_user_id", "project_id", "status", "next_action"],
+      "status": "verified"
+    },
+    {
+      "id": "legacy-adapter-preserves-canonical-contract",
+      "source": "lib/compat/legacy-v2.ts",
+      "requiredEvidence": ["assigned_to", "development_id", "next_action_label", "next_action_at"],
+      "status": "verified"
+    },
+    {
+      "id": "lead360-resolves-tenant-owner-project-and-tasks",
+      "source": "app/api/v1/leads/[id]/route.ts",
+      "requiredEvidence": ["organization_id", "lead.assigned_to", "lead.development_id", "tasks"],
+      "status": "verified"
+    },
+    {
+      "id": "pipeline-protects-concurrent-movement-and-audit",
+      "source": "app/api/v1/pipeline/route.ts",
+      "requiredEvidence": ["expectedFromStage", "organization_id", "pipeline_history", "rollback"],
+      "status": "verified"
+    },
+    {
+      "id": "tasks-inherit-lead-owner-and-record-outcome",
+      "source": "app/api/v1/tasks/route.ts",
+      "requiredEvidence": ["assigned_user_id", "organization_id", "lead_id", "due_date", "lead_events"],
+      "status": "verified"
+    }
+  ],
+  "contractEvidence": [
+    "tests/contracts/conversion-core-canonical-inventory.test.mjs",
+    "tests/contracts/lead360-single-decision-flow.test.mjs",
+    "tests/contracts/distribution-roster.test.mjs",
+    "tests/contracts/tasks-calendar-focus.test.mjs",
+    "tests/contracts/conversion-core-isolated-preflight.test.mjs"
+  ],
+  "safety": {
+    "productionCredentialsUsed": false,
+    "productionDatabaseTouched": false,
+    "externalIntegrationsCalled": false,
+    "mockDataPromotedAsReal": false,
+    "buildExecuted": false,
+    "zipGenerated": false
+  },
+  "runtimeBlockers": [
+    {
+      "id": "isolated-authenticated-e2e-pending",
+      "reason": "Não há evidência de um ambiente autenticado descartável configurado para executar a jornada sem risco à operação real."
+    },
+    {
+      "id": "source-traceability-missing",
+      "reason": "O diretório canônico atual não contém metadados Git; uma release não pode provar commit de origem até a rastreabilidade ser restaurada."
+    }
+  ],
+  "releaseGate": {
+    "contractsPassed": true,
+    "authenticatedIsolatedRuntimePassed": false,
+    "sourceTraceabilityPassed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Preparar uma prova autenticada em ambiente descartável ou local e restaurar rastreabilidade Git antes do build único do módulo."
+}

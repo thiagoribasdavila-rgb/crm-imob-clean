@@ -1,0 +1,15 @@
+{
+  "phase": 43,
+  "scope": "kanban_command_context_hierarchy",
+  "primarySurface": "stage_command",
+  "secondarySurface": "progressive_context",
+  "closedContextCardRemoved": true,
+  "openContextReadabilityPreserved": true,
+  "keyboardDisclosurePreserved": true,
+  "stageCommandPreserved": true,
+  "cardMovementPreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

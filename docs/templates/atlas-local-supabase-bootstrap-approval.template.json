@@ -1,0 +1,12 @@
+{
+  "schema_version": "atlas.local_supabase_bootstrap_approval.v1",
+  "approved": false,
+  "approver_role": "authorized_operator",
+  "target_kind": "local_configuration_only",
+  "expected_command": "supabase init",
+  "expected_cli_version": "2.109.1",
+  "project_fingerprint": "PREENCHER_COM_O_FINGERPRINT_EXIBIDO_PELO_PREFLIGHT",
+  "expires_at": "PREENCHER_COM_DATA_ISO_FUTURA",
+  "remote_access_allowed": false,
+  "notes": "Este recibo autoriza apenas a criação local de supabase/config.toml. Não autoriza link, start, banco, migration, dados, build ou ZIP."
+}

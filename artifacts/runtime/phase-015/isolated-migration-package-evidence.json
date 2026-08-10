@@ -1,0 +1,40 @@
+{
+  "schema_version": "atlas.isolated_migration_package_evidence.v1",
+  "phase": 15,
+  "status": "migration_package_not_generated",
+  "source": {
+    "canonical_backlog_available": false,
+    "canonical_snapshot_available": false,
+    "approval_receipt_available": false,
+    "approval_scope": null
+  },
+  "package": {
+    "generated": false,
+    "approved_findings": 0,
+    "batches": 0,
+    "executable_sql_generated": false,
+    "migration_file_created": false,
+    "rollback_approved": false
+  },
+  "cli": {
+    "local_cli_detected": true,
+    "version": "2.109.1",
+    "help_inspected": true,
+    "isolated_home_used": true,
+    "linked_command_used": false,
+    "db_url_used": false,
+    "db_push_used": false,
+    "migration_repair_used": false,
+    "local_reset_executed": false
+  },
+  "safety": {
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "live_homologation_touched": false,
+    "business_data_read": false,
+    "auth_user_data_read": false,
+    "migration_applied": false,
+    "build_executed": false,
+    "release_package_created": false
+  }
+}

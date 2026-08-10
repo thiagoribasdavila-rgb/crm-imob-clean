@@ -1,0 +1,31 @@
+{
+  "phase": 156,
+  "name": "Meta Director Approval Packet",
+  "status": "implemented",
+  "objective": "Criar um pacote compacto de decisão para o diretor aprovar teste real, escala ou correção de campanhas Meta com base em evidências do CRM.",
+  "businessImpact": [
+    "Diretor recebe uma visão objetiva antes de escalar campanha.",
+    "Campanhas deixam de ser aprovadas por volume bruto e passam por evidência auditável.",
+    "A operação sabe exatamente o que precisa existir no teste real de lead.",
+    "O aprendizado para Meta/Andromeda fica mais limpo porque depende de sinais comerciais qualificados."
+  ],
+  "technicalScope": [
+    "Adicionar seção de pacote de aprovação na página de campanhas.",
+    "Compactar briefing, evento de otimização, campanha líder e conversão atual.",
+    "Adicionar checklist auditável de evidências mínimas para o teste real.",
+    "Permitir copiar o pacote em JSON para ata, tarefa ou checklist sem acionar nenhuma API externa."
+  ],
+  "validation": [
+    "npm run evolution:phase-156:check",
+    "npm run typecheck",
+    "npm run lint"
+  ],
+  "files": [
+    "app/(crm)/marketing/campaigns/page.tsx",
+    "docs/EVOLUTION_PHASE_156_META_DIRECTOR_APPROVAL_PACKET.md",
+    "scripts/check-evolution-phase-156.mjs",
+    "config/evolution-phase-156-meta-director-approval-packet.json",
+    "config/evolution-program-3000.json",
+    "package.json"
+  ]
+}

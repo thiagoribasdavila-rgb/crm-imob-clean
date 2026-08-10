@@ -1,0 +1,39 @@
+{
+  "phase": 5,
+  "title": "Matriz tela, papel, decisão, responsável, prazo e resultado",
+  "roles": ["director", "superintendent", "manager", "broker"],
+  "canonicalScreens": [
+    "/dashboard",
+    "/leads",
+    "/pipeline",
+    "/tasks",
+    "/agenda",
+    "/developments",
+    "/distribution",
+    "/marketing/campaigns",
+    "/reports"
+  ],
+  "requiredFields": ["decision", "owner", "deadline", "expectedResult", "evidence"],
+  "principles": [
+    "uma tela possui uma decisão principal por papel",
+    "a pessoa responsável permanece explícita",
+    "toda decisão tem prazo legível",
+    "resultado esperado não é confundido com atividade",
+    "o ciclo fecha somente com evidência registrada",
+    "papel desconhecido recebe o escopo de menor privilégio"
+  ],
+  "firstApplication": {
+    "route": "/dashboard",
+    "component": "components/atlas/decision-contract-strip.tsx",
+    "dynamicDecisionSource": "primaryCommand.action"
+  },
+  "scope": {
+    "schemaChanged": false,
+    "recordsChanged": false,
+    "rlsChanged": false,
+    "authChanged": false,
+    "integrationChanged": false,
+    "buildRequired": false,
+    "zipRequired": false
+  }
+}

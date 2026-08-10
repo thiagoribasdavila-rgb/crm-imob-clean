@@ -1,0 +1,19 @@
+{
+  "phase": 146,
+  "name": "Kanban V30 Inline Preview Drawer",
+  "status": "implemented",
+  "area": "pipeline-kanban",
+  "priority": "P1-commercial-decision-speed",
+  "objective": "Permitir que o corretor veja contexto, sinais e próximos passos da oportunidade sem sair do Kanban.",
+  "businessImpact": [
+    "Reduz troca de tela durante o atendimento",
+    "Ajuda o corretor a decidir antes de mover ou abandonar um card",
+    "Conecta ação, Copilot e próximos passos em um único preview",
+    "Preserva o quadro como centro de execução comercial"
+  ],
+  "validation": [
+    "npm run evolution:phase-146:check",
+    "npm run typecheck",
+    "npm run lint"
+  ]
+}

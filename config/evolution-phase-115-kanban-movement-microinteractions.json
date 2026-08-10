@@ -1,0 +1,41 @@
+{
+  "phase": 115,
+  "name": "Kanban Movement Microinteractions",
+  "status": "implemented",
+  "productVersionTrack": "ATLAS_V30_ROADMAP",
+  "objective": "Deixar a movimentação do Kanban mais segura, clara e fluida para o corretor avançar oportunidades sem perder confiança no sistema.",
+  "problemSolved": [
+    "O usuário arrastava cards sem confirmação visual suficiente do destino.",
+    "Movimentos críticos para venda ganha ou perdida podiam acontecer rápido demais.",
+    "O feedback de salvamento e desfazer existia, mas ainda parecia genérico e pouco orientado à operação comercial."
+  ],
+  "implementation": {
+    "screen": "Pipeline / Kanban",
+    "components": [
+      "atlas-kanban-feedback-stack",
+      "atlas-kanban-move-feedback",
+      "atlas-kanban-drag-preview",
+      "atlas-kanban-drop-hint",
+      "data-drop-intent"
+    ],
+    "behavior": [
+      "Prévia fixa durante o arraste com nome da lead e etapa destino",
+      "Área de drop explícita quando a coluna está pronta para receber o card",
+      "Feedback premium para movimento em salvamento e movimento confirmado",
+      "Botão de desfazer mantido com rótulos comerciais claros",
+      "Confirmação antes de marcar venda ganha ou oportunidade perdida",
+      "No mobile, a navegação acompanha automaticamente a etapa destino após o movimento"
+    ]
+  },
+  "expectedImpact": [
+    "Menos erro operacional ao mover oportunidades.",
+    "Mais confiança para usar o Kanban como rotina diária.",
+    "Proteção adicional para relatórios, VGV, comissão e aprendizado da IA.",
+    "Experiência mais moderna e ativa sem alterar a estrutura de banco ou API."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-115:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

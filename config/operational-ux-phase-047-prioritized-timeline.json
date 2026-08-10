@@ -1,0 +1,15 @@
+{
+  "phase": 47,
+  "scope": "lead360_prioritized_timeline",
+  "visibleLimit": 3,
+  "overdueFirst": true,
+  "upcomingSecond": true,
+  "recentContextPreserved": true,
+  "overflowAccessible": true,
+  "fullHistoryPreserved": true,
+  "canonicalDataReused": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

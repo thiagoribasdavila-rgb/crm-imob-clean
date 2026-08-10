@@ -1,0 +1,20 @@
+{
+  "phase": 119,
+  "name": "Kanban Queue Quick Actions",
+  "status": "implemented",
+  "objective": "Transformar a fila inteligente do Kanban em uma área de execução imediata, com ações rápidas para abrir Lead 360, ligar, chamar no WhatsApp, pedir apoio da IA e criar tarefa.",
+  "businessOutcome": "Reduz o tempo entre diagnóstico e ação comercial, facilitando que corretores e gestores tratem oportunidades prioritárias sem navegar por múltiplas telas.",
+  "scope": [
+    "Refatoração da fila inteligente para evitar cartão inteiro clicável com links aninhados",
+    "Ações rápidas por lead: Lead 360, Ligar, WhatsApp, IA e Tarefa",
+    "Fallback visual quando o lead não possui telefone válido",
+    "Preservação do ranking da lente ativa e da experiência responsiva",
+    "Estilo compacto para manter o Kanban limpo e focado em conversão"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-119:check",
+    "requiresTypecheck": true,
+    "requiresLint": true,
+    "buildPolicy": "defer-to-release-close"
+  }
+}

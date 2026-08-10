@@ -1,0 +1,31 @@
+{
+  "phase": 104,
+  "name": "Leads action cockpit",
+  "status": "implemented",
+  "priority": "P1-lead-conversion",
+  "objective": "Transformar a tela de Leads em uma experiência de decisão operacional, destacando a melhor ação da carteira antes da lista e dos filtros.",
+  "businessOutcome": [
+    "reduz tempo do corretor para saber quem contatar agora",
+    "prioriza follow-ups vencidos, leads sem responsável e oportunidades quentes",
+    "mantém filtros, transferência em massa e Lead 360 existentes",
+    "usa IA como orientação explicável, sem executar ações automaticamente"
+  ],
+  "changedAreas": [
+    "app/(crm)/leads/page.tsx",
+    "app/globals.css",
+    "docs/EVOLUTION_PHASE_104_LEADS_ACTION_COCKPIT.md",
+    "scripts/check-evolution-phase-104.mjs",
+    "package.json",
+    "config/evolution-program-3000.json"
+  ],
+  "validation": {
+    "phaseCheck": "npm run evolution:phase-104:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint",
+    "build": "release-gated"
+  },
+  "releasePolicy": {
+    "zipGenerated": false,
+    "reason": "O programa atual empacota apenas em fechamento de release para evitar ZIPs intermediários sem build final."
+  }
+}

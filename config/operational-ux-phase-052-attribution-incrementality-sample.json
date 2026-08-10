@@ -1,0 +1,15 @@
+{
+  "phase": 52,
+  "scope": "attribution_incrementality_sample_separation",
+  "minimumDescriptiveSample": 30,
+  "observedAttributionSeparated": true,
+  "incrementalImpactRequiresExperiment": true,
+  "insufficientSampleExplicit": true,
+  "sufficientSampleDoesNotClaimCausality": true,
+  "liftInvented": false,
+  "automaticCampaignDecision": false,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

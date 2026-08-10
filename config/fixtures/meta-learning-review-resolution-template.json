@@ -1,0 +1,25 @@
+{
+  "schema": "atlas.meta-learning-review-resolution.v1",
+  "status": "pending_resolution",
+  "queueReference": null,
+  "resolution": {
+    "reviewerReference": null,
+    "reviewedAt": null,
+    "outcome": null,
+    "reasonClass": null
+  },
+  "execution": {
+    "memoryReinstated": false,
+    "memoryRevoked": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticResolution": true,
+    "automaticReinstatement": true,
+    "automaticCampaignChanges": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

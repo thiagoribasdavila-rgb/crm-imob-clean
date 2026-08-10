@@ -1,0 +1,30 @@
+{
+  "schema": "atlas.release-gate-evidence-plan.v1",
+  "compositionId": "conversion-core-candidate",
+  "compositionDecisionHash": "468bcb65ac7ff6412df595580d8ac328644c646301b0c77cf55c787ad6b5bc8c",
+  "modules": [
+    {
+      "moduleId": "conversion-core-capture-governance",
+      "revision": 1,
+      "entryHash": "fd0bcb541a7e8c4ba944aab6f13c9f6c8c84affb0c3bc60717a0c8d9efb61666",
+      "gates": [
+        { "gate": "runtimeHomologated", "ownerRole": "quality_assurance", "requiredEvidence": ["authenticated_role_flow_receipt", "tenant_isolation_receipt"] },
+        { "gate": "cleanBuildVerified", "ownerRole": "engineering", "requiredEvidence": ["clean_install_receipt", "production_build_receipt"] },
+        { "gate": "rollbackReady", "ownerRole": "operations", "requiredEvidence": ["backup_integrity_receipt", "restore_rehearsal_receipt"] },
+        { "gate": "directorApproved", "ownerRole": "director", "requiredEvidence": ["director_approval_receipt"] }
+      ]
+    },
+    {
+      "moduleId": "conversion-core-isolated-readiness",
+      "revision": 1,
+      "entryHash": "5d76302e95051f129bc2d191c0c44548790361f2882c4276c93a9140b50a9577",
+      "gates": [
+        { "gate": "runtimeHomologated", "ownerRole": "quality_assurance", "requiredEvidence": ["authenticated_role_flow_receipt", "tenant_isolation_receipt"] },
+        { "gate": "cleanBuildVerified", "ownerRole": "engineering", "requiredEvidence": ["clean_install_receipt", "production_build_receipt"] },
+        { "gate": "rollbackReady", "ownerRole": "operations", "requiredEvidence": ["backup_integrity_receipt", "restore_rehearsal_receipt"] },
+        { "gate": "directorApproved", "ownerRole": "director", "requiredEvidence": ["director_approval_receipt"] }
+      ]
+    }
+  ],
+  "planHash": "c42803abb3c0c0d68c958db17edcfdc43f93acd04d6c2e90b8f40b0373d42a95"
+}

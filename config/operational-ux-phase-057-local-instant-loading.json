@@ -1,0 +1,29 @@
+{
+  "phase": 57,
+  "scope": "local_instant_loading",
+  "sharedComponent": "components/atlas/progressive-page-loading.tsx",
+  "persistentShell": true,
+  "localBoundaries": [
+    "/dashboard",
+    "/leads",
+    "/pipeline",
+    "/tasks",
+    "/calendar",
+    "/customers",
+    "/developments",
+    "/marketing/campaigns"
+  ],
+  "variants": ["overview", "list", "board", "schedule", "portfolio"],
+  "fakeProgressRendered": false,
+  "singleLiveRegionPerBoundary": true,
+  "skeletonsHiddenFromAssistiveTechnology": true,
+  "reducedMotionRespected": true,
+  "cacheComponentsEnabled": false,
+  "unstableInstantAdded": false,
+  "reasonUnstableInstantNotAdded": "As rotas criticas atuais sao Client Components e cacheComponents nao esta habilitado.",
+  "databaseChanged": false,
+  "routeBehaviorChanged": false,
+  "permissionsChanged": false,
+  "buildExecuted": false,
+  "externalDeliveryDuringPhase": false
+}

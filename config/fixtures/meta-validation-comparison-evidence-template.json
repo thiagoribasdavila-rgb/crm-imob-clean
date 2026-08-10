@@ -1,0 +1,53 @@
+{
+  "format": "atlas_meta_validation_comparison_evidence_v1",
+  "phase": 19,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "payloadPersisted": false,
+  "matchValuesPersisted": false,
+  "remoteExecutionPerformed": false,
+  "sourceEvidence": {
+    "phase17Approved": false,
+    "phase18Approved": false,
+    "phase18EvidenceFingerprint": null
+  },
+  "event": {
+    "eventName": null,
+    "classification": null,
+    "eventIdFingerprint": null
+  },
+  "localComparison": {
+    "approved": false,
+    "requiredChecks": [],
+    "matchKeyPresence": [],
+    "optionalAttributionKeyPresence": [],
+    "financialSignalPresence": [],
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false
+  },
+  "officialMetaComparison": {
+    "executed": false,
+    "status": "pending",
+    "testEventCodePersisted": false,
+    "responsePersisted": false
+  },
+  "execution": {
+    "payloadBuiltInMemory": false,
+    "networkCallExecuted": false,
+    "metaRequestDelivered": false,
+    "databaseMutationExecuted": false
+  },
+  "releaseGates": {
+    "localComparisonApproved": false,
+    "officialComparisonApproved": false,
+    "testEventDeliveryAllowed": false,
+    "productionAllowed": false,
+    "deploymentAllowed": false
+  },
+  "issueCodes": ["phase17_evidence_not_provided"],
+  "errorCode": "phase17_evidence_not_provided"
+}

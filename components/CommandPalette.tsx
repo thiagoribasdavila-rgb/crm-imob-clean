@@ -25,39 +25,11 @@ import type { ShellIdentity } from "@/components/atlas/shell-types";
   { label: "Marketing AI", href: "/marketing", group: "Growth", keywords: "meta criativos campanhas roi" },
   { label: "Conversas", href: "/conversations", group: "Growth", keywords: "whatsapp instagram atendimento" },
   { label: "Centro de Decisão", href: "/decision-center", group: "Intelligence", keywords: "decisoes alertas aprovacoes" },
-  { label: "Evolução e homologação V3", href: "/atlas-v3", group: "Intelligence", keywords: "fases percentual progresso agentes digital twin inteligencia homologacao" },
   { label: "Atlas 2030", href: "/atlas-2030", group: "Platform", keywords: "knowledge graph simulacoes plataforma" },
   { label: "Configurações", href: "/settings", group: "Administração", keywords: "empresa preferencias integracoes" },
 */
 
-/**
- * `outcome` — o RESULTADO COMERCIAL do destino, acrescentado em 2026-07-29.
- *
- * A barra lateral tinha busca própria e casava por
- * `label + group + keywords + businessOutcome`. Ela foi retirada porque duas
- * buscas na mesma tela obrigam a pessoa a escolher qual usar, e o comentário em
- * components/atlas/sidebar.tsx diz que o ⌘K "já monta a lista a partir do MESMO
- * getAtlasNavigationForIdentity, com as mesmas permissões". Só que a herança
- * veio incompleta: o ⌘K casava por `label + group + keywords` e deixou o quarto
- * campo para trás.
- *
- * A diferença é mensurável, não teórica. Rodando o catálogo real contra os dois
- * filtros (29/07/2026), palavras que vivem SÓ no businessOutcome não achavam
- * tela nenhuma e agora acham:
- *
- *   "gargalo"     [] -> [Corretores]
- *   "governar"    [] -> [Usuários e acessos]
- *   "comparáveis" [] -> [Vendas]
- *
- * Era exatamente o caso que a fase 093 documentou: "buscar 'atender',
- * 'estoque', 'conversão' ou 'segurança' encontra a tela correta mesmo sem o
- * usuário conhecer o nome do módulo".
- *
- * Comandos que não são módulo (ação da tela, atalhos de contexto, leads da
- * carteira) não têm resultado comercial declarado e entram com string vazia —
- * o campo continua obrigatório no tipo para que um destino novo não o esqueça.
- */
-type Command = { label: string; href: string; group: string; keywords: string; outcome: string };
+type Command = { label: string; href: string; group: string; keywords: string };
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -84,21 +56,18 @@ export default function CommandPalette({
       href: taskAction.href,
       group: "Ação desta tela",
       keywords: taskAction.keywords,
-      outcome: "",
     }] : []),
     ...getAtlasNavigationForIdentity(identity).filter((item) => item.href !== taskAction?.href).map((item) => ({
       label: item.label,
       href: item.href,
       group: item.group,
       keywords: item.keywords,
-      outcome: item.businessOutcome,
     })),
     ...getAtlasContextCommandsForIdentity(identity).filter((item) => item.href !== taskAction?.href).map((item) => ({
       label: item.label,
       href: item.href,
       group: item.group,
       keywords: item.keywords,
-      outcome: "",
     })),
   ], [identity.accessRole, identity.role, taskAction]);
 
@@ -136,7 +105,7 @@ export default function CommandPalette({
 
   const filtered = useMemo(() => {
     const normalizedQuery = normalize(query);
-    const modules = !normalizedQuery ? commands : commands.filter((command) => normalize(`${command.label} ${command.group} ${command.keywords} ${command.outcome}`).includes(normalizedQuery));
+    const modules = !normalizedQuery ? commands : commands.filter((command) => normalize(`${command.label} ${command.group} ${command.keywords}`).includes(normalizedQuery));
     return [...leadCommands, ...modules];
   }, [commands, leadCommands, query]);
 
@@ -149,7 +118,7 @@ export default function CommandPalette({
       const response = await fetch(`/api/v1/search?q=${encodeURIComponent(safeQuery)}`, { headers: { Authorization: `Bearer ${session.session?.access_token || ""}` }, cache: "no-store" });
       const body = await response.json();
       const results = response.ok ? body.data.results.slice(0, 6) as Array<{ title: string; href: string; reason: string; nextAction: string }> : [];
-      setLeadCommands(results.map((lead) => ({ label: lead.title, href: lead.href, group: "Leads da minha carteira", keywords: `${lead.reason} ${lead.nextAction}`, outcome: "" })));
+      setLeadCommands(results.map((lead) => ({ label: lead.title, href: lead.href, group: "Leads da minha carteira", keywords: `${lead.reason} ${lead.nextAction}` })));
       setSearching(false);
       setSelected(0);
     }, 220);
@@ -192,7 +161,7 @@ export default function CommandPalette({
         <div className="flex items-center gap-3 border-b border-white/[0.08] px-5 py-4">
           <span className="text-sky-300">⌕</span>
           <input ref={inputRef} value={query} onChange={(event) => { setQuery(event.target.value); setSelected(0); }} onKeyDown={handleInputKeyDown} placeholder="Buscar nome, telefone, projeto, corretor ou intenção..." className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500" role="combobox" aria-expanded="true" aria-controls="atlas-command-results" aria-activedescendant={filtered[selected] ? `atlas-command-${selected}` : undefined} />
-          <kbd className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-micro text-slate-500">ESC</kbd>
+          <kbd className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-slate-500">ESC</kbd>
           <button type="button" className="atlas-command-close" onClick={() => setOpen(false)} aria-label="Fechar busca">×</button>
         </div>
         <div id="atlas-command-results" role="listbox" className="max-h-[58vh] overflow-y-auto p-3">
@@ -218,7 +187,7 @@ export default function CommandPalette({
             </div>
           )}
         </div>
-        <div className="atlas-command-footer flex items-center justify-between border-t border-white/[0.07] px-5 py-3 text-micro uppercase tracking-[0.14em] text-slate-600">
+        <div className="atlas-command-footer flex items-center justify-between border-t border-white/[0.07] px-5 py-3 text-[10px] uppercase tracking-[0.14em] text-slate-600">
           <span>{searching ? "Buscando carteira..." : `${filtered.length} resultado(s)`}</span>
           <span>↑ ↓ navegar · Enter abrir · Esc fechar</span>
         </div>

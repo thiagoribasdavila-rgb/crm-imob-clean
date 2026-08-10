@@ -1,0 +1,34 @@
+{
+  "phase": 18,
+  "name": "role-metric-hierarchy",
+  "objective": "Aplicar a leitura decisória de cinco métricas às visões específicas de corretor, gerente, superintendente e diretor.",
+  "maximumPrimaryMetrics": 5,
+  "canonicalSurface": "dashboard-role-panels",
+  "roles": {
+    "broker": {
+      "primary": ["Leads ativos", "Leads quentes", "Sem primeiro contato", "Follow-ups vencidos", "Tarefas abertas"],
+      "supporting": "Agenda 7 dias"
+    },
+    "manager": {
+      "primary": ["Corretores diretos", "Leads ativos", "Sem primeiro contato", "Follow-ups vencidos", "Sem próxima ação"],
+      "supporting": "Equilíbrio da carga"
+    },
+    "superintendent": {
+      "primary": ["Gerentes diretos", "Equipe presente", "Leads ativos", "Sem primeiro contato", "Follow-ups vencidos"],
+      "supporting": "Equilíbrio entre equipes"
+    },
+    "director": {
+      "primary": ["Pipeline bruto", "Vendas ganhas", "Comissões a receber", "Conversão geral", "Campanhas"],
+      "supporting": "IA em 30 dias"
+    }
+  },
+  "rules": [
+    "Cada papel recebe no máximo cinco indicadores na primeira leitura.",
+    "O indicador complementar permanece acessível por divulgação progressiva.",
+    "A hierarquia respeita o escopo de dados e as permissões já existentes para cada papel.",
+    "Nenhum cálculo, endpoint, consulta ou valor é alterado pela reorganização visual.",
+    "A pessoa continua aprovando ações sensíveis e a IA permanece explicativa e recomendadora."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

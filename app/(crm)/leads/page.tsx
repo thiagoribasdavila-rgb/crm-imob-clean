@@ -1,23 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import {
-  ROTULO_DO_VINCULO,
-  VINCULOS,
-  ehVinculoValido,
-  type VinculoDoCliente,
-} from "@/lib/crm/vinculo-do-cliente";
-import { CHAVES_DE_FAIXA, FAIXAS_DA_FILA, FAIXAS_SEM_PRACA } from "@/lib/atlas/triagem-da-fila";
-import { DISCARD_REASONS } from "@/lib/atlas/discard-reasons";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { LIVE_PROFILE_SELECT, mapLegacyProfile, mapLegacyProject } from "@/lib/compat/legacy-v2";
 import { EmptyState } from "@/components/atlas/empty-state";
 import { ErrorState } from "@/components/atlas/error-state";
 import { LoadingState } from "@/components/atlas/loading-state";
+import { MetricCard } from "@/components/atlas/metric-card";
 import { StatusBadge } from "@/components/atlas/status-badge";
-import { TiltShell } from "@/components/atlas/tilt-shell";
-import { NextActionQuickSet } from "@/components/crm/next-action-quick-set";
+import { AtlasDetailDisclosure } from "@/components/atlas/information-primitives";
 
 type Lead = {
   id: string;
@@ -35,11 +27,6 @@ type Lead = {
   budget_max: number | null;
   last_interaction_at: string | null;
   next_action_at: string | null;
-  /** O QUE fazer. Sem isto a fila mostra a data e não o compromisso. */
-  next_action: string | null;
-  first_contact_due_at: string | null;
-  first_contacted_at: string | null;
-  first_contact_sla_minutes: number | null;
   created_at: string | null;
   updated_at: string | null;
   metadata: {
@@ -63,28 +50,9 @@ type Profile = {
 
 type ReferenceRow = Record<string, unknown>;
 type SortDirection = "asc" | "desc";
-type AttentionFilter = "" | "overdue" | "no_action" | "hot" | "unassigned" | "never_contacted";
+type AttentionFilter = "" | "overdue" | "no_action" | "hot" | "unassigned";
 type NextActionFilter = "" | "today" | "next_7_days" | "scheduled";
-
-/**
- * O que a URL pode pedir. Os três espelham exatamente as listas de
- * `app/api/v1/crm/leads/route.ts` — parâmetro que a API recusaria não vira
- * filtro aqui, senão a lista volta vazia e a pessoa conclui que não há
- * trabalho quando na verdade o link estava errado.
- */
-const ATTENTION_VALIDOS = ["overdue", "no_action", "hot", "unassigned", "never_contacted"] as const;
-/**
- * As faixas do corte da fila. O vocabulário é o MESMO de
- * lib/atlas/triagem-da-fila.ts — importado, não redigitado: um rótulo copiado
- * à mão aqui é como o link da central passa a abrir uma lista com outro nome.
- */
-const FAIXA_VALIDOS = CHAVES_DE_FAIXA as readonly string[];
-const ROTULO_DA_FAIXA = new Map<string, string>(
-  [...FAIXAS_DA_FILA, ...FAIXAS_SEM_PRACA].map((faixa) => [faixa.chave, faixa.rotulo]),
-);
-const VINCULO_VALIDOS = VINCULOS;
-const NEXT_ACTION_VALIDOS = ["today", "next_7_days", "scheduled"] as const;
-const SORT_VALIDOS = ["created_at", "updated_at", "score", "name", "first_contact_sla"] as const;
+type QualityFilter = "" | "missing_project" | "missing_campaign" | "missing_source";
 type LeadPriorityTone = "danger" | "warning" | "info";
 type LeadPriority = {
   lead: Lead;
@@ -93,26 +61,52 @@ type LeadPriority = {
   tone: LeadPriorityTone;
   rank: number;
 };
-type StalledSignal = {
-  days: number;
-  basis: "atividade" | "criacao";
-  level: "amber" | "rose";
-  hot: boolean;
-};
+type FirstActionOutcome =
+  | "contacted"
+  | "no_response"
+  | "meeting_scheduled"
+  | "follow_up_needed"
+  | "not_interested";
 type SavedLeadFilters = {
   search?: string;
   status?: string;
   source?: string;
   project?: string;
+  campaign?: string;
   broker?: string;
   score?: string;
   attention?: AttentionFilter;
-  vinculo?: VinculoDoCliente | "";
+  quality?: QualityFilter;
   nextAction?: NextActionFilter;
   sort?: string;
   direction?: SortDirection;
   filtersOpen?: boolean;
-  porPagina?: number;
+};
+type LeadsDecision = {
+  tone: "neutral" | "info" | "success" | "warning" | "danger" | "violet";
+  badge: string;
+  title: string;
+  description: string;
+  evidence: string;
+  nextStep: string;
+  primaryLabel: string;
+  action: "filter" | "reset" | "href" | "none";
+  href?: string;
+  filter?: AttentionFilter;
+  aiPrompt: string;
+};
+type LeadsV30Signal = {
+  id: "sla" | "intent" | "coverage" | "memory";
+  tone: LeadsDecision["tone"];
+  eyebrow: string;
+  value: string;
+  label: string;
+  detail: string;
+  actionLabel: string;
+  action: "filter" | "href" | "ai" | "none";
+  filter?: AttentionFilter;
+  href?: string;
+  aiPrompt: string;
 };
 
 type LeadsPayload = {
@@ -129,14 +123,39 @@ type LeadsPayload = {
   };
 };
 
-/**
- * Quantos contatos por página, escolhido por quem usa (pedido do dono em
- * 2026-07-28). A rota já prende o limit em [1,100], então o teto daqui é o
- * teto de lá — opção fora desta lista nunca chega ao servidor.
- */
-const OPCOES_POR_PAGINA = [10, 20, 50, 100] as const;
-const POR_PAGINA_PADRAO = 20;
+const PAGE_SIZE = 25;
+
+function nextBusinessActionInput() {
+  const value = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  value.setMinutes(0, 0, 0);
+  const offset = value.getTimezoneOffset() * 60_000;
+  return new Date(value.getTime() - offset).toISOString().slice(0, 16);
+}
 const FILTER_STORAGE_KEY = "atlas:leads-filters:v1";
+const uuidPattern = /^[0-9a-f-]{36}$/i;
+const qualityFilterLabels: Record<Exclude<QualityFilter, "">, string> = {
+  missing_project: "Leads sem projeto",
+  missing_campaign: "Leads sem campanha",
+  missing_source: "Leads sem origem",
+};
+const attentionFilterLabels: Record<Exclude<AttentionFilter, "">, string> = {
+  overdue: "Ações atrasadas",
+  no_action: "Leads sem próxima ação",
+  hot: "Leads prioritárias",
+  unassigned: "Leads sem responsável",
+};
+
+function isQualityFilter(value: string | null): value is Exclude<QualityFilter, ""> {
+  return (
+    value === "missing_project" ||
+    value === "missing_campaign" ||
+    value === "missing_source"
+  );
+}
+
+function isAttentionFilter(value: string | null): value is Exclude<AttentionFilter, ""> {
+  return value === "overdue" || value === "no_action" || value === "hot" || value === "unassigned";
+}
 const statuses = [
   { value: "", label: "Todos os status" },
   { value: "novo", label: "Novo" },
@@ -150,14 +169,9 @@ const statuses = [
   { value: "comprou_outro", label: "Comprou em outro lugar" },
 ] as const;
 
-/* CC-6: anel de foco padrão do repositório e cor da faixa lateral por tom. */
-const focusRing =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
-const priorityBand: Record<LeadPriorityTone, string> = {
-  danger: "#fb7185",
-  warning: "var(--atlas-estado-atencao)",
-  info: "var(--atlas-accent)",
-};
+function isKnownLeadStatus(value: string | null | undefined): value is Exclude<(typeof statuses)[number]["value"], ""> {
+  return Boolean(value && statuses.some((status) => status.value === value));
+}
 
 function text(row: ReferenceRow, ...keys: string[]) {
   for (const key of keys) {
@@ -217,91 +231,11 @@ function dueLabel(value: string | null, referenceTime: number) {
   };
 }
 
-function phoneLinks(phone: string | null) {
-  const digits = String(phone || "").replace(/\D/g, "");
-  if (digits.length < 10) return null;
-  const international = digits.startsWith("55") ? digits : `55${digits}`;
-  return { call: `tel:+${international}`, whatsapp: `https://wa.me/${international}` };
-}
-
-function isHotLead(lead: Lead) {
-  return (
-    (lead.temperature ?? "").toLowerCase() === "quente" ||
-    Number(lead.score ?? 0) >= 70
-  );
-}
-
-function isOpenLead(lead: Lead) {
-  return !["ganho", "perdido", "comprou_outro"].includes(
-    (lead.status ?? "novo").toLowerCase(),
-  );
-}
-
-/* Sinal proativo 100% determinístico (mesmo padrão do kanban): deriva apenas
-   de updated_at/last_interaction_at/created_at já carregados. Sem timestamp
-   válido não há sinal — nenhum número é inventado. Limiares: amber >= 3 dias,
-   rose >= 7 dias; leads encerradas não geram sinal. */
-function stalledSignal(lead: Lead, referenceTime: number): StalledSignal | null {
-  if (!referenceTime || !isOpenLead(lead)) return null;
-  const activityTimes = [lead.updated_at, lead.last_interaction_at]
-    .map((value) => (value ? new Date(value).getTime() : Number.NaN))
-    .filter((time) => Number.isFinite(time));
-  const hasActivity = activityTimes.length > 0;
-  const reference = hasActivity
-    ? Math.max(...activityTimes)
-    : lead.created_at
-      ? new Date(lead.created_at).getTime()
-      : Number.NaN;
-  if (!Number.isFinite(reference)) return null;
-  const days = Math.floor(Math.max(0, referenceTime - reference) / 86_400_000);
-  if (days < 3) return null;
-  return {
-    days,
-    basis: hasActivity ? "atividade" : "criacao",
-    level: days >= 7 ? "rose" : "amber",
-    hot: isHotLead(lead),
-  };
-}
-
-function stalledChipView(signal: StalledSignal, lead: Lead) {
-  const fromCreation = signal.basis === "criacao";
-  const baseTitle = fromCreation
-    ? `Sem atualização registrada desde a criação, há ${signal.days} dia(s) — contagem baseada na data de criação, único registro disponível.`
-    : `Sem atualização registrada há ${signal.days} dia(s) — base: atualização ou interação mais recente.`;
-  return {
-    label: signal.hot
-      ? `quente sem toque · ${signal.days}d`
-      : fromCreation
-        ? `${signal.days}d desde a criação`
-        : `parado há ${signal.days}d`,
-    chipClass:
-      signal.hot || signal.level === "rose"
-        ? "cc6-crit border-[rgba(251,113,133,0.28)]!"
-        : "cc6-warn border-[rgba(245,181,68,0.28)]!",
-    title: signal.hot
-      ? `Lead quente (score ${lead.score ?? 0}). ${baseTitle} Priorize o contato.`
-      : baseTitle,
-  };
-}
-
-function formatarMinutos(minutos: number) {
-  if (minutos < 60) return `${minutos} min`;
-  const horas = Math.floor(minutos / 60);
-  if (horas < 24) return `${horas}h${String(minutos % 60).padStart(2, "0")}`;
-  return `${Math.floor(horas / 24)} dia(s)`;
-}
-
 function visibleLeadPriority(
   lead: Lead,
   referenceTime: number,
   includeOwnership: boolean,
 ): LeadPriority | null {
-  // Lead encerrada não entra na fila de ação — flagrado com captura de tela em
-  // 2026-07-28: lead PERDIDA aparecia com "1º contato vencido · Ligue agora".
-  // Mandar ligar para quem já foi descartado é o oposto de priorizar. O irmão
-  // deste filtro, stalledSignal, já usava isOpenLead; este tinha esquecido —
-  // dois caminhos para a mesma pergunta que haviam divergido.
-  if (!isOpenLead(lead)) return null;
   const nextActionTime = lead.next_action_at
     ? new Date(lead.next_action_at).getTime()
     : Number.NaN;
@@ -309,45 +243,9 @@ function visibleLeadPriority(
     referenceTime > 0 &&
     Number.isFinite(nextActionTime) &&
     nextActionTime < referenceTime;
-  const hot = isHotLead(lead);
-
-  // O primeiro contato vem antes de tudo. Uma lead de Meta Ads tem 5 minutos de
-  // prazo: se ela disputar posição com follow-up agendado ou score alto, perde —
-  // e o prazo vence enquanto o corretor trabalha uma lead de três semanas atrás.
-  // Ranks negativos garantem que essa disputa não aconteça.
-  const prazoDoPrimeiroContato = lead.first_contact_due_at
-    ? new Date(lead.first_contact_due_at).getTime()
-    : Number.NaN;
-  if (
-    referenceTime > 0 &&
-    !lead.first_contacted_at &&
-    Number.isFinite(prazoDoPrimeiroContato)
-  ) {
-    const minutos = Math.round((prazoDoPrimeiroContato - referenceTime) / 60_000);
-    // Lead sem dono e com prazo correndo é a pior combinação da fila: para quem
-    // enxerga a equipe, a ação é distribuir, não ligar.
-    const semDono = includeOwnership && !lead.assigned_to;
-    if (minutos < 0) {
-      return {
-        lead,
-        label: semDono ? "1º contato vencido e sem responsável" : "1º contato vencido",
-        detail: semDono
-          ? `Prazo estourou há ${formatarMinutos(-minutos)} e a lead não tem dono. Distribua antes de qualquer outra coisa.`
-          : `Prazo estourou há ${formatarMinutos(-minutos)}. Ligue agora e registre o contato.`,
-        tone: "danger",
-        rank: -2,
-      };
-    }
-    return {
-      lead,
-      label: semDono ? "1º contato correndo, sem responsável" : "1º contato agora",
-      detail: semDono
-        ? `Faltam ${formatarMinutos(minutos)} e a lead ainda não tem dono. Distribua agora.`
-        : `Faltam ${formatarMinutos(minutos)} do prazo de ${lead.first_contact_sla_minutes ?? "?"} min desta origem.`,
-      tone: "danger",
-      rank: -1,
-    };
-  }
+  const hot =
+    Number(lead.score ?? 0) >= 70 ||
+    (lead.temperature ?? "").toLowerCase() === "quente";
 
   if (overdue) {
     return {
@@ -409,135 +307,47 @@ export default function LeadsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
   const [source, setSource] = useState("");
+  const [createdAfter, setCreatedAfter] = useState("");
+  const [createdBefore, setCreatedBefore] = useState("");
   const [project, setProject] = useState("");
+  const [campaign, setCampaign] = useState("");
   const [broker, setBroker] = useState("");
   const [score, setScore] = useState("");
   const [attention, setAttention] = useState<AttentionFilter>("");
-  /**
-   * A faixa vem SEMPRE por link da central de comando e não tem seletor
-   * próprio: ela é a decomposição de um número que só a diretoria lê. O que
-   * ela precisa ter é visibilidade — filtro invisível é a diferença entre "a
-   * lista está filtrada" e "a base encolheu".
-   */
-  const [faixa, setFaixa] = useState("");
-  // Herdado da tela "Clientes 360", apagada por ser a mesma tabela sem SLA,
-  // sem lote e sem piso de carteira — ela vazava a carteira dos colegas.
-  // Os quatro segmentos eram a única ideia própria dela e vieram junto.
-  const [vinculo, setVinculo] = useState<VinculoDoCliente | "">("");
-  const [copiado, setCopiado] = useState<string | null>(null);
-
-  /**
-   * Abrir a lista É o ato de olhar as chegadas — por isso os avisos são
-   * marcados como vistos aqui, e não num botão "marcar como lido", que criaria
-   * uma pendência sobre a pendência. O evento avisa a barra lateral na hora:
-   * navegação interna não dispara `visibilitychange`, e a pastilha ficaria
-   * acesa por até um minuto sobre a tela que a pessoa acabou de abrir.
-   */
-  useEffect(() => {
-    void (async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token;
-        if (!token) return;
-        await fetch("/api/v1/crm/alertas-de-lead", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        window.dispatchEvent(new Event("atlas:leads-vistas"));
-      } catch {
-        /* Falhar aqui deixa o aviso aceso, que é o lado seguro do erro. */
-      }
-    })();
-  }, []);
-
-  /**
-   * Copia telefone ou e-mail. A confirmação vive no próprio chip por 1,6s —
-   * sem toast, porque um aviso global para uma ação tão pequena rouba a
-   * atenção de quem está varrendo a lista. Clipboard indisponível (http, foco
-   * perdido) não quebra nada: o valor continua legível na linha.
-   */
-  async function copiarContato(chave: string, valor: string) {
-    try {
-      await navigator.clipboard.writeText(valor);
-      setCopiado(chave);
-      window.setTimeout(
-        () => setCopiado((atual) => (atual === chave ? null : atual)),
-        1600,
-      );
-    } catch {
-      /* Sem área de transferência: o número segue visível para copiar à mão. */
-    }
-  }
+  const [quality, setQuality] = useState<QualityFilter>("");
   const [nextAction, setNextAction] = useState<NextActionFilter>("");
   const [sort, setSort] = useState("created_at");
   const [direction, setDirection] = useState<SortDirection>("desc");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [porPagina, setPorPagina] = useState<number>(POR_PAGINA_PADRAO);
   const [pages, setPages] = useState(1);
   const [referenceTime, setReferenceTime] = useState(0);
-  // ── O RELÓGIO PRECISA ANDAR SOZINHO ────────────────────────────────────────
-  //
-  // `referenceTime` só avançava dentro de `loadLeads`. Enquanto cada abertura
-  // de lead recarregava a lista, isso passava despercebido — a recarga
-  // atualizava o relógio de carona.
-  //
-  // Com a ficha em lâmina (a lista deixa de recarregar, que é o ganho), o
-  // relógio congelaria: "vence em 4 min" continuaria dizendo 4 min meia hora
-  // depois, e a Fila de ação inteira — que ordena por distância do prazo —
-  // apodreceria em silêncio. Um minuto é granularidade suficiente para um SLA
-  // cujo menor prazo é de 5.
-  useEffect(() => {
-    const id = window.setInterval(() => setReferenceTime(Date.now()), 60_000);
-    return () => window.clearInterval(id);
-  }, []);
   const [currentRole, setCurrentRole] = useState("");
   const [currentProfileId, setCurrentProfileId] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [transferTarget, setTransferTarget] = useState("");
-  const [bulkStage, setBulkStage] = useState("");
-  /* ── DESCARTAR SEM TROCAR DE TELA ───────────────────────────────────────
-     MEDIDO em 01/08/2026: o descarte existia em UMA tela só, o Kanban.
-     Nenhuma outra chamava `/api/v1/pipeline`. Aqui, na lista onde estão as
-     473 leads sem primeiro contato, "perdido" era só um FILTRO e uma cor — e
-     a barra de lote diz ao corretor, literalmente, que fechar "continua uma a
-     uma, com a tela inteira na frente".
-
-     Uma a uma continua — fechar dispara conversão para a Meta e engano em
-     massa ali não tem desfazer. O que muda é não precisar sair da fila para
-     fazer isso 473 vezes.
-
-     Chama a MESMA rota canônica e usa a MESMA lista de motivos do Kanban.
-     Terceiro caminho de mudar etapa é o que este produto não pode ter: já
-     existe um cru na ficha do cliente, que grava `leads.status` sem motivo e
-     sem registrar movimento. */
-  const [descarte, setDescarte] = useState<{ leadId: string; leadName: string; fromStage: string; reasonKey: string; notes: string } | null>(null);
-  const [descartando, setDescartando] = useState(false);
   const [transferReason, setTransferReason] = useState("");
   const [transferring, setTransferring] = useState(false);
   const [notice, setNotice] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [firstActionLeadId, setFirstActionLeadId] = useState("");
+  const [firstActionType, setFirstActionType] = useState("call");
+  const [firstActionOutcome, setFirstActionOutcome] =
+    useState<FirstActionOutcome>("contacted");
+  const [firstActionNote, setFirstActionNote] = useState("");
+  const [firstActionNextTitle, setFirstActionNextTitle] =
+    useState("Retornar contato");
+  const [firstActionNextAt, setFirstActionNextAt] = useState(() =>
+    nextBusinessActionInput(),
+  );
+  const [firstActionSaving, setFirstActionSaving] = useState(false);
+  const [firstActionError, setFirstActionError] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filtersHydrated, setFiltersHydrated] = useState(false);
+  const reportPeriodLabel = createdAfter
+    ? `${formatDate(createdAfter)}${createdBefore ? ` até ${formatDate(createdBefore)}` : ""}`
+    : "";
 
-  /**
-   * Hidratação dos filtros: primeiro o que estava salvo, DEPOIS a URL — que
-   * vence.
-   *
-   * A central de comando manda o diretor para cá com o filtro já escolhido
-   * ("443 leads nunca contatadas" → /leads?attention=never_contacted). Antes
-   * disso nenhuma tela do CRM lia parâmetro de URL, então todo risco da
-   * diretoria desembocava em /reports e a pessoa tinha que refazer a navegação
-   * na mão. Sem esta leitura, o link é decorativo: a lista abriria com o
-   * último filtro salvo e mostraria outro número.
-   *
-   * Lemos `window.location.search` em vez de `useSearchParams` de propósito:
-   * o hook exige fronteira <Suspense> em página cliente, e embrulhar as ~2000
-   * linhas desta tela por causa de quatro parâmetros trocaria um problema
-   * pequeno por um risco de build. O efeito já roda uma vez na montagem, que é
-   * exatamente a semântica desejada — a URL define o estado inicial e as
-   * interações da pessoa assumem a partir daí.
-   */
   useEffect(() => {
     try {
       const saved = window.sessionStorage.getItem(FILTER_STORAGE_KEY);
@@ -548,71 +358,77 @@ export default function LeadsPage() {
         setStatus(filters.status || "");
         setSource(filters.source || "");
         setProject(filters.project || "");
+        setCampaign(filters.campaign || "");
         setBroker(filters.broker || "");
         setScore(filters.score || "");
         setAttention(filters.attention || "");
-        setVinculo(ehVinculoValido(filters.vinculo) ? filters.vinculo : "");
+        setQuality(filters.quality || "");
         setNextAction(filters.nextAction || "");
         setSort(filters.sort || "created_at");
         setDirection(filters.direction === "asc" ? "asc" : "desc");
         setFiltersOpen(Boolean(filters.filtersOpen));
-        if (OPCOES_POR_PAGINA.includes(filters.porPagina as (typeof OPCOES_POR_PAGINA)[number])) {
-          setPorPagina(filters.porPagina as number);
-        }
       }
+
+      // A report may open a precise review queue. URL filters take precedence
+      // over the saved workspace, so the user sees the requested evidence.
+      const url = new URL(window.location.href);
+      const requestedQuality = url.searchParams.get("quality");
+      const requestedAttention = url.searchParams.get("attention");
+      const requestedStatus = url.searchParams.get("status")?.trim();
+      const requestedProject = url.searchParams.get("project")?.trim();
+      const requestedCampaign = url.searchParams.get("campaign")?.trim();
+      const requestedBroker = url.searchParams.get("broker")?.trim();
+      const requestedSource = url.searchParams.get("source")?.trim();
+      const requestedCreatedAfter = url.searchParams.get("created_after")?.trim();
+      const requestedCreatedBefore = url.searchParams.get("created_before")?.trim();
+      const normalizedCreatedAfter = requestedCreatedAfter && Number.isFinite(Date.parse(requestedCreatedAfter))
+        ? new Date(requestedCreatedAfter).toISOString()
+        : "";
+      const normalizedCreatedBefore = requestedCreatedBefore && Number.isFinite(Date.parse(requestedCreatedBefore))
+        ? new Date(requestedCreatedBefore).toISOString()
+        : "";
+
+      // A report drilldown is an explicit request for evidence. It must not
+      // inherit a previous workspace filter and silently hide part of the
+      // requested portfolio.
+      const hasReportDrilldown = Boolean(
+          isQualityFilter(requestedQuality) ||
+          isAttentionFilter(requestedAttention) ||
+          isKnownLeadStatus(requestedStatus) ||
+          requestedProject ||
+          (requestedCampaign && uuidPattern.test(requestedCampaign)) ||
+          requestedBroker ||
+          requestedSource ||
+          normalizedCreatedAfter ||
+          normalizedCreatedBefore,
+      );
+      if (hasReportDrilldown) {
+        setSearch("");
+        setDebouncedSearch("");
+        setStatus("");
+        setSource("");
+        setCreatedAfter("");
+        setCreatedBefore("");
+        setProject("");
+        setCampaign("");
+        setBroker("");
+        setScore("");
+        setAttention("");
+        setQuality("");
+        setNextAction("");
+      }
+      if (isQualityFilter(requestedQuality)) setQuality(requestedQuality);
+      if (isAttentionFilter(requestedAttention)) setAttention(requestedAttention);
+      if (isKnownLeadStatus(requestedStatus)) setStatus(requestedStatus);
+      if (requestedProject) setProject(requestedProject);
+      if (requestedCampaign && uuidPattern.test(requestedCampaign))
+        setCampaign(requestedCampaign);
+      if (requestedBroker) setBroker(requestedBroker);
+      if (requestedSource) setSource(requestedSource);
+      if (normalizedCreatedAfter) setCreatedAfter(normalizedCreatedAfter);
+      if (normalizedCreatedBefore) setCreatedBefore(normalizedCreatedBefore);
     } catch {
       window.sessionStorage.removeItem(FILTER_STORAGE_KEY);
-    }
-
-    try {
-      const url = new URLSearchParams(window.location.search);
-      // Só valores que a API reconhece: parâmetro inventado na barra de
-      // endereço não pode virar filtro silencioso que devolve lista vazia e
-      // faz a pessoa concluir que não há trabalho.
-      const pegar = <T extends string>(chave: string, validos: readonly T[]): T | null => {
-        const valor = url.get(chave);
-        return valor && (validos as readonly string[]).includes(valor) ? (valor as T) : null;
-      };
-      const attentionDaUrl = pegar("attention", ATTENTION_VALIDOS);
-      const faixaDaUrl = pegar("faixa", FAIXA_VALIDOS);
-      const vinculoDaUrl = pegar("vinculo", VINCULO_VALIDOS);
-      const nextActionDaUrl = pegar("nextAction", NEXT_ACTION_VALIDOS);
-      const sortDaUrl = pegar("sort", SORT_VALIDOS);
-      // Validado contra a MESMA lista que o seletor oferece. Sem isto,
-      // /leads?status=xpto ia cru para a API e devolvia lista vazia — e lista
-      // vazia se lê como "não há trabalho", que é a pior mensagem possível
-      // numa operação com 443 leads paradas. Era a única chave desta tela sem
-      // porteiro, e a regra que eu mesmo escrevi no módulo de intenção.
-      const statusDaUrl = pegar(
-        "status",
-        statuses.map((opcao) => opcao.value).filter(Boolean),
-      );
-      let veioDaUrl = false;
-
-      if (attentionDaUrl !== null) { setAttention(attentionDaUrl); veioDaUrl = true; }
-      if (faixaDaUrl !== null) { setFaixa(faixaDaUrl); veioDaUrl = true; }
-      if (vinculoDaUrl !== null) { setVinculo(vinculoDaUrl); veioDaUrl = true; }
-      if (nextActionDaUrl !== null) { setNextAction(nextActionDaUrl); veioDaUrl = true; }
-      if (sortDaUrl !== null) { setSort(sortDaUrl); veioDaUrl = true; }
-      // Pelo mesmo porteiro das outras chaves. Validar em linha aqui e por
-      // lista fechada nas demais é ter dois jeitos de fazer a mesma coisa — e
-      // é por uma dessas brechas que `status` passou cru para a API.
-      const direcaoDaUrl = pegar("direction", ["asc", "desc"] as const);
-      if (direcaoDaUrl !== null) {
-        setDirection(direcaoDaUrl);
-        veioDaUrl = true;
-      }
-      if (statusDaUrl) { setStatus(statusDaUrl); veioDaUrl = true; }
-
-      if (veioDaUrl) {
-        // Chegou por link com filtro: abre o painel para a pessoa VER qual
-        // recorte está olhando. Filtro invisível é a diferença entre "a lista
-        // está filtrada" e "a base encolheu".
-        setFiltersOpen(true);
-        setPage(1);
-      }
-    } catch {
-      // URL malformada não pode impedir a lista de carregar.
     } finally {
       setFiltersHydrated(true);
     }
@@ -625,27 +441,27 @@ export default function LeadsPage() {
       status,
       source,
       project,
+      campaign,
       broker,
       score,
       attention,
-      vinculo,
+      quality,
       nextAction,
       sort,
       direction,
       filtersOpen,
-      porPagina,
     };
     window.sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(snapshot));
   }, [
     attention,
-    vinculo,
     broker,
+    campaign,
     direction,
     filtersHydrated,
     filtersOpen,
     nextAction,
-    porPagina,
     project,
+    quality,
     score,
     search,
     sort,
@@ -668,12 +484,7 @@ export default function LeadsPage() {
       const [profileResult, campaignResult, developmentResult, meResult] =
         await Promise.all([
           supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("active", true).order("created_at"),
-          // Lista de referência do filtro (não é agregado): o teto de 500 fica,
-          // mas com ordem determinística — sem .order() o corte escolhia linhas
-          // arbitrárias e, com o auto-registro da ingestão fazendo a tabela
-          // crescer sozinha, a campanha recém-vista podia simplesmente não
-          // aparecer no filtro. Mais recentes primeiro.
-          supabase.from("marketing_campaigns").select("id,name,platform,status,created_at").order("created_at", { ascending: false }).limit(500),
+          supabase.from("marketing_campaigns").select("id,name,platform,status,created_at").limit(500),
           supabase.from("crm_projects").select("id,organization_id,name,developer_name,code,status,city,neighborhood,address,launch_date,delivery_date,created_at,updated_at").order("name").limit(100),
           fetch("/api/v1/auth/me").then((response) => response.json()),
         ]);
@@ -716,13 +527,15 @@ export default function LeadsPage() {
 
         const params = new URLSearchParams({
           page: String(page),
-          limit: String(porPagina),
+          limit: String(PAGE_SIZE),
           sort,
           direction,
         });
         if (debouncedSearch) params.set("q", debouncedSearch);
         if (status) params.set("status", status);
         if (source) params.set("source", source);
+        if (createdAfter) params.set("created_after", createdAfter);
+        if (createdBefore) params.set("created_before", createdBefore);
         if (broker) {
           const selectedProfile = profiles.find(
             (profile) => profile.id === broker,
@@ -735,6 +548,7 @@ export default function LeadsPage() {
           else params.set("assigned_to", broker);
         }
         if (project) params.set("development_id", project);
+        if (campaign) params.set("campaign_ids", campaign);
         if (score === "hot") params.set("min_score", "70");
         if (score === "warm") {
           params.set("min_score", "40");
@@ -742,8 +556,7 @@ export default function LeadsPage() {
         }
         if (score === "cold") params.set("max_score", "39");
         if (attention) params.set("attention", attention);
-        if (faixa) params.set("faixa", faixa);
-        if (vinculo) params.set("vinculo", vinculo);
+        if (quality) params.set("quality", quality);
         if (nextAction) params.set("next_action", nextAction);
 
         const response = await fetch(`/api/v1/crm/leads?${params}`, {
@@ -757,27 +570,9 @@ export default function LeadsPage() {
           throw new Error(message || "Não foi possível carregar os leads.");
         }
         setItems(payload.data.items);
-        // A seleção NÃO é zerada: sobrevive como interseção com o que continua
-        // visível. Achado da revisão — marcar 15 leads e ampliar "Mostrar 20"
-        // para 50 (fluxo que o seletor convida) zerava tudo em silêncio. A
-        // semântica se mantém: selecionado é sempre subconjunto do visível;
-        // quem saiu da página sai da seleção.
-        setSelected((atual) => {
-          if (!atual.size) return atual;
-          const visiveis = new Set(payload.data.items.map((lead) => lead.id));
-          return new Set([...atual].filter((id) => visiveis.has(id)));
-        });
+        setSelected(new Set());
         setTotal(payload.data.page.total ?? payload.data.items.length);
-        const totalDePaginas = payload.data.page.pages ?? 1;
-        setPages(totalDePaginas);
-        // C) Página encalhada: transferir os últimos leads da página 3 encolhia
-        // o total e a busca voltava vazia SEM barra para voltar — o estado
-        // vazio dizia "nenhum lead corresponde" com 20 leads no filtro. Se a
-        // página pedida passou a não existir, cai para a última válida (uma
-        // única rebusca; o clamp converge porque pages não muda sem filtro).
-        if (page > totalDePaginas && (payload.data.page.total ?? 0) > 0) {
-          setPage(Math.max(1, totalDePaginas));
-        }
+        setPages(payload.data.page.pages ?? 1);
         setReferenceTime(Date.now());
       } catch (loadError) {
         if (controller.signal.aborted) return;
@@ -796,16 +591,17 @@ export default function LeadsPage() {
     return () => controller.abort();
   }, [
     attention,
-    faixa,
-    vinculo,
     broker,
+    campaign,
+    createdAfter,
+    createdBefore,
     debouncedSearch,
     direction,
     nextAction,
     page,
-    porPagina,
     profiles,
     project,
+    quality,
     reloadKey,
     score,
     sort,
@@ -836,6 +632,21 @@ export default function LeadsPage() {
     [campaigns],
   );
 
+  const campaignNameMap = useMemo(
+    () =>
+      new Map(
+        campaigns.map((campaign) => [
+          String(campaign.id),
+          text(campaign, "name") || "Campanha sem nome",
+        ]),
+      ),
+    [campaigns],
+  );
+
+  const selectedCampaignName = campaign
+    ? campaignNameMap.get(campaign) || "campanha selecionada"
+    : "";
+
   const developmentMap = useMemo(
     () =>
       new Map(
@@ -847,6 +658,13 @@ export default function LeadsPage() {
     [developments],
   );
 
+  const selectedProjectName = project
+    ? developmentMap.get(project) || "projeto selecionado"
+    : "";
+  const selectedBrokerName = broker
+    ? profileMap.get(broker) || "corretor selecionado"
+    : "";
+
   const projectName = (lead: Lead) => {
     const developmentId =
       lead.development_id ||
@@ -856,32 +674,142 @@ export default function LeadsPage() {
       : "Sem projeto";
   };
 
-  const pageMetrics = useMemo(() => {
-    let hot = 0;
-    let unassigned = 0;
-    let overdue = 0;
-    let noAction = 0;
-    let stalled = 0;
-    let stalledCritical = 0;
-    let neverContacted = 0;
-    for (const lead of items) {
-      if (isHotLead(lead)) hot += 1;
-      if (!lead.assigned_to) unassigned += 1;
-      if (!lead.first_contacted_at) neverContacted += 1;
-      if (!lead.next_action_at) noAction += 1;
-      else if (
-        referenceTime &&
-        new Date(lead.next_action_at).getTime() < referenceTime
-      )
-        overdue += 1;
-      const signal = stalledSignal(lead, referenceTime);
-      if (signal) {
-        stalled += 1;
-        if (signal.hot || signal.level === "rose") stalledCritical += 1;
-      }
-    }
-    return { hot, unassigned, overdue, noAction, stalled, stalledCritical, neverContacted };
-  }, [items, referenceTime]);
+  const pageMetrics = useMemo(
+    () => ({
+      hot: items.filter(
+        (lead) =>
+          Number(lead.score ?? 0) >= 70 || lead.temperature === "quente",
+      ).length,
+      unassigned: items.filter((lead) => !lead.assigned_to).length,
+      overdue: items.filter((lead) => {
+        if (!lead.next_action_at || !referenceTime) return false;
+        return new Date(lead.next_action_at).getTime() < referenceTime;
+      }).length,
+    }),
+    [items, referenceTime],
+  );
+
+  const leadsV30Signals = useMemo(() => {
+    const noNextAction = items.filter((lead) => !lead.next_action_at).length;
+    const routed = items.filter((lead) => Boolean(lead.assigned_to)).length;
+    const withContact = items.filter(
+      (lead) => Boolean(lead.phone) || Boolean(lead.email),
+    ).length;
+    const metaLearning = items.filter(
+      (lead) =>
+        lead.source === "Meta Lead Ads" &&
+        Boolean(lead.metadata?.meta?.dataSharingConsent),
+    ).length;
+    const actionCoverage = items.length
+      ? Math.round(((items.length - noNextAction) / items.length) * 100)
+      : 0;
+    const ownershipCoverage = items.length
+      ? Math.round((routed / items.length) * 100)
+      : 0;
+    const contactCoverage = items.length
+      ? Math.round((withContact / items.length) * 100)
+      : 0;
+    const memoryCoverage = items.length
+      ? Math.round((metaLearning / items.length) * 100)
+      : 0;
+    const decisionScore = items.length
+      ? Math.max(
+          0,
+          Math.min(
+            100,
+            Math.round(
+              actionCoverage * 0.34 +
+                ownershipCoverage * 0.24 +
+                contactCoverage * 0.24 +
+                Math.min(100, memoryCoverage * 2) * 0.18,
+            ),
+          ),
+        )
+      : 0;
+
+    const signals: LeadsV30Signal[] = [
+      {
+        id: "sla",
+        tone: pageMetrics.overdue ? "danger" : "success",
+        eyebrow: "Agora",
+        value: String(pageMetrics.overdue),
+        label: pageMetrics.overdue
+          ? "SLA vencido antes de tudo"
+          : "Sem atraso crítico",
+        detail: pageMetrics.overdue
+          ? "A primeira decisão é recuperar follow-ups vencidos."
+          : "A carteira visível não tem follow-up vencido.",
+        actionLabel: pageMetrics.overdue ? "Ver atrasados" : "Manter cadência",
+        action: pageMetrics.overdue ? "filter" : "ai",
+        filter: "overdue",
+        aiPrompt:
+          "Leia a carteira visível e crie uma cadência simples para manter follow-ups em dia, sem executar ações automaticamente.",
+      },
+      {
+        id: "intent",
+        tone: pageMetrics.hot ? "danger" : "info",
+        eyebrow: "Intenção",
+        value: String(pageMetrics.hot),
+        label: pageMetrics.hot
+          ? "Leads quentes exigem contato"
+          : "Sem pico quente nesta página",
+        detail: pageMetrics.hot
+          ? "Priorize contato humano com contexto de projeto."
+          : "Use filtros de score para encontrar oportunidades em outro recorte.",
+        actionLabel: pageMetrics.hot ? "Ver quentes" : "Abrir pipeline",
+        action: pageMetrics.hot ? "filter" : "href",
+        filter: "hot",
+        href: "/pipeline",
+        aiPrompt:
+          "Prepare uma leitura de leads quentes com argumentos curtos por projeto, sem enviar mensagens automaticamente.",
+      },
+      {
+        id: "coverage",
+        tone:
+          actionCoverage >= 80
+            ? "success"
+            : actionCoverage >= 50
+              ? "warning"
+              : "danger",
+        eyebrow: "Próxima ação",
+        value: `${actionCoverage}%`,
+        label: "Cobertura de follow-up",
+        detail: `${noNextAction} lead(s) ainda sem próxima ação na página.`,
+        actionLabel: noNextAction ? "Ver sem ação" : "Revisar rotina",
+        action: noNextAction ? "filter" : "ai",
+        filter: "no_action",
+        aiPrompt:
+          "Identifique como aumentar a cobertura de próximas ações da carteira visível e sugira uma rotina de 15 minutos para o corretor.",
+      },
+      {
+        id: "memory",
+        tone:
+          memoryCoverage >= 70
+            ? "success"
+            : memoryCoverage >= 30
+              ? "warning"
+              : "info",
+        eyebrow: "Memória IA",
+        value: `${memoryCoverage}%`,
+        label: "Sinais úteis para aprendizado",
+        detail: `${metaLearning} lead(s) Meta com consentimento/sinal de aprendizagem nesta página.`,
+        actionLabel: "Pedir diagnóstico",
+        action: "ai",
+        aiPrompt:
+          "Explique como melhorar a memória comercial e os sinais enviados para aprendizado do Meta/Andromeda usando somente dados autorizados desta carteira.",
+      },
+    ];
+
+    return {
+      actionCoverage,
+      contactCoverage,
+      decisionScore,
+      memoryCoverage,
+      noNextAction,
+      ownershipCoverage,
+      signals,
+    };
+  }, [items, pageMetrics.hot, pageMetrics.overdue]);
 
   const teamBrokers = useMemo(
     () =>
@@ -900,198 +828,191 @@ export default function LeadsPage() {
       .filter((priority): priority is LeadPriority => priority !== null)
       .sort((left, right) => {
         if (left.rank !== right.rank) return left.rank - right.rank;
-        // Dentro da urgência de primeiro contato, quem está mais perto da
-        // fronteira do prazo vem primeiro: lead vencida há 2 minutos ainda vira
-        // conversa hoje, vencida há 2 dias virou trabalho de reativação. Score
-        // só desempata quando o relógio não distingue os dois.
-        if (left.rank < 0 && right.rank < 0) {
-          const distancia = (item: LeadPriority) =>
-            Math.abs(
-              new Date(item.lead.first_contact_due_at ?? 0).getTime() - referenceTime,
-            );
-          const diferenca = distancia(left) - distancia(right);
-          if (diferenca !== 0) return diferenca;
-        }
         return Number(right.lead.score ?? 0) - Number(left.lead.score ?? 0);
       });
   }, [currentRole, items, referenceTime]);
 
-  /**
-   * UMA lista de filtros ativos, não duas.
-   *
-   * `hasFilters` e `activeFilterCount` enumeravam os filtros SEPARADAMENTE, e o
-   * filtro `vinculo` — que entrou no dia em que a tela de Clientes 360 foi
-   * aposentada — ficou fora das duas. Ele existe como estado, vem da URL e viaja
-   * para a rota; só não contava como filtro.
-   *
-   * O que o corretor via, medido: filtrar por vínculo e receber zero resultados
-   * mostrava o estado vazio de "nenhum lead cadastrado" em vez de "resultado dos
-   * filtros atuais" — dizendo "você não tem leads" a quem tem 272. Estado vazio
-   * que mente é pior que erro: o erro manda tentar de novo, a mentira manda
-   * desistir.
-   *
-   * `search` fica fora da CONTAGEM de propósito (busca não é pastilha de filtro),
-   * mas entra em `hasFilters`, porque para o estado vazio ela também recorta.
-   */
-  const filtrosAtivos = [
+  const hasFilters = Boolean(
+    search ||
+    status ||
+    source ||
+    createdAfter ||
+    createdBefore ||
+    project ||
+    campaign ||
+    broker ||
+    score ||
+    attention ||
+    quality ||
+    nextAction,
+  );
+  const activeFilterCount = [
+    search.trim(),
     status,
     source,
+    createdAfter,
+    createdBefore,
     project,
+    campaign,
     broker,
     score,
     attention,
-    faixa,
+    quality,
     nextAction,
-    vinculo,
-  ].filter(Boolean);
-  const hasFilters = Boolean(search || filtrosAtivos.length);
-  const activeFilterCount = filtrosAtivos.length;
+  ].filter(Boolean).length;
   const canTransfer = [
     "admin",
     "director",
     "superintendent",
     "manager",
   ].includes(currentRole);
-  /**
-   * Selecionar e mover DE ETAPA em lote é de todo mundo — inclusive corretor,
-   * que é quem tem 174 leads em "novo" para atualizar. A rota prende o lote do
-   * corretor à carteira dele (WHERE por dono, provado em
-   * scripts/prova-lote-corretor.mjs). TRANSFERIR continua atrás de
-   * `canTransfer`: mudar o dono é alçada de quem responde pela carteira.
-   */
-  const podeMoverEmLote = canTransfer || currentRole === "broker";
   const transferTargets = profiles.filter((profile) => {
     const role = profile.commercial_role || profile.role;
     if (currentRole === "manager")
       return role === "broker" && profile.reports_to === currentProfileId;
     return ["manager", "broker"].includes(role);
   });
-
-  /* Contagens da página atual anexadas aos atalhos que filtram a carteira
-     inteira — uma única superfície no lugar de métricas + atalhos separados. */
-  const attentionShortcuts: Array<{
-    key: AttentionFilter;
-    label: string;
-    description: string;
-    count: number;
-    countClass: string;
-  }> = [
-    {
-      key: "overdue",
-      label: "Atrasadas",
-      description: "Resolver follow-ups vencidos",
-      count: pageMetrics.overdue,
-      countClass: "cc6-crit",
-    },
-    {
-      // O recorte mais pesado da base em 2026-07-28: 443 de 448 leads em
-      // atendimento sem uma única ligação registrada. Existia como coluna e
-      // como número na central, e não tinha como ser filtrado em lugar nenhum.
-      key: "never_contacted",
-      label: "Nunca contatadas",
-      description: "Ninguém ligou ainda — o primeiro toque decide se a lead existe",
-      count: pageMetrics.neverContacted,
-      countClass: "cc6-crit",
-    },
-    {
-      key: "no_action",
-      label: "Sem próxima ação",
-      description: "Evitar leads esquecidas",
-      count: pageMetrics.noAction,
-      countClass: "text-[var(--atlas-texto-medio)]",
-    },
-    {
-      key: "hot",
-      label: "Quentes",
-      description: "Atender maior intenção",
-      count: pageMetrics.hot,
-      countClass: "cc6-crit",
-    },
-    ...(currentRole !== "broker"
-      ? [
-          {
-            key: "unassigned" as AttentionFilter,
-            // A cascata grava o motivo dizendo "REPRESADA" quando ninguém tem
-            // WhatsApp conectado. Chamar o mesmo estado de "sem responsável"
-            // aqui faria o diretor procurar uma fila de represadas que não
-            // existe em lugar nenhum. Uma palavra só para uma coisa só.
-            label: "Represadas",
-            description: "Ninguém conectado no WhatsApp — distribuir ou pedir para conectar",
-            count: pageMetrics.unassigned,
-            countClass: "cc6-warn",
-          },
-        ]
-      : []),
-  ];
-
-  /**
-   * Mover várias leads de etapa de uma vez.
-   *
-   * As 174 do Inside já estão trabalhadas — o histórico é que vive fora do
-   * CRM. Uma a uma seriam 174 telas abertas, e o que se perde aí não é tempo:
-   * é a vontade de manter o CRM em dia, que não volta depois que se perde.
-   */
-  async function confirmarDescarte() {
-    if (!descarte || !descarte.reasonKey || descartando) return;
-    const alvo = descarte;
-    setDescartando(true);
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) throw new Error("Sessão expirada. Entre novamente.");
-      const r = await fetch("/api/v1/pipeline", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          leadId: alvo.leadId,
-          stage: "perdido",
-          expectedFromStage: alvo.fromStage,
-          discardReason: { key: alvo.reasonKey, notes: alvo.notes.trim() },
-        }),
-      });
-      const payload = await r.json().catch(() => ({}));
-      /* A rota devolve 409 quando a etapa mudou entre ler e gravar. Isso NÃO é
-         erro do corretor: outra pessoa mexeu. A mensagem precisa dizer isso,
-         senão ele clica de novo achando que falhou. */
-      if (!r.ok) throw new Error(payload?.error?.message || "Não foi possível descartar esta lead.");
-      setDescarte(null);
-      /* Patch otimista na linha, como o resto desta tela faz: refazer a
-         consulta inteira para uma lead fecharia o trabalho em andamento. */
-      setItems((atuais) => atuais.map((l) => (l.id === alvo.leadId ? { ...l, status: "perdido" } : l)));
-      setNotice(`"${alvo.leadName}" foi descartada com motivo registrado.`);
-    } catch (erro) {
-      setNotice(erro instanceof Error ? erro.message : "Não foi possível descartar esta lead.");
-    } finally {
-      setDescartando(false);
+  const leadingPriority = visiblePriorityQueue[0] ?? null;
+  const leadDecision: LeadsDecision = (() => {
+    if (error) {
+      return {
+        tone: "danger",
+        badge: "Carteira em atenção",
+        title: "Recupere a leitura antes de decidir",
+        description:
+          "O Atlas encontrou uma inconsistência ao carregar a carteira. A prioridade é limpar o recorte e voltar para uma leitura segura.",
+        evidence: "Filtros e dados continuam protegidos.",
+        nextStep: "Limpar filtros e tentar novamente.",
+        primaryLabel: "Limpar filtros",
+        action: "reset",
+        aiPrompt:
+          "Explique um plano seguro para recuperar a leitura da carteira de leads sem perder dados, sem executar ações no CRM.",
+      };
     }
-  }
-
-  async function moverEtapaEmLote() {
-    if (!bulkStage || selected.size === 0) return;
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) throw new Error("Sessão expirada. Entre novamente.");
-      const r = await fetch("/api/v1/crm/leads/bulk-stage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ leadIds: [...selected], stage: bulkStage }),
-      });
-      const payload = await r.json();
-      if (!r.ok) throw new Error(payload?.error?.message || "Não foi possível mover as leads.");
-      // O que NÃO moveu aparece junto: silenciar a diferença faria o operador
-      // achar que foram todas e descobrir na semana seguinte.
-      setNotice(
-        payload.data?.aviso
-          ? `${payload.data.movidas} lead(s) movida(s). ${payload.data.aviso}`
-          : `${payload.data.movidas} lead(s) movida(s) para "${bulkStage}".`,
-      );
-      setSelected(new Set());
-      setBulkStage("");
-    } catch (e) {
-      setNotice(e instanceof Error ? e.message : "Não foi possível mover as leads.");
+    if (loading) {
+      return {
+        tone: "info",
+        badge: "Sincronizando",
+        title: "Lendo a carteira comercial",
+        description:
+          "O Atlas está cruzando filtros, responsáveis, próximas ações e sinais de score para mostrar a melhor decisão.",
+        evidence: "Consulta em andamento.",
+        nextStep: "Aguardar a sincronização.",
+        primaryLabel: "Sincronizando",
+        action: "none",
+        aiPrompt:
+          "Prepare um roteiro de leitura para a carteira de leads quando os dados terminarem de sincronizar.",
+      };
     }
-  }
+    if (!total && !hasFilters) {
+      return {
+        tone: "success",
+        badge: "Primeira carteira",
+        title: "Cadastre ou importe leads para iniciar operação",
+        description:
+          "A tela está pronta. O próximo ganho operacional vem de colocar leads reais na carteira e registrar próximas ações.",
+        evidence: "Nenhum lead encontrado no escopo atual.",
+        nextStep: "Criar lead ou importar uma base autorizada.",
+        primaryLabel: "Criar primeiro lead",
+        action: "href",
+        href: "/leads/new",
+        aiPrompt:
+          "Crie um checklist simples para iniciar uma carteira comercial imobiliária com leads reais e próximas ações.",
+      };
+    }
+    if (!total && hasFilters) {
+      return {
+        tone: "warning",
+        badge: "Filtro estreito",
+        title: "Amplie a busca para encontrar oportunidades",
+        description:
+          "Nenhum lead apareceu com o recorte atual. O caminho mais rápido é limpar filtros e voltar para a visão de carteira.",
+        evidence: `${activeFilterCount} filtro(s) avançado(s) ativo(s).`,
+        nextStep: "Limpar filtros ou trocar período/status.",
+        primaryLabel: "Limpar filtros",
+        action: "reset",
+        aiPrompt:
+          "Sugira uma forma objetiva de revisar filtros de leads para encontrar oportunidades ocultas, sem alterar dados.",
+      };
+    }
+    if (pageMetrics.overdue > 0) {
+      return {
+        tone: "danger",
+        badge: "SLA em risco",
+        title: "Resolver follow-ups vencidos primeiro",
+        description:
+          "A maior perda de conversão vem de lead esperando retorno. Priorize os atrasados antes de abrir novas buscas.",
+        evidence: `${pageMetrics.overdue} ação(ões) atrasada(s) nesta página.`,
+        nextStep: "Filtrar atrasados, abrir o primeiro lead e registrar resultado.",
+        primaryLabel: "Ver atrasados",
+        action: "filter",
+        filter: "overdue",
+        aiPrompt:
+          "Monte um plano de recuperação para os follow-ups vencidos da carteira visível, priorizando conversão e respeito ao histórico do cliente.",
+      };
+    }
+    if (currentRole !== "broker" && pageMetrics.unassigned > 0) {
+      return {
+        tone: "warning",
+        badge: "Distribuição",
+        title: "Distribuir leads sem responsável",
+        description:
+          "Lead sem dono perde velocidade. A gestão deve atribuir rapidamente sem quebrar histórico ou duplicar atendimento.",
+        evidence: `${pageMetrics.unassigned} lead(s) sem responsável nesta página.`,
+        nextStep: "Filtrar sem responsável e distribuir para corretor elegível.",
+        primaryLabel: "Ver sem responsável",
+        action: "filter",
+        filter: "unassigned",
+        aiPrompt:
+          "Crie uma recomendação de distribuição para leads sem responsável, considerando carga do time, projeto e urgência.",
+      };
+    }
+    if (pageMetrics.hot > 0) {
+      return {
+        tone: "danger",
+        badge: "Alta intenção",
+        title: "Atacar leads quentes agora",
+        description:
+          "A carteira tem sinais de compra. A próxima ação deve ser contato humano rápido com contexto de projeto e objeções.",
+        evidence: `${pageMetrics.hot} lead(s) quente(s) nesta página.`,
+        nextStep: "Filtrar quentes e preparar abordagem com IA.",
+        primaryLabel: "Ver quentes",
+        action: "filter",
+        filter: "hot",
+        aiPrompt:
+          "Prepare abordagens curtas para leads quentes da carteira visível, explicando o motivo da prioridade e sem enviar mensagens automaticamente.",
+      };
+    }
+    if (leadingPriority) {
+      return {
+        tone: leadingPriority.tone,
+        badge: "Próxima melhor ação",
+        title: `${leadingPriority.label}: ${leadingPriority.lead.name || "Lead sem nome"}`,
+        description: leadingPriority.detail,
+        evidence: `${projectName(leadingPriority.lead)} · score ${leadingPriority.lead.score ?? 0}.`,
+        nextStep: "Abrir Lead 360 e concluir a próxima ação.",
+        primaryLabel: "Abrir lead prioritário",
+        action: "href",
+        href: `/leads/${leadingPriority.lead.id}`,
+        aiPrompt:
+          "Prepare a melhor próxima ação para o lead prioritário, considerando projeto, score, origem, etapa e histórico visível.",
+      };
+    }
+    return {
+      tone: "success",
+      badge: "Carteira saudável",
+      title: "Carteira em ordem no recorte atual",
+      description:
+        "Não há pendência crítica nesta página. Continue avançando oportunidades por score, projeto e última interação.",
+      evidence: `${items.length} lead(s) visível(is) no recorte atual.`,
+      nextStep: "Abrir pipeline ou revisar oportunidades por score.",
+      primaryLabel: "Abrir pipeline",
+      action: "href",
+      href: "/pipeline",
+      aiPrompt:
+        "Analise a carteira saudável e indique até três oportunidades de melhoria para aumentar conversão sem gerar trabalho desnecessário.",
+    };
+  })();
 
   async function transferSelected() {
     if (!selected.size || !transferTarget) return;
@@ -1142,19 +1063,93 @@ export default function LeadsPage() {
     }
   }
 
+  function openFirstAction(leadId: string) {
+    setFirstActionLeadId((current) => (current === leadId ? "" : leadId));
+    setFirstActionType("call");
+    setFirstActionOutcome("contacted");
+    setFirstActionNote("");
+    setFirstActionNextTitle("Retornar contato");
+    setFirstActionNextAt(nextBusinessActionInput());
+    setFirstActionError("");
+  }
+
+  async function registerFirstAction(lead: Lead) {
+    if (firstActionSaving) return;
+    setFirstActionSaving(true);
+    setFirstActionError("");
+    setNotice("");
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Sessão expirada. Entre novamente para registrar a ação.");
+
+      const nextTimestamp = Date.parse(firstActionNextAt);
+      if (!Number.isFinite(nextTimestamp) || nextTimestamp <= Date.now()) {
+        throw new Error("Escolha uma data futura para a próxima ação.");
+      }
+
+      const response = await fetch(`/api/v1/leads/${lead.id}/first-action`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "Idempotency-Key": `first-action:${lead.id}:${crypto.randomUUID()}`,
+        },
+        body: JSON.stringify({
+          actionType: firstActionType,
+          outcome: firstActionOutcome,
+          note: firstActionNote,
+          nextActionTitle: firstActionNextTitle,
+          nextActionAt: new Date(nextTimestamp).toISOString(),
+          humanConfirmed: true,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: { message?: string };
+      };
+      if (!response.ok) {
+        throw new Error(payload.error?.message || "Não foi possível registrar a ação.");
+      }
+
+      setFirstActionLeadId("");
+      setNotice(
+        `Ação registrada para ${lead.name || "a lead"}. A próxima tarefa já está na agenda e a fila foi atualizada.`,
+      );
+      setReloadKey((current) => current + 1);
+    } catch (actionError) {
+      setFirstActionError(
+        actionError instanceof Error
+          ? actionError.message
+          : "Não foi possível registrar a ação.",
+      );
+    } finally {
+      setFirstActionSaving(false);
+    }
+  }
+
   function resetFilters() {
     setSearch("");
     setDebouncedSearch("");
     setStatus("");
     setSource("");
+    setCreatedAfter("");
+    setCreatedBefore("");
     setProject("");
+    setCampaign("");
     setBroker("");
     setScore("");
     setAttention("");
-    setVinculo("");
+    setQuality("");
     setNextAction("");
     setSort("created_at");
     setDirection("desc");
+    // Report drilldowns use URL parameters. Remove them together with the
+    // local state so a refresh never silently restores an old report context.
+    const url = new URL(window.location.href);
+    ["status", "quality", "attention", "project", "campaign", "broker", "source", "created_after", "created_before"].forEach((key) =>
+      url.searchParams.delete(key),
+    );
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setPage(1);
   }
 
@@ -1168,192 +1163,913 @@ export default function LeadsPage() {
     setPage(1);
   }
 
+  function clearQualityFilter() {
+    setQuality("");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("quality");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    setPage(1);
+  }
+
+  function clearAttentionFilter() {
+    setAttention("");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("attention");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    setPage(1);
+  }
+
+  function clearCampaignFilter() {
+    setCampaign("");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("campaign");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    setPage(1);
+  }
+
+  function clearReportPeriod() {
+    setCreatedAfter("");
+    setCreatedBefore("");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("created_after");
+    url.searchParams.delete("created_before");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    setPage(1);
+  }
+
+  function clearProjectFilter() {
+    setProject("");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("project");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    setPage(1);
+  }
+
+  function clearBrokerFilter() {
+    setBroker("");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("broker");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    setPage(1);
+  }
+
+  function clearSourceFilter() {
+    setSource("");
+    setCreatedAfter("");
+    setCreatedBefore("");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("source");
+    url.searchParams.delete("created_after");
+    url.searchParams.delete("created_before");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    setPage(1);
+  }
+
   return (
     <div
-      className="space-y-4 pb-10"
+      className="space-y-5 pb-10"
       data-phase="36-leads-action-workspace"
+      data-v30-phase="129-leads-customers-v30-decision-layer"
       data-leads-layout="action-first"
     >
-      {/* ── PAINEL VAZIO NAO OCUPA O TOPO DA TELA ─────────────────────────
-          Visto numa foto da tela do dono: a "Fila de ação" ocupava o espaço
-          mais valioso da página para dizer "Nenhuma pendência prioritária
-          nesta página". Um painel com borda, título e chip para comunicar
-          ausência — enquanto a carteira com 473 leads sem contato começava
-          abaixo da dobra.
+      <section className="atlas-leads-hero atlas-leads-hero-compact" data-page-header="decision" data-primary-action-count="1">
+        <div className="atlas-leads-source-filter">
+          <div className="flex flex-wrap gap-2">
+            <StatusBadge tone="info">LEADS INTELLIGENCE</StatusBadge>
+            <StatusBadge tone="success">TENANT-SAFE</StatusBadge>
+            <StatusBadge tone="violet">LEAD 360</StatusBadge>
+            {currentRole === "broker" ? (
+              <StatusBadge tone="success">CARTEIRA EXCLUSIVA</StatusBadge>
+            ) : null}
+            {currentRole === "manager" ? (
+              <StatusBadge tone="success">
+                MEU TIME · {teamBrokers.length} CORRETORES
+              </StatusBadge>
+            ) : null}
+          </div>
+          <h1>
+            {currentRole === "broker"
+              ? "Sua fila de leads, pronta para agir."
+              : "Leads que exigem decisão agora."}
+          </h1>
+          <p>
+            {currentRole === "broker"
+              ? "Prioridades e próximas ações da sua carteira, sem misturar leads de outros corretores."
+              : "Prioridades do escopo autorizado, distribuição rastreável e próxima ação em uma visão compacta."}
+          </p>
+          <div className="atlas-command-actions">
+            <Link href="/leads/new" className="atlas-button-primary">
+              + Novo lead
+            </Link>
+            <Link href="/pipeline" className="atlas-button-secondary">
+              Abrir pipeline
+            </Link>
+            <details className="atlas-leads-tools">
+              <summary>Mais ferramentas</summary>
+              <div>
+                <Link href="/leads/data-quality">Qualidade dos dados</Link>
+                <Link href="/leads/deduplication">Duplicidades</Link>
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent("atlas:open-copilot", {
+                        detail: {
+                          prompt:
+                            "Analise a carteira de leads visível e explique até três prioridades, sem executar nenhuma ação.",
+                          context: {
+                            total,
+                            filters: {
+                              status,
+                              source,
+                              project,
+                              campaign,
+                              broker,
+                              score,
+                              attention,
+                              nextAction,
+                            },
+                            pageMetrics,
+                            visiblePriorities: visiblePriorityQueue.length,
+                          },
+                        },
+                      }),
+                    )
+                  }
+                >
+                  ✦ Analisar carteira
+                </button>
+              </div>
+            </details>
+          </div>
+        </div>
+        <div className="atlas-leads-total">
+          <span>Base filtrada</span>
+          <strong>{loading ? "—" : total}</strong>
+          <small>
+            {hasFilters
+              ? "resultado dos filtros atuais"
+              : currentRole === "broker"
+                ? "somente a sua carteira"
+                : "somente seu escopo comercial"}
+          </small>
+        </div>
+      </section>
 
-          A regra de hierarquia do v3: o que exige decisão vem antes do que
-          informa, e o que não tem nada a dizer não vem. A própria mensagem
-          admitia que "os atalhos de atenção varrem o restante" — ou seja, o
-          trabalho está em outro lugar.
-
-          Some só quando NÃO está carregando: sumir durante a carga faria a
-          fila piscar na tela a cada filtro. ── */}
-      {loading || visiblePriorityQueue.length ? (
       <section
-        className="cc6-panel cc6-reveal p-4 sm:p-5"
-        style={{ animationDelay: "70ms" }}
+        className="atlas-leads-decision-cockpit"
+        data-phase="104-leads-action-cockpit"
+        data-tone={leadDecision.tone}
+        aria-label="Decisão principal da carteira de leads"
+      >
+        <div className="atlas-leads-decision-main">
+          <StatusBadge tone={leadDecision.tone}>{leadDecision.badge}</StatusBadge>
+          <h2>{leadDecision.title}</h2>
+          <p>{leadDecision.description}</p>
+          <div className="atlas-leads-decision-actions">
+            {leadDecision.action === "href" && leadDecision.href ? (
+              <Link href={leadDecision.href}>{leadDecision.primaryLabel}</Link>
+            ) : null}
+            {leadDecision.action === "filter" && leadDecision.filter ? (
+              <button
+                type="button"
+                onClick={() =>
+                  applyAttention(leadDecision.filter as AttentionFilter)
+                }
+              >
+                {leadDecision.primaryLabel}
+              </button>
+            ) : null}
+            {leadDecision.action === "reset" ? (
+              <button type="button" onClick={resetFilters}>
+                {leadDecision.primaryLabel}
+              </button>
+            ) : null}
+            {leadDecision.action === "none" ? (
+              <button type="button" disabled>
+                {leadDecision.primaryLabel}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="atlas-leads-decision-ai"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent("atlas:open-copilot", {
+                    detail: {
+                      prompt: leadDecision.aiPrompt,
+                      context: {
+                        total,
+                        currentRole,
+                        filters: {
+                          status,
+                          source,
+                          project,
+                          broker,
+                          score,
+                          attention,
+                          nextAction,
+                        },
+                        pageMetrics,
+                        visiblePriorities: visiblePriorityQueue.length,
+                      },
+                    },
+                  }),
+                )
+              }
+            >
+              ✦ Pedir orientação
+            </button>
+          </div>
+        </div>
+        <div className="atlas-leads-decision-grid">
+          {[
+            ["Evidência", leadDecision.evidence],
+            ["Próximo passo", leadDecision.nextStep],
+            [
+              "Carteira",
+              loading
+                ? "Sincronizando"
+                : `${items.length} nesta página · ${total} no recorte`,
+            ],
+            [
+              "IA",
+              visiblePriorityQueue.length
+                ? `${visiblePriorityQueue.length} prioridade(s) explicável(is)`
+                : "Sem ação automática",
+            ],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <AtlasDetailDisclosure label="Ver diagnóstico da carteira">
+        <section
+          className="atlas-leads-v30-command-strip"
+          data-phase="129-leads-customers-v30-decision-layer"
+          aria-label="Camada V30 de decisão da carteira de leads"
+        >
+        <div className="atlas-leads-v30-score-card">
+          <div>
+            <StatusBadge
+              tone={
+                leadsV30Signals.decisionScore >= 80
+                  ? "success"
+                  : leadsV30Signals.decisionScore >= 55
+                    ? "warning"
+                    : "danger"
+              }
+            >
+              V30 DECISION LAYER
+            </StatusBadge>
+            <h2>Clareza da carteira</h2>
+            <p>
+              O Atlas mede se os leads têm dono, contato, próxima ação e sinal
+              útil para aprendizado. Quanto mais claro, menos ruído para vender.
+            </p>
+          </div>
+          <strong>{loading ? "—" : `${leadsV30Signals.decisionScore}%`}</strong>
+          <span>
+            {loading
+              ? "Sincronizando sinais"
+              : `${leadsV30Signals.ownershipCoverage}% com responsável · ${leadsV30Signals.actionCoverage}% com próxima ação`}
+          </span>
+        </div>
+        <div className="atlas-leads-v30-signal-grid">
+          {leadsV30Signals.signals.map((signal) => (
+            <article key={signal.id} data-tone={signal.tone}>
+              <div>
+                <span>{signal.eyebrow}</span>
+                <strong>{loading ? "—" : signal.value}</strong>
+              </div>
+              <h3>{signal.label}</h3>
+              <p>{signal.detail}</p>
+              {signal.action === "href" && signal.href ? (
+                <Link href={signal.href}>{signal.actionLabel}</Link>
+              ) : null}
+              {signal.action === "filter" && signal.filter ? (
+                <button
+                  type="button"
+                  onClick={() => applyAttention(signal.filter as AttentionFilter)}
+                >
+                  {signal.actionLabel}
+                </button>
+              ) : null}
+              {signal.action === "ai" ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent("atlas:open-copilot", {
+                        detail: {
+                          prompt: signal.aiPrompt,
+                          context: {
+                            total,
+                            currentRole,
+                            signal: signal.id,
+                            pageMetrics,
+                            leadsV30Signals: {
+                              actionCoverage: leadsV30Signals.actionCoverage,
+                              contactCoverage: leadsV30Signals.contactCoverage,
+                              decisionScore: leadsV30Signals.decisionScore,
+                              memoryCoverage: leadsV30Signals.memoryCoverage,
+                              noNextAction: leadsV30Signals.noNextAction,
+                              ownershipCoverage:
+                                leadsV30Signals.ownershipCoverage,
+                            },
+                          },
+                        },
+                      }),
+                    )
+                  }
+                >
+                  {signal.actionLabel}
+                </button>
+              ) : null}
+              {signal.action === "none" ? <span>Monitorado</span> : null}
+            </article>
+          ))}
+        </div>
+        </section>
+      </AtlasDetailDisclosure>
+
+      <section
+        className="atlas-leads-action-queue"
         aria-labelledby="atlas-leads-action-title"
         aria-live="polite"
         data-phase="36-visible-action-queue"
       >
-        <header className="flex flex-wrap items-center justify-between gap-2">
-          <h2
-            id="atlas-leads-action-title"
-            className="text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
-          >
-            Fila de ação · página atual
-          </h2>
-          <span
-            className="cc6-chip"
-            title={
-              loading
-                ? "Sincronizando a fila com os leads desta página."
-                : `${visiblePriorityQueue.length} prioridade(s) visível(is), derivada(s) somente dos leads desta página${visiblePriorityQueue.length > 3 ? "; as demais seguem sinalizadas na tabela abaixo" : ""}.`
-            }
-          >
+        <header>
+          <div>
+            <p>Fila de ação · página atual</p>
+            <h2 id="atlas-leads-action-title">O que precisa avançar agora</h2>
+          </div>
+          <span>
             {loading
-              ? "sincronizando"
-              : visiblePriorityQueue.length > 3
-                ? `3 de ${visiblePriorityQueue.length}`
-                : visiblePriorityQueue.length}
+              ? "Sincronizando"
+              : `${visiblePriorityQueue.length} prioridade(s) visível(is)`}
           </span>
         </header>
         {loading ? (
-          <div className="mt-3">
-            <LoadingState rows={3} />
-          </div>
+          <LoadingState rows={3} />
         ) : visiblePriorityQueue.length ? (
-          <div className="mt-3 grid gap-2">
-            {visiblePriorityQueue.slice(0, 3).map((priority, index) => {
-              const contact = phoneLinks(priority.lead.phone);
-              return (
-                <article
-                  key={priority.lead.id}
-                  data-tone={priority.tone}
-                  className="cc6-sev-band cc6-panel-quiet flex flex-col gap-3 py-3 pl-4 pr-3 md:flex-row md:items-center md:justify-between"
-                  style={
-                    { "--cc6-sev": priorityBand[priority.tone] } as CSSProperties
-                  }
-                >
-                  <div className="flex min-w-0 items-start gap-3">
-                    <span
-                      className="cc6-num pt-0.5 text-xs text-[var(--atlas-texto-fraco)]"
-                      aria-hidden="true"
-                    >
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                          href={`/leads/${priority.lead.id}`}
-                          className={`rounded-md text-corpo font-semibold text-[var(--atlas-texto-forte)] transition-colors hover:text-[color:var(--atlas-accent-hover)] ${focusRing}`}
-                        >
-                          {priority.lead.name || "Lead sem nome"}
-                        </Link>
-                        <StatusBadge tone={priority.tone}>
-                          {priority.label}
-                        </StatusBadge>
-                      </div>
-                      <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">
-                        {priority.detail}
-                      </p>
-                      <p className="mt-0.5 text-rotulo text-[var(--atlas-texto-fraco)]">
-                        {projectName(priority.lead)} ·{" "}
-                        {priority.lead.status || "novo"}
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className="flex shrink-0 flex-wrap items-center gap-2 md:pl-3"
-                    role="group"
-                    aria-label={`Ações rápidas para ${priority.lead.name || "lead"}`}
+          <div className="atlas-leads-action-list">
+            {visiblePriorityQueue.slice(0, 3).map((priority, index) => (
+              <article key={priority.lead.id} data-tone={priority.tone}>
+                <div className="atlas-leads-action-rank">
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <StatusBadge tone={priority.tone}>
+                    {priority.label}
+                  </StatusBadge>
+                </div>
+                <div className="atlas-leads-action-copy">
+                  <Link href={`/leads/${priority.lead.id}`}>
+                    {priority.lead.name || "Lead sem nome"}
+                  </Link>
+                  <p>{priority.detail}</p>
+                  <small>
+                    {projectName(priority.lead)} · {priority.lead.status || "novo"}
+                  </small>
+                </div>
+                <div className="atlas-leads-action-buttons">
+                  <Link href={`/leads/${priority.lead.id}`}>Abrir lead</Link>
+                  <button
+                    type="button"
+                    aria-expanded={firstActionLeadId === priority.lead.id}
+                    onClick={() => openFirstAction(priority.lead.id)}
                   >
-                    {contact ? (
-                      <a
-                        href={contact.call}
-                        className="cc6-ghost-btn min-h-11"
-                        aria-label={`Ligar para ${priority.lead.name || "lead"}`}
-                      >
-                        Ligar
-                      </a>
-                    ) : null}
-                    {contact ? (
-                      <a
-                        href={contact.whatsapp}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="cc6-ghost-btn min-h-11"
-                        aria-label={`Abrir WhatsApp com ${priority.lead.name || "lead"}`}
-                      >
-                        WhatsApp
-                      </a>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="cc6-ghost-btn min-h-11"
-                      onClick={() =>
-                        window.dispatchEvent(
-                          new CustomEvent("atlas:open-copilot", {
-                            detail: {
-                              prompt:
-                                "Prepare uma abordagem curta para esta lead usando apenas o contexto autorizado. Explique a recomendação e não envie mensagem nem altere o CRM.",
-                              context: {
-                                leadId: priority.lead.id,
-                                project: projectName(priority.lead),
-                                status: priority.lead.status,
-                                source: priority.lead.source,
-                                score: priority.lead.score,
-                                temperature: priority.lead.temperature,
-                                priority: priority.label,
-                              },
+                    {firstActionLeadId === priority.lead.id
+                      ? "Fechar registro"
+                      : "✓ Registrar ação"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new CustomEvent("atlas:open-copilot", {
+                          detail: {
+                            prompt:
+                              "Prepare uma abordagem curta para esta lead usando apenas o contexto autorizado. Explique a recomendação e não envie mensagem nem altere o CRM.",
+                            context: {
+                              leadId: priority.lead.id,
+                              project: projectName(priority.lead),
+                              status: priority.lead.status,
+                              source: priority.lead.source,
+                              score: priority.lead.score,
+                              temperature: priority.lead.temperature,
+                              priority: priority.label,
                             },
-                          }),
-                        )
-                      }
-                    >
-                      ✦ Preparar abordagem
+                          },
+                        }),
+                      )
+                    }
+                  >
+                    ✦ Preparar abordagem
+                  </button>
+                </div>
+                {firstActionLeadId === priority.lead.id ? (
+                  <form
+                    className="atlas-leads-first-action"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void registerFirstAction(priority.lead);
+                    }}
+                  >
+                    <header>
+                      <div>
+                        <strong>Registrar e já preparar o próximo passo</strong>
+                        <span>
+                          Uma confirmação atualiza a lead, preserva o histórico e
+                          cria o compromisso seguinte sem duplicidade.
+                        </span>
+                      </div>
+                      <StatusBadge tone="info">AÇÃO ATÔMICA</StatusBadge>
+                    </header>
+                    <div className="atlas-leads-first-action-grid">
+                      <label>
+                        <span>Canal usado</span>
+                        <select
+                          value={firstActionType}
+                          onChange={(event) =>
+                            setFirstActionType(event.target.value)
+                          }
+                        >
+                          <option value="call">Ligação</option>
+                          <option value="whatsapp">WhatsApp</option>
+                          <option value="email">E-mail</option>
+                          <option value="meeting">Reunião</option>
+                          <option value="visit">Visita</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>Resultado</span>
+                        <select
+                          value={firstActionOutcome}
+                          onChange={(event) =>
+                            setFirstActionOutcome(
+                              event.target.value as FirstActionOutcome,
+                            )
+                          }
+                        >
+                          <option value="contacted">Contato realizado</option>
+                          <option value="no_response">Sem resposta</option>
+                          <option value="meeting_scheduled">
+                            Reunião ou visita marcada
+                          </option>
+                          <option value="follow_up_needed">
+                            Precisa de retorno
+                          </option>
+                          <option value="not_interested">Sem interesse</option>
+                        </select>
+                      </label>
+                      <label className="atlas-leads-first-action-note">
+                        <span>O que aconteceu</span>
+                        <textarea
+                          required
+                          minLength={10}
+                          maxLength={1000}
+                          rows={3}
+                          value={firstActionNote}
+                          onChange={(event) =>
+                            setFirstActionNote(event.target.value)
+                          }
+                          placeholder="Registre a resposta, necessidade ou objeção observada."
+                        />
+                      </label>
+                      <label>
+                        <span>Próxima ação</span>
+                        <input
+                          required
+                          minLength={3}
+                          maxLength={120}
+                          value={firstActionNextTitle}
+                          onChange={(event) =>
+                            setFirstActionNextTitle(event.target.value)
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Quando</span>
+                        <input
+                          required
+                          type="datetime-local"
+                          value={firstActionNextAt}
+                          onChange={(event) =>
+                            setFirstActionNextAt(event.target.value)
+                          }
+                        />
+                      </label>
+                    </div>
+                    {firstActionError ? (
+                      <p role="alert" className="atlas-leads-first-action-error">
+                        {firstActionError}
+                      </p>
+                    ) : null}
+                    <button type="submit" disabled={firstActionSaving}>
+                      {firstActionSaving
+                        ? "Registrando com segurança…"
+                        : "Confirmar ação e criar tarefa"}
                     </button>
-                  </div>
-                </article>
-              );
-            })}
+                  </form>
+                ) : null}
+              </article>
+            ))}
           </div>
         ) : (
-          <p className="mt-3 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
-            Nenhuma pendência prioritária nesta página — os atalhos de atenção
-            varrem o restante da carteira.
-          </p>
+          <div className="atlas-leads-action-clear">
+            <strong>Nenhuma pendência prioritária nesta página</strong>
+            <span>
+              Use os atalhos de atenção para consultar o restante da carteira.
+            </span>
+          </div>
         )}
+        {!loading && visiblePriorityQueue.length > 3 ? (
+          <small className="atlas-leads-action-more">
+            + {visiblePriorityQueue.length - 3} prioridade(s) continuam na
+            tabela desta página.
+          </small>
+        ) : null}
       </section>
-      ) : null}
 
-      <div className="cc6-reveal" style={{ animationDelay: "140ms" }}>
-        <section
-          className="atlas-leads-filter-panel"
-          data-expanded={filtersOpen ? "true" : "false"}
-        >
-          <div className="atlas-leads-filter-top">
-            <div className="atlas-leads-search border-[rgba(148,163,184,0.12)]! transition-colors focus-within:border-[color:var(--atlas-accent)]!">
-              <span aria-hidden="true" className="text-[color:var(--atlas-accent)]!">
-                ⌕
-              </span>
+      <section className="atlas-leads-metrics">
+        <MetricCard
+          label="Leads encontrados"
+          value={loading ? "—" : total}
+          detail={`${PAGE_SIZE} por página`}
+          trend="BASE"
+        />
+        <MetricCard
+          label="Quentes nesta página"
+          value={loading ? "—" : pageMetrics.hot}
+          detail="Score ≥ 70 ou temperatura quente"
+          trend="HOT"
+          tone="danger"
+        />
+        {currentRole === "manager" ? (
+          <MetricCard
+            label="Corretores no meu time"
+            value={referencesLoading ? "—" : teamBrokers.length}
+            detail="Somente subordinados ativos"
+            trend="ESCOPO"
+            tone="success"
+          />
+        ) : (
+          <MetricCard
+            label="Sem responsável"
+            value={loading ? "—" : pageMetrics.unassigned}
+            detail="Precisam de distribuição"
+            trend="AÇÃO"
+            tone="warning"
+          />
+        )}
+        <MetricCard
+          label="Ações atrasadas"
+          value={loading ? "—" : pageMetrics.overdue}
+          detail="Follow-up fora do prazo"
+          trend="SLA"
+          tone="danger"
+        />
+      </section>
+
+      <section
+        className="rounded-[24px] border border-white/[0.07] bg-white/[0.018] p-4 sm:p-5"
+        aria-label="Atalhos da rotina comercial"
+      >
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">
+              Minha rotina
+            </p>
+            <h2 className="mt-1 text-lg font-semibold text-white">
+              Encontre rapidamente onde agir
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Os atalhos consultam toda a carteira dentro do seu escopo
+              comercial.
+            </p>
+          </div>
+          <div
+            className="flex gap-2 overflow-x-auto pb-1"
+            role="group"
+            aria-label="Filtrar leads que precisam de atenção"
+          >
+            {(
+              [
+                ["overdue", "Ações atrasadas", "Resolver follow-ups vencidos"],
+                ["no_action", "Sem próxima ação", "Evitar leads esquecidas"],
+                ["hot", "Leads quentes", "Atender maior intenção"],
+                ...(currentRole !== "broker"
+                  ? [
+                      [
+                        "unassigned",
+                        "Sem responsável",
+                        "Distribuir para o time",
+                      ],
+                    ]
+                  : []),
+              ] as Array<[AttentionFilter, string, string]>
+            ).map(([key, label, description]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => applyAttention(key)}
+                aria-pressed={attention === key}
+                title={description}
+                className={`shrink-0 rounded-xl border px-3 py-2.5 text-left transition ${attention === key ? "border-sky-400/30 bg-sky-400/10 text-sky-100" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}
+              >
+                <strong className="block text-xs">{label}</strong>
+                <span className="mt-0.5 block text-[9px] opacity-60">
+                  {description}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="atlas-leads-filter-panel"
+        data-expanded={filtersOpen ? "true" : "false"}
+      >
+        {quality ? (
+          <div
+            className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.06] px-3 py-2 text-xs text-amber-100"
+            role="status"
+            data-leads-quality-filter={quality}
+          >
+            <span>
+              Revisão de qualidade: <strong>{qualityFilterLabels[quality]}</strong>. Nenhum dado é alterado automaticamente.
+            </span>
+            <button type="button" className="font-semibold text-amber-200 underline-offset-2 hover:underline" onClick={clearQualityFilter}>
+              Limpar recorte
+            </button>
+          </div>
+        ) : null}
+        {attention ? (
+          <div
+            className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-300/20 bg-rose-300/[.06] px-3 py-2 text-xs text-rose-100"
+            role="status"
+            data-leads-attention-filter={attention}
+          >
+            <span>
+              Prioridade operacional: <strong>{attentionFilterLabels[attention]}</strong>. A lista está ordenada para facilitar a próxima decisão.
+            </span>
+            <button type="button" className="font-semibold text-rose-200 underline-offset-2 hover:underline" onClick={clearAttentionFilter}>
+              Limpar prioridade
+            </button>
+          </div>
+        ) : null}
+        {campaign ? (
+          <div
+            className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-300/20 bg-sky-300/[.06] px-3 py-2 text-xs text-sky-100"
+            role="status"
+            data-leads-campaign-filter={campaign}
+          >
+            <span>
+              Carteira da campanha: <strong>{selectedCampaignName}</strong>. Você está vendo somente leads vinculadas a este recorte
+              {createdAfter ? ` no período de ${reportPeriodLabel}` : ""}.
+            </span>
+            <span className="flex items-center gap-3">
+              {createdAfter ? (
+                <button type="button" className="font-semibold text-sky-200 underline-offset-2 hover:underline" onClick={clearReportPeriod}>
+                  Ver todo o período
+                </button>
+              ) : null}
+              <button type="button" className="font-semibold text-sky-200 underline-offset-2 hover:underline" onClick={clearCampaignFilter}>
+                Ver todas as campanhas
+              </button>
+            </span>
+          </div>
+        ) : null}
+        {source ? (
+          <div
+            className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-300/20 bg-emerald-300/[.06] px-3 py-2 text-xs text-emerald-100"
+            role="status"
+            data-leads-source-filter={source}
+          >
+            <span>
+              Origem selecionada: <strong>{source}</strong>. A carteira mostra
+              somente leads captadas por esta origem{createdAfter ? " dentro do período analisado no relatório" : ""}.
+            </span>
+            <button
+              type="button"
+              className="font-semibold text-emerald-200 underline-offset-2 hover:underline"
+              onClick={clearSourceFilter}
+            >
+              {createdAfter ? "Ver todas as origens e períodos" : "Ver todas as origens"}
+            </button>
+          </div>
+        ) : null}
+        {project || broker ? (
+          <div
+            className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-violet-300/20 bg-violet-300/[.06] px-3 py-2 text-xs text-violet-100"
+            role="status"
+            data-leads-report-context="true"
+          >
+            <span>
+              Recorte do relatório:{" "}
+              {project ? <strong>{selectedProjectName}</strong> : null}
+              {project && broker ? " · " : null}
+              {broker ? <strong>{selectedBrokerName}</strong> : null}
+              {createdAfter ? ` · período de ${reportPeriodLabel}` : ""}.
+            </span>
+            <span className="flex items-center gap-3">
+              {createdAfter ? (
+                <button type="button" className="font-semibold text-violet-200 underline-offset-2 hover:underline" onClick={clearReportPeriod}>
+                  Ver todo o período
+                </button>
+              ) : null}
+              {project ? (
+                <button type="button" className="font-semibold text-violet-200 underline-offset-2 hover:underline" onClick={clearProjectFilter}>
+                  Limpar projeto
+                </button>
+              ) : null}
+              {broker ? (
+                <button type="button" className="font-semibold text-violet-200 underline-offset-2 hover:underline" onClick={clearBrokerFilter}>
+                  Limpar corretor
+                </button>
+              ) : null}
+            </span>
+          </div>
+        ) : null}
+        {createdAfter && !source && !project && !broker && !campaign ? (
+          <div
+            className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-indigo-300/20 bg-indigo-300/[.06] px-3 py-2 text-xs text-indigo-100"
+            role="status"
+            data-leads-report-period={createdAfter}
+          >
+            <span>
+              Período do relatório: leads cadastradas de <strong>{reportPeriodLabel}</strong>.
+            </span>
+            <button type="button" className="font-semibold text-indigo-200 underline-offset-2 hover:underline" onClick={clearReportPeriod}>
+              Ver todo o período
+            </button>
+          </div>
+        ) : null}
+        <div className="atlas-leads-filter-top">
+          <div className="atlas-leads-search">
+            <span aria-hidden="true">⌕</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por nome, e-mail ou telefone..."
+              aria-label="Buscar leads"
+            />
+            <kbd>⌘ K</kbd>
+          </div>
+          <button
+            type="button"
+            className="atlas-filter-toggle"
+            aria-expanded={filtersOpen}
+            aria-controls="atlas-advanced-filters"
+            onClick={() => setFiltersOpen((current) => !current)}
+          >
+            <span aria-hidden="true">≡</span>
+            <span>Filtros</span>
+            {activeFilterCount ? <strong>{activeFilterCount}</strong> : null}
+          </button>
+          {hasFilters ? (
+            <button
+              type="button"
+              className="atlas-clear-filters"
+              onClick={resetFilters}
+            >
+              Limpar
+            </button>
+          ) : null}
+        </div>
+        {filtersOpen ? (
+          <div
+            className="atlas-leads-advanced-filters"
+            id="atlas-advanced-filters"
+          >
+            <select
+              value={project}
+              onChange={(event) => updateFilter(setProject, event.target.value)}
+              aria-label="Filtrar por projeto"
+              disabled={referencesLoading}
+            >
+              <option value="">Todos os projetos</option>
+              {developments.map((development) => (
+                <option
+                  key={String(development.id)}
+                  value={String(development.id)}
+                >
+                  {text(development, "name") || "Projeto sem nome"}
+                </option>
+              ))}
+            </select>
+            <select
+              value={campaign}
+              onChange={(event) => updateFilter(setCampaign, event.target.value)}
+              aria-label="Filtrar por campanha"
+              disabled={referencesLoading}
+            >
+              <option value="">Todas as campanhas</option>
+              {campaigns.map((campaignItem) => (
+                <option key={String(campaignItem.id)} value={String(campaignItem.id)}>
+                  {text(campaignItem, "name") || "Campanha sem nome"}
+                </option>
+              ))}
+            </select>
+            <select
+              value={status}
+              onChange={(event) => updateFilter(setStatus, event.target.value)}
+              aria-label="Filtrar por status"
+            >
+              {statuses.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            <div className="atlas-filter-input-wrap">
               <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar por nome, e-mail ou telefone..."
-                aria-label="Buscar leads"
-                className="focus:outline-hidden"
+                list="atlas-lead-sources"
+                value={source}
+                onChange={(event) =>
+                  updateFilter(setSource, event.target.value)
+                }
+                placeholder="Todas as origens"
+                aria-label="Filtrar por origem"
               />
+              <datalist id="atlas-lead-sources">
+                <option value="Meta Lead Ads" />
+                <option value="WhatsApp" />
+                <option value="Google Ads" />
+                <option value="TikTok Ads" />
+                <option value="Portal imobiliário" />
+                <option value="Indicação" />
+                <option value="Oferta ativa" />
+              </datalist>
             </div>
-            <div className="atlas-leads-sort w-full sm:w-56 sm:shrink-0">
+            {currentRole !== "broker" ? (
+              <select
+                value={broker}
+                onChange={(event) =>
+                  updateFilter(setBroker, event.target.value)
+                }
+                aria-label="Filtrar por corretor"
+                disabled={referencesLoading}
+              >
+                <option value="">
+                  {currentRole === "manager"
+                    ? "Todo o meu time"
+                    : "Todos os corretores"}
+                </option>
+                {currentRole !== "manager" ? (
+                  <option value="unassigned">Sem responsável</option>
+                ) : null}
+                {(currentRole === "manager"
+                  ? teamBrokers
+                  : profiles.filter((profile) =>
+                      ["broker", "manager"].includes(
+                        profile.commercial_role || profile.role,
+                      ),
+                    )
+                ).map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.full_name || "Usuário sem nome"}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            <select
+              value={score}
+              onChange={(event) => updateFilter(setScore, event.target.value)}
+              aria-label="Filtrar por score"
+            >
+              <option value="">Todos os scores</option>
+              <option value="hot">Quente · 70–100</option>
+              <option value="warm">Morno · 40–69</option>
+              <option value="cold">Frio · 0–39</option>
+            </select>
+            <select
+              value={nextAction}
+              onChange={(event) =>
+                updateFilter(
+                  (value) => setNextAction(value as NextActionFilter),
+                  event.target.value,
+                )
+              }
+              aria-label="Filtrar por próxima ação"
+            >
+              <option value="">Qualquer próxima ação</option>
+              <option value="today">Agendada para hoje</option>
+              <option value="next_7_days">Próximos 7 dias</option>
+              <option value="scheduled">Todas as agendadas</option>
+            </select>
+            <div className="atlas-leads-sort">
               <select
                 value={sort}
                 onChange={(event) => updateFilter(setSort, event.target.value)}
                 aria-label="Ordenar leads"
-                className={`min-h-11 w-full min-w-0 rounded-xl border border-white/10 bg-[#0a1120] px-3 text-rotulo text-[#cdd7e5] ${focusRing}`}
               >
-                <option value="first_contact_sla">Prazo de 1º contato</option>
                 <option value="created_at">Data de entrada</option>
                 <option value="updated_at">Última atualização</option>
                 <option value="score">Score</option>
@@ -1361,7 +2077,6 @@ export default function LeadsPage() {
               </select>
               <button
                 type="button"
-                className={`min-h-11 ${focusRing}`}
                 onClick={() => {
                   setDirection((current) =>
                     current === "asc" ? "desc" : "asc",
@@ -1377,154 +2092,9 @@ export default function LeadsPage() {
                 {direction === "asc" ? "↑" : "↓"}
               </button>
             </div>
-            <button
-              type="button"
-              className={`atlas-filter-toggle ${focusRing}`}
-              aria-expanded={filtersOpen}
-              aria-controls="atlas-advanced-filters"
-              onClick={() => setFiltersOpen((current) => !current)}
-            >
-              <span aria-hidden="true">≡</span>
-              <span>Filtros</span>
-              {activeFilterCount ? <strong>{activeFilterCount}</strong> : null}
-            </button>
-            {hasFilters ? (
-              <button
-                type="button"
-                className={`atlas-clear-filters ${focusRing}`}
-                onClick={resetFilters}
-              >
-                Limpar
-              </button>
-            ) : null}
           </div>
-          {filtersOpen ? (
-            <div
-              className="atlas-leads-advanced-filters"
-              id="atlas-advanced-filters"
-            >
-              <select
-                value={project}
-                onChange={(event) => updateFilter(setProject, event.target.value)}
-                aria-label="Filtrar por projeto"
-                disabled={referencesLoading}
-                className={`atlas-filtro-controle ${focusRing}`}
-              >
-                <option value="">Todos os projetos</option>
-                {developments.map((development) => (
-                  <option
-                    key={String(development.id)}
-                    value={String(development.id)}
-                  >
-                    {text(development, "name") || "Projeto sem nome"}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={status}
-                onChange={(event) => updateFilter(setStatus, event.target.value)}
-                aria-label="Filtrar por status"
-                className={`atlas-filtro-controle ${focusRing}`}
-              >
-                {statuses.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-              <div className="atlas-filter-input-wrap">
-                <input
-                  list="atlas-lead-sources"
-                  value={source}
-                  onChange={(event) =>
-                    updateFilter(setSource, event.target.value)
-                  }
-                  placeholder="Todas as origens"
-                  aria-label="Filtrar por origem"
-                  className={`atlas-filtro-controle ${focusRing}`}
-                />
-                <datalist id="atlas-lead-sources">
-                  <option value="Meta Lead Ads" />
-                  <option value="WhatsApp" />
-                  <option value="Google Ads" />
-                  <option value="TikTok Ads" />
-                  <option value="Portal imobiliário" />
-                  <option value="Indicação" />
-                  <option value="Oferta ativa" />
-                </datalist>
-              </div>
-              {currentRole !== "broker" ? (
-                <select
-                  value={broker}
-                  onChange={(event) =>
-                    updateFilter(setBroker, event.target.value)
-                  }
-                  aria-label="Filtrar por corretor"
-                  disabled={referencesLoading}
-                  className={`atlas-filtro-controle ${focusRing}`}
-                >
-                  <option value="">
-                    {currentRole === "manager"
-                      ? "Todo o meu time"
-                      : "Todos os corretores"}
-                  </option>
-                  {currentRole !== "manager" ? (
-                    <option value="unassigned">Sem responsável</option>
-                  ) : null}
-                  {(currentRole === "manager"
-                    ? teamBrokers
-                    : profiles.filter((profile) =>
-                        ["broker", "manager"].includes(
-                          profile.commercial_role || profile.role,
-                        ),
-                      )
-                  ).map((profile) => (
-                    <option key={profile.id} value={profile.id}>
-                      {profile.full_name || "Usuário sem nome"}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-              <select
-                value={score}
-                onChange={(event) => updateFilter(setScore, event.target.value)}
-                aria-label="Filtrar por score"
-                className={`atlas-filtro-controle ${focusRing}`}
-              >
-                <option value="">Todos os scores</option>
-                <option value="hot">Quente · 70–100</option>
-                <option value="warm">Morno · 40–69</option>
-                <option value="cold">Frio · 0–39</option>
-              </select>
-              <select
-                value={nextAction}
-                onChange={(event) =>
-                  updateFilter(
-                    (value) => setNextAction(value as NextActionFilter),
-                    event.target.value,
-                  )
-                }
-                aria-label="Filtrar por próxima ação"
-                className={`atlas-filtro-controle ${focusRing}`}
-              >
-                <option value="">Qualquer próxima ação</option>
-                <option value="today">Agendada para hoje</option>
-                <option value="next_7_days">Próximos 7 dias</option>
-                <option value="scheduled">Todas as agendadas</option>
-              </select>
-            </div>
-          ) : null}
-        </section>
-      </div>
-
-      {notice ? (
-        <div
-          role="status"
-          className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-200"
-        >
-          {notice}
-        </div>
-      ) : null}
+        ) : null}
+      </section>
 
       {error ? (
         <ErrorState
@@ -1540,59 +2110,31 @@ export default function LeadsPage() {
           }
         />
       ) : null}
+      {notice ? (
+        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-200">
+          {notice}
+        </div>
+      ) : null}
 
-      {podeMoverEmLote && selected.size ? (
+      {canTransfer && selected.size ? (
         <section
           data-phase="54-team-transfer"
-          className="sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border border-[rgba(75,141,248,0.35)] bg-[#080e1d]/95 p-4 backdrop-blur md:flex-row md:items-center"
+          className="sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border border-cyan-400/30 bg-slate-950/95 p-4 shadow-2xl backdrop-blur md:flex-row md:items-center"
         >
           <div className="min-w-52">
-            <strong className="block text-sm text-[var(--atlas-texto-forte)]">
-              <span className="cc6-num">{selected.size}</span> lead(s)
-              selecionado(s)
+            <strong className="block text-white">
+              {selected.size} lead(s) selecionado(s)
             </strong>
-            <span className="mt-1 block text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
-              {currentRole === "broker"
-                ? "Mova as leads da sua carteira de etapa em um passo. Fechar (ganho/perdido) continua uma a uma, com a tela inteira na frente."
-                : currentRole === "manager"
-                  ? "Transferência direta para um corretor do meu time, com histórico registrado."
-                  : "Ao escolher um gerente, as leads são equilibradas entre os corretores elegíveis. O gerente não se torna responsável."}
+            <span className="block text-xs text-slate-400">
+              Transferência segura com rastreabilidade
+            </span>
+            <span className="block text-xs text-cyan-200">
+              Ao escolher um gerente, as leads são equilibradas entre os
+              corretores elegíveis. O gerente não se torna responsável.
             </span>
           </div>
-
-          {/* Mover etapa vem ANTES de transferir na barra: com 174 leads já
-              trabalhadas para atualizar, é o que o operador faz o dia inteiro.
-              Transferir é ocasional. */}
-          <div className="flex items-center gap-2">
-            <select
-              value={bulkStage}
-              onChange={(e) => setBulkStage(e.target.value)}
-              className="rounded-lg border border-[rgba(75,141,248,0.35)] bg-[#0b1424] px-3 py-2 text-xs text-[var(--atlas-texto-forte)]"
-              aria-label="Mover as leads selecionadas para a etapa"
-            >
-              <option value="">Mover para etapa…</option>
-              <option value="contato">Contato feito</option>
-              <option value="qualificacao">Qualificação</option>
-              <option value="visita">Visita</option>
-              <option value="proposta">Proposta</option>
-              <option value="contrato">Contrato</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => void moverEtapaEmLote()}
-              disabled={!bulkStage}
-              className="rounded-lg border border-[rgba(75,141,248,0.35)] px-3 py-2 text-xs text-[var(--atlas-texto-forte)] disabled:opacity-50"
-            >
-              Mover {selected.size}
-            </button>
-          </div>
-
-          {/* Transferir muda o DONO — continua sendo alçada de carteira. O
-              corretor vê só a metade de mover etapa; este bloco não renderiza
-              para ele. */}
-          {canTransfer ? (<>
           <select
-            className={`min-h-11 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-white/5 px-3 text-sm text-[var(--atlas-texto-forte)] ${focusRing}`}
+            className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white"
             value={transferTarget}
             onChange={(event) => setTransferTarget(event.target.value)}
           >
@@ -1609,7 +2151,7 @@ export default function LeadsPage() {
             ))}
           </select>
           <input
-            className={`min-h-11 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-white/5 px-3 text-sm text-[var(--atlas-texto-forte)] ${focusRing}`}
+            className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white"
             value={transferReason}
             onChange={(event) => setTransferReason(event.target.value)}
             placeholder="Motivo obrigatório da transferência"
@@ -1628,10 +2170,9 @@ export default function LeadsPage() {
           >
             {transferring ? "Transferindo..." : "Confirmar transferência"}
           </button>
-          </>) : null}
           <button
             type="button"
-            className="cc6-ghost-btn min-h-11"
+            className="atlas-button-secondary"
             onClick={() => setSelected(new Set())}
           >
             Cancelar
@@ -1640,27 +2181,17 @@ export default function LeadsPage() {
       ) : null}
 
       {!error ? (
-        <section
-          className="atlas-leads-table-panel cc6-reveal"
-          style={{ animationDelay: "140ms" }}
-        >
+        <section className="atlas-leads-table-panel">
           <div className="atlas-leads-table-head">
             <div>
               <strong>Carteira comercial</strong>
-            </div>
-            {!loading && pageMetrics.stalled > 0 ? (
-              <span
-                className={`cc6-chip inline-flex! ${
-                  pageMetrics.stalledCritical > 0
-                    ? "cc6-crit border-[rgba(251,113,133,0.28)]!"
-                    : "cc6-warn border-[rgba(245,181,68,0.28)]!"
-                }`}
-                title={`${pageMetrics.stalled} de ${items.length} lead(s) desta página sem atualização registrada há 3 ou mais dias.`}
-              >
-                {pageMetrics.stalled}{" "}
-                {pageMetrics.stalled === 1 ? "parado" : "parados"} ≥3d
+              <span>
+                {loading
+                  ? "Sincronizando..."
+                  : `${total} lead(s) · página ${page} de ${pages}`}
               </span>
-            ) : null}
+            </div>
+            <StatusBadge tone="success">DADOS REAIS</StatusBadge>
           </div>
           {loading ? (
             <div className="p-5">
@@ -1702,12 +2233,11 @@ export default function LeadsPage() {
                 <table>
                   <thead>
                     <tr>
-                      {podeMoverEmLote ? (
+                      {canTransfer ? (
                         <th>
                           <input
                             type="checkbox"
                             aria-label="Selecionar página"
-                            className={`accent-[var(--atlas-accent)] ${focusRing}`}
                             checked={
                               items.length > 0 &&
                               items.every((lead) => selected.has(lead.id))
@@ -1730,35 +2260,20 @@ export default function LeadsPage() {
                       <th>Último contato</th>
                       <th>Próxima ação</th>
                       <th>
-                        <span className="sr-only">Ações rápidas</span>
+                        <span className="sr-only">Abrir</span>
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((lead) => {
                       const due = dueLabel(lead.next_action_at, referenceTime);
-                      const contact = phoneLinks(lead.phone);
-                      const hot = isHotLead(lead);
-                      const stall = stalledSignal(lead, referenceTime);
-                      const stallView = stall
-                        ? stalledChipView(stall, lead)
-                        : null;
                       return (
-                        <tr
-                          key={lead.id}
-                          data-overdue={due.overdue ? "true" : "false"}
-                          className={
-                            due.overdue
-                              ? "group bg-rose-500/[0.04]"
-                              : "group"
-                          }
-                        >
-                          {podeMoverEmLote ? (
+                        <tr key={lead.id}>
+                          {canTransfer ? (
                             <td>
                               <input
                                 type="checkbox"
                                 aria-label={`Selecionar ${lead.name || "lead"}`}
-                                className={`accent-[var(--atlas-accent)] ${focusRing}`}
                                 checked={selected.has(lead.id)}
                                 onChange={(event) =>
                                   setSelected((current) => {
@@ -1772,50 +2287,19 @@ export default function LeadsPage() {
                             </td>
                           ) : null}
                           <td>
-                            <Link
-                              href={`/leads/${lead.id}`}
-                              className={`rounded-lg ${focusRing}`}
-                            >
+                            <Link href={`/leads/${lead.id}`}>
                               <span className="atlas-lead-avatar">
                                 {(lead.name || "L").slice(0, 2).toUpperCase()}
                               </span>
                               <span>
                                 <strong>{lead.name || "Lead sem nome"}</strong>
                                 <small>
-                                  {lead.phone ||
-                                    lead.email ||
+                                  {lead.email ||
+                                    lead.phone ||
                                     "Contato não informado"}
                                 </small>
                               </span>
                             </Link>
-                            {/* Copiar contato em um clique — a outra função
-                                que só existia em "Clientes 360". Fica FORA do
-                                Link: aninhar botão dentro de âncora é inválido
-                                e o clique abriria a ficha em vez de copiar. */}
-                            {lead.phone || lead.email ? (
-                              <span className="mt-1 flex flex-wrap gap-1">
-                                {lead.phone ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => copiarContato(`${lead.id}:tel`, String(lead.phone))}
- className={`cc6-chip cc6-interativo-acento cursor-pointer text-micro ${focusRing}`}
-                                    title="Copiar telefone"
-                                  >
-                                    {copiado === `${lead.id}:tel` ? "copiado ✓" : "copiar tel"}
-                                  </button>
-                                ) : null}
-                                {lead.email ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => copiarContato(`${lead.id}:mail`, String(lead.email))}
- className={`cc6-chip cc6-interativo-acento cursor-pointer text-micro ${focusRing}`}
-                                    title="Copiar e-mail"
-                                  >
-                                    {copiado === `${lead.id}:mail` ? "copiado ✓" : "copiar e-mail"}
-                                  </button>
-                                ) : null}
-                              </span>
-                            ) : null}
                           </td>
                           <td>
                             <strong>{projectName(lead)}</strong>
@@ -1824,26 +2308,25 @@ export default function LeadsPage() {
                             </small>
                             {lead.source === "Meta Lead Ads" ? (
                               <span className="mt-1 flex flex-wrap gap-1">
+                                <StatusBadge tone="info">META</StatusBadge>
                                 <StatusBadge
                                   tone={
                                     lead.metadata?.meta?.dataSharingConsent
                                       ? "success"
-                                      : "info"
+                                      : "warning"
                                   }
                                 >
-                                  <span
-                                    title={`${
-                                      lead.metadata?.meta?.dataSharingConsent
-                                        ? "Sinal de aprendizado ativo"
-                                        : "Sem sinal de aprendizado"
-                                    } · Campanha ${
-                                      lead.metadata?.meta?.campaignId ||
-                                      "não identificada"
-                                    }`}
-                                  >
-                                    META
-                                  </span>
+                                  {lead.metadata?.meta?.dataSharingConsent
+                                    ? "APRENDENDO"
+                                    : "SEM SINAL"}
                                 </StatusBadge>
+                                {lead.metadata?.meta?.campaignId ? (
+                                  <small>
+                                    Campanha {lead.metadata.meta.campaignId}
+                                  </small>
+                                ) : (
+                                  <small>Campanha não identificada</small>
+                                )}
                               </span>
                             ) : null}
                           </td>
@@ -1855,17 +2338,7 @@ export default function LeadsPage() {
                           <td>
                             <span
                               className="atlas-score-cell"
-                              data-tone={hot ? "danger" : scoreTone(lead.score)}
-                              title={
-                                hot
-                                  ? `Lead quente — score ${lead.score ?? 0}${
-                                      (lead.temperature ?? "").toLowerCase() ===
-                                      "quente"
-                                        ? " · temperatura quente"
-                                        : ""
-                                    }`
-                                  : `Score ${lead.score ?? 0}`
-                              }
+                              data-tone={scoreTone(lead.score)}
                             >
                               {lead.score ?? 0}
                             </span>
@@ -1883,20 +2356,11 @@ export default function LeadsPage() {
                             )}
                           </td>
                           <td>
-                            {stallView ? (
-                              <span
-                                className={`cc6-chip ${stallView.chipClass}`}
-                                title={stallView.title}
-                              >
-                                {stallView.label}
-                              </span>
-                            ) : (
-                              <span className="atlas-date-cell cc6-num">
-                                {formatDate(
-                                  lead.last_interaction_at || lead.updated_at,
-                                )}
-                              </span>
-                            )}
+                            <span className="atlas-date-cell">
+                              {formatDate(
+                                lead.last_interaction_at || lead.updated_at,
+                              )}
+                            </span>
                           </td>
                           <td>
                             <span
@@ -1907,51 +2371,13 @@ export default function LeadsPage() {
                             </span>
                           </td>
                           <td>
-                            <div
-                              className="atlas-kanban-primary-actions pointer-events-none min-w-max opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 motion-safe:transition-opacity motion-safe:duration-150"
-                              style={{ marginTop: 0 }}
-                              role="group"
-                              aria-label={`Ações rápidas para ${lead.name || "lead"}`}
+                            <Link
+                              href={`/leads/${lead.id}`}
+                              className="atlas-row-action"
+                              aria-label={`Abrir Lead 360 de ${lead.name || "lead"}`}
                             >
-                              <Link
-                                href={`/leads/${lead.id}`}
-                                title="Abrir Lead 360"
-                                className={`atlas-filtro-controle ${focusRing}`}
-                                aria-label={`Abrir Lead 360 de ${lead.name || "lead"}`}
-                              >
-                                👁️
-                              </Link>
-                              {contact ? (
-                                <a
-                                  href={contact.call}
-                                  title="Ligar"
-                                  className={`atlas-filtro-controle ${focusRing}`}
-                                  aria-label={`Ligar para ${lead.name || "lead"}`}
-                                >
-                                  📞
-                                </a>
-                              ) : null}
-                              {contact ? (
-                                <a
-                                  href={contact.whatsapp}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title="WhatsApp"
-                                  className={`atlas-filtro-controle ${focusRing}`}
-                                  aria-label={`Abrir WhatsApp com ${lead.name || "lead"}`}
-                                >
-                                  💬
-                                </a>
-                              ) : null}
-                              <Link
-                                href={`/leads/${lead.id}/messages`}
-                                title="Abordagem com IA"
-                                className={`atlas-filtro-controle ${focusRing}`}
-                                aria-label={`Preparar abordagem com IA para ${lead.name || "lead"}`}
-                              >
-                                ✦
-                              </Link>
-                            </div>
+                              →
+                            </Link>
                           </td>
                         </tr>
                       );
@@ -1962,21 +2388,9 @@ export default function LeadsPage() {
               <div className="atlas-leads-mobile">
                 {items.map((lead) => {
                   const due = dueLabel(lead.next_action_at, referenceTime);
-                  const contact = phoneLinks(lead.phone);
-                  const hot = isHotLead(lead);
-                  const stall = stalledSignal(lead, referenceTime);
-                  const stallView = stall ? stalledChipView(stall, lead) : null;
                   return (
-                    <div
-                      key={lead.id}
-                      className="grid gap-3 border-t border-white/[0.06] px-0.5 py-4 first:border-t-0"
-                      data-overdue={due.overdue ? "true" : "false"}
-                    >
-                      <Link
-                        href={`/leads/${lead.id}`}
-                        className={`atlas-mobile-lead-head min-h-11 rounded-lg ${focusRing}`}
-                        aria-label={`Abrir Lead 360 de ${lead.name || "lead"}`}
-                      >
+                    <Link href={`/leads/${lead.id}`} key={lead.id}>
+                      <div className="atlas-mobile-lead-head">
                         <span className="atlas-lead-avatar">
                           {(lead.name || "L").slice(0, 2).toUpperCase()}
                         </span>
@@ -1986,16 +2400,11 @@ export default function LeadsPage() {
                         </span>
                         <span
                           className="atlas-score-cell"
-                          data-tone={hot ? "danger" : scoreTone(lead.score)}
-                          title={
-                            hot
-                              ? `Lead quente — score ${lead.score ?? 0}`
-                              : `Score ${lead.score ?? 0}`
-                          }
+                          data-tone={scoreTone(lead.score)}
                         >
                           {lead.score ?? 0}
                         </span>
-                      </Link>
+                      </div>
                       <div className="atlas-mobile-lead-meta">
                         <StatusBadge tone={statusTone(lead.status)}>
                           {lead.status || "novo"}
@@ -2025,20 +2434,11 @@ export default function LeadsPage() {
                         )}
                       </div>
                       <div className="atlas-mobile-lead-footer">
-                        {stallView ? (
-                          <span
-                            className={`cc6-chip ${stallView.chipClass}`}
-                            title={stallView.title}
-                          >
-                            {stallView.label}
-                          </span>
-                        ) : (
-                          <span className="cc6-num">
-                            {formatDate(
-                              lead.last_interaction_at || lead.updated_at,
-                            )}
-                          </span>
-                        )}
+                        <span>
+                          {formatDate(
+                            lead.last_interaction_at || lead.updated_at,
+                          )}
+                        </span>
                         <span
                           className="atlas-next-action"
                           data-overdue={due.overdue ? "true" : "false"}
@@ -2046,410 +2446,36 @@ export default function LeadsPage() {
                           {due.label}
                         </span>
                       </div>
-                      <div
-                        className="atlas-leads-action-buttons"
-                        role="group"
-                        aria-label={`Ações rápidas para ${lead.name || "lead"}`}
-                      >
-                        <Link
-                          href={`/leads/${lead.id}`}
-                          aria-label={`Abrir Lead 360 de ${lead.name || "lead"}`}
-                        >
-                          👁️ Lead 360
-                        </Link>
-                        {contact ? (
-                          <a
-                            href={contact.call}
-                            aria-label={`Ligar para ${lead.name || "lead"}`}
-                          >
-                            📞 Ligar
-                          </a>
-                        ) : null}
-                        {contact ? (
-                          <a
-                            href={contact.whatsapp}
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label={`Abrir WhatsApp com ${lead.name || "lead"}`}
-                          >
-                            💬 WhatsApp
-                          </a>
-                        ) : null}
-                        <Link
-                          href={`/leads/${lead.id}/messages`}
-                          aria-label={`Preparar abordagem com IA para ${lead.name || "lead"}`}
-                        >
-                          ✦ IA
-                        </Link>
-                        {/* Só para lead ABERTA: oferecer descarte a quem já
-                            saiu do funil convida ao clique que não faz nada. */}
-                        {!["ganho", "perdido", "comprou_outro"].includes(lead.status ?? "novo") ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDescarte({
-                                leadId: lead.id,
-                                leadName: lead.name || "Lead sem nome",
-                                fromStage: lead.status ?? "novo",
-                                reasonKey: "",
-                                notes: "",
-                              })
-                            }
-                            aria-label={`Descartar ${lead.name || "lead"} com motivo classificado`}
-                          >
-                            🗑️ Descartar
-                          </button>
-                        ) : null}
-                      </div>
-                      {/* Marcar a próxima ação sem sair da fila. Antes disto, a
-                          única forma de gravar `next_action_at` era agendar uma
-                          VISITA ou submeter a ficha inteira — e 208 de 217 leads
-                          estavam sem próxima ação porque não havia onde clicar. */}
-                      <NextActionQuickSet
-                        leadId={lead.id}
-                        proximaAcaoEm={lead.next_action_at}
-                        descricaoAtual={lead.next_action}
-                        // Antes: `setReloadKey(k => k + 1)`, que refazia a
-                        // consulta inteira só para atualizar UMA linha — e com
-                        // a ficha em lâmina fecharia o painel no meio do
-                        // trabalho. O patch otimista mexe só na lead marcada;
-                        // se o servidor discordar, a próxima carga corrige.
-                        aoMarcar={(quando) =>
-                          setItems((atuais) =>
-                            atuais.map((l) =>
-                              l.id === lead.id ? { ...l, next_action_at: quando ?? l.next_action_at } : l,
-                            ),
-                          )
-                        }
-                      />
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
             </>
           )}
-          {total > 0 || items.length ? (
+          {!loading && items.length ? (
             <div className="atlas-pagination">
-              {/* Quem muda o tamanho volta à página 1 no MESMO clique: sem
-                  isso, estar na página 5 com 10 por página e pular para 100
-                  pediria uma página que não existe. React agrupa os dois
-                  setState — sai UMA busca, já com page=1 e o limit novo. */}
-              <label className="atlas-pagination-tamanho">
-                Mostrar
-                <select
-                  className={`atlas-filtro-controle ${focusRing}`}
-                  value={porPagina}
-                  disabled={loading}
-                  onChange={(event) => {
-                    setPorPagina(Number(event.target.value));
-                    setPage(1);
-                  }}
-                >
-                  {OPCOES_POR_PAGINA.map((opcao) => (
-                    <option key={opcao} value={opcao}>
-                      {opcao}
-                    </option>
-                  ))}
-                </select>
-                por página
-              </label>
-              <span aria-live="polite">
-                <strong className="cc6-num">
-                  {(page - 1) * porPagina + 1}
-                </strong>
-                –
-                <strong className="cc6-num">
-                  {Math.min(page * porPagina, total || page * porPagina)}
-                </strong>{" "}
-                de <strong className="cc6-num">{total}</strong>{" "}
-                {total === 1 ? "lead" : "leads"}
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+              >
+                ← Anterior
+              </button>
+              <span>
+                Página <strong>{page}</strong> de <strong>{pages}</strong>
               </span>
-              <div className="atlas-pagination-navegacao">
-                <button
-                  type="button"
-                  className={`atlas-filtro-controle ${focusRing}`}
-                  disabled={loading || page <= 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                >
-                  <span aria-hidden="true">← </span>Anterior
-                </button>
-                <span>
-                  Página <strong className="cc6-num">{page}</strong> de{" "}
-                  <strong className="cc6-num">{pages}</strong>
-                </span>
-                <button
-                  type="button"
-                  className={`atlas-filtro-controle ${focusRing}`}
-                  disabled={loading || page >= pages}
-                  onClick={() =>
-                    setPage((current) => Math.min(pages, current + 1))
-                  }
-                >
-                  Próxima<span aria-hidden="true"> →</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                disabled={page >= pages}
+                onClick={() =>
+                  setPage((current) => Math.min(pages, current + 1))
+                }
+              >
+                Próxima →
+              </button>
             </div>
           ) : null}
         </section>
-      ) : null}
-
-      {/* Herói-resumo CC-6: identidade + total + atalhos de rotina em uma
-          única superfície (única com 3D). Substitui hero, cards de métricas
-          e painel "Minha rotina" separados. */}
-      <section aria-label="Resumo da carteira e atalhos de rotina">
-        <TiltShell className="cc6-panel cc6-reveal p-5 sm:p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <p className="cc6-eyebrow">CRM · Leads</p>
-                {currentRole === "broker" ? (
-                  <StatusBadge tone="success">CARTEIRA EXCLUSIVA</StatusBadge>
-                ) : null}
-                {currentRole === "manager" ? (
-                  <StatusBadge tone="success">
-                    MEU TIME · {teamBrokers.length} CORRETORES
-                  </StatusBadge>
-                ) : null}
-              </div>
-              <h1 className="mt-2 max-w-xl text-2xl font-semibold tracking-[-0.02em] text-[var(--atlas-texto-forte)] sm:text-[27px] sm:leading-9">
-                {currentRole === "broker"
-                  ? "Sua fila de leads, pronta para agir."
-                  : "Leads que exigem decisão agora."}
-              </h1>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Link href="/leads/new" className="atlas-button-primary">
-                  + Novo lead
-                </Link>
-                <Link href="/pipeline" className="cc6-ghost-btn min-h-11">
-                  Abrir pipeline
-                </Link>
-                <details className="atlas-leads-tools">
-                  <summary>Mais ferramentas</summary>
-                  <div>
-                    <Link href="/leads/data-quality">Qualidade dos dados</Link>
-                    <Link href="/leads/deduplication">Duplicidades</Link>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        window.dispatchEvent(
-                          new CustomEvent("atlas:open-copilot", {
-                            detail: {
-                              prompt:
-                                "Analise a carteira de leads visível e explique até três prioridades, sem executar nenhuma ação.",
-                              context: {
-                                total,
-                                filters: {
-                                  status,
-                                  source,
-                                  project,
-                                  broker,
-                                  score,
-                                  attention,
-                                  nextAction,
-                                },
-                                pageMetrics,
-                                visiblePriorities: visiblePriorityQueue.length,
-                              },
-                            },
-                          }),
-                        )
-                      }
-                    >
-                      ✦ Analisar carteira
-                    </button>
-                  </div>
-                </details>
-              </div>
-            </div>
-            <div className="shrink-0 lg:pl-6 lg:text-right">
-              <p className="cc6-eyebrow">Base filtrada</p>
-              <p className="cc6-metric-value mt-1 text-4xl leading-none">
-                {loading ? "—" : total}
-              </p>
-              <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
-                {hasFilters
-                  ? "resultado dos filtros atuais"
-                  : currentRole === "broker"
-                    ? "somente a sua carteira"
-                    : "somente seu escopo comercial"}
-              </p>
-            </div>
-          </div>
-          <div className="cc6-hairline mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
-            <p
-              className="cc6-eyebrow"
-              title="Os números contam a incidência na página atual; cada atalho filtra toda a carteira do seu escopo comercial."
-            >
-              Minha rotina
-            </p>
-            <div
-              className="flex flex-1 gap-2 overflow-x-auto pb-0.5"
-              role="group"
-              aria-label="Encontre rapidamente onde agir"
-            >
-              {attentionShortcuts.map((shortcut) => (
-                <button
-                  key={shortcut.key}
-                  type="button"
-                  onClick={() => applyAttention(shortcut.key)}
-                  aria-pressed={attention === shortcut.key}
-                  title={`${shortcut.description}. O número é a incidência nesta página; o filtro consulta toda a carteira do seu escopo.`}
-                  className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border px-3 transition-colors ${
-                    attention === shortcut.key
-                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
-                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
-                  } ${focusRing}`}
-                >
-                  <span className="text-rotulo font-medium">
-                    {shortcut.label}
-                  </span>
-                  <span
-                    className={`cc6-num text-corpo ${
-                      shortcut.count > 0
-                        ? shortcut.countClass
-                        : "text-[var(--atlas-texto-fraco)]"
-                    }`}
-                  >
-                    {loading ? "—" : shortcut.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* A FAIXA DO CORTE DA FILA — chega por link da central e não tem
-              seletor. Fica visível porque um recorte que corta 442 em 146 sem
-              dizer o nome faz a pessoa concluir que a base encolheu. */}
-          {faixa ? (
-            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[rgba(75,141,248,0.35)] bg-[rgba(75,141,248,0.07)] px-3 py-2">
-              <span className="text-rotulo text-[var(--atlas-texto-medio)]">
-                Faixa da fila ·{" "}
-                <strong className="font-semibold text-[var(--atlas-texto-forte)]">
-                  {ROTULO_DA_FAIXA.get(faixa) ?? faixa}
-                </strong>{" "}
-                · só leads nunca contatados
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setFaixa("");
-                  setPage(1);
-                }}
-                className={`min-h-11 text-rotulo font-semibold text-[var(--atlas-accent)] hover:text-white ${focusRing}`}
-              >
-                Limpar faixa
-              </button>
-            </div>
-          ) : null}
-          {/* VÍNCULO — o que a tela "Clientes 360" tinha de próprio.
-              Ela lia a MESMA tabela pela mesma função, sem SLA, sem lote e sem
-              piso de carteira (um corretor via as 469 leads da imobiliária).
-              Foi apagada; estes quatro segmentos vieram junto, e aqui eles
-              filtram a carteira inteira no servidor, não só a página. */}
-          <div className="cc6-hairline mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
-            <p className="cc6-eyebrow" title="Em que ponto da relação comercial a pessoa está.">
-              Vínculo
-            </p>
-            <div
-              className="flex flex-1 gap-2 overflow-x-auto pb-0.5"
-              role="group"
-              aria-label="Filtrar por vínculo comercial"
-            >
-              {VINCULOS.map((chave) => (
-                <button
-                  key={chave}
-                  type="button"
-                  // Clicar no que já está ativo desliga: mesma gramática dos
-                  // atalhos acima, para não haver dois jeitos de limpar filtro.
-                  onClick={() => {
-                    setVinculo((atual) => (atual === chave ? "" : chave));
-                    setPage(1);
-                  }}
-                  aria-pressed={vinculo === chave}
-                  className={`min-h-11 shrink-0 rounded-xl border px-3 text-rotulo font-medium transition-colors ${
-                    vinculo === chave
-                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
-                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
-                  } ${focusRing}`}
-                >
-                  {ROTULO_DO_VINCULO[chave]}
-                </button>
-              ))}
-            </div>
-          </div>
-        </TiltShell>
-      </section>
-
-      {/* ── PAINEL DE DESCARTE ─────────────────────────────────────────────
-          Mesma lista canônica de motivos do Kanban (`DISCARD_REASONS`) e mesma
-          rota. Duas listas de motivo seria a divergência que este repositório
-          mais paga.
-
-          O motivo é OBRIGATÓRIO — o botão de confirmar só habilita com um
-          escolhido. Não é burocracia: sem ele, "perdemos 139" não vira
-          nenhuma decisão, que foi exatamente o estado de 27 a 30/07. ── */}
-      {descarte ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center"
-          role="presentation"
-          onClick={() => (descartando ? null : setDescarte(null))}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="descarte-titulo"
-            className="cc6-panel w-full max-w-lg p-5"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h2 id="descarte-titulo" className="text-base font-semibold text-[var(--atlas-text-primary)]">
-              Descartar {descarte.leadName}
-            </h2>
-            <p className="mt-1 text-corpo text-[var(--atlas-text-secondary)]">
-              Escolha por que esta lead sai do funil. O motivo fica no histórico e é o que
-              transforma 139 descartes em uma decisão de mídia.
-            </p>
-
-            <div className="mt-4 max-h-64 space-y-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Motivo do descarte">
-              {DISCARD_REASONS.map((motivo) => (
-                <button
-                  key={motivo.key}
-                  type="button"
-                  role="radio"
-                  aria-checked={descarte.reasonKey === motivo.key}
-                  onClick={() => setDescarte((atual) => (atual ? { ...atual, reasonKey: motivo.key } : atual))}
-                  className={`cc6-panel-quiet ${descarte.reasonKey === motivo.key ? "cc6-destaque" : "cc6-interativo"} flex w-full flex-col gap-0.5 px-4 py-3 text-left`}
-                  style={{ minHeight: 44 }}
-                >
-                  <span className="text-corpo font-semibold text-[var(--atlas-text-primary)]">{motivo.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <label className="mt-4 block text-rotulo text-[var(--atlas-text-secondary)]" htmlFor="descarte-notas">
-              Detalhe (opcional)
-            </label>
-            <textarea
-              id="descarte-notas"
-              value={descarte.notes}
-              onChange={(event) => setDescarte((atual) => (atual ? { ...atual, notes: event.target.value } : atual))}
-              rows={2}
-              className="mt-1 w-full rounded-xl border border-[var(--atlas-border)] bg-transparent p-2 text-corpo text-[var(--atlas-text-primary)]"
-            />
-
-            <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <button type="button" className="atlas-button-secondary" onClick={() => setDescarte(null)} disabled={descartando}>
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => void confirmarDescarte()}
-                disabled={!descarte.reasonKey || descartando}
-              >
-                {descartando ? "Descartando…" : "Confirmar descarte"}
-              </button>
-            </div>
-          </div>
-        </div>
       ) : null}
     </div>
   );

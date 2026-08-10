@@ -1,0 +1,36 @@
+{
+  "phase": 166,
+  "name": "Meta Approved Payload Freeze",
+  "status": "implemented",
+  "stream": "meta-andromeda-conversion-automation",
+  "objective": "Congelar um payload Meta mínimo, versionado e imutavelmente vinculado à aprovação vigente da diretoria, sem permitir entrega externa.",
+  "businessProblem": "A fase 165 provava a decisão humana, mas ainda faltava uma representação exata e verificável do sinal que poderá seguir para o gate de execução posterior.",
+  "implemented": [
+    "Contrato atlas.meta.test-event.v1 com somente os campos necessários ao ensaio",
+    "Fingerprint SHA-256 separada para o contexto aprovado e para o payload congelado",
+    "API protegida por organização, cargo e rate limit para congelar e consultar recibos",
+    "Revalidação server-side da validade da aprovação e da elegibilidade atual da lead",
+    "Rejeição quando o contexto elegível mudou após a aprovação",
+    "Idempotência pela reutilização do recibo referente à mesma aprovação",
+    "Persistência em atlas_events sem nova tabela ou migration",
+    "Interface da diretoria com prova explícita de entrega externa bloqueada"
+  ],
+  "acceptanceCriteria": [
+    "Somente admin, diretor decisor ou diretor podem congelar o payload",
+    "A aprovação deve existir no mesmo tenant e permanecer válida",
+    "A fingerprint atual da candidata deve ser igual à fingerprint aprovada",
+    "O payload não pode conter telefone, e-mail, CPF, renda ou documento",
+    "deliveryAuthorized e externalEventSent permanecem false",
+    "A rota não pode chamar CAPI, fila Meta, token externo ou fetch",
+    "O recibo deve ser auditável e idempotente em atlas_events"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-166:check",
+    "tests": "npm test",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint",
+    "secretScan": "npm run security:secrets",
+    "build": "deferred-to-release-close"
+  },
+  "nextPhaseRecommendation": "Criar o gate de execução da fase 167, mantendo a entrega externa bloqueada até uma segunda decisão humana explícita e evidenciada."
+}

@@ -1,0 +1,32 @@
+{
+  "phase": 161,
+  "name": "Meta Test Event Approval Workspace",
+  "status": "implemented",
+  "objective": "Criar um espaço de homologação para payload de teste Meta/Andromeda com aprovação do diretor antes do envio real.",
+  "businessImpact": [
+    "Diretor consegue revisar qual sinal será testado antes de liberar automação.",
+    "Marketing evita enviar evento duplicado, fraco ou sem origem preservada.",
+    "A operação ganha uma etapa segura entre análise e CAPI real.",
+    "O time consegue preparar teste real de conversão sem expor dados pessoais."
+  ],
+  "technicalScope": [
+    "Adicionar seção de modo teste Meta na página de campanhas.",
+    "Gerar payload local em modo test_only_no_delivery.",
+    "Exibir campos críticos: modo, evento, origem, deduplicação, privacidade e aprovação.",
+    "Criar ações locais para copiar payload e registrar recibo simulado.",
+    "Não acionar Meta API, não enviar eventos reais, não criar migrations e não expor dados pessoais."
+  ],
+  "validation": [
+    "npm run evolution:phase-161:check",
+    "npm run typecheck",
+    "npm run lint"
+  ],
+  "files": [
+    "app/(crm)/marketing/campaigns/page.tsx",
+    "docs/EVOLUTION_PHASE_161_META_TEST_EVENT_APPROVAL_WORKSPACE.md",
+    "scripts/check-evolution-phase-161.mjs",
+    "config/evolution-phase-161-meta-test-event-approval-workspace.json",
+    "config/evolution-program-3000.json",
+    "package.json"
+  ]
+}

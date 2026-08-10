@@ -1,0 +1,29 @@
+{
+  "phase": 135,
+  "slug": "kanban-v30-decision-card",
+  "status": "implemented",
+  "title": "Kanban V30 Decision Card",
+  "objective": "Redesenhar o card individual do Kanban para reduzir ruído e orientar a próxima ação comercial.",
+  "businessImpact": [
+    "Corretor entende rapidamente quem é a lead e o próximo passo",
+    "Gerente enxerga prioridade sem abrir contexto completo",
+    "Diretor preserva sinais de valor e forecast sem poluir o quadro"
+  ],
+  "implemented": [
+    "Resumo decisivo por lead com ação primária",
+    "Botão de avanço para próxima etapa com histórico existente",
+    "Contexto progressivo em bloco expansível",
+    "CSS premium focado em leitura rápida e hierarquia visual"
+  ],
+  "safety": [
+    "Não altera banco",
+    "Não cria automação de mensagem",
+    "Não dispara WhatsApp automaticamente",
+    "Reusa moveLead, Copilot URLs e rotas existentes"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-135:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

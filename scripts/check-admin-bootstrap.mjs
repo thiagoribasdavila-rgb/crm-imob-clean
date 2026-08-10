@@ -11,7 +11,7 @@ const errors = [];
 
 if (!route.includes('process.env.ATLAS_ENV === "development"') || !route.includes('process.env.ATLAS_ENV === "homologation"')) errors.push("rota não restringe ambientes permitidos");
 if (!route.includes("timingSafeEqual") || !route.includes("expected.length < 32")) errors.push("segredo sem comparação constante ou força mínima");
-if (!route.includes('bootstrap: profilesCount === 0 ? "available" : "locked"')) errors.push("diagnóstico não expõe bloqueio de uso único");
+if (!route.includes("bootstrap: bootstrapState(profilesCount ?? 0)")) errors.push("diagnóstico não expõe bloqueio de uso único");
 if (!route.includes("bootstrapInProgress") || !route.includes("existingProfiles")) errors.push("rota sem proteção de concorrência e perfil existente");
 if (!route.includes('Cache-Control", "no-store')) errors.push("respostas sensíveis podem ser armazenadas");
 if (!route.includes("passwordCategories < 3") || !route.includes("password.length > 128")) errors.push("senha inicial sem política completa");

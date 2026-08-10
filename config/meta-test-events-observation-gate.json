@@ -1,0 +1,68 @@
+{
+  "format": "atlas_meta_test_events_observation_gate_v1",
+  "phase": 21,
+  "program": "meta-andromeda-automation",
+  "mode": "sanitized_manual_observation_receipt_no_delivery",
+  "sourceEvidence": {
+    "phase20": "atlas_meta_test_events_rehearsal_evidence_v1"
+  },
+  "observationWindow": {
+    "maximumObservationDelayMinutes": 30,
+    "maximumReceiptAgeMinutes": 120,
+    "clockSkewSeconds": 300,
+    "phase20AuthorizationMustBeActive": true
+  },
+  "attestation": {
+    "operatorRequired": true,
+    "independentReviewerRequired": true,
+    "distinctReferencesRequired": true,
+    "nonPersonalReferencesOnly": true
+  },
+  "testScope": {
+    "environment": "staging_clone",
+    "syntheticRecordOnly": true,
+    "officialTestSurfaceRequired": true,
+    "singleCanonicalEventOnly": true,
+    "maximumDeliveries": 1,
+    "automaticRetryAllowed": false,
+    "realCustomerDataAllowed": false,
+    "productionDatasetAllowed": false
+  },
+  "persistedOutcome": {
+    "allowedNormalizedStatuses": ["observed"],
+    "eventVisibilityRequired": true,
+    "warningAllowed": false,
+    "errorAllowed": false,
+    "unexpectedResultAllowed": false,
+    "temporaryCodeAllowed": false,
+    "payloadAllowed": false,
+    "rawResponseAllowed": false,
+    "screenshotAllowed": false,
+    "personalIdentifiersAllowed": false,
+    "projectIdentifiersAllowed": false
+  },
+  "prohibitedActions": [
+    "network_delivery_by_atlas",
+    "automatic_retry",
+    "production_delivery",
+    "real_customer_record",
+    "campaign_mutation",
+    "budget_mutation",
+    "audience_mutation",
+    "temporary_code_persistence",
+    "payload_persistence",
+    "raw_response_persistence",
+    "screenshot_persistence",
+    "event_match_quality_estimation",
+    "optimization_impact_claim"
+  ],
+  "releaseGate": {
+    "phase20EvidenceAvailable": false,
+    "manualObservationAvailable": false,
+    "independentReviewAvailable": false,
+    "officialTestObservationApproved": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "deploymentAllowed": false
+  }
+}

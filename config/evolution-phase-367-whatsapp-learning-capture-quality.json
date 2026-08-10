@@ -1,0 +1,19 @@
+{
+  "phase": 367,
+  "name": "WhatsApp learning capture quality and authorization boundary",
+  "status": "implemented_local",
+  "scope": "authenticated_organization",
+  "audience": ["admin", "director"],
+  "mutates_remote_state": false,
+  "contains_pii": false,
+  "reads_message_content": false,
+  "learning_mode": "structured_only",
+  "evidence": [
+    "structural message capture coverage",
+    "external identifier traceability",
+    "canonical behavior-event memory coverage",
+    "recording configuration coverage",
+    "explicit separation between recording and AI-learning authorization"
+  ],
+  "promotion_gate": "authenticated_runtime_proof_pending"
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "atlas.meta-learning-experiment-plan.v1",
+  "status": "not_prepared",
+  "decisionReference": null,
+  "hypothesis": {
+    "class": null,
+    "expectedSignal": null
+  },
+  "measurement": {
+    "metricClass": null,
+    "sampleClass": null,
+    "windowClass": null,
+    "stopConditionClass": null
+  },
+  "execution": {
+    "planOnly": true,
+    "externalTestAllowed": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "ungovernedHypothesis": true,
+    "automaticExecution": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true,
+    "automaticCampaignChanges": true
+  }
+}

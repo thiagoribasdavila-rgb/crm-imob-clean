@@ -1,0 +1,28 @@
+{
+  "phase": 107,
+  "name": "API consistency shield for critical CRM surfaces",
+  "status": "implemented",
+  "objective": "Blindar busca, lembretes, notificações e contexto da IA contra consultas diretas a campos/tabelas do modelo ideal que ainda variam entre V2 e V3.",
+  "businessImpact": [
+    "Reduz telas com erro técnico durante uso real.",
+    "Mantém o Kanban e o Copilot operando sobre a mesma leitura compatível de leads, tarefas e projetos.",
+    "Evita custo e falha de IA quando o banco ainda está em evolução."
+  ],
+  "changedSurfaces": [
+    "Global search",
+    "Task reminders",
+    "Atlas Notification Center",
+    "Real estate AI context"
+  ],
+  "compatibilityRules": [
+    "Leads devem passar por readCompatibleLeads.",
+    "Pipeline/oportunidades devem ser derivadas por readCompatiblePipeline.",
+    "Projetos devem passar por readCompatibleDevelopments.",
+    "Tarefas devem passar por readCompatibleTasks e usar due_date/due_at via adapter.",
+    "Telas cliente devem consumir APIs governadas quando houver risco de schema legado."
+  ],
+  "validation": {
+    "phaseCheck": "npm run evolution:phase-107:check",
+    "typecheck": "npm run typecheck"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "format": "atlas_meta_repeatability_manual_permit_contract_v1",
+  "phase": 26,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "containsTemporaryCode": false,
+  "payloadPersisted": false,
+  "rawResponsePersisted": false,
+  "screenshotPersisted": false,
+  "sourceEvidence": {
+    "phase25Approved": false,
+    "phase25Fingerprint": null,
+    "phase25GeneratedAt": null,
+    "phase25ExpiresAt": null,
+    "phase24Fingerprint": null,
+    "phase23Fingerprint": null,
+    "baselineEventIdFingerprint": null,
+    "operatorReconfirmationFingerprint": null
+  },
+  "slot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2
+  },
+  "event": {
+    "eventName": null,
+    "classification": null,
+    "eventIdFingerprint": null,
+    "syntheticRecordFingerprint": null
+  },
+  "binding": {
+    "operatorRole": "operator",
+    "operatorReferenceFingerprint": null,
+    "contractReferenceFingerprint": null
+  },
+  "antiReplay": {
+    "permitNonceFingerprint": null,
+    "idempotencyFingerprint": null,
+    "uniqueAndUnusedAttested": false,
+    "atomicLedgerRequiredBeforeIssuance": true
+  },
+  "permitPolicy": {
+    "maximumValiditySeconds": null,
+    "singleUse": true,
+    "consumeBeforeAction": true,
+    "atomicConsumptionRequired": true,
+    "reuseForbidden": true,
+    "mustExpireBeforeSourceReceipt": true
+  },
+  "lifecycle": {
+    "status": "not_prepared",
+    "issued": false,
+    "usable": false,
+    "consumed": false,
+    "executed": false,
+    "eventDelivered": false
+  },
+  "releaseGates": {
+    "manualPermitContractPrepared": false,
+    "phase25ReceiptLinked": false,
+    "permitIssuanceAllowed": false,
+    "authorizationActivationAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  },
+  "issueCodes": ["phase25_receipt_or_contract_request_missing"],
+  "errorCode": "phase25_receipt_or_contract_request_missing"
+}

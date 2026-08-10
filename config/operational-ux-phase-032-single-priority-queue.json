@@ -1,0 +1,22 @@
+{
+  "phase": 32,
+  "scope": "single_short_priority_queue",
+  "canonicalQueue": "atlas-pipeline-priority-queue",
+  "maxVisibleDecisions": 3,
+  "rankingSource": "kanbanLensQueue",
+  "rankingSignals": [
+    "active_role_lens",
+    "sla",
+    "overdue_next_action",
+    "temperature",
+    "score",
+    "value",
+    "stage"
+  ],
+  "remainingWorkSurface": "pipeline-kanban",
+  "duplicateVisibleQueues": false,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

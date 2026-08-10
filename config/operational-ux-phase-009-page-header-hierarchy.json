@@ -1,0 +1,21 @@
+{
+  "phase": 9,
+  "objective": "Unificar a hierarquia dos cabeçalhos canônicos sem remover ações ou fluxos existentes.",
+  "hierarchy": ["context", "title", "decisionOrientation", "primaryAction"],
+  "canonicalSurfaces": ["dashboard", "leads", "pipeline", "tasks", "customers", "developments", "sales"],
+  "requirements": {
+    "onePrimaryActionMaximum": true,
+    "singlePageHeading": true,
+    "secondaryActionsPreserved": true,
+    "operationalSignalsPreserved": true,
+    "rbacPreserved": true
+  },
+  "infrastructureMutation": {
+    "schema": false,
+    "data": false,
+    "rls": false,
+    "authentication": false,
+    "integrations": false,
+    "release": false
+  }
+}

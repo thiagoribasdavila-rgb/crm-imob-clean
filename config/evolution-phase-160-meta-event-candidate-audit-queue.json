@@ -1,0 +1,31 @@
+{
+  "phase": 160,
+  "name": "Meta Event Candidate Audit Queue",
+  "status": "implemented",
+  "objective": "Criar uma fila auditável de eventos candidatos para Meta/Andromeda antes de qualquer envio real.",
+  "businessImpact": [
+    "Diretor passa a aprovar sinais fortes com clareza e segurança.",
+    "Marketing deixa de enviar eventos sem deduplicação, consentimento e origem preservada.",
+    "A operação prepara aprendizado de público comprador sem automação cega.",
+    "A próxima camada de API nasce com governança, não improviso."
+  ],
+  "technicalScope": [
+    "Adicionar fila visual de candidatos a evento na página de campanhas.",
+    "Exibir deduplicação, privacidade, origem e aprovação para cada evento.",
+    "Criar requisitos de liberação antes do CAPI.",
+    "Não acionar Meta API, não enviar eventos reais, não criar migrations e não expor dados pessoais."
+  ],
+  "validation": [
+    "npm run evolution:phase-160:check",
+    "npm run typecheck",
+    "npm run lint"
+  ],
+  "files": [
+    "app/(crm)/marketing/campaigns/page.tsx",
+    "docs/EVOLUTION_PHASE_160_META_EVENT_CANDIDATE_AUDIT_QUEUE.md",
+    "scripts/check-evolution-phase-160.mjs",
+    "config/evolution-phase-160-meta-event-candidate-audit-queue.json",
+    "config/evolution-program-3000.json",
+    "package.json"
+  ]
+}

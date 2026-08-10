@@ -1,0 +1,12 @@
+{
+  "phase": 48,
+  "scope": "lead360_progressive_profile_edit",
+  "essentialFields": ["status", "temperature", "budget_max", "preferred_regions"],
+  "complementaryFieldsPreserved": true,
+  "singleSaveFlowPreserved": true,
+  "canonicalStatePreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

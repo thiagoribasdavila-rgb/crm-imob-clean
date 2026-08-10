@@ -1,0 +1,44 @@
+{
+  "format": "atlas_meta_repeatability_jit_confirmation_request_v1",
+  "phase": 25,
+  "environment": "staging_clone",
+  "confirmationReference": null,
+  "confirmedAt": null,
+  "expiresAt": null,
+  "sourceDraftFingerprint": null,
+  "slot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2
+  },
+  "event": {
+    "eventName": null,
+    "classification": null,
+    "eventIdFingerprint": null,
+    "syntheticRecordFingerprint": null
+  },
+  "humanReconfirmations": {
+    "director": { "confirmed": false, "reference": null },
+    "security": { "confirmed": false, "reference": null },
+    "operator": { "confirmed": false, "reference": null },
+    "reviewer": { "confirmed": false, "reference": null },
+    "draftReferencesNotReused": false
+  },
+  "controls": {
+    "sourceDraftReviewed": false,
+    "canonicalEventReviewed": false,
+    "syntheticRecordReviewed": false,
+    "realCustomerDataIncluded": false,
+    "singleDeliveryMaximum": false,
+    "temporaryCodeRemainsInOfficialSurface": false,
+    "stopWithoutRetry": false,
+    "campaignUnchanged": false,
+    "budgetUnchanged": false,
+    "audienceUnchanged": false,
+    "noPerformanceClaim": false
+  },
+  "execution": {
+    "executed": false,
+    "eventDelivered": false,
+    "authorizationActivated": false
+  }
+}

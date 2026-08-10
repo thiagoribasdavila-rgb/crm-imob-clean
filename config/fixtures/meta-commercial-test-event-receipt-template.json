@@ -1,0 +1,23 @@
+{
+  "schema": "atlas.meta-commercial-test-event-receipt.v1",
+  "status": "not_received",
+  "rehearsalReference": null,
+  "outboxReference": null,
+  "eventReference": null,
+  "accepted": false,
+  "observedAt": null,
+  "providerResponseClass": null,
+  "payloadStored": false,
+  "dispatch": {
+    "productionAllowed": false,
+    "retryAllowed": false,
+    "automaticPromotionAllowed": false
+  },
+  "forbidden": {
+    "payload": true,
+    "secrets": true,
+    "rawCustomerData": true,
+    "personalData": true,
+    "providerResponseBody": true
+  }
+}

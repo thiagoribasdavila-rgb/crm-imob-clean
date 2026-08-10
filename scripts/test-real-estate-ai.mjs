@@ -17,7 +17,7 @@ const briefingRoute = readFileSync(resolve(root, "app/api/ai/briefing/route.ts")
 const messageDraft = readFileSync(resolve(root, "app/api/v1/leads/[id]/message-draft/route.ts"), "utf8");
 const messageSafety = readFileSync(resolve(root, "lib/ai/real-estate-message.ts"), "utf8");
 const matching = readFileSync(resolve(root, "lib/atlas/matching.ts"), "utf8");
-const matchingStudio = readFileSync(resolve(root, "app/(crm)/properties/mtching/page.tsx"), "utf8");
+const matchingStudio = readFileSync(resolve(root, "app/(crm)/properties/matching/page.tsx"), "utf8");
 const presentationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/presentation-draft/route.ts"), "utf8");
 const presentationSafety = readFileSync(resolve(root, "lib/ai/property-presentation.ts"), "utf8");
 const leadIntelligenceRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/route.ts"), "utf8");
@@ -32,6 +32,8 @@ const weeklyAcquisition = readFileSync(resolve(root, "lib/analytics/weekly-acqui
 const distributionPage = readFileSync(resolve(root, "app/(crm)/distribution/page.tsx"), "utf8");
 const distributionRoute = readFileSync(resolve(root, "app/api/v1/crm/distribution/route.ts"), "utf8");
 const distributionMigration = readFileSync(resolve(root, "supabase/migrations/20260716234729_balanced_project_lead_distribution.sql"), "utf8");
+const distributionRoster = readFileSync(resolve(root, "components/distribution/ProjectBrokerRoster.tsx"), "utf8");
+const distributionRosterLogic = readFileSync(resolve(root, "lib/crm/distribution-roster.ts"), "utf8");
 const reactivationRoute = readFileSync(resolve(root, "app/api/v1/crm/reactivation/route.ts"), "utf8");
 const reactivationPage = readFileSync(resolve(root, "app/(crm)/leads/import/page.tsx"), "utf8");
 const reactivationMigration = readFileSync(resolve(root, "supabase/migrations/20260716235515_lead_reactivation_center.sql"), "utf8");
@@ -43,6 +45,7 @@ const homologationMigration = readFileSync(resolve(root, "supabase/migrations/20
 const metaWebhook = readFileSync(resolve(root, "app/api/webhooks/meta/route.ts"), "utf8");
 const metaWebhookTest = readFileSync(resolve(root, "app/api/v1/integrations/meta/webhook-test/route.ts"), "utf8");
 const metaConversionTest = readFileSync(resolve(root, "app/api/v1/integrations/meta/conversion-test/route.ts"), "utf8");
+const metaControlledDelivery = readFileSync(resolve(root, "app/api/v1/integrations/meta/test-deliveries/route.ts"), "utf8");
 const metaInsightsTest = readFileSync(resolve(root, "app/api/v1/integrations/meta/insights-test/route.ts"), "utf8");
 const outboxWorker = readFileSync(resolve(root, "app/api/v2/outbox/process/route.ts"), "utf8");
 const messageSendRoute = readFileSync(resolve(root, "app/api/v2/messages/send/route.ts"), "utf8");
@@ -158,6 +161,7 @@ const leadCreateRoute = readFileSync(resolve(root, "app/api/v1/leads/route.ts"),
 const commercialSimulationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/commercial-simulation/route.ts"), "utf8");
 const brokerLeadScopeMigration = readFileSync(resolve(root, "supabase/migrations/20260717005110_broker_lead_360_related_scope.sql"), "utf8");
 const firstContactSlaMigration = readFileSync(resolve(root, "supabase/migrations/20260717005333_first_contact_sla_lifecycle.sql"), "utf8");
+const firstContactAccuracyMigration = readFileSync(resolve(root, "supabase/migrations/20260717193000_phase_34_first_contact_sla_accuracy.sql"), "utf8");
 const inventoryGuardMigration = readFileSync(resolve(root, "supabase/migrations/20260717005624_property_presentation_inventory_guard.sql"), "utf8");
 const feedbackGuardMigration = readFileSync(resolve(root, "supabase/migrations/20260717005843_property_feedback_presentation_guard.sql"), "utf8");
 const materialsRoute = readFileSync(resolve(root, "app/api/v1/developments/[id]/materials/route.ts"), "utf8");
@@ -238,7 +242,7 @@ const checks = [
   ["studio usa dados sob escopo", matchingStudio.includes("/api/v1/crm/leads") && matchingStudio.includes("/api/v1/leads/${selectedId}")],
   ["apresentação exige aprovação humana", presentationRoute.includes("requiresHumanApproval: true")],
   ["apresentação protegida por escopo", presentationRoute.includes("requireLeadAccess") && presentationRoute.includes("organization_id")],
-  ["comparativo limita seleção", presentationRoute.includes("slice(0, 3)") && matchingStudio.includes("current.length < 3")],
+  ["comparativo limita seleção", presentationRoute.includes(".slice(0, 3)") && matchingStudio.includes("current.length < 3")],
   ["apresentação sem promessas", presentationSafety.includes("Garantia de preço") && presentationSafety.includes("Promessa de rentabilidade") && presentationRoute.includes("Nunca garanta preço")],
   ["apresentação tem aprovação humana", matchingStudio.includes("Abrir no WhatsApp") && matchingStudio.includes("Registrar no histórico")],
   ["apresentação alimenta memória comercial", leadIntelligenceRoute.includes("property_presentation") && leadIntelligenceRoute.includes("ai_matching_studio")],
@@ -250,37 +254,37 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("366 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("Calibração baseada em evidência operacional") && evolutionPhases.includes("Fallback local determinístico")],
   ["painel comparativo é exclusivo da superintendência", superintendentDashboardRoute.includes('actorRole !== "superintendent"') && superintendentDashboardRoute.includes('scope: "superintendent-dashboard"')],
-  ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('roleOf(profile) === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
-  ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && superintendentDashboardRoute.match(/\.eq\("organization_id", identity\.access\.organization\.id\)/g)?.length >= 2],
-  ["estruturas paralelas e leads sem responsável ficam fora", superintendentDashboardRoute.includes('visibleOwnerIds') && superintendentDashboardRoute.includes('.in("assigned_to"') && superintendentDashboardRoute.includes("parallelStructuresExcluded: true") && superintendentDashboardRoute.includes("unassignedExcluded: true")],
+  ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('profile.commercial_role === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
+  ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && (superintendentDashboardRoute.match(/\.eq\("organization_id", organizationId\)/g)?.length ?? 0) >= 4],
+  ["estruturas paralelas e leads sem responsável ficam fora", superintendentDashboardRoute.includes("visibleIds") && superintendentDashboardRoute.includes("visibleIds.has(text(lead.assigned_to))") && superintendentDashboardRoute.includes("parallelStructuresExcluded: true") && superintendentDashboardRoute.includes("unassignedExcluded: true")],
   ["totais da superintendência são reconciliados", superintendentDashboardRoute.includes("managerLeadSum") && superintendentDashboardRoute.includes("scopedLeadCount") && superintendentDashboardRoute.includes("matches:")],
   ["interface explicita o escopo da fase 23", crmDashboard.includes("Fase 23 · Superintendência diária") && crmDashboard.includes("ESTRUTURAS PARALELAS EXCLUÍDAS") && crmDashboard.includes("números da diretoria inteira")],
   ["fila ao vivo é restrita à liderança", distributionRoute.includes("managerRoles.has(role)") && distributionRoute.includes('scope: "crm-distribution-read"')],
-  ["superintendência vê somente gerentes diretos na fila", distributionPage.includes('data?.viewer.role !== "superintendent" || item.reports_to === data.viewer.id') && distributionPage.includes("Fase 35 · Liderança ao vivo")],
+  ["superintendência vê somente gerentes diretos na fila", /data\?\.viewer\.role\s*!==\s*"superintendent"\s*\|\|\s*item\.reports_to\s*===\s*data\.viewer\.id/s.test(distributionPage) && distributionPage.includes("Fase 35 · Liderança ao vivo")],
   ["presença vence automaticamente", distributionRoute.includes("90_000") && distributionMigration.includes("interval '90 seconds'")],
-  ["disponibilidade controla elegibilidade", distributionPage.includes('availability === "available"') && distributionPage.includes("Somente “Disponível” participa da distribuição") && distributionMigration.includes("cp.availability = 'available'")],
+  ["disponibilidade controla elegibilidade", /availability\s*===\s*"available"/.test(distributionPage + distributionRoster) && distributionPage.includes("Somente “Disponível”") && distributionMigration.includes("cp.availability = 'available'")],
   ["corretor desabilitado no projeto fica fora", distributionPage.includes("stateMap.get(item.id)?.enabled !== false") && distributionMigration.includes("coalesce(m.enabled, true)")],
   ["fila equilibra carga e última atribuição", distributionMigration.includes("project_load::numeric / weight") && distributionMigration.includes("last_assigned_at nulls first") && distributionMigration.includes("pg_advisory_xact_lock")],
-  ["gerente distribui somente dentro da própria hierarquia", distributionMigration.includes("with recursive descendants") && distributionMigration.includes("p.id in (select id from descendants)") && distributionRoute.includes("descendants(allProfiles")],
-  ["fila e motor usam a mesma carga ponderada", distributionPage.includes("/ (stateMap.get(a.id)?.weight || 1)") && distributionMigration.includes("project_load::numeric / weight")],
-  ["distribuição considera apenas o projeto selecionado", distributionMigration.includes("l.development_id = p_development_id") && distributionRoute.includes("p_development_id: body.developmentId") && distributionPage.includes("MESMO PROJETO")],
+  ["gerente distribui somente dentro da própria hierarquia", distributionMigration.includes("with recursive descendants") && distributionMigration.includes("p.id in (select id from descendants)") && distributionRoute.includes("descendantsFromLiveProfiles") && distributionRoute.includes("BROKER_OUT_OF_SCOPE")],
+  ["fila e motor usam a mesma carga ponderada", distributionRosterLogic.includes("left.projectLoad / Math.max(left.weight, 1)") && distributionRosterLogic.includes("right.projectLoad / Math.max(right.weight, 1)") && distributionMigration.includes("project_load::numeric / weight")],
+  ["distribuição considera apenas o projeto selecionado", distributionMigration.includes("l.development_id = p_development_id") && distributionRoute.includes("p_development_id: developmentId") && distributionPage.includes("MESMO PROJETO")],
   ["distribuição concorrente permanece atômica", distributionMigration.includes("pg_advisory_xact_lock") && distributionMigration.includes("for update skip locked") && distributionRoute.includes("atomicLock: true")],
   ["tela bloqueia distribuição sem corretor elegível", distributionPage.includes("!brokers.length") && distributionPage.includes("Nenhum corretor disponível")],
   ["fase 38 mostra equilíbrio verificável", distributionPage.includes("Fase 38 · Distribuição equilibrada") && distributionPage.includes("balanceGap") && distributionPage.includes("carga ponderada")],
-  ["gerente configura somente corretor direto", distributionRoute.includes('body.action === "configure_member"') && distributionRoute.includes("target?.reports_to === identity.access.profile.id") && distributionRoute.includes("BROKER_OUT_OF_SCOPE")],
+  ["gerente configura somente corretor direto", distributionRoute.includes('body.action === "configure_member"') && distributionRoute.includes('role === "manager"') && distributionRoute.includes("target?.reports_to !== identity.access.profile.id") && distributionRoute.includes("BROKER_OUT_OF_SCOPE")],
   ["configuração de projeto preserva o tenant", distributionRoute.includes('from("developments")') && distributionRoute.includes("identity.access.organization.id") && distributionRoute.includes('onConflict: "development_id,profile_id"')],
-  ["peso por projeto possui limites seguros", distributionRoute.includes("Math.min(10, Math.max(1") && distributionMigration.includes("weight between 1 and 10")],
-  ["pausa de um projeto não afeta os demais", distributionRoute.includes("projectIsolation: true") && distributionPage.includes("não altera nenhum outro projeto")],
-  ["projeto e disponibilidade compõem elegibilidade", distributionPage.includes("ATIVO NO PROJETO") && distributionPage.includes("Online e disponível") && distributionMigration.includes("cp.availability = 'available'")],
-  ["fase 39 permite ativar pausar e ponderar", distributionPage.includes("Fase 39 · Equilíbrio por projeto") && distributionPage.includes("configureMember") && distributionPage.includes("Pausar") && distributionPage.includes("Ativar")],
-  ["fila de SLA é exclusiva do gerente", teamSlaRoute.includes('role !== "manager"') && teamSlaRoute.includes('scope: "manager-team-sla"')],
-  ["SLA considera somente corretores diretos", teamSlaRoute.includes('.eq("reports_to", identity.access.profile.id)') && teamSlaRoute.includes("directBrokersOnly: true")],
+  ["peso por projeto possui limites seguros", /weight\s*<\s*1\s*\|\|\s*weight\s*>\s*10/.test(distributionRoute) && distributionMigration.includes("weight between 1 and 10") && distributionRoster.includes("[1, 2, 3, 4, 5]")],
+  ["pausa de um projeto não afeta os demais", distributionRoute.includes("development_id: developmentId") && distributionRoute.includes('onConflict: "development_id,profile_id"') && distributionRoster.includes("A configuração dos outros projetos permanece intacta")],
+  ["projeto e disponibilidade compõem elegibilidade", distributionRosterLogic.includes('reason: "Pausado neste projeto"') && distributionRosterLogic.includes('candidate.availability !== "available"') && distributionMigration.includes("cp.availability = 'available'")],
+  ["fase 39 permite ativar pausar e ponderar", distributionRoster.includes("Roleta por projeto") && distributionPage.includes("configureMembers") && distributionRoster.includes('type="checkbox"') && distributionRoster.includes("Peso")],
+  ["fila de SLA é exclusiva do gerente", teamSlaRoute.includes('roles: ["manager"]') && teamSlaRoute.includes('scope: "manager-team-sla"')],
+  ["SLA considera somente corretores diretos", teamSlaRoute.includes("descendantsFromLiveProfiles") && teamSlaRoute.includes('profile.commercial_role === "broker"') && teamSlaRoute.includes("directBrokersOnly: true")],
   ["SLA preserva isolamento da organização", teamSlaRoute.includes("organizationId = identity.access.organization.id") && teamSlaRoute.match(/\.eq\("organization_id", organizationId\)/g)?.length >= 2],
   ["primeiro contato e follow-up são separados", teamSlaRoute.includes('kind: "first_contact"') && teamSlaRoute.includes('kind: "follow_up"') && teamSlaRoute.includes("first_contacted_at")],
   ["alerta leva à lead e ao corretor", crmDashboard.includes('href={`/leads/${alert.leadId}`}') && crmDashboard.includes("Responsável: {alert.brokerName}") && crmDashboard.includes("abrir Lead 360")],
-  ["fase 40 mostra fila priorizada", teamSlaRoute.includes("b.overdueMinutes - a.overdueMinutes") && crmDashboard.includes("Fase 40 · SLA do time") && crmDashboard.includes("Sem primeiro contato")],
+  ["fila de SLA mostra prioridades operacionais", teamSlaRoute.includes("right.overdueMinutes - left.overdueMinutes") && crmDashboard.includes("Fase 35 · SLA de follow-up") && crmDashboard.includes("Sem primeiro contato")],
   ["reativação exige consentimento declarado", reactivationRoute.includes("CONSENT_REQUIRED") && reactivationPage.includes("autorização válida para contato")],
   ["duplicados são bloqueados sem transferir lead", reactivationRoute.includes("duplicado_no_arquivo") && reactivationRoute.includes("lead_ja_existente") && !reactivationRoute.includes('leads").update({ assigned_to: ownerId')],
   ["opt-out é verificado na importação", reactivationRoute.includes('from("messaging_suppressions")') && reactivationRoute.includes('reason: string | null = blocked.has(item.phone) ? "opt_out"')],
@@ -313,12 +317,13 @@ const checks = [
   ["ensaio Meta importa lead oficial", metaWebhookTest.includes("META_LEAD_ACCESS_TOKEN") && metaWebhookTest.includes("meta.lead.fetch") === false && metaWebhookTest.includes("/api/v2/outbox/process")],
   ["ensaio Meta comprova uma única lead", metaWebhookTest.includes("count !== 1") && metaWebhookTest.includes('lead?.source !== "Meta Lead Ads"')],
   ["ensaio Meta preserva atribuição", metaWebhookTest.includes("meta.externalLeadId === leadgenId") && metaWebhookTest.includes("meta.pageId === pageId") && metaWebhookTest.includes("meta.formId === formId")],
-  ["ensaio CAPI exige diretoria", metaConversionTest.includes('commercialRole === "director"') && metaSettingsPage.includes("Fase 25 · Conversions API")],
-  ["ensaio CAPI permanece em teste", metaConversionTest.includes('config.mode !== "test"') && metaConversionTest.includes("productionEnabled: false")],
-  ["ensaio CAPI exige consentimento", metaConversionTest.includes("meta.dataSharingConsent !== true") && metaConversionTest.includes("LEAD_NOT_ELIGIBLE")],
-  ["ensaio CAPI usa fila Hostinger", metaConversionTest.includes("queueMetaConversion") && metaConversionTest.includes("/api/v2/outbox/process")],
-  ["ensaio CAPI exige confirmação Meta", metaConversionTest.includes("events_received") && metaConversionTest.includes('event?.status !== "delivered"')],
-  ["ensaio CAPI preserva rastreabilidade", metaConversionTest.includes("fbtrace_id") && metaConversionTest.includes("datasetIdMasked")],
+  ["ensaio CAPI antigo está aposentado", metaConversionTest.includes("status: 410") && !metaConversionTest.includes("queueMetaConversion")],
+  ["ensaio CAPI exige diretoria", metaControlledDelivery.includes('accessRoles: ["admin", "director_decisor", "director"]') && metaSettingsPage.includes("Fase 25 · Conversions API")],
+  ["ensaio CAPI permanece em teste", metaControlledDelivery.includes('config.mode !== "test"') && metaControlledDelivery.includes("productionEnabled: false")],
+  ["ensaio CAPI exige consentimento", metaControlledDelivery.includes("meta.dataSharingConsent !== true") && metaControlledDelivery.includes("LEAD_NOT_ELIGIBLE")],
+  ["ensaio CAPI usa fila Hostinger", metaControlledDelivery.includes("queueMetaConversion") && metaControlledDelivery.includes("/api/v2/outbox/process")],
+  ["ensaio CAPI exige confirmação Meta", metaControlledDelivery.includes("events_received") && metaControlledDelivery.includes('status !== "delivered"')],
+  ["ensaio CAPI preserva rastreabilidade", metaControlledDelivery.includes("fbtrace_id") && metaControlledDelivery.includes("datasetIdMasked")],
   ["ensaio Insights exige diretoria", metaInsightsTest.includes('commercialRole === "director"') && metaSettingsPage.includes("Fase 26 · Meta Insights")],
   ["Insights usa períodos oficiais", metaInsights.includes('"today"') && metaInsights.includes('"last_7d"') && metaInsights.includes('"last_30d"')],
   ["ensaio Insights é somente leitura", metaInsightsTest.includes("readOnly: true") && !metaInsightsTest.includes('method: "POST"')],
@@ -431,13 +436,13 @@ const checks = [
   ["painel diferencia ausência de custo", metaSettingsPage.includes("Insights financeiros ainda não conectados")],
   ["carteira identifica origem Meta", leadIntelligencePage.includes("Meta campaign context") && leadIntelligencePage.includes("dataSharingConsent")],
   ["lista permite foco em leads Meta", leadsPortfolioPage.includes('value="Meta Lead Ads"') && leadsPortfolioPage.includes("META · APRENDENDO")],
-  ["API entrega contexto Meta sob escopo", leadsPortfolioRoute.includes("metadata") && leadsPortfolioRoute.includes("requireAccessContext")],
+  ["API entrega contexto Meta sob escopo", leadsPortfolioRoute.includes("LIVE_LEAD_SELECT") && leadsPortfolioRoute.includes("campaignIds") && leadsPortfolioRoute.includes("source") && leadsPortfolioRoute.includes("requireAccessContext")],
   ["dashboard conecta CRM e Meta", crmDashboard.includes("Leads Meta ativos") && crmDashboard.includes("Meta com aprendizado")],
-  ["primeiro contato é medido automaticamente", leadIntelligenceRoute.includes("response_minutes") && leadIntelligenceRoute.includes("first-response-${id}")],
+  ["primeiro contato é medido automaticamente", firstContactSlaMigration.includes("apply_first_contact_sla") && firstContactAccuracyMigration.includes("first_response_minutes") && firstContactAccuracyMigration.includes("close_first_contact_sla")],
   ["ranking considera velocidade comercial", campaignIntelligence.includes("averageResponseMinutes") && campaignIntelligence.includes("responseScore")],
   ["dashboard alerta leads Meta sem contato", crmDashboard.includes("Meta sem contato") && crmDashboard.includes("metaAwaitingContact")],
   ["novo lead Meta recebe SLA automático", outboxWorker.includes("next_action_at") && outboxWorker.includes("5 * 60_000")],
-  ["primeiro contato encerra prazo", leadIntelligenceRoute.includes("next_action_at: null") && leadIntelligenceRoute.includes("last_interaction_at: occurredAt")],
+  ["primeiro contato encerra prazo", firstContactSlaMigration.includes("close_first_contact_sla_from_activity") && firstContactSlaMigration.includes("first_contacted_at is null")],
   ["relatório mede SLA por campanha", campaignIntelligence.includes("sla5Rate") && campaignIntelligence.includes("sla15Rate") && metaSettingsPage.includes("SLA 15 min")],
   ["campanha não é culpada antes da operação", campaignIntelligence.includes("Corrigir distribuição e primeiro atendimento antes de alterar a campanha")],
   ["IA detecta rejeição explícita do corretor", customerExperience.includes("brokerRejection") && customerExperience.includes("offer_broker_change")],
@@ -480,7 +485,7 @@ const checks = [
   ["resposta noturna é atômica e auditável", nightlyReplyMigration.includes("for update") && nightlyReplyMigration.includes("nightly_journey_reply") && nightlyReplyMigration.includes("nightly_journey.customer_replied")],
   ["opt-out não reativa jornada noturna", whatsappWebhook.includes("if (!optedOut && inboundMessage?.id)") && immediateOptOutMigration.includes("status='opted_out'")],
   ["conversas respeitam carteira comercial", nightlyReplyMigration.includes("conversations_commercial_scope") && nightlyReplyMigration.includes("messages_commercial_scope") && nightlyReplyMigration.includes("can_access_commercial_lead")],
-  ["fase 49 mostra próxima ação", conversationsPage.includes("Fase 49 · Resposta noturna") && conversationsPage.includes("RESPONDER AGORA") && conversationsPage.includes("continuar a descoberta")],
+  ["resposta noturna mostra próxima ação", conversationsPage.includes("RESPONDER AGORA") && conversationsPage.includes("Próxima ação") && conversationsPage.includes("continuar a descoberta")],
   ["busca global encontra leads sob RLS", commandPalette.includes("/api/v1/search?q=") && commandPalette.includes("Leads da minha carteira") && smartSearchRoute.includes("const db = access.supabase") && smartSearchRoute.includes("/leads/${lead.id}")],
   ["busca é tolerante a acentos", commandPalette.includes('normalize("NFD")') && commandPalette.includes("[\\u0300-\\u036f]")],
   ["paleta opera inteiramente pelo teclado", commandPalette.includes('event.key === "ArrowDown"') && commandPalette.includes('event.key === "ArrowUp"') && commandPalette.includes('event.key === "Enter"')],
@@ -514,7 +519,7 @@ const checks = [
   ["proposta reconfirma preço estoque e regra", atomicCommercialProposalMigration.includes("price=sim.property_price") && atomicCommercialProposalMigration.includes("lower(status) in") && atomicCommercialProposalMigration.includes("payment_rule_changed")],
   ["decisão da proposta é atômica", approvalRoute.includes("decide_commercial_proposal") && atomicCommercialProposalMigration.includes("status=p_decision") && atomicCommercialProposalMigration.includes("commercial_proposal_decision")],
   ["proposta respeita hierarquia comercial", atomicCommercialProposalMigration.includes("with recursive team") && atomicCommercialProposalMigration.includes("proposal_out_of_scope")],
-  ["fase 47 reúne proposta e mensagem", approvalsListRoute.includes('["message","commercial_simulation","lead_action","meta_campaign"]') && approvalsPage.includes("Fase 47 · Revisão humana") && approvalsPage.includes("Aprovar proposta")],
+  ["fase 47 reúne proposta e mensagem", approvalsListRoute.includes('["message","commercial_simulation"]') && approvalsPage.includes("Fase 47 · Revisão humana") && approvalsPage.includes("Aprovar proposta")],
   ["preflight cobre APIs da Hostinger", systemHealthRoute.includes("hostinger") && systemHealthRoute.includes("workerSecret") && systemHealthRoute.includes("openai") && systemHealthRoute.includes("meta") && systemHealthRoute.includes("whatsapp")],
   ["homologação usa a credencial canônica do WhatsApp", homologationRoute.includes("WHATSAPP_ACCESS_TOKEN") && !homologationRoute.includes("WHATSAPP_TOKEN &&")],
   ["programa de 100 fases possui inventário reproduzível", inventoryScript.includes("deployableFiles") && inventoryScript.includes("legacyPrototypePathsExcludedFromPackage") && hundredPhaseStatus.includes("Fase 1 — Inventário completo")],
@@ -522,7 +527,7 @@ const checks = [
   ["fonte única da verdade possui contrato verificável", canonicalEntities.includes('"table": "leads"') && canonicalEntities.includes('"table": "atlas_events"') && canonicalEntityCheck.includes("tabela canônica duplicada") && hundredPhaseStatus.includes("Fase 3 — Fonte única da verdade")],
   ["contratos de dados normalizam fronteiras sensíveis", dataContracts.includes("normalizePhoneE164") && dataContracts.includes("moneyToCents") && passwordRecoveryRoute.includes("normalizeEmail") && messageSendRoute.includes("normalizePhoneE164") && hundredPhaseStatus.includes("Fase 4 — Contratos de dados")],
   ["arquitetura modular atribui dono único aos dados", moduleBoundaries.includes('"key": "crm"') && moduleBoundaries.includes('"key": "governance"') && moduleBoundaryCheck.includes("entidade canônica sem módulo responsável") && hundredPhaseStatus.includes("Fase 5 — Arquitetura modular")],
-  ["ambientes não misturam banco e credenciais temporárias", environmentContract.includes('"production"') && environmentContract.includes('"allowsBootstrap": false') && productionPreflight.includes("ATLAS_DATABASE_ENVIRONMENT") && environmentCheck.includes("Node.js 20.9+") && hundredPhaseStatus.includes("Fase 6 — Configuração de ambientes")],
+  ["ambientes não misturam banco e credenciais temporárias", environmentContract.includes('"production"') && environmentContract.includes('"allowsBootstrap": false') && productionPreflight.includes("ATLAS_DATABASE_ENVIRONMENT") && environmentCheck.includes("Node.js 22+") && hundredPhaseStatus.includes("Fase 6 — Configuração de ambientes")],
   ["variáveis possuem inventário único sem segredo público", environmentVariables.includes('"requirement": "temporary"') && environmentVariables.includes('"scope": "runtime"') && environmentVariablesCheck.includes("variável usada no código sem classificação") && secretsRoute.includes('source: "config/environment-variables.json"') && hundredPhaseStatus.includes("Fase 7 — Variáveis de ambiente")],
   ["segredos permanecem no servidor com dono e rotação", secretGovernance.includes('"browser bundle"') && secretGovernance.includes('"rotationDays"') && secretGovernanceCheck.includes("componente cliente referencia segredo privado") && secretsRoute.includes("governanceSource") && hundredPhaseStatus.includes("Fase 8 — Gestão de segredos")],
   ["observabilidade correlaciona e sanitiza erros", observabilityContract.includes('"X-Correlation-Id"') && observabilityContract.includes('"providerCostUsd"') && observabilityCheck.includes("log canônico da API não usa sanitização") && apiCore.includes("sanitizeLogMetadata") && hundredPhaseStatus.includes("Fase 9 — Observabilidade")],
@@ -538,7 +543,7 @@ const checks = [
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],
   ["recuperação não permite origem aleatória", recoveryRoute.includes("ATLAS_BASE_URL") && recoveryRoute.includes("NODE_ENV") && recoveryRoute.includes("test(origin)") && !forgotPassword.includes("window.location.origin")],
   ["callback troca código uma única vez", authCallback.includes("exchangeCodeForSession") && authCallback.includes('Cache-Control", "no-store"')],
-  ["superintendente alterna carteiras de gerentes", crmLeadsRoute.includes("team_owner") && crmLeadsRoute.includes("descendantIds")],
+  ["superintendente alterna carteiras de gerentes", crmLeadsRoute.includes("team_owner") && crmLeadsRoute.includes("profileTeamScope") && crmLeadsRoute.includes("TEAM_OUT_OF_SCOPE")],
   ["carteira possui atalhos de atenção sobre toda a base", leadsPortfolioPage.includes("Minha rotina") && leadsPortfolioPage.includes('params.set("attention", attention)') && crmLeadsRoute.includes("allowedAttentionFilters")],
   ["atalhos priorizam atraso calor ausência de ação e distribuição", ["overdue", "no_action", "hot", "unassigned"].every((filter) => crmLeadsRoute.includes(`\"${filter}\"`)) && crmLeadsRoute.includes('.not("status", "in"')],
   ["transferência em massa envia sessão autenticada", leadsPortfolioPage.includes('Authorization: `Bearer ${token}`') && leadsPortfolioPage.includes("Sessão expirada. Entre novamente para transferir leads.")],
@@ -553,22 +558,22 @@ const checks = [
   ["gerente transfere somente ao subordinado direto", managerTransferMigration.includes("target_reports_to is distinct from p_actor_id")],
   ["destinos do gerente são somente corretores diretos", leadsPortfolioPage.includes('role === "broker" && profile.reports_to === currentProfileId') && leadsPortfolioPage.includes("corretor do meu time")],
   ["motivo da transferência é protegido no banco", managerTransferMigration.includes("char_length(trim(coalesce(p_reason, ''))) < 5")],
-  ["Lead 360 relê a lead sob RLS", leadIntelligenceRoute.includes('identity.supabase.from("leads")') && leadIntelligenceRoute.includes("Lead fora do seu escopo comercial")],
+  ["Lead 360 relê a lead sob RLS", /identity\.supabase\s*\.from\("leads"\)/.test(leadIntelligenceRoute) && leadIntelligenceRoute.includes("Lead fora do seu escopo comercial")],
   ["acesso lateral retorna bloqueio correto", leadIntelligenceRoute.includes('/escopo/i.test(message) ? 403') && commercialSimulationRoute.includes('/escopo/i.test(message) ? 403')],
   ["duplicidade não revela carteira alheia", leadCreateRoute.includes("visibleDuplicate") && leadCreateRoute.includes("...(visibleDuplicate ?")],
   ["corretor reconhece carteira exclusiva", leadsPortfolioPage.includes("CARTEIRA EXCLUSIVA") && leadsPortfolioPage.includes("somente a sua carteira")],
   ["timeline acompanha o escopo atual da lead", brokerLeadScopeMigration.includes("activities_commercial_select") && brokerLeadScopeMigration.includes("private.can_access_commercial_lead")],
-  ["Lead 360 consulta relacionados sob RLS", leadIntelligenceRoute.includes('identity.supabase.from("activities")') && leadIntelligenceRoute.includes('identity.supabase.from("lead_experience_signals")')],
+  ["Lead 360 consulta relacionados sob RLS", /identity\.supabase\s*\.from\("activities"\)/.test(leadIntelligenceRoute) && /identity\.supabase\s*\.from\("lead_experience_signals"\)/.test(leadIntelligenceRoute)],
   ["pipeline do corretor respeita RLS", pipelineRoute.includes('identity.supabase') && pipelineRoute.includes("requireLeadAccess(identity, leadId)")],
   ["SLA de primeiro contato tem ciclo próprio", firstContactSlaMigration.includes("first_contact_due_at") && firstContactSlaMigration.includes("first_contacted_at")],
   ["SLA nasce automaticamente para lead Meta", firstContactSlaMigration.includes("apply_first_contact_sla") && firstContactSlaMigration.includes("Meta Lead Ads")],
   ["primeira interação encerra SLA no banco", firstContactSlaMigration.includes("close_first_contact_sla_from_activity") && firstContactSlaMigration.includes("first_contacted_at is null")],
   ["pipeline destaca SLA inicial", pipelinePage.includes("SLA vencido") && pipelinePage.includes("1º contato em até")],
-  ["Kanban permite desfazer movimentação", pipelinePage.includes("undoLastMove") && pipelinePage.includes("Desfazer movimentação")],
+  ["Kanban permite desfazer movimentação", pipelinePage.includes("undoLastMove") && pipelinePage.includes("onClick={() => void undoLastMove()}") && pipelinePage.includes("Desfazer")],
   ["Kanban oferece ordenação comercial", ["Prioridade inteligente", "Maior score", "Maior valor", "Atualização recente"].every((label) => pipelinePage.includes(label))],
   ["Kanban oferece densidade e etapas ativas", pipelinePage.includes("Visão compacta") && pipelinePage.includes("Mostrando etapas ativas") && pipelinePage.includes("is-drop-target")],
-  ["corretor recebe três prioridades diárias explicadas", pipelinePage.includes("Comece por aqui") && pipelinePage.includes("dailyFocus") && pipelinePage.includes("As três ações com maior impacto")],
-  ["card orienta próxima melhor ação", pipelinePage.includes("brokerGuidance") && pipelinePage.includes("Próxima melhor ação")],
+  ["corretor recebe três prioridades diárias explicadas", pipelinePage.includes("Comece por aqui") && pipelinePage.includes("dailyFocus") && pipelinePage.includes("No máximo três decisões") && pipelinePage.includes("guidance.reason")],
+  ["card orienta próxima melhor ação", pipelinePage.includes("brokerGuidance") && pipelinePage.includes("guidance.action") && pipelinePage.includes("guidance.reason")],
   ["card oferece atalhos operacionais", pipelinePage.includes("Criar abordagem com IA") && pipelinePage.includes("Abrir WhatsApp") && pipelinePage.includes("Ligar para a lead")],
   ["robô do pipeline permanece como detalhe visual", globalsCss.includes(".atlas-pipeline-robot") && globalsCss.includes("width: clamp(64px, 7vw, 94px)") && globalsCss.includes("opacity: 0.72")],
   ["rascunho rejeita estoque indisponível na API", presentationRoute.includes("isPropertyAvailable") && presentationRoute.includes("O estoque mudou")],
@@ -604,7 +609,7 @@ const checks = [
   ["restauração aprovada exige comprovação", backupEvidenceMigration.includes("restore_tested_at is not null") && backupEvidenceMigration.includes("evidence_reference is not null")],
   ["API valida duração e evidência de restauração", backupEvidenceRoute.includes("RESTORE_EVIDENCE_REQUIRED") && backupEvidenceRoute.includes("INVALID_RESTORE_DURATION")],
   ["Command Center não inventa backup", auditPage.includes("nunca declara um teste que não foi executado") && auditPage.includes("Nenhum snapshot real registrado")],
-  ["rollback preserva o V3", rollbackMigration.includes("v3_preserved boolean not null default true check (v3_preserved)") && rollbackRoute.includes("Manter V3 online")],
+  ["rollback preserva o V3", rollbackMigration.includes("v3_preserved boolean not null default true check (v3_preserved)") && rollbackRoute.includes("v3_preserved: true")],
   ["rollback aceita somente simulação", rollbackMigration.includes("execution_mode = 'simulation'") && rollbackMigration.includes("source_environment = 'v3-homologation'")],
   ["rollback exige backup restaurado", rollbackMigration.includes("enforce_rollback_backup_evidence") && rollbackMigration.includes("restore_status = 'passed'")],
   ["ensaio mede tempo e saúde do V2", rollbackRoute.includes("duration_minutes") && rollbackRoute.includes("health_check_status") && rollbackPanel.includes("Resposta HTTP")],

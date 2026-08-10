@@ -1,0 +1,14 @@
+{
+  "schema": "atlas.authorized-release-package-assembly-memory.v1",
+  "policyHash": "3bac555b2ffc20ef3b3b10a099f047cc2241d23d62a11bb9b991a4921b157f96",
+  "entries": [],
+  "summary": {
+    "assembledPackages": 0,
+    "consumedAuthorizations": 0,
+    "latestEntryHash": null,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "50c76a3b36e9d376bf618169223040fdb7cbe614d3079816427ad86a2dec1d14"
+}

@@ -1,30 +1,6 @@
 "use client";
-
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
-import { AtlasSkeleton } from "@/components/ui/AtlasUI";
-import { PageHeader } from "@/components/atlas/page-header";
-import { StatusBadge } from "@/components/atlas/status-badge";
-import { TiltShell } from "@/components/atlas/tilt-shell";
-
-/*
- * CC-6 · Saúde operacional das integrações.
- * Consolidações do redesign (mesmos dados, zero fetch novo):
- * - os cards "Filas e falhas" e "Ambiente" repetiam dimensões do resumo em
- *   caixas separadas (e claras, fora do tema) — tudo virou uma régua única de
- *   sinais vitais mono tabular-nums, com o runtime como rodapé de uma linha;
- * - "Ambiente ok · cadastro pendente · teste pendente" era prosa repetida por
- *   provedor — virou tokens mono compactos por etapa (✓/—, título por token);
- * - a linha de bloqueios duplicava exatamente o que os tokens, a evidência e
- *   as falhas já mostram — o detalhe vive agora no title da linha e do
- *   contador de falhas (rose quando > 0);
- * - "Produção PRONTA/BLOQUEADA" era um card de resumo — virou chip único no
- *   cabeçalho dos sinais vitais;
- * - snapshots já vinham no payload e nunca eram exibidos — o último
- *   diagnóstico agora aparece no rodapé do painel;
- * - o <main> próprio aninhava um segundo landmark dentro do AppShell — a
- *   página passa a usar o container padrão do CC-6.
- */
-
+import { useCallback, useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 type Provider = {
   provider: string;
   state: string;
@@ -48,17 +24,18 @@ type Payload = {
       productionReady: boolean;
     };
     providers: Provider[];
-    queues: {
-      pending: number;
-      failed: number;
-      unresolvedDeadLetters: number;
-      tokenUnhealthy?: {
-        measured: boolean;
-        count?: number;
-        oldestAt?: string | null;
-        reason?: string;
-      };
-    };
+    queues: { pending: number; failed: number; unresolvedDeadLetters: number };
+    failureQueue: Array<{
+      id: string;
+      topic: string;
+      label: string;
+      reason: string;
+      attempts: number;
+      createdAt: string;
+      provider: "meta" | "whatsapp" | "other";
+      canRetry: boolean;
+      supervisionRequired: true;
+    }>;
     runtime: {
       hostingProvider: string;
       publicHttps: boolean;
@@ -68,59 +45,11 @@ type Payload = {
   };
   snapshots: Array<{ id: string; created_at: string }>;
 };
-
-const PROVIDER_NAMES: Record<string, string> = {
-  meta: "Meta Lead Ads + CAPI",
-  meta_marketing: "Meta Marketing API (verba)",
-  whatsapp: "WhatsApp",
-  google_ads: "Google Ads",
-  youtube: "YouTube Ads",
-  tiktok_ads: "TikTok Ads",
-  openai: "OpenAI",
-  perplexity: "Perplexity",
-  storage: "Storage Supabase",
-  hostinger: "Hostinger",
-};
-
-// Estados reais do avaliador (operational-health) → chip único por linha.
-const STATE_META: Record<string, { tone: "success" | "danger" | "warning" | "neutral"; label: string }> = {
-  healthy: { tone: "success", label: "Saudável" },
-  degraded: { tone: "danger", label: "Degradada" },
-  stale: { tone: "warning", label: "Evidência antiga" },
-  ready_to_test: { tone: "warning", label: "Pronta p/ teste" },
-  environment_only: { tone: "warning", label: "Sem cadastro" },
-  registered_only: { tone: "warning", label: "Sem credenciais" },
-  not_configured: { tone: "neutral", label: "Não configurada" },
-};
-
-const BLOCKER_LABELS: Record<string, string> = {
-  environment_missing: "credenciais ausentes no servidor",
-  registration_missing: "sem cadastro no CRM",
-  verified_test_missing: "teste real pendente",
-  sync_evidence_missing: "sem evidência de sincronização",
-  sync_stale: "evidência com mais de 24h",
-  failed_queue_items: "itens falhos na fila",
-  token_expired: "fila parada por credencial expirada — renove o token",
-  last_error_present: "último erro registrado",
-};
-
-const SNAPSHOT_FORMAT = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short",
-  timeStyle: "short",
-});
-
-function StepToken({ label, done, hint }: { label: string; done: boolean; hint: string }) {
-  return (
-    <span title={hint}>
-      {label} {done ? <span className="cc6-ok">✓</span> : <span aria-label="pendente">—</span>}
-    </span>
-  );
-}
-
 export default function Page() {
   const [data, setData] = useState<Payload | null>(null),
     [notice, setNotice] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [retryingId, setRetryingId] = useState<string | null>(null);
   const load = useCallback(async () => {
     const r = await fetch("/api/v1/governance/integration-health", {
         cache: "no-store",
@@ -150,242 +79,207 @@ export default function Page() {
       setBusy(false);
     }
   }
+  async function retryFailure(eventId: string) {
+    setRetryingId(eventId);
+    setNotice("");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Sua sessão expirou. Entre novamente para reprocessar.");
+      const r = await fetch("/api/v3/dlq/retry", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ eventId }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || "Não foi possível reprocessar o evento.");
+      setNotice("Evento devolvido à fila. A entrega será tentada novamente pelo worker.");
+      await load();
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Não foi possível reprocessar o evento.");
+    } finally {
+      setRetryingId(null);
+    }
+  }
   const c = data?.current;
-  const lastSnapshotAt = data?.snapshots[0]?.created_at;
-  const tokenStuck = c?.queues.tokenUnhealthy;
-
-  const vitals = [
-    { label: "Saudáveis", value: c?.summary.healthy, accent: c?.summary.healthy ? "cc6-ok" : "", hint: "Provedores com teste real e evidência fresca" },
-    { label: "Degradadas", value: c?.summary.degraded, accent: c?.summary.degraded ? "cc6-crit" : "", hint: "Provedores com falhas ou erro registrado" },
-    { label: "Prontas p/ teste", value: c?.summary.readyToTest, accent: c?.summary.readyToTest ? "cc6-warn" : "", hint: "Ambiente e cadastro prontos, sem teste real" },
-    { label: "Pendentes", value: c?.summary.notReady, accent: "", hint: "Sem ambiente ou sem cadastro" },
-    { label: "Fila", value: c?.queues.pending, accent: "", hint: "Eventos pendentes ou em processamento (30d)" },
-    { label: "Falhas", value: c?.queues.failed, accent: c?.queues.failed ? "cc6-crit" : "", hint: "Eventos falhos ou em dead letter (30d)" },
-    { label: "DLQ", value: c?.queues.unresolvedDeadLetters, accent: c?.queues.unresolvedDeadLetters ? "cc6-crit" : "", hint: "Dead letters sem resolução" },
-    // Presos por credencial não aparecem em DLQ (o worker os mantém retryable
-    // de propósito): sem esta coluna, o incidente de token não tem número.
-    {
-      label: "Token",
-      value: tokenStuck?.measured ? tokenStuck.count ?? 0 : "—",
-      accent: tokenStuck?.measured && tokenStuck.count ? "cc6-crit" : "",
-      hint: !tokenStuck
-        ? "Fila parada por credencial expirada"
-        : tokenStuck.measured
-          ? `Eventos parados por credencial expirada${tokenStuck.oldestAt ? ` · mais antigo ${SNAPSHOT_FORMAT.format(new Date(tokenStuck.oldestAt))}` : ""}`
-          : `Não medido — ${tokenStuck.reason ?? "leitura indisponível"}`,
-    },
-  ];
-
   return (
-    <div
+    <main
       data-phase="97-integration-operational-health"
-      data-health-layout="cc6-vitals"
-      className="space-y-4 pb-10"
+      className="mx-auto max-w-7xl space-y-7 p-4 md:p-8"
     >
-      <PageHeader
-        eyebrow="Integrações · Hostinger · APIs · Filas"
-        title="Saúde operacional"
-        description="Configurado, testado e saudável são estados diferentes — teste real obrigatório e segredos sempre mascarados."
-        action={{
-          href: "/integrations",
-          label: "Voltar às integrações",
-          priority: "secondary",
-        }}
-      />
-
-      {notice ? (
-        <p
-          role="status"
-          className="cc6-panel-quiet cc6-reveal px-4 py-3 text-sm text-[var(--atlas-texto-medio)]"
-        >
-          {notice}
+      <header className="rounded-[30px] bg-gradient-to-br from-slate-950 via-cyan-950 to-blue-950 p-7 text-white">
+        <p className="text-xs font-semibold tracking-[.22em] text-cyan-300">
+          HOSTINGER · APIS · FILAS · WEBHOOKS
         </p>
-      ) : null}
-
-      <section aria-label="Sinais vitais das integrações">
-        <TiltShell className="cc6-panel cc6-reveal p-5" delayMs={40}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="cc6-eyebrow">Sinais vitais</p>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              {c ? (
-                <StatusBadge tone={c.summary.productionReady ? "success" : "warning"}>
-                  {c.summary.productionReady ? "Produção pronta" : "Produção bloqueada"}
-                </StatusBadge>
-              ) : null}
-              <button
-                type="button"
-                disabled={busy}
-                onClick={snapshot}
-                className="cc6-ghost-btn disabled:opacity-50"
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold">Saúde operacional</h1>
+            <p className="mt-2 text-sm text-slate-300">
+              Configurado, testado e saudável são estados diferentes.
+            </p>
+          </div>
+          <button
+            disabled={busy}
+            onClick={snapshot}
+            className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-950"
+          >
+            Registrar diagnóstico
+          </button>
+        </div>
+        <div className="mt-5 flex gap-2 text-[11px]">
+          <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-emerald-200">
+            SEGREDOS MASCARADOS
+          </span>
+          <span className="rounded-full bg-amber-400/10 px-3 py-1 text-amber-200">
+            TESTE REAL OBRIGATÓRIO
+          </span>
+        </div>
+      </header>
+      {notice && (
+        <div className="rounded-2xl border bg-blue-50 p-4 text-sm text-blue-900">
+          {notice}
+        </div>
+      )}
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        {[
+          ["Saudáveis", c?.summary.healthy || 0],
+          ["Degradadas", c?.summary.degraded || 0],
+          ["Prontas p/ teste", c?.summary.readyToTest || 0],
+          ["Pendentes", c?.summary.notReady || 0],
+          ["Produção", c?.summary.productionReady ? "PRONTA" : "BLOQUEADA"],
+        ].map(([l, v]) => (
+          <div key={String(l)} className="rounded-3xl border bg-white p-5">
+            <small className="text-slate-400">{l}</small>
+            <strong className="mt-2 block text-xl">{v}</strong>
+          </div>
+        ))}
+      </section>
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {c?.providers.map((p) => (
+          <article key={p.provider} className="rounded-3xl border bg-white p-5">
+            <div className="flex justify-between">
+              <strong className="uppercase">{p.provider}</strong>
+              <span
+                className={`rounded-full px-2 py-1 text-[10px] ${p.healthy ? "bg-emerald-50 text-emerald-700" : p.state === "degraded" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}
               >
-                {busy ? "Registrando…" : "Registrar diagnóstico"}
-              </button>
+                {p.state.replaceAll("_", " ")}
+              </span>
+            </div>
+            <p className="mt-3 text-xs text-slate-500">
+              Ambiente {p.environmentReady ? "ok" : "pendente"} · cadastro{" "}
+              {p.registered ? "ok" : "pendente"} · teste{" "}
+              {p.verified ? "ok" : "pendente"}
+            </p>
+            <p className="mt-2 text-xs text-slate-400">
+              Evidência:{" "}
+              {p.freshnessHours == null ? "ausente" : `${p.freshnessHours}h`} ·
+              fila {p.pending} · falhas {p.failed}
+            </p>
+            {p.blockers.length ? (
+              <p className="mt-3 text-[11px] text-amber-700">
+                {p.blockers.join(" · ")}
+              </p>
+            ) : null}
+          </article>
+        ))}
+      </section>
+      <section className="grid gap-4 md:grid-cols-2">
+        <article className="rounded-3xl border bg-white p-5">
+          <h2 className="font-semibold">Filas e falhas</h2>
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+            <div>
+              <strong className="block text-2xl">
+                {c?.queues.pending || 0}
+              </strong>
+              <small>Pendentes</small>
+            </div>
+            <div>
+              <strong className="block text-2xl">
+                {c?.queues.failed || 0}
+              </strong>
+              <small>Falhas</small>
+            </div>
+            <div>
+              <strong className="block text-2xl">
+                {c?.queues.unresolvedDeadLetters || 0}
+              </strong>
+              <small>DLQ</small>
             </div>
           </div>
-          <div
-            className="cc6-hairline mt-4 flex flex-wrap gap-x-10 gap-y-4 pt-4"
-            aria-label="Resumo dos provedores e das filas"
-            aria-busy={!c}
-          >
-            {vitals.map((vital) => (
-              <div key={vital.label} title={vital.hint}>
-                <p className={`cc6-metric-value text-3xl leading-none ${vital.accent}`}>
-                  {c ? vital.value ?? 0 : "—"}
-                </p>
-                <p className="cc6-metric-label mt-1.5">{vital.label}</p>
-              </div>
+        </article>
+        <article className="rounded-3xl border bg-white p-5">
+          <h2 className="font-semibold">Ambiente</h2>
+          <p className="mt-3 text-sm text-slate-500">
+            {c?.runtime.hostingProvider} · HTTPS{" "}
+            {c?.runtime.publicHttps ? "válido" : "pendente"} ·{" "}
+            {c?.runtime.environment}
+          </p>
+          <p className="mt-2 text-xs text-slate-400">
+            Custo IA 30d: US$ {c?.runtime.aiCostUsd30d || 0} · segredos
+            expostos: não
+          </p>
+        </article>
+      </section>
+      <section
+        data-ux-phase="53-meta-capi-failure-queue"
+        className="rounded-[30px] border border-slate-200 bg-white p-5 md:p-7"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold tracking-[.18em] text-rose-600">FILA OPERACIONAL SUPERVISIONADA</p>
+            <h2 className="mt-2 text-xl font-semibold text-slate-950">Falhas Meta/CAPI e integrações</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+              Cada item mostra o que falhou, por que exige atenção e a ação segura disponível. Reprocessar não altera campanhas, públicos ou orçamento.
+            </p>
+          </div>
+          <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${c?.failureQueue.length ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>
+            {c?.failureQueue.length ? `${c.failureQueue.length} aguardando decisão` : "Fila sem pendências"}
+          </span>
+        </div>
+
+        {!data ? (
+          <div className="mt-5 h-28 animate-pulse rounded-2xl bg-slate-100" />
+        ) : c?.failureQueue.length === 0 ? (
+          <div className="mt-5 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/60 p-5">
+            <p className="font-medium text-emerald-900">Nenhuma falha terminal aguarda tratamento.</p>
+            <p className="mt-1 text-sm text-emerald-700">Eventos pendentes continuam sendo processados automaticamente.</p>
+          </div>
+        ) : (
+          <div className="mt-5 space-y-3">
+            {c?.failureQueue.map((failure) => (
+              <article key={failure.id} className="grid gap-4 rounded-2xl border border-slate-200 p-4 lg:grid-cols-[1fr_auto] lg:items-center">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase ${failure.provider === "meta" ? "bg-blue-50 text-blue-700" : failure.provider === "whatsapp" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                      {failure.provider}
+                    </span>
+                    <strong className="text-sm text-slate-950">{failure.label}</strong>
+                    <span className="text-xs text-slate-400">{failure.attempts} tentativas</span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{failure.reason}</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Falha terminal em {new Date(failure.createdAt).toLocaleString("pt-BR")} · revisão humana obrigatória
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={!failure.canRetry || retryingId !== null}
+                  onClick={() => retryFailure(failure.id)}
+                  className="rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {retryingId === failure.id ? "Reenviando…" : failure.canRetry ? "Reprocessar" : "Revisão técnica"}
+                </button>
+              </article>
             ))}
           </div>
-          <p className="cc6-hairline cc6-num mt-4 pt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-            {c ? (
-              <>
-                {c.runtime.hostingProvider} · HTTPS{" "}
-                <span className={c.runtime.publicHttps ? "cc6-ok" : "cc6-warn"}>
-                  {c.runtime.publicHttps ? "válido" : "pendente"}
-                </span>
-                {" · "}
-                {c.runtime.environment} · IA 30d US$ {c.runtime.aiCostUsd30d || 0} · segredos
-                mascarados
-                {lastSnapshotAt
-                  ? ` · último diagnóstico ${SNAPSHOT_FORMAT.format(new Date(lastSnapshotAt))}`
-                  : " · nenhum diagnóstico registrado"}
-              </>
-            ) : (
-              "Aguardando leitura do runtime…"
-            )}
-          </p>
-        </TiltShell>
+        )}
+        <p className="mt-4 text-xs leading-5 text-slate-400">
+          A fila não expõe payload, contato, credencial ou resposta bruta do provedor. O reprocessamento é exclusivo da diretoria e permanece auditado.
+        </p>
       </section>
-
-      <section
-        className="cc6-panel cc6-reveal overflow-hidden"
-        style={{ animationDelay: "120ms" }}
-        aria-labelledby="health-providers-title"
-      >
-        <header className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5">
-          <div className="min-w-0">
-            <p className="cc6-eyebrow">Estado por provedor</p>
-            <h2
-              id="health-providers-title"
-              className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
-            >
-              Credencial, cadastro e teste real
-            </h2>
-          </div>
-          <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">
-            {c ? `${c.summary.total} monitorados` : "—"}
-          </p>
-        </header>
-
-        <div className="mt-2 pb-2" aria-busy={!c}>
-          {!c ? (
-            <div className="space-y-2 px-5 py-3">
-              {[1, 2, 3].map((item) => (
-                <AtlasSkeleton key={item} className="h-14" />
-              ))}
-            </div>
-          ) : !c.providers.length ? (
-            <p className="px-5 py-6 text-sm text-[var(--atlas-texto-fraco)]">
-              Nenhum provedor monitorado até agora.
-            </p>
-          ) : (
-            c.providers.map((provider, index) => {
-              const state = STATE_META[provider.state] ?? {
-                tone: "warning" as const,
-                label: provider.state.replaceAll("_", " "),
-              };
-              const blockers = provider.blockers
-                .map((blocker) => BLOCKER_LABELS[blocker] ?? blocker.replaceAll("_", " "))
-                .join(" · ");
-              const degraded = provider.state === "degraded";
-              return (
-                <article
-                  key={provider.provider}
-                  title={blockers || undefined}
-                  className={`cc6-reveal flex flex-wrap items-center gap-x-5 gap-y-1.5 px-5 py-3 transition-colors hover:bg-[rgba(75,141,248,0.04)] ${index ? "cc6-hairline" : ""} ${degraded ? "cc6-sev-band" : ""}`}
-                  style={
-                    {
-                      animationDelay: `${Math.min(index + 1, 12) * 35}ms`,
-                      ...(degraded ? { "--cc6-sev": "#fb7185" } : null),
-                    } as CSSProperties
-                  }
-                >
-                  <div className="min-w-0 flex-1 basis-48">
-                    <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
-                      {PROVIDER_NAMES[provider.provider] ??
-                        provider.provider.replaceAll("_", " ")}
-                    </p>
-                    <p className="cc6-num mt-0.5 text-micro tracking-wide text-[var(--atlas-texto-fraco)]">
-                      <StepToken
-                        label="ambiente"
-                        done={provider.environmentReady}
-                        hint={
-                          provider.environmentReady
-                            ? "Credenciais detectadas no servidor"
-                            : "Credenciais pendentes no servidor"
-                        }
-                      />
-                      {" · "}
-                      <StepToken
-                        label="cadastro"
-                        done={provider.registered}
-                        hint={
-                          provider.registered
-                            ? "Cadastro presente no CRM"
-                            : "Cadastro pendente no CRM"
-                        }
-                      />
-                      {" · "}
-                      <StepToken
-                        label="teste"
-                        done={provider.verified}
-                        hint={
-                          provider.verified
-                            ? "Teste real comprovado"
-                            : "Teste real pendente"
-                        }
-                      />
-                    </p>
-                  </div>
-                  <p className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-medio)]">
-                    <span
-                      title="Idade da última evidência de sincronização"
-                      className={
-                        provider.freshnessHours == null
-                          ? "text-[var(--atlas-texto-fraco)]"
-                          : provider.freshnessHours > 24
-                            ? "cc6-warn"
-                            : ""
-                      }
-                    >
-                      evid{" "}
-                      {provider.freshnessHours == null
-                        ? "—"
-                        : `${provider.freshnessHours}h`}
-                    </span>
-                    {" · "}
-                    <span title="Eventos pendentes na fila deste provedor">
-                      fila {provider.pending}
-                    </span>
-                    {" · "}
-                    <span
-                      className={provider.failed ? "cc6-crit" : ""}
-                      title={
-                        provider.failed
-                          ? `Falhas na fila deste provedor — ${blockers || "ver diagnóstico"}`
-                          : "Sem falhas na fila"
-                      }
-                    >
-                      falhas {provider.failed}
-                    </span>
-                  </p>
-                  <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
-                </article>
-              );
-            })
-          )}
-        </div>
-      </section>
-    </div>
+    </main>
   );
 }

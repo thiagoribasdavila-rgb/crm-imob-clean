@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AtlasRecoverableError } from "@/components/ui/AtlasUI";
 import { supabase } from "@/lib/supabase";
 
 type Metrics = {
@@ -40,38 +41,46 @@ export default function Atlas2030Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      const tables = [
-        "atlas_entities",
-        "atlas_relationships",
-        "atlas_memories",
-        "atlas_recommendations",
-        "atlas_simulations",
-        "atlas_launch_rooms",
-        "atlas_inventory_reservations",
-        "atlas_data_products",
-      ] as const;
-      const results = await Promise.all(tables.map((table) => supabase.from(table).select("id", { count: "exact", head: true })));
-      if (!mounted) return;
-      const firstError = results.find((result) => result.error)?.error;
-      if (firstError) setError(firstError.message);
-      setMetrics({
-        entities: results[0].count ?? 0,
-        relationships: results[1].count ?? 0,
-        memories: results[2].count ?? 0,
-        recommendations: results[3].count ?? 0,
-        simulations: results[4].count ?? 0,
-        launchRooms: results[5].count ?? 0,
-        reservations: results[6].count ?? 0,
-        dataProducts: results[7].count ?? 0,
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session?.access_token) {
+        throw new Error("Sua sessão expirou. Entre novamente para continuar.");
+      }
+      const response = await fetch("/api/v1/atlas-2030/metrics", {
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${data.session.access_token}`,
+        },
       });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          payload.error?.message ||
+            "Não foi possível atualizar os indicadores avançados.",
+        );
+      }
+      setMetrics({
+        ...initialMetrics,
+        ...(payload.data?.metrics ?? {}),
+      });
+    } catch (cause) {
+      setMetrics(initialMetrics);
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível atualizar os indicadores avançados.",
+      );
+    } finally {
       setLoading(false);
     }
-    void load();
-    return () => { mounted = false; };
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const maturity = useMemo(() => {
     const active = Object.values(metrics).filter((value) => value > 0).length;
@@ -92,7 +101,14 @@ export default function Atlas2030Page() {
         </div>
       </header>
 
-      {error ? <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">Aplique as migrations Atlas 2030 para ativar todos os indicadores: {error}</div> : null}
+      {error ? (
+        <AtlasRecoverableError
+          title="Indicadores avançados em preparação"
+          description={error}
+          onRetry={() => void load()}
+          busy={loading}
+        />
+      ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[

@@ -1,0 +1,42 @@
+{
+  "schema": "atlas.authorized-package-publication-decision-policy.v1",
+  "compositionId": "conversion-core-candidate",
+  "compositionDecisionHash": "468bcb65ac7ff6412df595580d8ac328644c646301b0c77cf55c787ad6b5bc8c",
+  "finalApprovalPolicyHash": "808518cd61008b5da6eb94a9d506a4544bdf0723c6d60acbf5d7ce8f731610eb",
+  "approvedReleaseMemoryPolicyHash": "37af76ac19a603949ccb56c1fe127919bc9e595770822df11b4a7e61a54e497a",
+  "packageAuthorizationPolicyHash": "e3608e6505c0fb02b7f9bf2e9fe80a18b3c41247d16eccc842350bd97c3c3d00",
+  "packageAssemblyPolicyHash": "3bac555b2ffc20ef3b3b10a099f047cc2241d23d62a11bb9b991a4921b157f96",
+  "packageEvidencePolicyHash": "323de29546dc45655e749f45174a1ffb385ce1823b74e15fbee9cf98fedfe9ae",
+  "requiredEvidenceSchema": "atlas.authorized-package-evidence-commitment.v1",
+  "requiredMemoryEntrySchema": "atlas.authorized-package-publication-decision-memory-entry.v1",
+  "directorRole": "release-package-publication-director",
+  "signatureAlgorithm": "ed25519",
+  "trustedPublicationDirectors": [],
+  "maxDecisionDelaySeconds": 900,
+  "minReasonLength": 12,
+  "allowedOutcomes": [
+    "approved",
+    "rejected"
+  ],
+  "allowedReasonCodes": [
+    "approved-for-publication",
+    "package-evidence-rejected",
+    "publication-risk-not-accepted",
+    "publication-evidence-inconclusive"
+  ],
+  "exactEvidenceCommitmentBindingRequired": true,
+  "exactEvidenceMemoryBindingRequired": true,
+  "exactPackageDigestBindingRequired": true,
+  "exactInventoryBindingRequired": true,
+  "independentPublicationDirectorRequired": true,
+  "signatureRequired": true,
+  "appendOnlyDecisionMemoryRequired": true,
+  "duplicateEvidenceDecisionRejected": true,
+  "duplicatePackageDecisionRejected": true,
+  "automaticPackageGeneration": false,
+  "automaticBuild": false,
+  "automaticPublication": false,
+  "automaticDeploy": false,
+  "automaticReleasePromotion": false,
+  "policyHash": "4e930b1d97a3331cb21a80f738662de546e4ede6fd9622a3085d3dc1d800727a"
+}

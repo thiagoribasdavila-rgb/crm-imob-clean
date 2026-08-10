@@ -1,0 +1,116 @@
+{
+  "phase": 38,
+  "program": "meta-andromeda-automation",
+  "sourcePhase": 37,
+  "baselinePhase": 34,
+  "environment": "offline_readiness_projection",
+  "schemaVersion": "phase38.readiness-evidence-projection.v1",
+  "maximumInputBytes": 1048576,
+  "requiredSources": {
+    "readiness": {
+      "schemaVersion": "phase34.migration-readiness.v1",
+      "phase": 34,
+      "sourcePhase": 33,
+      "status": "assessment_complete_blocked",
+      "sourceReceiptAccepted": true
+    },
+    "restoreContract": {
+      "schemaVersion": "phase35.restore-rehearsal-contract.v1",
+      "phase": 35,
+      "sourcePhase": 34,
+      "status": "contract_prepared_execution_blocked"
+    },
+    "reconciliation": {
+      "schemaVersion": "phase37.local-restore-reconciliation-receipt.v1",
+      "phase": 37,
+      "sourcePhase": 36,
+      "status": "reconciled_local_restore_only",
+      "sourceEvidenceAccepted": true,
+      "localRestoreHomologated": true
+    }
+  },
+  "requiredControlOrder": [
+    "source_chain_integrity",
+    "cross_major_artifact_equivalence",
+    "security_equivalence",
+    "rollback_equivalence",
+    "extension_compatibility",
+    "immutable_backup_verified",
+    "restore_drill_verified",
+    "isolated_staging_replay_verified",
+    "data_integrity_verified",
+    "performance_baseline_verified",
+    "observability_ready",
+    "security_advisor_verified",
+    "performance_advisor_verified",
+    "production_rollback_runbook_verified",
+    "human_change_approval_verified"
+  ],
+  "inheritedVerifiedControls": [
+    "source_chain_integrity",
+    "cross_major_artifact_equivalence",
+    "security_equivalence",
+    "rollback_equivalence",
+    "extension_compatibility"
+  ],
+  "allowedPromotions": [
+    "immutable_backup_verified",
+    "restore_drill_verified",
+    "data_integrity_verified"
+  ],
+  "confirmationOnlyControls": [
+    "security_equivalence"
+  ],
+  "blockedControlsAfterProjection": [
+    "isolated_staging_replay_verified",
+    "performance_baseline_verified",
+    "observability_ready",
+    "security_advisor_verified",
+    "performance_advisor_verified",
+    "production_rollback_runbook_verified",
+    "human_change_approval_verified"
+  ],
+  "projectedCoverage": {
+    "verifiedControls": 8,
+    "requiredControls": 15,
+    "percent": 53
+  },
+  "projectionRules": {
+    "exactSourceFingerprints": true,
+    "exactControlSet": true,
+    "exactPromotionAllowlist": true,
+    "falseBaselineControlsCannotBeInherited": true,
+    "candidateDoesNotEqualAuthorization": true,
+    "securityEquivalenceIsConfirmationOnly": true,
+    "stagingRequiresIndependentEvidence": true,
+    "humanApprovalCannotBeInferred": true,
+    "sensitiveEvidenceRejected": true,
+    "dataRowsRejected": true,
+    "projectionDoesNotAuthorizeMigration": true
+  },
+  "requiredBlockedState": {
+    "stagingMigrationAllowed": false,
+    "productionMigrationAllowed": false,
+    "productionCompatibilityApproved": false,
+    "metaDeliveryAllowed": false,
+    "buildAllowed": false
+  },
+  "prohibitedActions": {
+    "databaseAccess": true,
+    "dockerExecution": true,
+    "remoteDatabaseAccess": true,
+    "linkedProjectAccess": true,
+    "stagingMutation": true,
+    "productionMutation": true,
+    "supabaseDbPush": true,
+    "supabaseDbResetLinked": true,
+    "permitReservation": true,
+    "permitIssuance": true,
+    "permitConsumption": true,
+    "realMetaEventDelivery": true,
+    "testMetaEventDelivery": true,
+    "campaignMutation": true,
+    "deployment": true,
+    "buildExecution": true
+  }
+}

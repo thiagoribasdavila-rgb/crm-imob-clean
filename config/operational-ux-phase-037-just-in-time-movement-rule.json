@@ -1,0 +1,17 @@
+{
+  "phase": 37,
+  "scope": "just_in_time_movement_rule",
+  "visibleTriggers": ["card_focus", "drag_start"],
+  "contextualGuidance": [
+    "previous_stage",
+    "next_stage",
+    "first_stage_boundary",
+    "terminal_confirmation"
+  ],
+  "permanentFooterRemoved": true,
+  "screenReaderInstructionsPreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

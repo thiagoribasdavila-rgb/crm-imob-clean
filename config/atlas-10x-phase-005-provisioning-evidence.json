@@ -1,0 +1,47 @@
+{
+  "schema_version": "atlas.10x.phase-005.evidence.v1",
+  "observed_at": "2026-07-23",
+  "source": "local_and_supabase_read_only_snapshots",
+  "contains_personal_data": false,
+  "contains_secret_values": false,
+  "target": {
+    "name": "atlas-v3-homologacao",
+    "status": "ACTIVE_HEALTHY",
+    "auth_users": 0,
+    "organizations": 0,
+    "profiles": 0,
+    "target_fingerprint_pinned_locally": false
+  },
+  "prerequisites": {
+    "phase_003_schema_parity_ready": false,
+    "phase_004_identity_rbac_ready": false,
+    "migration_history_reproducible": false,
+    "remote_auth_trigger_state_verified": false,
+    "rls_policy_coverage_clean": false,
+    "privileged_function_grants_reviewed": false
+  },
+  "remote_security_surface": {
+    "rls_enabled_without_policy": 12,
+    "anon_security_definer_executable": 3,
+    "authenticated_security_definer_executable": 10
+  },
+  "approvals": {
+    "canonical_roster_approved": false,
+    "recovery_destination_approved": false,
+    "backup_restore_receipt_approved": false,
+    "isolated_rehearsal_passed": false,
+    "cross_tenant_denial_passed": false,
+    "role_login_matrix_passed": false,
+    "rollback_rehearsal_passed": false,
+    "human_execution_approval": false
+  },
+  "execution": {
+    "remote_write_executed": false,
+    "organization_created": false,
+    "auth_users_created": false,
+    "profiles_created": false,
+    "migrations_applied": false,
+    "build_executed": false,
+    "package_created": false
+  }
+}

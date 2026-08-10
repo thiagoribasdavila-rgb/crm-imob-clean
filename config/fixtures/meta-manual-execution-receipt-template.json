@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-manual-execution-receipt.v1",
+  "status": "awaiting_manual_evidence",
+  "finalGateReference": null,
+  "receipt": {
+    "operatorReference": null,
+    "changeClass": null,
+    "outcome": null,
+    "executedAt": null,
+    "evidenceReference": null
+  },
+  "execution": {
+    "performedExternallyByHuman": false,
+    "atlasExecuted": false,
+    "budgetChangedByAtlas": false,
+    "audienceChangedByAtlas": false,
+    "campaignChangedByAtlas": false,
+    "productionTouchedByAtlas": false
+  },
+  "forbidden": {
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true,
+    "automaticExecution": true
+  }
+}

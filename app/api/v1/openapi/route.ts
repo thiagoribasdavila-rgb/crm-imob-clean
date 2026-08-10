@@ -8,9 +8,9 @@ export async function GET() {
   return NextResponse.json({
     openapi: "3.1.0",
     info: {
-      title: "Atlas AI API",
+      title: "Atlas One API",
       version: "1.0.0",
-      description: "API versionada do Atlas AI Real Estate Operating System.",
+      description: "API versionada do Atlas One Real Estate Operating System.",
     },
     servers: [{ url: `${baseUrl}/api/v1` }],
     paths: {

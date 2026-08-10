@@ -1,0 +1,33 @@
+{
+  "format": "atlas_meta_data_api_catalog_evidence_v1",
+  "phase": 17,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "projectIdentifiersPersisted": false,
+  "rawLogsPersisted": false,
+  "remoteExecutionPerformed": false,
+  "queryReadOnly": true,
+  "tables": {},
+  "controls": {
+    "allTablesExist": false,
+    "rlsEnabledOnAllTables": false,
+    "anonymousPrivilegesRevoked": false,
+    "requiredAuthenticatedColumnPrivilegesGranted": false,
+    "leadAuthenticatedTablePrivilegesComplete": false,
+    "leadDeleteNotGranted": false,
+    "serviceRoleEffectivePrivilegesComplete": false,
+    "requiredAuthenticatedPoliciesPresent": false,
+    "selectPoliciesHaveUsing": false,
+    "insertPoliciesHaveWithCheck": false,
+    "updatePoliciesHaveUsingAndWithCheck": false
+  },
+  "releaseGates": {
+    "productionAllowed": false,
+    "metaEventDeliveryAllowed": false,
+    "deploymentAllowed": false
+  }
+}

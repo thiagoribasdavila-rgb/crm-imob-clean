@@ -1,0 +1,46 @@
+{
+  "phase": 207,
+  "name": "Human Release Gate Decisions",
+  "status": "implemented",
+  "objective": "Registrar decisões humanas explícitas, assinadas, justificadas e vinculadas ao dossiê para cada gate elegível, sem executar gates ou promover a release.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "humanDecisionPolicyHash": "c30603b77ad359f2235c3293eafed53ce0fde4e69d52c96e162bd5bdf509f75a",
+    "trustedSignersConfigured": 0,
+    "reviewPacketAvailable": false,
+    "humanDecisionsRecorded": false,
+    "explicitReviewComplete": false,
+    "unanimousExplicitApproval": false,
+    "releaseApproved": false,
+    "gatesExecuted": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "decisionRules": {
+    "exactPacketBindingRequired": true,
+    "exactModuleGateBindingRequired": true,
+    "exactReviewerRoleRequired": true,
+    "uniqueDecisionPerModuleGateRequired": true,
+    "reasonRequired": true,
+    "signatureRequired": true,
+    "allowedOutcomes": ["approved", "rejected"],
+    "maximumDecisionDelaySeconds": 1800,
+    "maximumRecordingDelaySeconds": 300
+  },
+  "safety": {
+    "remoteAccess": false,
+    "databaseMutation": false,
+    "migrationApplied": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 208,
+    "name": "Release Gate Execution Authorization",
+    "objective": "Derivar uma autorização separada e explícita para executar somente gates aprovados, mantendo promoção, pacote e deploy bloqueados por padrão."
+  }
+}

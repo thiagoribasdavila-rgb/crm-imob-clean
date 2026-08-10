@@ -1,32 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { refreshSession } from "@/utils/supabase/middleware";
 
-// Rotas alcançáveis SEM sessão. /privacy, /terms e /data-deletion são exigidas
-// publicamente pelo App Review da Meta: o revisor e o rastreador abrem essas URLs
-// anonimamente. Se caírem no redirect de login, a revisão do app é reprovada.
-const publicPages = new Set([
-  "/",
-  "/login",
-  "/forgot-password",
-  "/reset-password",
-  // Apelido em português de /reset-password, criado na `main` em 25/07/2026
-  // (`app/(auth)/redefinir-senha/page.tsx` é um re-export da mesma tela). Sem
-  // esta linha o matcher abrangente abaixo alcançaria a rota, o proxy a trataria
-  // como protegida e EXPULSARIA quem chega pelo link do e-mail de recuperação —
-  // que por definição ainda não tem sessão.
-  "/redefinir-senha",
-  "/auth/callback",
-  "/privacy",
-  "/terms",
-  "/data-deletion",
-  // Temporária: comparação das propostas de marca, para a decisão ser tomada
-  // olhando em vez de imaginando. Sai junto com a página quando a marca for
-  // escolhida.
-  "/marca",
-]);
+const publicPages = new Set(["/", "/login", "/forgot-password", "/reset-password", "/setup", "/auth/callback"]);
+
+function normalizePathname(pathname: string) {
+  if (pathname === "/") return pathname;
+  return pathname.replace(/\/+$/, "") || "/";
+}
 
 export async function proxy(req: NextRequest) {
-  const pathname = req.nextUrl.pathname;
+  const pathname = normalizePathname(req.nextUrl.pathname);
   const isProtected = !publicPages.has(pathname);
 
   try {
@@ -46,5 +29,10 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.[^/]+$).*)"],
+  // /setup is deliberately outside the session proxy. Its mutation endpoint
+  // remains protected by the bootstrap secret, rate limiting and server-side
+  // validation. This also covers /setup/ on hosts that preserve a trailing slash.
+  matcher: [
+    "/((?!api/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|setup(?:/|$)|.*\\.[^/]+$).*)",
+  ],
 };

@@ -1,0 +1,22 @@
+{
+  "schema": "atlas.phase-361-authenticated-ui-validation.v1",
+  "capturedAt": "2026-08-10T04:52:32Z",
+  "target": "https://atlasaios.com.br/dashboard",
+  "status": "deployment_parity_pending",
+  "scope": {
+    "authenticatedSession": true,
+    "managementView": true,
+    "realDataIndicator": true,
+    "personalDataRecorded": false,
+    "remoteMutation": false
+  },
+  "checks": {
+    "leadIntakeRegionVisible": true,
+    "distributionPanelVisible": true,
+    "detailPanelExpanded": true,
+    "projectDimensionFromLocalChangeVisible": false,
+    "developerDimensionFromLocalChangeVisible": false,
+    "dimensionSubtitleFromLocalChangeVisible": false
+  },
+  "conclusion": "A operação publicada está autenticada e funcional, mas ainda não contém a apresentação completa da implementação local da fase 361. A fase não foi promovida."
+}

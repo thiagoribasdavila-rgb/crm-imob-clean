@@ -1,0 +1,30 @@
+{
+  "schema": "atlas.real-use-evidence-intake.v1",
+  "status": "not_collected",
+  "collectedAt": null,
+  "sourceCommit": null,
+  "environment": "staging",
+  "evidence": {
+    "cleanGitSource": false,
+    "isolatedStaging": false,
+    "databaseConsistency": false,
+    "environmentPrepared": false,
+    "criticalTestsPassed": false,
+    "minimumCommercialOperationWorking": false,
+    "directorApproval": false
+  },
+  "references": {
+    "stagingHealthCheck": null,
+    "databaseAudit": null,
+    "criticalTestRun": null,
+    "commercialJourneyRun": null,
+    "directorDecision": null
+  },
+  "forbidden": {
+    "secrets": true,
+    "rawSessions": true,
+    "authorizationClaims": true,
+    "customerRecords": true,
+    "personalData": true
+  }
+}

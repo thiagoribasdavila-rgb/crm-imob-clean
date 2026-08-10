@@ -12,31 +12,40 @@ type PageHeaderProps = {
   eyebrow?: string;
   title: string;
   description?: string;
+  decision?: string;
   action?: PageHeaderAction;
 };
 
-/*
- * CC-5: eyebrow mono uppercase com tracking largo, título tight (cascata do
- * visual system) e hairline inferior rgba(148,163,184,.12) fechando o header.
- * Utilitários com `!` vencem as regras atlas-page-* unlayered de globals.css
- * (que zeram border-bottom e padding).
- */
-export function PageHeader({ eyebrow, title, description, action }: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, description, decision, action }: PageHeaderProps) {
   return (
-    <header className="atlas-page-header border-b! border-b-[rgba(148,163,184,0.12)]! pb-5!">
+    <header
+      className="atlas-page-header"
+      data-v30-layout="decision-header"
+      data-page-header="decision"
+      data-header-density="compact"
+      data-visible-action-count={action ? 1 : 0}
+      data-primary-action-count={action?.priority === "secondary" ? 0 : action ? 1 : 0}
+    >
       <div className="atlas-page-heading" data-information-depth="glance">
-        {eyebrow ? (
-          <p className="atlas-page-eyebrow font-mono text-rotulo! font-medium uppercase! tracking-[0.16em]! text-[var(--atlas-texto-fraco)]! [font-variant-numeric:tabular-nums]">
-            {eyebrow}
-          </p>
-        ) : null}
+        {eyebrow ? <p className="atlas-page-eyebrow">{eyebrow}</p> : null}
         <h1>{title}</h1>
-        {description ? <p className="atlas-page-description">{description}</p> : null}
+        {decision ? <p className="atlas-page-decision">{decision}</p> : null}
+        {description && decision ? (
+          <details
+            className="atlas-page-context-disclosure"
+            data-information-depth="context"
+          >
+            <summary>Entender esta visão</summary>
+            <p className="atlas-page-description">{description}</p>
+          </details>
+        ) : description ? (
+          <p className="atlas-page-description">{description}</p>
+        ) : null}
       </div>
       {action ? (
         <div
           className="atlas-page-actions"
-          aria-label="Ação principal do contexto"
+          aria-label="Ação do contexto"
           data-action-count="1"
         >
           <AtlasActionLink {...action} className="atlas-page-action" showArrow />

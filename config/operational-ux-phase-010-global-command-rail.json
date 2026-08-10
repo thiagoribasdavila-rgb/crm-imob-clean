@@ -1,0 +1,22 @@
+{
+  "phase": 10,
+  "objective": "Coordenar busca, criação contextual, Copilot e notificações em uma única faixa sem remover capacidades.",
+  "surfaceOrder": ["search", "contextualCreate", "copilot", "notifications", "profile"],
+  "requirements": {
+    "onePrimaryGlobalAction": true,
+    "searchRemainsGlobal": true,
+    "copilotRemainsContextual": true,
+    "notificationsRemainOnDemand": true,
+    "desktopFloatingCopilotRemoved": true,
+    "mobileCopilotPreserved": true,
+    "keyboardShortcutsPreserved": true
+  },
+  "infrastructureMutation": {
+    "schema": false,
+    "data": false,
+    "rls": false,
+    "authentication": false,
+    "integrations": false,
+    "release": false
+  }
+}

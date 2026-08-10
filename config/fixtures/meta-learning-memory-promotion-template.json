@@ -1,0 +1,27 @@
+{
+  "schema": "atlas.meta-learning-memory-promotion.v1",
+  "status": "not_promoted",
+  "comparisonReference": null,
+  "promotion": {
+    "reviewerReference": null,
+    "reviewedAt": null,
+    "decision": null,
+    "memoryScope": "internal_analysis_only",
+    "expiresAt": null,
+    "revocable": true
+  },
+  "execution": {
+    "memoryWritten": false,
+    "campaignChanged": false,
+    "audienceChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticPromotion": true,
+    "irreversibleMemory": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true,
+    "automaticOptimization": true
+  }
+}

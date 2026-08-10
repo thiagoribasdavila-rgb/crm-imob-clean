@@ -1,0 +1,31 @@
+{
+  "phase": 105,
+  "name": "V30 strategic roadmap",
+  "status": "implemented",
+  "priority": "P0-operational-direction",
+  "objective": "Transformar a evolução até o V30 em um plano executável, com versões, fases, políticas de build, marcos de ZIP e métricas de resultado comercial.",
+  "businessOutcome": [
+    "evita dispersão em microfases sem impacto",
+    "organiza o caminho V4 até V30 em 270 fases úteis",
+    "define quando build e ZIP realmente devem acontecer",
+    "mantém o foco em conversão, velocidade comercial e decisão"
+  ],
+  "changedAreas": [
+    "config/evolution-program-3000.json",
+    "config/evolution-v30-roadmap.json",
+    "docs/ATLAS_V30_ROADMAP.md",
+    "docs/EVOLUTION_PHASE_105_V30_ROADMAP.md",
+    "scripts/check-evolution-phase-105.mjs",
+    "package.json"
+  ],
+  "validation": {
+    "phaseCheck": "npm run evolution:phase-105:check",
+    "lint": "npm run lint",
+    "typecheck": "not required: no app TypeScript changed",
+    "build": "release-gated"
+  },
+  "releasePolicy": {
+    "zipGenerated": false,
+    "reason": "A fase organiza o arco V30. ZIP permanece apenas em marcos de release."
+  }
+}

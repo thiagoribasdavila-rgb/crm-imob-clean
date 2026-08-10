@@ -1,0 +1,17 @@
+{
+  "phase": 366,
+  "name": "WhatsApp conversation continuity and ownership evidence",
+  "status": "implemented_local",
+  "scope": "authenticated_organization",
+  "audience": ["admin", "director"],
+  "mutates_remote_state": false,
+  "contains_pii": false,
+  "evidence": [
+    "conversation and lead ownership alignment",
+    "unlinked and unassigned conversation counts",
+    "recent, stale and unread conversation counts",
+    "multiple conversation fragmentation per lead",
+    "explicit observation limit and truncation state"
+  ],
+  "promotion_gate": "authenticated_runtime_proof_pending"
+}

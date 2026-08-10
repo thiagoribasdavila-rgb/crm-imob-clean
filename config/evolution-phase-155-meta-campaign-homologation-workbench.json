@@ -1,0 +1,31 @@
+{
+  "phase": 155,
+  "name": "Meta Campaign Homologation Workbench",
+  "status": "implemented",
+  "objective": "Adicionar uma esteira de homologação para campanhas já publicadas no Meta, conectando teste real de lead, qualificação de cliente e retorno de conversão para aprendizado.",
+  "businessImpact": [
+    "Diretor acompanha se a campanha publicada no Meta está pronta para receber escala.",
+    "Time entende quais perguntas qualificam clientes e melhoram o público comprador.",
+    "A campanha deixa de ser avaliada apenas por lead bruto e passa a ser validada por sinais comerciais.",
+    "Andromeda é tratado como consequência de dados enviados pelo CRM, não como uma API isolada."
+  ],
+  "technicalScope": [
+    "Adicionar seção de esteira de homologação na página de campanhas.",
+    "Adicionar matriz de perguntas de qualificação de clientes para alimentar score e sinais Meta.",
+    "Reaproveitar rotas existentes de Meta, criativos, experimentos e inteligência multicanal.",
+    "Não alterar banco, migrations, tokens, webhooks ou campanhas reais."
+  ],
+  "validation": [
+    "npm run evolution:phase-155:check",
+    "npm run typecheck",
+    "npm run lint"
+  ],
+  "files": [
+    "app/(crm)/marketing/campaigns/page.tsx",
+    "docs/EVOLUTION_PHASE_155_META_CAMPAIGN_HOMOLOGATION_WORKBENCH.md",
+    "scripts/check-evolution-phase-155.mjs",
+    "config/evolution-phase-155-meta-campaign-homologation-workbench.json",
+    "config/evolution-program-3000.json",
+    "package.json"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": "atlas.phase-021.evidence.v1",
+  "phase": "21/24",
+  "status": "local_migration_not_authored",
+  "assessment": {
+    "gates_passed": 15,
+    "gates_total": 55,
+    "mutants_rejected": 52,
+    "mutants_total": 52,
+    "negative_tests_required": 18,
+    "manifest_ready": false,
+    "migration_files_created": 0,
+    "test_files_created": 0
+  },
+  "baseline": {
+    "cli_version": "2.109.1",
+    "migration_files": 126,
+    "migration_manifest_sha256": "4cfd1ab1450b916a6b38406b62bb862e51bbd6f1f8fd642a05cabd4061f0bd79",
+    "existing_migration_modified": false
+  },
+  "validation": {
+    "phase_021_checks": "48/48",
+    "phase_020_regression": "43/43",
+    "typecheck": "passed",
+    "lint": "passed",
+    "secret_scan": "passed",
+    "secret_scan_files": 3018,
+    "credentials_detected": 0
+  },
+  "inputs": {
+    "phase_020_specification_ready": false,
+    "authorization_exists": false,
+    "authorization_parses": false
+  },
+  "decision": {
+    "ready_for_single_local_cli_authoring": false,
+    "remote_apply_authorized": false,
+    "linked_project_authorized": false,
+    "production_authorized": false,
+    "human_review_required": true
+  },
+  "privacy": {
+    "contains_credentials": false,
+    "contains_personal_data": false,
+    "contains_business_data": false,
+    "contains_auth_user_data": false,
+    "contains_raw_cli_output": false
+  },
+  "safety": {
+    "remote_command_executed": false,
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "linked_project_accessed": false,
+    "migration_generated": false,
+    "migration_applied": false,
+    "existing_migration_modified": false,
+    "branch_mutated": false,
+    "production_touched": false,
+    "main_branch_touched": false,
+    "business_or_auth_data_read": false,
+    "build_executed": false,
+    "release_package_created": false
+  },
+  "next_phase": "Fase 22/24: ensaiar localmente a migration autorizada e os testes pgTAP em banco descartável, com lint explícito --local, rollback verificável e ainda sem qualquer acesso linked ou aplicação remota."
+}

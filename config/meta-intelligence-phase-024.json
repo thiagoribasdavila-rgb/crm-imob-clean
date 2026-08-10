@@ -1,0 +1,58 @@
+{
+  "phase": 24,
+  "program": "meta-andromeda-automation",
+  "mode": "disposable_sample_02_authorization_draft",
+  "status": "authorization_draft_ready_activation_gate_closed",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-023.json",
+  "authorizationGate": "config/meta-repeatability-sample-02-authorization-gate.json",
+  "requestTemplate": "config/fixtures/meta-repeatability-sample-02-authorization-request-template.json",
+  "draftTemplate": "config/fixtures/meta-repeatability-sample-02-authorization-draft-template.json",
+  "authorizationRunner": "scripts/run-meta-repeatability-sample-02-authorization.mjs",
+  "authorizationPreflight": "scripts/preflight-meta-repeatability-sample-02-authorization.mjs",
+  "staticAudit": "scripts/audit-meta-repeatability-sample-02-authorization.mjs",
+  "documentation": "docs/META_REPEATABILITY_SAMPLE_02_AUTHORIZATION.md",
+  "environmentAudit": {
+    "officialPhase23PlanDetected": false,
+    "officialAuthorizationRequestDetected": false,
+    "officialDraftGenerated": false,
+    "authorizationActivated": false,
+    "remoteCallsExecuted": false,
+    "databaseMutationExecuted": false,
+    "reason": "O modelo e os validadores estao prontos, mas plano e autorizacoes oficiais nao foram fornecidos. Autotestes usam somente fixtures sinteticas em memoria."
+  },
+  "releaseGate": {
+    "localDraftContractPassed": true,
+    "syntheticDraftSelfTestPassed": true,
+    "officialDraftGenerated": false,
+    "authorizationActivationAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "maximumValidityMinutes": 30,
+    "singleUse": true,
+    "fourIndependentRoles": true,
+    "justInTimeReconfirmationRequired": true,
+    "rawRoleReferencesPersisted": false,
+    "temporaryCodePersisted": false,
+    "payloadPersisted": false,
+    "rawResponsePersisted": false,
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false,
+    "databaseMutation": false,
+    "productionAccess": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 25,
+    "objective": "Preparar o gate de reconfirmacao humana just-in-time da segunda amostra, sem executar ou transmitir o evento."
+  }
+}

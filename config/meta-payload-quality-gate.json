@@ -1,0 +1,61 @@
+{
+  "format": "atlas_meta_payload_quality_gate_v1",
+  "phase": 19,
+  "program": "meta-andromeda-automation",
+  "mode": "local_comparison_no_delivery",
+  "sourceSignalContract": "config/meta-validation-only-signal-contract.json",
+  "decisionModel": "binary_evidence_gate",
+  "principles": {
+    "neverEstimateMetaEventMatchQuality": true,
+    "neverClaimOptimizationImpactWithoutObservedOutcome": true,
+    "neverPromoteActivityToConversion": true,
+    "neverPersistPayloadOrMatchValues": true,
+    "neverOpenNetworkGateFromLocalEvidence": true
+  },
+  "requiredLocalChecks": [
+    "phase17TenantAndRlsEvidenceApproved",
+    "phase18SignalEvidenceApproved",
+    "singleCanonicalEvent",
+    "stableNonPersonalEventId",
+    "commercialEvidenceComplete",
+    "consentApproved",
+    "atLeastOneHashedMatchKey",
+    "externalIdPresent",
+    "customDataAllowlisted",
+    "rawIdentifiersAbsent",
+    "sensitiveDataAbsent",
+    "payloadNotPersisted",
+    "networkNotExecuted"
+  ],
+  "matchReadiness": {
+    "required": ["external_id"],
+    "atLeastOneOf": ["em", "ph"],
+    "optionalAttributionKeys": ["fbc", "fbp", "campaign_id", "form_id"],
+    "presenceIsNotEventMatchQuality": true,
+    "missingOptionalKeyIsNotFabricated": true
+  },
+  "financialSignal": {
+    "allowedEvents": ["SubmitApplication", "ConvertedLead"],
+    "currencyPattern": "^[A-Z]{3}$",
+    "valueMustBeFiniteAndNonNegative": true,
+    "neverEstimateMissingValue": true
+  },
+  "officialComparison": {
+    "channel": "Meta Test Events or equivalent official validation surface",
+    "automatedInThisPhase": false,
+    "requiresExplicitApproval": true,
+    "requiresTestEventCode": true,
+    "requiresSyntheticOrApprovedTestRecord": true,
+    "status": "pending"
+  },
+  "releaseGate": {
+    "localComparisonMayPass": true,
+    "phase17EvidenceAvailable": false,
+    "officialMetaComparisonExecuted": false,
+    "testEventDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false
+  }
+}

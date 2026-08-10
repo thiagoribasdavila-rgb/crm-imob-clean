@@ -1,0 +1,55 @@
+{
+  "phase": 23,
+  "program": "meta-andromeda-automation",
+  "mode": "sanitized_test_events_repeatability_plan",
+  "status": "repeatability_plan_ready_execution_gate_closed",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-022.json",
+  "repeatabilityGate": "config/meta-test-events-repeatability-plan-gate.json",
+  "planTemplate": "config/fixtures/meta-test-events-repeatability-plan-template.json",
+  "planRunner": "scripts/run-meta-test-events-repeatability-plan.mjs",
+  "planPreflight": "scripts/preflight-meta-test-events-repeatability-plan.mjs",
+  "staticAudit": "scripts/audit-meta-test-events-repeatability-plan.mjs",
+  "documentation": "docs/META_TEST_EVENTS_REPEATABILITY_PLAN.md",
+  "environmentAudit": {
+    "officialPhase22EvidenceDetected": false,
+    "officialRepeatabilityPlanGenerated": false,
+    "authorizedExecutions": 0,
+    "remoteCallsExecuted": false,
+    "databaseMutationExecuted": false,
+    "reason": "O plano e os validadores estao prontos, mas a evidencia oficial da Fase 22 nao foi fornecida. Autotestes usam somente fixture sintetica em memoria."
+  },
+  "releaseGate": {
+    "localPlanContractPassed": true,
+    "syntheticPlanSelfTestPassed": true,
+    "officialBaselineLinked": false,
+    "plannedAdditionalObservations": 2,
+    "nextControlledTestAllowed": false,
+    "technicalRepeatabilityProven": false,
+    "automaticDeliveryAllowed": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "newAuthorizationPerObservation": true,
+    "futureAuthorizationPersisted": false,
+    "futureEventFingerprintPersisted": false,
+    "payloadPersisted": false,
+    "rawResponsePersisted": false,
+    "temporaryCodePersisted": false,
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false,
+    "databaseMutation": false,
+    "productionAccess": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 24,
+    "objective": "Preparar um modelo descartavel de autorizacao humana para a segunda amostra, sem token, dado pessoal, pre-autorizacao ou envio."
+  }
+}

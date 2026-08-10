@@ -1,0 +1,27 @@
+{
+  "schema": "atlas.meta-learning-lineage.v1",
+  "status": "not_registered",
+  "learningReference": null,
+  "permitReference": null,
+  "eventReference": null,
+  "observationReference": null,
+  "reviewReference": null,
+  "lineage": {
+    "evidenceClass": null,
+    "reuseScope": "analysis_only",
+    "expiresAt": null
+  },
+  "execution": {
+    "audienceChanged": false,
+    "campaignChanged": false,
+    "metaEventSent": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "unlinkedLearning": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true,
+    "automaticOptimization": true
+  }
+}

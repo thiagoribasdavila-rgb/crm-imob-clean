@@ -1,0 +1,39 @@
+{
+  "format": "atlas_meta_test_events_rehearsal_request_v1",
+  "phase": 20,
+  "environment": "staging_clone",
+  "rehearsalReference": "replace-with-non-personal-reference",
+  "approvals": {
+    "directorApproved": false,
+    "directorApprovalReference": null,
+    "securityApproved": false,
+    "securityApprovalReference": null,
+    "approvedAt": null,
+    "expiresAt": null
+  },
+  "record": {
+    "synthetic": true,
+    "syntheticRecordConfirmed": false,
+    "realCustomerDataIncluded": false,
+    "singleCanonicalEvent": true,
+    "maximumDeliveries": 1
+  },
+  "operator": {
+    "temporaryCodeAvailableInOfficialSurface": false,
+    "temporaryCodeCopiedToAtlas": false,
+    "authorizedSingleDelivery": false
+  },
+  "acknowledgements": {
+    "manualExecutionOnly": true,
+    "stopWithoutRetryOnUnexpectedResult": true,
+    "campaignMutationProhibited": true,
+    "budgetMutationProhibited": true,
+    "audienceMutationProhibited": true,
+    "productionDeliveryProhibited": true,
+    "noPerformanceClaim": true
+  },
+  "officialExecution": {
+    "executed": false,
+    "eventDelivered": false
+  }
+}

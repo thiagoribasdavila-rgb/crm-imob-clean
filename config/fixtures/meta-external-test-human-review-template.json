@@ -1,0 +1,27 @@
+{
+  "schema": "atlas.meta-external-test-human-review.v1",
+  "status": "pending_review",
+  "permitReference": null,
+  "eventReference": null,
+  "observationReference": null,
+  "decision": null,
+  "review": {
+    "reviewerReference": null,
+    "reviewedAt": null,
+    "rationaleCategory": null
+  },
+  "execution": {
+    "nextExternalCallAllowed": false,
+    "productionAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticPromotionAllowed": false
+  },
+  "forbidden": {
+    "automaticDecision": true,
+    "providerPayload": true,
+    "customerData": true,
+    "secrets": true,
+    "automaticRetry": true,
+    "automaticPromotion": true
+  }
+}

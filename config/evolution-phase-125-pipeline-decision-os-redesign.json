@@ -1,0 +1,24 @@
+{
+  "phase": 125,
+  "name": "Pipeline Decision OS redesign",
+  "status": "implemented",
+  "area": "pipeline",
+  "priority": "P1-lead-conversion",
+  "objective": "Redesenhar o Kanban como uma mesa de decisão proativa, reduzindo ruído visual e colocando a próxima melhor ação no centro da experiência.",
+  "businessImpact": [
+    "Corretor começa pelo que precisa de ação agora sem se perder em excesso de dados.",
+    "Gerente enxerga gargalos e disciplina de próxima ação com menos cliques.",
+    "Diretor preserva forecast, risco e receita enquanto a operação fica mais limpa."
+  ],
+  "technicalScope": [
+    "Adiciona Pipeline OS Cockpit com prioridade dinâmica baseada em SLA, próxima ação, leads quentes e gargalos.",
+    "Reduz densidade visual do board v30 mantendo dados completos em áreas recolhidas.",
+    "Preserva movimentos, filtros, lentes, fila inteligente, RBAC, APIs e dados reais.",
+    "Não altera banco, integrações, autenticação ou regras de movimentação."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-125:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

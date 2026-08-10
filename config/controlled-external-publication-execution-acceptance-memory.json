@@ -1,0 +1,18 @@
+{
+  "schema": "atlas.controlled-external-publication-execution-acceptance-memory.v1",
+  "policyHash": "2532fe57e36c3bcfa2c2afb13a8546eeebca8677e1ce7b117673850b0752b6df",
+  "entries": [],
+  "summary": {
+    "recordedDecisions": 0,
+    "accepted": 0,
+    "rejected": 0,
+    "distinctHandoffs": 0,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "17775cbf928f3e607b026b84df6195691f921ceac67c2b5f0035be7571bd9867"
+}

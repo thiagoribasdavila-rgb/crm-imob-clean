@@ -1,0 +1,49 @@
+{
+  "format": "atlas_meta_validation_only_evidence_v1",
+  "phase": 18,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "projectIdentifiersPersisted": false,
+  "rawLogsPersisted": false,
+  "remoteExecutionPerformed": false,
+  "phase17EvidenceApproved": false,
+  "event": {
+    "eventName": null,
+    "classification": null,
+    "requiredEvidenceApproved": false,
+    "eventIdFingerprint": null
+  },
+  "payloadStructure": {
+    "actionSource": null,
+    "userDataKeys": [],
+    "customDataKeys": [],
+    "rawIdentifiersPersisted": false,
+    "hashedIdentifiersPersisted": false,
+    "payloadPersisted": false
+  },
+  "execution": {
+    "payloadBuiltInMemory": false,
+    "metaRequestPrepared": false,
+    "metaRequestDelivered": false,
+    "networkCallExecuted": false
+  },
+  "releaseGates": {
+    "validationOnlyApproved": false,
+    "testEventDeliveryAllowed": false,
+    "productionAllowed": false,
+    "deploymentAllowed": false
+  },
+  "prohibitedActions": {
+    "productionMutation": false,
+    "realMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false
+  },
+  "issueCodes": ["phase17_evidence_not_provided"],
+  "errorCode": "phase17_evidence_not_provided"
+}

@@ -1,0 +1,68 @@
+{
+  "format": "atlas_meta_test_events_evidence_reconciliation_v1",
+  "phase": 22,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "containsTemporaryCode": false,
+  "payloadPersisted": false,
+  "rawResponsePersisted": false,
+  "screenshotPersisted": false,
+  "sourceEvidence": {
+    "phase19Approved": false,
+    "phase20Approved": false,
+    "phase21Approved": false,
+    "phase19Fingerprint": null,
+    "phase20Fingerprint": null,
+    "phase21Fingerprint": null
+  },
+  "chain": {
+    "phase19ToPhase20Linked": false,
+    "phase20ToPhase21Linked": false,
+    "environmentConsistent": false,
+    "eventNameConsistent": false,
+    "eventFingerprintConsistent": false,
+    "chronologyConsistent": false
+  },
+  "event": {
+    "eventName": null,
+    "classification": null,
+    "eventIdFingerprint": null
+  },
+  "humanGovernance": {
+    "directorApproved": false,
+    "securityApproved": false,
+    "operatorConfirmed": false,
+    "reviewerConfirmed": false,
+    "distinctRolesVerified": false
+  },
+  "observation": {
+    "officialTestSurfaceUsed": false,
+    "normalizedStatus": null,
+    "deliveryCount": 0,
+    "qualitySampleCount": 0,
+    "sufficientForAutomation": false,
+    "sufficientForOptimizationClaim": false
+  },
+  "governance": {
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false
+  },
+  "releaseGates": {
+    "evidenceChainReconciled": false,
+    "officialTestEvidenceReconciled": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "nextControlledTestAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  },
+  "issueCodes": ["phase19_phase20_phase21_evidence_missing"],
+  "errorCode": "phase19_phase20_phase21_evidence_missing"
+}

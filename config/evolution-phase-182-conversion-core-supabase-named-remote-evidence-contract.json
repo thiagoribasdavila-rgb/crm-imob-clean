@@ -1,0 +1,41 @@
+{
+  "phase": 182,
+  "name": "Conversion Core Supabase Named Remote Evidence Contract",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Definir um contrato verificável e fail-closed para uma futura evidência remota atual com nomes, proveniência, validade e fingerprints, sem coletar dados remotos nem autorizar mutações.",
+  "evidenceLevel": "local_contract_tested_remote_evidence_not_collected",
+  "runtimeHomologated": false,
+  "currentState": {
+    "collisionVersions": 3,
+    "collidingFiles": 6,
+    "currentNamedRemoteEvidenceCollected": false,
+    "contractRequiresReadOnlyCapture": true,
+    "contractRequiresTargetHash": true,
+    "contractRequiresFreshness": true,
+    "contractRequiresLocalFingerprints": true
+  },
+  "safety": {
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationFileRenamed": false,
+    "migrationHistoryRepaired": false,
+    "databaseReset": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "contractImplemented": true,
+    "contractTestsPassed": true,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "directPushAllowed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Em sessão futura explicitamente autorizada e somente leitura, produzir evidência atual no contrato; a validação isolada ainda exigirá revisão humana antes de qualquer proposta de reconciliação."
+}

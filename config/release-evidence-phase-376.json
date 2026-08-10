@@ -1,0 +1,62 @@
+{
+  "release": "atlas-one-audited-20260810-r376",
+  "phaseRange": "374-376",
+  "generatedAt": "2026-08-10",
+  "runtime": {
+    "node": "24.18.0",
+    "next": "16.2.11"
+  },
+  "gates": [
+    {
+      "name": "WhatsApp memory director persistence contract",
+      "status": "passed",
+      "evidence": "6/6 assertions"
+    },
+    {
+      "name": "WhatsApp memory director endpoint contract",
+      "status": "passed",
+      "evidence": "7/7 assertions"
+    },
+    {
+      "name": "WhatsApp memory director interface contract",
+      "status": "passed",
+      "evidence": "4/4 assertions"
+    },
+    {
+      "name": "Persistence readiness and safe migration fallback",
+      "status": "passed",
+      "evidence": "Migration packaged, endpoint read/write ready, safe fallback active, no remote mutation"
+    },
+    {
+      "name": "TypeScript typecheck",
+      "status": "passed",
+      "evidence": "npm run typecheck exited 0"
+    },
+    {
+      "name": "ESLint",
+      "status": "passed",
+      "evidence": "npm run lint exited 0"
+    },
+    {
+      "name": "Production build",
+      "status": "passed",
+      "evidence": "Next.js 16.2.11 compiled and generated 92/92 routes under Node 24.18.0"
+    },
+    {
+      "name": "Complete contract regression suite",
+      "status": "passed",
+      "evidence": "6201 tests passed, 0 failed, 0 cancelled, 0 skipped"
+    }
+  ],
+  "database": {
+    "localProjectLinked": false,
+    "migrationFilePackaged": true,
+    "remoteMigrationApplied": false,
+    "remoteStateMutated": false
+  },
+  "security": {
+    "realEnvironmentIncluded": false,
+    "secretsIncluded": false,
+    "existingDataMutated": false
+  }
+}

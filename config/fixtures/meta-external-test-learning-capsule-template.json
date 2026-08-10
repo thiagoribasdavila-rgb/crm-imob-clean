@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-external-test-learning-capsule.v1",
+  "status": "not_created",
+  "reviewReference": null,
+  "eventReference": null,
+  "learning": {
+    "resultClass": null,
+    "evidenceQuality": null,
+    "recommendation": null,
+    "requiresHumanApproval": true
+  },
+  "execution": {
+    "campaignChanged": false,
+    "metaEventSent": false,
+    "productionTouched": false,
+    "automaticOptimizationTriggered": false
+  },
+  "forbidden": {
+    "customerData": true,
+    "providerPayload": true,
+    "providerResponseBody": true,
+    "secrets": true,
+    "automaticCampaignChanges": true,
+    "automaticAudienceChanges": true
+  }
+}

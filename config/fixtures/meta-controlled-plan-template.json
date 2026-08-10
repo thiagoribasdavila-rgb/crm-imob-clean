@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-controlled-plan.v1",
+  "status": "draft_for_human_review",
+  "decisionReference": null,
+  "plan": {
+    "objective": null,
+    "hypothesis": null,
+    "successMetric": null,
+    "reviewWindowDays": null,
+    "ownerReference": null
+  },
+  "execution": {
+    "authorized": false,
+    "outboundMessagesSent": false,
+    "budgetChanged": false,
+    "audienceChanged": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticExecution": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

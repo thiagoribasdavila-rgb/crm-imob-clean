@@ -1,0 +1,39 @@
+{
+  "phase": 113,
+  "name": "Kanban Focus Strip",
+  "status": "implemented",
+  "productVersionTrack": "ATLAS_V30_ROADMAP",
+  "objective": "Reduzir ruído do Kanban e colocar as quatro decisões comerciais mais importantes em uma faixa acionável no topo do fluxo.",
+  "problemSolved": [
+    "O operador precisava interpretar múltiplos cards antes de decidir por onde começar.",
+    "O gargalo do funil não ficava suficientemente explícito para ação rápida.",
+    "Leads quentes sem próxima ação e propostas abertas competiam visualmente com métricas menos urgentes."
+  ],
+  "implementation": {
+    "screen": "Pipeline / Kanban",
+    "component": "atlas-kanban-focus-strip",
+    "signals": [
+      "SLA ou follow-up vencido",
+      "Leads quentes sem próxima ação",
+      "Propostas abertas",
+      "Etapa com maior pressão operacional"
+    ],
+    "actions": [
+      "Aplicar filtro de urgência",
+      "Aplicar filtro de leads sem ação",
+      "Abrir etapa de proposta",
+      "Abrir etapa com gargalo"
+    ]
+  },
+  "expectedImpact": [
+    "Menos tempo para decidir a primeira ação do dia.",
+    "Mais proteção de leads quentes.",
+    "Maior velocidade em propostas e etapas congestionadas.",
+    "Kanban mais proativo, enxuto e orientado à conversão."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-113:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

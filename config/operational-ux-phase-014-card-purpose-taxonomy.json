@@ -1,0 +1,22 @@
+{
+  "phase": 14,
+  "name": "card-purpose-taxonomy",
+  "objective": "Cada card comunica sua função antes de comunicar seu conteúdo.",
+  "purposes": {
+    "metric": "Número comparável, contexto curto e tendência comprovada.",
+    "decision": "Uma decisão pedida, evidência e ação principal.",
+    "work": "Execução operacional contínua, formulário, quadro ou detalhe.",
+    "queue": "Itens ordenados por urgência, prazo ou prioridade.",
+    "analysis": "Contexto investigativo secundário, aberto após a decisão.",
+    "empty": "Ausência explicada com próximo passo seguro."
+  },
+  "rules": [
+    "A função é declarada em data-card-purpose.",
+    "Métrica e estado vazio usam seus componentes canônicos existentes.",
+    "Análise não compete visualmente com trabalho ou decisão.",
+    "Nenhuma classificação altera conteúdo, API, persistência ou permissão.",
+    "Novos cards devem reutilizar a taxonomia em vez de criar outra superfície."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

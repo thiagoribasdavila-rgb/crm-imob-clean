@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-change-approval.v1",
+  "status": "pending_human_approval",
+  "changeRequestReference": null,
+  "approval": {
+    "outcome": null,
+    "primaryReviewerReference": null,
+    "secondaryReviewerReference": null,
+    "reason": null,
+    "expiresAt": null
+  },
+  "execution": {
+    "authorized": false,
+    "budgetChanged": false,
+    "audienceChanged": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticApproval": true,
+    "automaticExecution": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

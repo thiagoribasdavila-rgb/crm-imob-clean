@@ -2,7 +2,6 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { evaluateAndromedaLearning } from "@/lib/meta/andromeda-learning-loop";
 import { buildMetaCampaignIntelligence } from "@/lib/meta/campaign-intelligence";
 
 export const dynamic = "force-dynamic";
@@ -17,19 +16,37 @@ export async function GET(request: NextRequest) {
   if (!limited.ok) return limited.response;
   const access = await requireAccessContext(request);
   if (!access.ok) return access.response;
-  const [{ data: sources, error }, { data: events }, { data: conversionConfig }, { data: conversionEvents }, { data: learningEvents }, { data: metaLeads }, { data: dailyReports }, { data: matchingRows }, { data: attributionTouches }] = await Promise.all([
+  const [{ data: sources, error }, { data: events }, { data: conversionConfig }, { data: conversionEvents }, { data: learningEvents }, { data: metaLeads }, { data: dailyReports }, { data: matchingRows }] = await Promise.all([
     access.supabase.from("meta_lead_sources").select("id,page_id,form_id,name,active,default_owner_id,conversion_sharing_enabled,consent_basis,created_at,updated_at").order("created_at", { ascending: false }),
-    access.supabase.from("meta_lead_events").select("id,status,received_at,processed_at,last_error").order("received_at", { ascending: false }).limit(100),
+    access.supabase.from("meta_lead_events").select("id,status,received_at,processed_at,last_error,lead_id,page_id,form_id,campaign_external_id").order("received_at", { ascending: false }).limit(100),
     access.supabase.from("meta_conversion_configs").select("dataset_id,mode,enabled,test_event_code,consent_required").maybeSingle(),
-    access.supabase.from("meta_conversion_events").select("lead_id,status,event_name,delivered_at,created_at").order("created_at", { ascending: false }).limit(1000),
+    access.supabase.from("meta_conversion_events").select("status,event_name").order("created_at", { ascending: false }).limit(100),
     access.supabase.from("campaign_events").select("event_type,source,payload").in("source", ["crm-funnel", "crm-followup", "crm-qualification"]).order("occurred_at", { ascending: false }).limit(1000),
     access.supabase.from("leads").select("status,score,metadata,created_at,last_interaction_at").eq("source", "Meta Lead Ads").order("created_at", { ascending: false }).limit(2000),
     access.supabase.from("meta_daily_reports").select("id,report_date,status,payload,created_at,updated_at").in("status", ["ready", "reviewed"]).order("report_date", { ascending: false }).limit(7),
     access.supabase.from("leads").select("id,email,phone,metadata").eq("source", "Meta Lead Ads").order("created_at", { ascending: false }).limit(2000),
-    access.supabase.from("lead_attribution_touches").select("lead_id").eq("organization_id", access.access.organization.id).order("occurred_at", { ascending: false }).limit(5000),
   ]);
   if (error) return NextResponse.json({ error: "Aplique a migração Meta Lead Ads para configurar fontes." }, { status: 503 });
   const summary = (events ?? []).reduce((total, event) => ({ ...total, [event.status]: (total[event.status] || 0) + 1 }), {} as Record<string, number>);
+  const latestImported = (events ?? []).find((event) => event.status === "imported" && event.processed_at);
+  const leadTracking = {
+    received: (events ?? []).length,
+    imported: Number(summary.imported || 0),
+    processing: Number(summary.processing || 0),
+    failed: Number(summary.failed || 0),
+    lastImportedAt: latestImported?.processed_at || null,
+    recent: (events ?? []).slice(0, 8).map((event) => ({
+      id: event.id,
+      status: event.status,
+      receivedAt: event.received_at,
+      processedAt: event.processed_at,
+      linkedToCrm: Boolean(event.lead_id),
+      pageId: event.page_id,
+      formId: event.form_id,
+      campaignId: event.campaign_external_id,
+      hasError: Boolean(event.last_error),
+    })),
+  };
   const conversionSummary = (conversionEvents ?? []).reduce((total, event) => ({ ...total, [event.status]: (total[event.status] || 0) + 1 }), {} as Record<string, number>);
   const conversionFunnel = (conversionEvents ?? []).reduce((total, event) => ({ ...total, [event.event_name]: (total[event.event_name] || 0) + 1 }), {} as Record<string, number>);
   const internalFunnel = (learningEvents ?? []).reduce((total, event) => {
@@ -54,27 +71,16 @@ export async function GET(request: NextRequest) {
     const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as Record<string, unknown> : {};
     return meta.dataSharingConsent === true && Boolean(lead.email || lead.phone);
   });
-  const matchEligibleIds = new Set(matchEligible.map((lead) => lead.id));
-  const eligibleConversionEvents = (conversionEvents ?? []).filter((event) => event.lead_id && matchEligibleIds.has(event.lead_id));
   const dualIdentifiers = matchEligible.filter((lead) => Boolean(lead.email && lead.phone)).length;
-  const deepNames = new Set(["QualifiedLead", "Schedule", "SubmitApplication", "ConvertedLead"]);
-  const latestDeliveredAt = eligibleConversionEvents
-    .filter((event) => event.status === "delivered")
-    .map((event) => new Date(event.delivered_at || event.created_at).getTime())
-    .filter(Number.isFinite)
-    .sort((a, b) => b - a)[0];
-  const freshnessHours = latestDeliveredAt ? Math.round((Date.now() - latestDeliveredAt) / 3_600_000) : null;
-  const andromedaAssessment = evaluateAndromedaLearning({
-    eligibleLeads: matchEligible.length,
-    delivered: eligibleConversionEvents.filter((event) => event.status === "delivered").length,
-    failed: eligibleConversionEvents.filter((event) => ["failed", "dead_letter"].includes(event.status)).length,
-    duplicateEvents: 0,
-    deepEvents: eligibleConversionEvents.filter((event) => deepNames.has(event.event_name)).length,
-    leadEvents: eligibleConversionEvents.filter((event) => event.event_name === "Lead").length,
-    dualIdentifiers,
-    attributedLeads: new Set((attributionTouches ?? []).filter((touch) => matchEligibleIds.has(touch.lead_id)).map((touch) => touch.lead_id)).size,
-    freshnessHours,
-  });
+  const delivered = Number(conversionSummary.delivered || 0);
+  const failed = Number(conversionSummary.failed || 0) + Number(conversionSummary.dead_letter || 0);
+  const deliveryRate = delivered + failed > 0 ? Math.round((delivered / (delivered + failed)) * 100) : 0;
+  const dualIdentifierRate = matchEligible.length ? Math.round((dualIdentifiers / matchEligible.length) * 100) : 0;
+  const deepEvents = Number(conversionFunnel.QualifiedLead || 0) + Number(conversionFunnel.Schedule || 0) + Number(conversionFunnel.SubmitApplication || 0) + Number(conversionFunnel.ConvertedLead || 0);
+  const leadEvents = Number(conversionFunnel.Lead || 0);
+  const feedbackCoverage = leadEvents ? Math.min(100, Math.round((deepEvents / leadEvents) * 100)) : 0;
+  const andromedaScore = Math.round(deliveryRate * 0.4 + dualIdentifierRate * 0.25 + feedbackCoverage * 0.35);
+  const andromedaRecommendations = [deliveryRate < 95 ? "Corrigir eventos falhos antes de ampliar orçamento." : null, dualIdentifierRate < 60 ? "Aumentar cadastros consentidos com telefone e e-mail válidos." : null, feedbackCoverage < 35 ? "Registrar qualificação, visita, proposta e venda para aprofundar o aprendizado." : null].filter((item): item is string => Boolean(item));
   const canDecide = isDirector(access.access.profile.commercialRole, access.access.profile.role);
   const { data: candidateRows } = canDecide ? await access.supabase.from("leads").select("id,name,email,phone,metadata").eq("source", "Meta Lead Ads").order("created_at", { ascending: false }).limit(50) : { data: [] };
   const conversionCandidates = (candidateRows ?? []).filter((lead) => {
@@ -82,7 +88,7 @@ export async function GET(request: NextRequest) {
     const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as Record<string, unknown> : {};
     return meta.dataSharingConsent === true && Boolean(lead.email || lead.phone);
   }).slice(0, 20).map((lead) => ({ id: lead.id, name: lead.name || "Lead Meta", hasEmail: Boolean(lead.email), hasPhone: Boolean(lead.phone) }));
-  return NextResponse.json({ scope: { viewerRole: access.access.profile.commercialRole || access.access.profile.role, hierarchicalRls: true, directorDecisionOnly: true }, sources: sources ?? [], summary, conversionConfig, conversionCandidates, conversionSummary, conversionFunnel, internalFunnel, funnelInsights, audienceRecommendations, campaignIntelligence, dailyReports: dailyReports ?? [], andromedaReadiness: { score: andromedaAssessment.score, readiness: andromedaAssessment.readiness, eligibleLeads: matchEligible.length, deliveryRate: andromedaAssessment.metrics.deliveryRate, dualIdentifierRate: andromedaAssessment.metrics.identityQuality, feedbackCoverage: andromedaAssessment.metrics.feedbackCoverage, attributionCoverage: andromedaAssessment.metrics.attributionCoverage, duplicateRate: andromedaAssessment.metrics.duplicateRate, freshnessScore: andromedaAssessment.metrics.freshnessScore, freshnessHours, gates: andromedaAssessment.gates, blockers: andromedaAssessment.blockers, recommendations: andromedaAssessment.recommendations, governance: andromedaAssessment.governance, privacy: "identificadores normalizados e protegidos; sinais agregados no painel" }, readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), adsInsights: Boolean(process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role), canDecide }, { headers: limited.headers });
+  return NextResponse.json({ scope: { viewerRole: access.access.profile.commercialRole || access.access.profile.role, hierarchicalRls: true, directorDecisionOnly: true }, sources: sources ?? [], summary, leadTracking, conversionConfig, conversionCandidates, conversionSummary, conversionFunnel, internalFunnel, funnelInsights, audienceRecommendations, campaignIntelligence, dailyReports: dailyReports ?? [], andromedaReadiness: { score: andromedaScore, eligibleLeads: matchEligible.length, deliveryRate, dualIdentifierRate, feedbackCoverage, recommendations: andromedaRecommendations, privacy: "identificadores normalizados e protegidos; sinais agregados no painel" }, readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), adsInsights: Boolean(process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role), canDecide }, { headers: limited.headers });
 }
 
 export async function POST(request: NextRequest) {
@@ -90,7 +96,7 @@ export async function POST(request: NextRequest) {
   if (!access.ok) return access.response;
   if (!canManage(access.access.profile.commercialRole, access.access.profile.role)) return NextResponse.json({ error: "Permissão insuficiente para configurar a Meta." }, { status: 403 });
   const body = await request.json() as { action?: string; pageId?: string; formId?: string; name?: string; defaultOwnerId?: string; conversionSharingEnabled?: boolean; consentBasis?: string; datasetId?: string; testEventCode?: string };
-  if ((body.action === "conversion_config" || body.action === "conversion_go_live" || body.action === "review_daily_report") && !isDirector(access.access.profile.commercialRole, access.access.profile.role)) return NextResponse.json({ error: "Somente o diretor pode decidir sobre otimização de campanhas." }, { status: 403 });
+  if ((body.action === "conversion_config" || body.action === "review_daily_report") && !isDirector(access.access.profile.commercialRole, access.access.profile.role)) return NextResponse.json({ error: "Somente o diretor pode decidir sobre otimização de campanhas." }, { status: 403 });
   if (body.action === "review_daily_report") {
     const reportId = String((body as { reportId?: string }).reportId || "");
     if (!/^[0-9a-f-]{36}$/i.test(reportId)) return NextResponse.json({ error: "Relatório inválido." }, { status: 400 });
@@ -99,58 +105,6 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: "Não foi possível registrar a revisão." }, { status: 400 });
     return NextResponse.json({ reportId, status: "reviewed" });
   }
-  /**
-   * PROMOVER O CAPI DE TESTE PARA PRODUÇÃO.
-   *
-   * `conversion_config` grava sempre `mode: "test"`, e é assim que deve ser:
-   * ninguém liga envio de conversão em produção por engano.
-   *
-   * Mas não existia caminho de volta. O efeito era pior que não configurar:
-   * você veria os eventos chegando na aba de TESTE do Gerenciador de Eventos,
-   * concluiria que funciona, e a otimização nunca receberia nada. Evento de
-   * teste não entra no aprendizado do algoritmo — é justamente para isso que a
-   * Meta separa os dois.
-   *
-   * A guarda: só promove o que JÁ ESTÁ configurado em teste. Assim a ordem é
-   * sempre configurar → ver o evento chegar → promover, e não "ligar direto e
-   * torcer".
-   */
-  if (body.action === "conversion_go_live") {
-    const admin = getSupabaseAdmin();
-    const { data: atual } = await admin
-      .from("meta_conversion_configs")
-      .select("dataset_id,mode,test_event_code")
-      .eq("organization_id", access.access.organization.id)
-      .maybeSingle();
-
-    if (!atual?.dataset_id) {
-      return NextResponse.json({ error: "Configure o Dataset em modo teste antes de ir para produção." }, { status: 422 });
-    }
-    if (atual.mode === "live") {
-      return NextResponse.json({ ok: true, data: { mode: "live", jaEstava: true } });
-    }
-
-    const { data, error } = await admin
-      .from("meta_conversion_configs")
-      .update({
-        mode: "live",
-        // `test_event_code` sai junto: deixá-lo gravado faria a próxima volta
-        // para teste parecer configurada quando o código já pode ter expirado.
-        test_event_code: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("organization_id", access.access.organization.id)
-      .select("dataset_id,mode,enabled,consent_required")
-      .single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 503 });
-    return NextResponse.json({
-      ok: true,
-      data,
-      aviso: "A partir de agora as conversões contam para a otimização das campanhas. Voltar para teste é reconfigurar o Dataset.",
-    });
-  }
-
   if (body.action === "conversion_config") {
     const datasetId = String(body.datasetId || "").trim();
     const testEventCode = String(body.testEventCode || "").trim();

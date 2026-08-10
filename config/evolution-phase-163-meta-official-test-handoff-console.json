@@ -1,0 +1,29 @@
+{
+  "phase": 163,
+  "name": "Meta Official Test Handoff Console",
+  "status": "implemented",
+  "stream": "meta-andromeda-conversion-automation",
+  "objective": "Transformar a preparação do teste Meta em um handoff claro para diretoria, sem disparar evento real pela tela de campanhas.",
+  "businessProblem": "A operação precisava saber quando o ensaio oficial pode acontecer, quem executa cada parte e qual evidência fecha o teste com segurança.",
+  "implemented": [
+    "Nova seção visual de handoff oficial de teste",
+    "Prontidão combinando ambiente Meta, payload, evento, lead elegível e recibo",
+    "Roteiro copiável para diretoria e operação técnica",
+    "Guardrails contra aprendizado errado e disparo acidental",
+    "Atalho seguro para o módulo de integrações Meta"
+  ],
+  "acceptanceCriteria": [
+    "A tela de campanhas mostra Ensaio oficial controlado",
+    "O roteiro indica explicitamente que não dispara CAPI real nesta página",
+    "A prontidão do handoff considera ambiente, payload e elegibilidade do evento",
+    "O usuário consegue copiar o roteiro do ensaio",
+    "O próximo passo aponta para integrações Meta, onde fica o ensaio real"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-163:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint",
+    "build": "deferred-to-release-close"
+  },
+  "nextPhaseRecommendation": "Criar seleção assistida de lead elegível para ensaio, destacando origem Meta, consentimento, identificadores e risco de duplicidade."
+}

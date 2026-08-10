@@ -1,0 +1,28 @@
+{
+  "schema": "atlas.meta-experiment-execution-authorization.v1",
+  "status": "pending",
+  "planReference": null,
+  "permitReference": null,
+  "authorization": {
+    "operatorReference": null,
+    "authorizedAt": null,
+    "expiresAt": null,
+    "environment": "staging",
+    "maxAttempts": 1
+  },
+  "execution": {
+    "externalTestAllowed": false,
+    "campaignChanged": false,
+    "audienceChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "planSubstitution": true,
+    "multiAttempt": true,
+    "production": true,
+    "automaticRetry": true,
+    "automaticPromotion": true,
+    "customerData": true,
+    "secrets": true
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "phase": 192,
+  "name": "Conversion Core Supabase Named Remote Capture Receipt Ledger Checkpoint Chain Proof Custody",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Registrar localmente a custódia de uma prova íntegra com revisor e finalidade pseudonimizados por HMAC-SHA256, sem persistir seus valores originais, chave criptográfica, credenciais ou dados pessoais.",
+  "evidenceLevel": "local_private_pseudonymized_proof_custody_contract_tested_remote_capture_not_performed",
+  "runtimeHomologated": false,
+  "currentState": {
+    "custodySchemaPrepared": true,
+    "sourceProofBinding": true,
+    "reviewerPseudonymized": true,
+    "purposePseudonymized": true,
+    "claimVerification": true,
+    "rawReviewerIncluded": false,
+    "rawPurposeIncluded": false,
+    "pseudonymizationKeyIncluded": false,
+    "credentialsIncluded": false,
+    "personalDataIncluded": false,
+    "privateDirectoryModeEnforced": true,
+    "privateFileModeEnforced": true,
+    "remoteExecutorAvailable": false,
+    "custodyCreatedInAssessment": false,
+    "currentNamedRemoteEvidenceCollected": false
+  },
+  "safety": {
+    "localCustodyWritten": false,
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "databaseWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationPushExecuted": false,
+    "migrationHistoryRepaired": false,
+    "migrationFileRenamed": false,
+    "databaseReset": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "secretsPersisted": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "authorizationRecorded": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "procedureExecuted": false,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "limitations": [
+    "O registro só é criado quando o chamador informa explicitamente uma prova íntegra, revisor, finalidade, chave forte e diretório privado.",
+    "HMAC permite confirmar uma alegação com a mesma chave, mas a chave deve ser mantida fora do projeto, dos logs e do registro de custódia.",
+    "Esta fase não coleta evidência remota, não altera o Supabase operacional e não executa migration, build, ZIP ou deploy."
+  ],
+  "nextAction": "Na fase 193, criar um índice local append-only dos registros de custódia, com encadeamento criptográfico e sem revelar revisor, finalidade ou chave."
+}

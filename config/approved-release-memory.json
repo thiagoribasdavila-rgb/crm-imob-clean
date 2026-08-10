@@ -1,0 +1,13 @@
+{
+  "schema": "atlas.approved-release-memory.v1",
+  "policyHash": "37af76ac19a603949ccb56c1fe127919bc9e595770822df11b4a7e61a54e497a",
+  "entries": [],
+  "summary": {
+    "committedApprovals": 0,
+    "latestEntryHash": null,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "04de684a4dacf1080468bf849fc929f9c7ac007621ce942f59c70bb4046abf76"
+}

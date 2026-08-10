@@ -1,0 +1,64 @@
+{
+  "format": "atlas_meta_test_events_repeatability_plan_v1",
+  "phase": 23,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "containsTemporaryCode": false,
+  "payloadPersisted": false,
+  "rawResponsePersisted": false,
+  "screenshotPersisted": false,
+  "sourceEvidence": {
+    "phase22Approved": false,
+    "phase22Fingerprint": null
+  },
+  "baseline": {
+    "accepted": false,
+    "eventName": null,
+    "classification": null,
+    "eventIdFingerprint": null,
+    "approvedSampleCount": 0
+  },
+  "plan": {
+    "targetApprovedSamples": 3,
+    "additionalObservationsPlanned": 2,
+    "observationSlots": []
+  },
+  "controls": {
+    "sameCanonicalEventNameRequired": false,
+    "sameCanonicalClassificationRequired": false,
+    "uniqueSyntheticRecordPerObservation": false,
+    "uniqueEventIdFingerprintPerObservation": false,
+    "baselineFingerprintReuseForbidden": false,
+    "authorizationFingerprintsUniqueAcrossObservations": false,
+    "fourIndependentRolesPerObservation": false,
+    "minimumTemporalSeparationRequired": false,
+    "stopSequenceOnFirstFailure": false,
+    "automaticRetryForbidden": false,
+    "isolatedOfficialTestSurfaceOnly": false
+  },
+  "assessment": {
+    "technicalRepeatabilityProven": false,
+    "automaticDeliverySupported": false,
+    "productionSupported": false,
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false
+  },
+  "releaseGates": {
+    "repeatabilityPlanPrepared": false,
+    "baselineEvidenceLinked": false,
+    "nextControlledTestAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  },
+  "issueCodes": ["phase22_evidence_missing"],
+  "errorCode": "phase22_evidence_missing"
+}

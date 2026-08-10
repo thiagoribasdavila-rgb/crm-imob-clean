@@ -1,0 +1,29 @@
+{
+  "phase": 133,
+  "name": "Lead 360 V30 Next Best Work",
+  "status": "implemented",
+  "versionTarget": "V30",
+  "focus": "Transformar mensagens, tarefas, perfil e avanço comercial em uma fila única de próximo melhor trabalho para o corretor.",
+  "businessGoal": "Diminuir ruído operacional dentro da Lead 360 e aumentar velocidade de decisão, deixando claro o que o corretor deve fazer agora para converter a lead.",
+  "implemented": [
+    "Criada fila compacta de próximo melhor trabalho na Lead 360.",
+    "Priorizadas quatro frentes de execução: Responder agora, Organizar follow-up, Completar perfil e Avançar negócio.",
+    "Reaproveitados dados já carregados de mensagens, tarefas, histórico, qualidade de dados, oportunidades, matches e contexto comercial.",
+    "Integrado Copilot supervisionado para preparar resposta, rotina, pergunta de qualificação e plano de avanço.",
+    "Adicionadas rotas diretas para mensagens, tarefas, qualificação, simulação e pipeline.",
+    "Criado layout responsivo premium com urgência visual sem poluir a tela."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-133:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  },
+  "riskPolicy": [
+    "Não altera banco de dados.",
+    "Não altera contratos de API.",
+    "Não executa automações sem confirmação humana.",
+    "Não envia mensagens automaticamente.",
+    "Não altera etapa do pipeline automaticamente.",
+    "Não promete aprovação, disponibilidade, desconto ou fechamento."
+  ]
+}

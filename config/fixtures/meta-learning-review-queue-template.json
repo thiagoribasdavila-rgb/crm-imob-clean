@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-learning-review-queue.v1",
+  "status": "not_prepared",
+  "healthSummaryReference": null,
+  "queue": {
+    "aggregateOnly": true,
+    "priorityClass": null,
+    "reasonClass": null,
+    "humanOwnerRole": null,
+    "reviewRequired": true
+  },
+  "execution": {
+    "taskCreated": false,
+    "notificationSent": false,
+    "memoryChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticTaskCreation": true,
+    "automaticNotification": true,
+    "automaticReinstatement": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

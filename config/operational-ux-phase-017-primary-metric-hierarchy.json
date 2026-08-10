@@ -1,0 +1,21 @@
+{
+  "phase": 17,
+  "name": "primary-metric-hierarchy",
+  "objective": "Limitar a leitura imediata a cinco métricas decisórias e preservar indicadores complementares sob demanda.",
+  "maximumPrimaryMetrics": 5,
+  "layers": {
+    "primary": "Até cinco métricas diretamente ligadas à decisão e à próxima ação.",
+    "supporting": "Indicadores de contexto acessíveis em uma divulgação progressiva.",
+    "deepAnalysis": "Detalhes analíticos permanecem nas visões especializadas e relatórios."
+  },
+  "canonicalSurface": "command-center",
+  "rules": [
+    "Nenhuma métrica é removida ou ocultada por CSS.",
+    "A ordem principal privilegia carteira, intenção, atribuição, SLA e valor em risco.",
+    "Indicadores complementares continuam no DOM e acessíveis por teclado.",
+    "O limite é declarado pelo componente compartilhado e não por seletores posicionais.",
+    "A fase não altera cálculos, consultas, permissões, persistência ou integrações."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

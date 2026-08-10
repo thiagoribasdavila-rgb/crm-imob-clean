@@ -1,0 +1,38 @@
+{
+  "phase": 200,
+  "name": "Release Composition Eligibility",
+  "status": "implemented",
+  "objective": "Calcular a clausura e a elegibilidade da composição sem gerar pacote ou inferir homologação.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "roots": 1,
+    "modulesInClosure": 2,
+    "structuralBlockers": 0,
+    "releaseBlockers": 8,
+    "eligible": false,
+    "packageGenerated": false,
+    "planHash": "0957d75027b05ab13168cb3afea0375a630adc596df3ec29046614642fa4a342",
+    "decisionHash": "468bcb65ac7ff6412df595580d8ac328644c646301b0c77cf55c787ad6b5bc8c"
+  },
+  "eligibilityRules": {
+    "exactRootRevisionAndHashRequired": true,
+    "transitiveDependencyClosureRequired": true,
+    "allReleaseGatesRequiredPerModule": true,
+    "eligibilityDoesNotGeneratePackage": true,
+    "structuralReadinessDoesNotImplyRuntimeHomologation": true
+  },
+  "safety": {
+    "remoteAccess": false,
+    "databaseMutation": false,
+    "migrationApplied": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 201,
+    "name": "Release gate evidence matrix",
+    "objective": "Mapear cada gate pendente à evidência exigida, sem executar homologação ou build automaticamente."
+  }
+}

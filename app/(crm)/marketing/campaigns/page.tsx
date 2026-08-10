@@ -1,981 +1,1435 @@
 "use client";
-import Image from "next/image";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
-import { supabase } from "@/lib/supabase";
-import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
-import {
-  AUTO_REGISTERED_CAMPAIGN_STATUS_LABEL,
-  AUTO_REGISTERED_CAMPAIGN_STATUS_TITLE,
-  isAutoRegisteredCampaign,
-} from "@/lib/marketing/campaign-provenance";
 
-// Qualidade por campanha — consome /api/v1/analytics/campaign-quality
-// (gestor+; tabelas vivas: marketing_campaigns, leads, lead_events,
-// marketing_spend). Shape em lib/atlas/campaign-quality.ts.
-
-type QualityRow = {
+type Campaign = {
   id: string;
   name: string;
-  platform: string;
+  channel: string;
   status: string;
-  leads: number;
-  qualifiedLeads: number;
-  // Taxas e custos são null sem amostra suficiente (o gate mora em
-  // buildCampaignQuality, não aqui): a tela não pode estampar "33,3%" no mesmo
-  // pixel em que declara AMOSTRA INSUFICIENTE. Contagem é fato e aparece sempre.
-  qualificationRate: number | null;
-  avgScore: number | null;
-  sales: number;
-  conversionRate: number | null;
-  discarded: number;
-  discardRate: number | null;
-  discardsByMetaCategory: Array<{ category: string; count: number }>;
-  topDiscardReason: { key: string; label: string; count: number } | null;
+  budget: number;
   spend: number;
-  costPerLead: number | null;
-  costPerQualifiedLead: number | null;
-  qualityGrade: "A" | "B" | "C" | null;
-  sampleSufficient: boolean;
-  explanation?: string | null;
+  leads_count: number;
+  sales_count: number;
+  revenue: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  objective: string | null;
+  developer_id?: string | null;
+  developments?: { name?: string } | null;
+  developers?: { id?: string; trade_name?: string; legal_name?: string } | null;
 };
-
+type Development = { id: string; name: string };
+type Developer = { id: string; trade_name?: string; legal_name?: string };
 type Payload = {
-  period: { start: string; end: string; days: number };
-  totals: {
-    campaigns: number;
-    campaignsRanked: number;
+  campaigns: Campaign[];
+  summary: {
+    total: number;
+    active: number;
+    budget: number;
+    spend: number | null;
+    campaignsWithKnownSpend: number;
     leads: number;
-    qualified: number;
     sales: number;
-    discarded: number;
-    classifiedDiscards: number;
-    unattributedDiscards: number;
-    spend: number;
+    revenue: number;
   };
-  ranking: QualityRow[];
+  metaSync: { configured: boolean; requiredForInternalOperation: boolean };
+};
+type MetaTestLeadCandidate = {
+  createdAt: string | null;
+  hasConsent: boolean;
+  hasEmail: boolean;
+  hasOrigin: boolean;
+  hasPhone: boolean;
+  id: string;
+  label: string;
+  missing: string[];
+  privacy: string;
+  projectName: string;
+  readinessPct: number;
+  recommendedAction: string;
+  riskLevel: "baixo" | "médio" | "alto";
+  source: string;
+  status: string;
+};
+type MetaCandidatePayload = {
+  candidates: MetaTestLeadCandidate[];
+  generatedAt: string;
+  guardrails: string[];
+  mode: "lead_candidate_selection_no_delivery";
+  summary: {
+    consented: number;
+    eligible: number;
+    found: number;
+    withIdentifier: number;
+  };
+};
+type MetaApprovalReceipt = {
+  approvedAt: string;
+  approvedBy: string;
+  candidateFingerprint: string;
+  deliveryAuthorized: boolean;
+  expiresAt: string | null;
+  externalEventSent: boolean;
+  id: string;
+  leadId: string | null;
+  projectName: string;
+  readinessPct: number;
+  reason: string;
+  source: string;
+};
+type FrozenMetaPayloadReceipt = {
+  approvalId: string;
+  approvedContextFingerprint: string;
+  deliveryAuthorized: boolean;
+  expiresAt: string | null;
+  externalEventSent: boolean;
+  frozenAt: string;
+  frozenBy: string;
+  frozenPayload: {
+    actionSource: string;
+    approvalId: string;
+    approvedContextFingerprint: string;
+    deliveryAuthorized: false;
+    eventName: string;
+    externalEventSent: false;
+    leadId: string;
+    projectName: string;
+    schemaVersion: string;
+    source: string;
+  } | null;
+  id: string;
+  leadId: string | null;
+  payloadFingerprint: string;
+  schemaVersion: string;
+};
+type MetaExecutionGateReceipt = {
+  approvalId: string;
+  authorizationScope: string;
+  authorizedAt: string;
+  deliveryAuthorized: boolean;
+  dryRunApproved: boolean;
+  dryRunChecks: string[];
+  executionStatus: string;
+  expiresAt: string | null;
+  externalEventSent: boolean;
+  frozenPayloadId: string;
+  gateFingerprint: string;
+  id: string;
+  idempotencyKey: string;
+  leadId: string | null;
+  maxDeliveries: number;
+  payloadFingerprint: string;
+  schemaVersion: string;
+};
+type MetaDeliveryReceipt = {
+  attempts: number;
+  datasetIdMasked: string;
+  deliveredAt: string;
+  eventId: string;
+  eventName: string;
+  eventsReceived: number;
+  externalEventSent: boolean;
+  gateFingerprint: string;
+  gateId: string;
+  mode: string;
+  productionEnabled: boolean;
+  schemaVersion: string;
+  status: string;
+  traceId: string | null;
+};
+type MetaDeliveryObservation = {
+  attempts: number;
+  deliveredAt: string | null;
+  eventId: string;
+  eventName: string;
+  eventsReceived: number | null;
+  externalAttempted: boolean;
+  gateId: string | null;
+  hasReceipt: boolean;
+  nextAction: string;
+  occurredAt: string;
+  operationalStatus:
+    | "confirmed"
+    | "waiting_local_worker"
+    | "failed_before_external_attempt"
+    | "external_result_inconclusive"
+    | "dead_letter";
+  repeatBlocked: boolean;
+  schemaVersion: string;
+};
+type MetaDeliveryObservabilityPayload = {
+  generatedAt: string;
+  observations: MetaDeliveryObservation[];
   policy: {
-    minimumLeadsForDecision: number;
-    qualifiedDefinition: string;
-    qualityGradeRule: Record<string, string>;
-    spendMeasured: boolean;
-    windowComplete?: boolean;
+    automaticResend: false;
+    inconclusiveAttemptsRequireManualReconciliation: true;
+    productionEnabled: false;
   };
 };
-
-// Conselheiro Andromeda — consome /api/v1/ai/andromeda-advisor (gestor+;
-// só agregados, zero PII; nada é aplicado automaticamente na Meta).
-// Shape em lib/ai/andromeda-pipeline-advisor.ts.
-type AdvisorRecommendation = {
-  campaignId: string;
-  campaignName: string;
-  // scale_por_proxy: escalada apoiada em qualificação de CADASTRO porque ainda
-  // não há amostra de venda — rótulo próprio para não passar por escalada com
-  // lastro de conversão.
-  action: "scale" | "scale_por_proxy" | "adjust_targeting" | "fix_form" | "pause_review" | "keep";
-  rationale: string;
-  confidence: "alta" | "media" | "baixa";
-  metaFeedbackHint: string;
+const initial = {
+  name: "",
+  channel: "meta",
+  developmentId: "",
+  developerId: "",
+  budget: "",
+  startsAt: "",
+  endsAt: "",
+  status: "draft",
+  objective: "",
+  briefing: "",
 };
+const money = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  maximumFractionDigits: 0,
+});
 
-type AdvisorPayload = {
-  engine: "generative" | "deterministic";
-  model: string | null;
-  recommendations: AdvisorRecommendation[];
-  humanApprovalRequired: boolean;
-};
+async function api<T>(url: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(url, { cache: "no-store", ...options });
+  const payload = (await response.json().catch(() => null)) as {
+    data?: T;
+    error?: { message?: string };
+  } | null;
+  if (!response.ok)
+    throw new Error(
+      payload?.error?.message || "Não foi possível concluir a operação.",
+    );
+  return payload?.data as T;
+}
 
-// Analista Andromeda — consome /api/v1/ai/campaign-analyst (gestor+; só
-// agregados, zero PII). O Analista NARRA (anomalias entre janelas + narrativa
-// executiva); o Conselheiro RECOMENDA — papéis distintos, sem competição.
-// Shape em lib/ai/campaign-analyst.ts.
-type AnalystAnomaly = {
-  campaignId: string;
-  campaignName: string;
-  kind: "qualification_rate" | "discard_category_share" | "cost_per_lead" | "lead_volume";
-  direction: "up" | "down";
-  magnitude: number;
-  evidence: string;
-};
-
-type AnalystPayload = {
-  narrative: string;
-  engine: "generative" | "deterministic";
-  anomalies: AnalystAnomaly[];
-  period: {
-    current: { start: string; end: string; days: number };
-    previous: { start: string; end: string; days: number };
-  };
-  windowComplete: boolean;
-};
-
-const analystKindLabels: Record<AnalystAnomaly["kind"], string> = {
-  qualification_rate: "Qualificação",
-  discard_category_share: "Descarte",
-  cost_per_lead: "CPL",
-  lead_volume: "Volume",
-};
-
-// Tom semântico do chip: piora (queda de qualidade, salto de descarte, CPL
-// subindo, volume caindo) = warning/danger; melhora = success.
-const analystAnomalyTone = (anomaly: AnalystAnomaly): "success" | "warning" | "danger" => {
-  if (anomaly.kind === "qualification_rate") return anomaly.direction === "down" ? "danger" : "success";
-  if (anomaly.kind === "discard_category_share") return "warning";
-  if (anomaly.kind === "cost_per_lead") return anomaly.direction === "up" ? "warning" : "success";
-  return "danger"; // lead_volume só existe como queda >= 50%
-};
-
-const analystAnomalyDelta = (anomaly: AnalystAnomaly) => {
-  const sign = anomaly.direction === "up" ? "+" : "−";
-  const unit = anomaly.kind === "qualification_rate" || anomaly.kind === "discard_category_share"
-    ? " p.p."
-    : "%";
-  return `${sign}${anomaly.magnitude}${unit}`;
-};
-
-const advisorActionLabels: Record<AdvisorRecommendation["action"], string> = {
-  scale: "ESCALAR VERBA",
-  scale_por_proxy: "ESCALAR SEM AMOSTRA DE VENDA",
-  adjust_targeting: "AJUSTAR PÚBLICO",
-  fix_form: "CORRIGIR FORMULÁRIO",
-  pause_review: "REVISAR / PAUSAR",
-  keep: "MANTER",
-};
-
-const advisorConfidenceLabels: Record<AdvisorRecommendation["confidence"], string> = {
-  alta: "alta",
-  media: "média",
-  baixa: "baixa",
-};
-
-const metaCategoryLabels: Record<string, string> = {
-  duplicate: "Duplicado",
-  invalid_contact_info: "Contato inválido",
-  unreachable: "Inalcançável",
-  not_interested: "Sem interesse",
-  out_of_service_area: "Fora da área",
-  budget_mismatch: "Orçamento",
-  not_qualified: "Crédito negado",
-  wrong_product: "Produto",
-  purchased_from_competitor: "Concorrente",
-  spam: "Spam",
-  other: "Outro",
-};
-
-const brl = (value: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value);
-
-// Texto do "—": a rota já manda por que a taxa/custo foi omitido; quando não
-// mandar, a tela diz a regra em vez de deixar o traço mudo.
-const omission = (row: QualityRow) =>
-  row.explanation
-  ?? `Amostra insuficiente (${row.leads} lead(s)) — taxa e custo omitidos. A contagem continua sendo fato observado.`;
-
-/* ===== Vocabulário CC-5 desta central (só apresentação; globals.css intocável,
-   por isso Tailwind arbitrary values). Painéis em linear-gradient 180deg
-   #0f1830→#0b1224, hairlines rgba(148,163,184,.12) (.22 no hover), tinta
-   #e8eef8/#aab6ca/#6b7890, acento único var(--atlas-accent), semânticos rose
-   #fb7185 / amber #f5b544 / emerald #34d399, raios 16/12px (rounded-2xl/xl),
-   profundidade por geometria (barras finas + hairlines) — zero glow novo. ===== */
-/* A receita literal daqui era, caractere por caractere, a de `.cc6-panel`:
-   mesmo raio (16px), mesma hairline, mesmo gradiente. Escrita à mão, ela ficava
-   de fora de qualquer correção feita na primitiva — e ficou: quando o tema
-   claro ganhou tratamento para `.cc6-panel`, estes painéis teriam continuado
-   escuros sozinhos. Cópia de receita é a forma que uma divergência toma antes
-   de virar defeito. */
-const cc5Panel = "cc6-panel";
-/* O hover também mora na primitiva agora. */
-const cc5PanelHover = "";
-const cc5Inner = "rounded-xl border border-[rgba(148,163,184,.12)] bg-white/[.02]";
-const cc5InnerHover = "transition-colors duration-200 hover:border-[rgba(148,163,184,.22)]";
-const cc5Eyebrow = "font-mono text-micro font-semibold uppercase tracking-[.18em] text-[var(--atlas-texto-fraco)]";
-const cc5Focus =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
-const cc5Chip =
-  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-micro font-semibold uppercase tracking-[.12em] tabular-nums";
-
-const chipTone = {
-  neutral: "border-[rgba(148,163,184,.16)] text-[var(--atlas-texto-medio)]",
-  accent: "border-[rgba(75,141,248,.35)] text-[var(--atlas-accent)]",
-  emerald: "border-[rgba(52,211,153,.3)] text-[var(--atlas-estado-sucesso)]",
-  amber: "border-[color-mix(in_srgb,var(--atlas-estado-atencao)_32%,transparent)] text-[var(--atlas-estado-atencao)]",
-  rose: "border-[rgba(251,113,133,.32)] text-[var(--atlas-estado-perigo)]",
-} as const;
-type ChipToneKey = keyof typeof chipTone;
-
-const semanticInk: Record<"success" | "warning" | "danger", string> = {
-  success: "text-[var(--atlas-estado-sucesso)]",
-  warning: "text-[var(--atlas-estado-atencao)]",
-  danger: "text-[var(--atlas-estado-perigo)]",
-};
-const semanticChip: Record<"success" | "warning" | "danger", string> = {
-  success: chipTone.emerald,
-  warning: chipTone.amber,
-  danger: chipTone.rose,
-};
-
-const advisorActionChips: Record<AdvisorRecommendation["action"], ChipToneKey> = {
-  scale: "emerald",
-  scale_por_proxy: "amber", // âmbar: proposta válida, lastro parcial
-  adjust_targeting: "accent",
-  fix_form: "amber",
-  pause_review: "rose",
-  keep: "neutral",
-};
-
-const gradeChips: Record<NonNullable<QualityRow["qualityGrade"]>, ChipToneKey> = {
-  A: "emerald",
-  B: "accent",
-  C: "amber",
-};
-
-// period.start/end chegam como ISO UTC — fatiar evita deslocar o dia por fuso.
-const isoDay = (value: string) => `${value.slice(8, 10)}/${value.slice(5, 7)}`;
-
-// Metric-card CC-5: barra fina de tom (geometria), eyebrow mono, número grande
-// mono tabular e micro-tendência textual vinda do Analista (quando houver dado).
-function MetricCard({
-  eyebrow,
-  explain,
-  value,
-  valueClass = "text-[var(--atlas-texto-forte)]",
-  detail,
-  trend,
-  barClass,
+function MetaLeadCandidateCard({
+  candidate,
+  onSelect,
+  selected,
 }: {
-  eyebrow: string;
-  explain: string;
-  value: string;
-  valueClass?: string;
-  detail: string;
-  trend: ReactNode;
-  barClass: string;
+  candidate: MetaTestLeadCandidate;
+  onSelect: () => void;
+  selected: boolean;
 }) {
+  const riskClass = candidate.riskLevel === "baixo"
+    ? "bg-emerald-400/10 text-emerald-200"
+    : candidate.riskLevel === "médio"
+      ? "bg-amber-400/10 text-amber-200"
+      : "bg-rose-400/10 text-rose-200";
+
   return (
-    <article className={`${cc5Panel} ${cc5PanelHover} p-5`}>
-      <span aria-hidden="true" className={`block h-[2px] w-10 rounded-full ${barClass}`} />
-      <p className={`${cc5Eyebrow} mt-3`} title={explain}>
-        {eyebrow}
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={`w-full rounded-2xl border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 ${
+        selected
+          ? "border-sky-400/45 bg-sky-400/[.09]"
+          : "border-white/[.07] bg-white/[.025] hover:border-white/15"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold text-white">{candidate.label}</p>
+          <p className="mt-1 text-xs text-slate-400">{candidate.projectName}</p>
+        </div>
+        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] ${riskClass}`}>
+          {candidate.readinessPct}% · risco {candidate.riskLevel}
+        </span>
+      </div>
+      <p className="mt-3 text-xs leading-5 text-slate-300">
+        {candidate.recommendedAction}
       </p>
-      <p
-        className={`mt-2 font-mono text-3xl font-semibold leading-none tracking-tight tabular-nums sm:text-heroi ${valueClass}`}
-      >
-        {value}
-      </p>
-      <p className="mt-2.5 font-mono text-rotulo leading-5 tabular-nums text-[var(--atlas-texto-medio)]">{detail}</p>
-      {trend}
-    </article>
+      <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
+        <span className={candidate.hasOrigin ? "text-emerald-300" : "text-rose-300"}>
+          {candidate.hasOrigin ? "✓" : "×"} origem Meta
+        </span>
+        <span className={candidate.hasConsent ? "text-emerald-300" : "text-rose-300"}>
+          {candidate.hasConsent ? "✓" : "×"} consentimento
+        </span>
+        <span className={candidate.hasEmail || candidate.hasPhone ? "text-emerald-300" : "text-rose-300"}>
+          {candidate.hasEmail || candidate.hasPhone ? "✓" : "×"} identificador
+        </span>
+      </div>
+    </button>
   );
 }
 
 export default function CampaignsPage() {
-  const [days, setDays] = useState(30);
   const [data, setData] = useState<Payload | null>(null);
-  const [error, setError] = useState("");
+  const [developments, setDevelopments] = useState<Development[]>([]);
+  const [developers, setDevelopers] = useState<Developer[]>([]);
+  const [form, setForm] = useState(initial);
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [advisor, setAdvisor] = useState<AdvisorPayload | null>(null);
-  const [advisorError, setAdvisorError] = useState("");
-  const [advisorLoading, setAdvisorLoading] = useState(true);
-  const [analyst, setAnalyst] = useState<AnalystPayload | null>(null);
-  const [analystError, setAnalystError] = useState("");
-  const [analystLoading, setAnalystLoading] = useState(true);
-  const [analystAgeSeconds, setAnalystAgeSeconds] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [assetCampaign, setAssetCampaign] = useState("");
+  const [assetType, setAssetType] = useState("briefing");
+  const [assetTitle, setAssetTitle] = useState("");
+  const [assetFile, setAssetFile] = useState<File | null>(null);
+  const [error, setError] = useState("");
+  const [leadCandidates, setLeadCandidates] = useState<MetaTestLeadCandidate[]>([]);
+  const [leadCandidateSummary, setLeadCandidateSummary] = useState<MetaCandidatePayload["summary"] | null>(null);
+  const [leadCandidatesLoading, setLeadCandidatesLoading] = useState(true);
+  const [leadCandidatesError, setLeadCandidatesError] = useState("");
+  const [selectedLeadId, setSelectedLeadId] = useState("");
+  const [approvalReason, setApprovalReason] = useState("");
+  const [approvalReceipt, setApprovalReceipt] = useState<MetaApprovalReceipt | null>(null);
+  const [approvalSaving, setApprovalSaving] = useState(false);
+  const [frozenPayloadReceipt, setFrozenPayloadReceipt] = useState<FrozenMetaPayloadReceipt | null>(null);
+  const [payloadFreezing, setPayloadFreezing] = useState(false);
+  const [executionGateReceipt, setExecutionGateReceipt] = useState<MetaExecutionGateReceipt | null>(null);
+  const [executionGateAuthorizing, setExecutionGateAuthorizing] = useState(false);
+  const [deliveryReceipt, setDeliveryReceipt] = useState<MetaDeliveryReceipt | null>(null);
+  const [deliverySending, setDeliverySending] = useState(false);
+  const [deliveryObservations, setDeliveryObservations] = useState<MetaDeliveryObservation[]>([]);
+  const [deliveryObservabilityLoading, setDeliveryObservabilityLoading] = useState(true);
+  const [deliveryObservabilityError, setDeliveryObservabilityError] = useState("");
+  const [candidateNotice, setCandidateNotice] = useState("");
+  const input =
+    "w-full rounded-xl border border-white/10 bg-[#080d17] px-3 py-2.5 text-sm text-white outline-none focus:border-sky-400/40";
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [campaignPayload, developmentPayload, developerPayload] =
+        await Promise.all([
+          api<Payload>(
+            `/api/v1/marketing/campaigns${query ? `?q=${encodeURIComponent(query)}` : ""}`,
+          ),
+          api<{ developments: Development[] }>("/api/v1/developments"),
+          api<{ developers: Developer[] }>("/api/v1/developers"),
+        ]);
+      setData(campaignPayload);
+      setDevelopments(developmentPayload.developments ?? []);
+      setDevelopers(developerPayload.developers ?? []);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível carregar campanhas.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [query]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const loadLeadCandidates = useCallback(async () => {
+    setLeadCandidatesLoading(true);
+    setLeadCandidatesError("");
+    try {
+      const payload = await api<MetaCandidatePayload>(
+        "/api/v1/integrations/meta/test-candidates",
+      );
+      setLeadCandidates(payload.candidates ?? []);
+      setLeadCandidateSummary(payload.summary);
+      setSelectedLeadId((current) => {
+        if (current && payload.candidates.some((candidate) => candidate.id === current)) return current;
+        return payload.candidates.find((candidate) => candidate.readinessPct === 100)?.id
+          ?? payload.candidates[0]?.id
+          ?? "";
+      });
+    } catch (cause) {
+      setLeadCandidatesError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível preparar candidatas Meta.",
+      );
+    } finally {
+      setLeadCandidatesLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true;
-    (async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const token = (await supabase.auth.getSession()).data.session?.access_token;
-        const response = await fetch(`/api/v1/analytics/campaign-quality?days=${days}`, {
-          cache: "no-store",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json?.error?.message || "Painel indisponível");
-        if (active) setData(json.data as Payload);
-      } catch (reason) {
-        if (active) setError(reason instanceof Error ? reason.message : "Painel indisponível");
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [days, reloadKey]);
+    void loadLeadCandidates();
+  }, [loadLeadCandidates]);
+
+  const loadDeliveryObservability = useCallback(async () => {
+    setDeliveryObservabilityLoading(true);
+    setDeliveryObservabilityError("");
+    try {
+      const payload = await api<MetaDeliveryObservabilityPayload>(
+        "/api/v1/integrations/meta/test-delivery-observability",
+      );
+      setDeliveryObservations(payload.observations ?? []);
+    } catch (cause) {
+      setDeliveryObservabilityError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível reconciliar o teste Meta agora.",
+      );
+    } finally {
+      setDeliveryObservabilityLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true;
-    (async () => {
-      setAdvisorLoading(true);
-      setAdvisorError("");
-      try {
-        const token = (await supabase.auth.getSession()).data.session?.access_token;
-        const response = await fetch(`/api/v1/ai/andromeda-advisor?days=${days}`, {
-          cache: "no-store",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json?.error?.message || "Conselheiro indisponível");
-        if (active) setAdvisor(json.data as AdvisorPayload);
-      } catch (reason) {
-        if (active) setAdvisorError(reason instanceof Error ? reason.message : "Conselheiro indisponível");
-      } finally {
-        if (active) setAdvisorLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [days, reloadKey]);
+    void loadDeliveryObservability();
+  }, [loadDeliveryObservability]);
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      setAnalystLoading(true);
-      setAnalystError("");
-      try {
-        const token = (await supabase.auth.getSession()).data.session?.access_token;
-        const response = await fetch(`/api/v1/ai/campaign-analyst?days=${days}`, {
-          cache: "no-store",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json?.error?.message || "Analista indisponível");
-        if (active) setAnalyst(json.data as AnalystPayload);
-      } catch (reason) {
-        if (active) setAnalystError(reason instanceof Error ? reason.message : "Analista indisponível");
-      } finally {
-        if (active) setAnalystLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [days, reloadKey]);
-
-  // "atualizado há Xs" — zera a cada nova resposta do analista.
-  useEffect(() => {
-    if (!analyst) return;
-    setAnalystAgeSeconds(0);
-    const timer = setInterval(() => setAnalystAgeSeconds((value) => value + 1), 1000);
-    return () => clearInterval(timer);
-  }, [analyst]);
-
-  const totals = data?.totals;
-  const ranking = data?.ranking ?? [];
-  const minimum = data?.policy.minimumLeadsForDecision ?? 30;
-  const insufficient = ranking.filter((row) => !row.sampleSufficient).length;
-
-  // Derivações puramente visuais (mesmas contas que a versão anterior exibia).
-  const discardCritical = totals ? totals.leads > 0 && totals.discarded / totals.leads > 0.25 : false;
-
-  // Estado honesto da comunicação com a Meta para o strip do topo.
-  const metaState = error
-    ? { dot: "bg-[var(--atlas-estado-perigo)]", chip: chipTone.rose, label: "FALHA NA LEITURA" }
-    : loading
-      ? { dot: "bg-[var(--atlas-texto-fraco)] motion-safe:animate-pulse", chip: chipTone.neutral, label: "SINCRONIZANDO…" }
-      : data?.policy.windowComplete === false
-        ? { dot: "bg-[var(--atlas-estado-atencao)]", chip: chipTone.amber, label: "PISO — JANELA TRUNCADA" }
-        : data
-          ? { dot: "bg-[var(--atlas-estado-sucesso)]", chip: chipTone.emerald, label: "DADO COMPLETO" }
-          : { dot: "bg-[var(--atlas-texto-fraco)]", chip: chipTone.neutral, label: "AGUARDANDO" };
-
-  // Micro-tendência textual dos metric-cards: anomalias reais do Analista
-  // (janela atual vs anterior de mesmo tamanho) — nunca tendência inventada.
-  const trendLine = (kind: AnalystAnomaly["kind"]): ReactNode => {
-    if (!analyst) return null;
-    const floorSuffix = analyst.windowComplete ? "" : " · piso";
-    const anomaly = analyst.anomalies.find((item) => item.kind === kind) ?? null;
-    if (!anomaly) {
-      return (
-        <p
-          className="mt-1.5 font-mono text-micro tabular-nums text-[var(--atlas-texto-fraco)]"
-          title={`Comparação com ${isoDay(analyst.period.previous.start)} → ${isoDay(analyst.period.previous.end)}`}
-        >
-          sem anomalia vs janela anterior{floorSuffix}
-        </p>
+  async function create() {
+    setSaving(true);
+    setError("");
+    try {
+      await api("/api/v1/marketing/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      setForm(initial);
+      await load();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível criar a campanha.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function update(id: string, patch: Record<string, unknown>) {
+    try {
+      await api(`/api/v1/marketing/campaigns/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      await load();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível atualizar a campanha.",
       );
     }
-    return (
-      <p
-        className={`mt-1.5 truncate font-mono text-micro tabular-nums ${semanticInk[analystAnomalyTone(anomaly)]}`}
-        title={anomaly.evidence}
-      >
-        {anomaly.direction === "up" ? "▲" : "▼"} {analystAnomalyDelta(anomaly)} · {anomaly.campaignName}
-        {floorSuffix}
-      </p>
+  }
+  async function archive(id: string) {
+    if (
+      !window.confirm(
+        "Arquivar esta campanha? O histórico e os indicadores serão preservados.",
+      )
+    )
+      return;
+    try {
+      await api(`/api/v1/marketing/campaigns/${id}`, { method: "DELETE" });
+      await load();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível arquivar a campanha.",
+      );
+    }
+  }
+  async function uploadAsset() {
+    if (!assetCampaign || !assetFile || assetTitle.trim().length < 2) return;
+    setSaving(true);
+    setError("");
+    const body = new FormData();
+    body.set("assetType", assetType);
+    body.set("title", assetTitle);
+    body.set("file", assetFile);
+    try {
+      await api(`/api/v1/marketing/campaigns/${assetCampaign}/assets`, {
+        method: "POST",
+        body,
+      });
+      setAssetTitle("");
+      setAssetFile(null);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível enviar o anexo.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+  const selectedCandidate = useMemo(
+    () => leadCandidates.find((candidate) => candidate.id === selectedLeadId) ?? null,
+    [leadCandidates, selectedLeadId],
+  );
+
+  async function copyCandidateHandoff() {
+    if (!selectedCandidate) return;
+    const handoff = {
+      leadId: selectedCandidate.id,
+      mode: "lead_candidate_handoff_no_delivery",
+      projectName: selectedCandidate.projectName,
+      readinessPct: selectedCandidate.readinessPct,
+      riskLevel: selectedCandidate.riskLevel,
+      source: selectedCandidate.source,
+    };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(handoff, null, 2));
+      setCandidateNotice("Handoff seguro copiado. Nenhum dado de contato foi incluído.");
+    } catch {
+      setCandidateNotice("O navegador não permitiu copiar. A seleção permanece salva apenas nesta tela.");
+    }
+  }
+
+  async function approveCandidate() {
+    if (!selectedCandidate) return;
+    setApprovalSaving(true);
+    setLeadCandidatesError("");
+    setCandidateNotice("");
+    try {
+      const payload = await api<{ approval: MetaApprovalReceipt; reused: boolean }>(
+        "/api/v1/integrations/meta/test-approvals",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leadId: selectedCandidate.id,
+            reason: approvalReason,
+          }),
+        },
+      );
+      setApprovalReceipt(payload.approval);
+      setFrozenPayloadReceipt(null);
+      setExecutionGateReceipt(null);
+      setDeliveryReceipt(null);
+      setCandidateNotice(
+        payload.reused
+          ? "Aprovação vigente reutilizada; nenhum novo recibo foi criado."
+          : "Aprovação formal registrada para a diretoria.",
+      );
+    } catch (cause) {
+      setLeadCandidatesError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível registrar a aprovação governada.",
+      );
+    } finally {
+      setApprovalSaving(false);
+    }
+  }
+
+  async function freezeApprovedPayload() {
+    if (!approvalReceipt) return;
+    setPayloadFreezing(true);
+    setLeadCandidatesError("");
+    setCandidateNotice("");
+    try {
+      const payload = await api<{ payload: FrozenMetaPayloadReceipt; reused: boolean }>(
+        "/api/v1/integrations/meta/test-payloads",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ approvalId: approvalReceipt.id }),
+        },
+      );
+      setFrozenPayloadReceipt(payload.payload);
+      setExecutionGateReceipt(null);
+      setDeliveryReceipt(null);
+      setCandidateNotice(
+        payload.reused
+          ? "Payload congelado existente reutilizado; nenhuma entrega externa ocorreu."
+          : "Payload mínimo congelado e vinculado à aprovação. Nenhuma entrega externa ocorreu.",
+      );
+    } catch (cause) {
+      setLeadCandidatesError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível congelar o payload governado.",
+      );
+    } finally {
+      setPayloadFreezing(false);
+    }
+  }
+  async function authorizeExecutionGate() {
+    if (!frozenPayloadReceipt) return;
+    setExecutionGateAuthorizing(true);
+    setLeadCandidatesError("");
+    setCandidateNotice("");
+    try {
+      const payload = await api<{ gate: MetaExecutionGateReceipt; reused: boolean }>(
+        "/api/v1/integrations/meta/test-execution-gates",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            confirmation: "AUTORIZAR_TESTE_META_UNICO",
+            payloadFingerprint: frozenPayloadReceipt.payloadFingerprint,
+            payloadId: frozenPayloadReceipt.id,
+          }),
+        },
+      );
+      setExecutionGateReceipt(payload.gate);
+      setDeliveryReceipt(null);
+      setCandidateNotice(
+        payload.reused
+          ? "Gate vigente reutilizado. Nenhum evento foi enviado à Meta."
+          : "Gate temporário autorizado após dry-run. Nenhum evento foi enviado à Meta.",
+      );
+    } catch (cause) {
+      setLeadCandidatesError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível autorizar o gate de execução.",
+      );
+    } finally {
+      setExecutionGateAuthorizing(false);
+    }
+  }
+
+  async function deliverControlledMetaTest() {
+    if (!executionGateReceipt || deliveryReceipt) return;
+    const confirmed = window.confirm(
+      "Enviar exatamente 1 evento Lead ao dataset Meta em modo de teste? Esta ação será auditada e não poderá ser repetida.",
     );
-  };
+    if (!confirmed) return;
+    setDeliverySending(true);
+    setLeadCandidatesError("");
+    setCandidateNotice("");
+    try {
+      const payload = await api<{ delivery: MetaDeliveryReceipt; reused: boolean }>(
+        "/api/v1/integrations/meta/test-deliveries",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": executionGateReceipt.idempotencyKey,
+          },
+          body: JSON.stringify({
+            confirmation: "ENVIAR_TESTE_META_AGORA",
+            gateFingerprint: executionGateReceipt.gateFingerprint,
+            gateId: executionGateReceipt.id,
+          }),
+        },
+      );
+      setDeliveryReceipt(payload.delivery);
+      setCandidateNotice(
+        payload.reused
+          ? "Recibo existente recuperado; nenhum reenvio ocorreu."
+          : "A Meta confirmou exatamente um evento no dataset de teste.",
+      );
+      await loadDeliveryObservability();
+    } catch (cause) {
+      setLeadCandidatesError(
+        cause instanceof Error ? cause.message : "Não foi possível comprovar a entrega controlada.",
+      );
+    } finally {
+      setDeliverySending(false);
+    }
+  }
+
+  const conversion = useMemo(
+    () =>
+      data?.summary.leads ? (data.summary.sales / data.summary.leads) * 100 : 0,
+    [data],
+  );
+  const directorDecision = useMemo(() => {
+    const summary = data?.summary;
+    if (!summary || summary.total === 0)
+      return {
+        label: "Cadastrar primeira campanha",
+        href: "#new-campaign",
+        title: "Começar a medição",
+        detail: "Ainda não há campanha interna para acompanhar até a venda.",
+      };
+    if (summary.active === 0)
+      return {
+        label: "Revisar carteira",
+        href: "#campaign-results",
+        title: "Nenhuma campanha ativa",
+        detail:
+          "Defina qual campanha deve operar antes de analisar desempenho.",
+      };
+    if (summary.leads > 0 && summary.sales === 0)
+      return {
+        label: "Abrir pipeline",
+        href: "/pipeline",
+        title: "Leads sem venda registrada",
+        detail: `${summary.leads} leads atribuídos exigem revisão do atendimento e do avanço no funil.`,
+      };
+    if (summary.spend === null)
+      return {
+        label: "Conectar custo real",
+        href: "/integrations",
+        title: "Investimento ainda não confirmado",
+        detail:
+          "Resultados existem, mas a eficiência financeira depende do custo recebido da mídia.",
+      };
+    return {
+      label: "Ver relatório de marketing",
+      href: "/reports/marketing",
+      title: "Operação mensurável",
+      detail: `${summary.sales} vendas e ${money.format(summary.revenue)} em receita observada no CRM.`,
+    };
+  }, [data]);
 
   return (
-    <div className="space-y-4 pb-10" data-phase="campaign-quality">
-      {/* ===== Estado da comunicação com a Meta: janela analisada, honestidade
-             do dado (completo/piso), custos e controles da janela. ===== */}
-      <section
-        aria-label="Estado da comunicação com a Meta"
-        className={`cc5-reveal ${cc5Panel} flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-5`}
-      >
-        <p className="font-mono text-rotulo font-semibold uppercase tracking-[.18em] text-[var(--atlas-texto-forte)]">
-          META · ÚLTIMOS <span className="tabular-nums">{data?.period.days ?? days}</span> DIAS
+    <div className="space-y-6 pb-12">
+      <header className="rounded-2xl border border-sky-400/15 bg-sky-500/[.055] p-5 sm:p-6">
+        <p className="text-xs font-bold uppercase tracking-[.2em] text-sky-300">
+          Marketing operacional
         </p>
-        {data ? (
-          <p className="font-mono text-micro tabular-nums text-[var(--atlas-texto-fraco)]" title="Janela analisada (UTC)">
-            {isoDay(data.period.start)} → {isoDay(data.period.end)}
-          </p>
-        ) : null}
-        <p role="status" aria-live="polite" className={`${cc5Chip} ${metaState.chip}`}>
-          <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${metaState.dot}`} />
-          {metaState.label}
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-.04em] text-white">
+          Campanhas e resultado comercial
+        </h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+          Planeje e acompanhe campanhas internas mesmo sem credenciais externas.
+          A conexão Meta é uma etapa separada e claramente sinalizada.
         </p>
-        {data && !data.policy.spendMeasured ? (
-          <p
-            className={`${cc5Chip} ${chipTone.neutral}`}
-            title="marketing_spend indisponível — CPL omitido em vez de fingir zero."
-          >
-            CUSTOS OFF · CPL OMITIDO
-          </p>
-        ) : null}
-        <div className="ml-auto flex items-center gap-2">
-          <select
-            aria-label="Período"
-            value={days}
-            onChange={(event) => setDays(Number(event.target.value))}
-            className={`rounded-lg border border-[rgba(148,163,184,.12)] bg-white/[.03] px-3 py-1.5 font-mono text-rotulo font-semibold uppercase tracking-[.08em] tabular-nums text-[var(--atlas-texto-forte)] transition-colors hover:border-[rgba(148,163,184,.22)] ${cc5Focus}`}
-          >
-            <option className="text-slate-900" value={7}>7 dias</option>
-            <option className="text-slate-900" value={30}>30 dias</option>
-            <option className="text-slate-900" value={90}>90 dias</option>
-          </select>
-          <button
-            type="button"
-            onClick={() => setReloadKey((value) => value + 1)}
-            disabled={loading}
-            aria-label="Atualizar leitura da Meta e as análises"
-            title="Atualizar leitura da Meta e as análises"
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(148,163,184,.12)] bg-white/[.03] font-mono text-sm text-[var(--atlas-texto-medio)] transition-colors hover:border-[rgba(148,163,184,.22)] hover:text-[var(--atlas-texto-forte)] disabled:cursor-wait disabled:opacity-60 ${cc5Focus}`}
-          >
-            ↻
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link href="/marketing/creatives" className="atlas-button-secondary">
+            Biblioteca de criativos
+          </Link>
+          <Link href="/integrations" className="atlas-button-secondary">
+            Conexões externas
+          </Link>
+        </div>
+      </header>
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-rose-400/25 bg-rose-400/10 p-4 text-sm text-rose-100"
+        >
+          {error}
+          <button className="ml-3 underline" onClick={() => void load()}>
+            Tentar novamente
           </button>
         </div>
-      </section>
-
-      {/* ===== Cabeçalho compacto ===== */}
-      <header className={`cc5-reveal ${cc5Panel} p-5 sm:p-6`}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className={cc5Eyebrow}>MARKETING · CENTRAL DE CAMPANHAS</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--atlas-texto-forte)] sm:text-3xl">
-              Qualidade por campanha
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--atlas-texto-medio)]">
-              Quais campanhas trazem leads que qualificam — e quais trazem leads que o time descarta.
-              Nota A/B/C explicável, motivos de descarte na taxonomia Meta e custo por lead qualificado
-              quando houver investimento lançado.
+      ) : null}
+      <section
+        data-ux-phase="30-campaign-decision-first"
+        className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]"
+      >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            [
+              "Vendas observadas",
+              data?.summary.sales ?? 0,
+              "Resultado registrado no CRM",
+            ],
+            [
+              "Receita observada",
+              money.format(data?.summary.revenue ?? 0),
+              "Sem alegar incrementalidade",
+            ],
+            [
+              "Investimento conhecido",
+              data?.summary.spend === null
+                ? "Não informado"
+                : money.format(data?.summary.spend ?? 0),
+              `${data?.summary.campaignsWithKnownSpend ?? 0} campanha(s) com custo`,
+            ],
+            [
+              "Conversão observada",
+              `${conversion.toFixed(1).replace(".", ",")}%`,
+              `${data?.summary.leads ?? 0} leads atribuídos`,
+            ],
+          ].map(([label, value, hint]) => (
+            <article
+              key={label}
+              className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"
+            >
+              <p className="text-xs text-slate-500">{label}</p>
+              <p className="mt-2 text-2xl font-semibold text-white">
+                {loading ? "—" : value}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500">{hint}</p>
+            </article>
+          ))}
+        </div>
+        <aside className="flex flex-col justify-between rounded-2xl border border-sky-400/20 bg-sky-400/[.07] p-5">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-300">
+              Decisão recomendada
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-white">
+              {loading ? "Analisando carteira…" : directorDecision.title}
+            </h2>
+            <p className="mt-2 text-sm leading-5 text-slate-300">
+              {loading
+                ? "Consolidando campanhas e resultados reais."
+                : directorDecision.detail}
             </p>
           </div>
           <Link
-            href="/marketing/campaign-intelligence"
-            className={`inline-flex min-h-11 items-center font-mono text-rotulo font-semibold uppercase tracking-[.14em] text-[var(--atlas-accent)] transition-colors hover:text-[var(--atlas-texto-forte)] ${cc5Focus}`}
+            href={directorDecision.href}
+            className="atlas-button-primary mt-4 w-fit"
           >
-            Inteligência multicanal →
+            {directorDecision.label}
           </Link>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-[rgba(148,163,184,.12)] pt-4">
-          <span
-            className={`${cc5Chip} ${chipTone.emerald}`}
-            title="Conversão medida no CRM (vendas registradas), não no gerenciador de anúncios."
-          >
-            CRM é a verdade da conversão
-          </span>
-          <span
-            className={`${cc5Chip} ${chipTone.accent}`}
-            title={`Campanha só recebe nota de qualidade a partir de ${minimum} leads na janela.`}
-          >
-            Amostra mínima · {minimum} leads
-          </span>
-          <span
-            className={`${cc5Chip} ${chipTone.neutral}`}
-            title="Lê apenas tabelas vivas: marketing_campaigns, leads, lead_events, marketing_spend."
-          >
-            Só tabelas vivas
-          </span>
-        </div>
-      </header>
-
-      {/* Erro nunca vira tela vazia: motivo recebido da API + retry visíveis. */}
-      {error ? (
-        <AtlasRecoverableError
-          description={error}
-          onRetry={() => setReloadKey((value) => value + 1)}
-          busy={loading}
-          scope="page"
-        />
-      ) : null}
-      {loading && !data ? <AtlasSkeleton className="h-72 w-full" /> : null}
-
-      {/* ===== 1º na hierarquia: as taxas que decidem verba. ===== */}
-      {totals && data ? (
-        <section
-          aria-label="Indicadores decisivos da janela"
-          className="cc5-reveal grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-          style={{ animationDelay: "70ms" }}
-        >
-          <MetricCard
-            eyebrow="Qualificação de cadastro"
-            explain="Parcela dos leads da janela com cadastro qualificado (score alto ou lead quente) — é proxy de cadastro, NÃO é venda; a venda aparece no número de vendas ao lado. Fonte: /api/v1/analytics/campaign-quality."
-            value={totals.leads > 0 ? `${Math.round((totals.qualified / totals.leads) * 1000) / 10}%` : "—"}
-            detail={`${totals.qualified} de ${totals.leads} leads · ${totals.sales} vendas`}
-            barClass="bg-[var(--atlas-accent)]"
-            trend={trendLine("qualification_rate")}
-          />
-          <MetricCard
-            eyebrow="Taxa de descarte"
-            explain="Crítica acima de 25% da janela: leads que o time descartou, com motivo na taxonomia Meta quando classificado."
-            value={totals.leads > 0 ? `${Math.round((totals.discarded / totals.leads) * 1000) / 10}%` : "—"}
-            valueClass={discardCritical ? "text-[var(--atlas-estado-perigo)]" : "text-[var(--atlas-texto-forte)]"}
-            detail={
-              totals.discarded > 0
-                ? `${totals.classifiedDiscards} de ${totals.discarded} com motivo (${Math.round((totals.classifiedDiscards / totals.discarded) * 100)}%)`
-                : "nenhum descarte na janela"
-            }
-            barClass={discardCritical ? "bg-[var(--atlas-estado-perigo)]" : "bg-[rgba(148,163,184,.25)]"}
-            trend={trendLine("discard_category_share")}
-          />
-          <MetricCard
-            eyebrow="CPL médio"
-            explain="Investimento lançado em marketing_spend dividido pelos leads da janela; por qualificada quando houver qualificação."
-            value={
-              data.policy.spendMeasured && totals.leads > 0 && totals.spend > 0
-                ? brl(totals.spend / totals.leads)
-                : "—"
-            }
-            detail={
-              data.policy.spendMeasured
-                ? totals.qualified > 0 && totals.spend > 0
-                  ? `${brl(totals.spend)} · ${brl(totals.spend / totals.qualified)} por qualificada`
-                  : `${brl(totals.spend)} investidos`
-                : "custos indisponíveis (marketing_spend)"
-            }
-            barClass={data.policy.spendMeasured ? "bg-[rgba(148,163,184,.25)]" : "bg-[var(--atlas-estado-atencao)]"}
-            trend={trendLine("cost_per_lead")}
-          />
-          <MetricCard
-            eyebrow="Campanhas com leads"
-            explain="Campanhas ranqueadas na janela versus o total cadastrado na organização."
-            value={`${totals.campaignsRanked}`}
-            detail={`${totals.campaigns} na organização · janela de ${data.period.days} dias`}
-            barClass="bg-[rgba(148,163,184,.25)]"
-            trend={trendLine("lead_volume")}
-          />
-        </section>
-      ) : null}
-
-      {/* ===== Honestidade do dado — sagrada e com tipografia digna. ===== */}
-      {data && (data.policy.windowComplete === false || !data.policy.spendMeasured) ? (
-        <section
-          aria-label="Cobertura e honestidade do dado"
-          className={`cc5-reveal ${cc5Panel} p-5`}
-          style={{ animationDelay: "70ms" }}
-        >
-          <p className={cc5Eyebrow} title="O painel declara limites de cobertura em vez de fingir precisão.">
-            Cobertura · Honestidade do dado
-          </p>
-          <div className="mt-3 grid gap-3 lg:grid-cols-2">
-            {data.policy.windowComplete === false ? (
-              <div className={`relative ${cc5Inner} p-4 pl-5`}>
-                <span aria-hidden="true" className="absolute bottom-3 left-0 top-3 w-[2px] rounded-full bg-[var(--atlas-estado-atencao)]" />
-                <p className="font-mono text-micro font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
-                  Janela truncada
-                </p>
-                <p className="mt-1.5 text-sm leading-6 text-[var(--atlas-texto-forte)]">
-                  Janela truncada no teto de paginação —{" "}
-                  <strong className="font-semibold">números são piso, não total</strong>.
-                </p>
-              </div>
-            ) : null}
-            {!data.policy.spendMeasured ? (
-              <div className={`relative ${cc5Inner} p-4 pl-5`}>
-                <span aria-hidden="true" className="absolute bottom-3 left-0 top-3 w-[2px] rounded-full bg-[var(--atlas-estado-atencao)]" />
-                <p className="font-mono text-micro font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
-                  Custo não medido
-                </p>
-                <p className="mt-1.5 text-sm leading-6 text-[var(--atlas-texto-forte)]">
-                  Custos indisponíveis (<span className="font-mono text-corpo">marketing_spend</span>) —{" "}
-                  <strong className="font-semibold">CPL omitido em vez de fingir zero</strong>.
-                </p>
-              </div>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
-      {data && insufficient > 0 ? (
-        <div
-          role="note"
-          aria-label="Campanhas sem amostra mínima"
-          className={`cc5-reveal relative ${cc5Panel} p-4 pl-6`}
-          style={{ animationDelay: "70ms" }}
-        >
-          <span aria-hidden="true" className="absolute bottom-4 left-0 top-4 w-[2px] rounded-full bg-[var(--atlas-estado-atencao)]" />
-          <p className="font-mono text-micro font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
-            Amostra mínima · {minimum} leads
-          </p>
-          <p className="mt-1.5 text-sm leading-6 text-[var(--atlas-texto-medio)]">
-            {insufficient === 1 ? (
-              <>
-                <span className="font-mono font-semibold tabular-nums text-[var(--atlas-texto-forte)]">1</span> campanha ainda
-                não atingiu
-              </>
-            ) : (
-              <>
-                <span className="font-mono font-semibold tabular-nums text-[var(--atlas-texto-forte)]">{insufficient}</span>{" "}
-                campanhas ainda não atingiram
-              </>
-            )}{" "}
-            a amostra mínima de{" "}
-            <span className="font-mono font-semibold tabular-nums text-[var(--atlas-texto-forte)]">{minimum}</span> leads — sem
-            nota de qualidade e sem decisão de verba até lá.
-          </p>
-        </div>
-      ) : null}
-
-      {/* ===== 2º na hierarquia: o ranking campanha a campanha. ===== */}
-      {data ? (
-        <section
-          aria-label="Ranking de campanhas por qualidade"
-          className={`cc5-reveal ${cc5Panel}`}
-          style={{ animationDelay: "140ms" }}
-        >
-          <div className="border-b border-[rgba(148,163,184,.12)] p-5 sm:px-6">
-            <p
-              className={cc5Eyebrow}
-              title="Fonte: /api/v1/analytics/campaign-quality — tabelas vivas marketing_campaigns, leads, lead_events, marketing_spend."
-            >
-              Ranking · Qualidade da lead
-            </p>
-            <h2 className="mt-1.5 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
-              Campanhas ordenadas pela qualidade da lead
-            </h2>
-            <p className="mt-1.5 max-w-3xl text-xs leading-5 text-[var(--atlas-texto-fraco)]">
-              Qualificação de cadastro = {data.policy.qualifiedDefinition} (proxy de cadastro, não é venda —
-              a venda é a coluna Vendas, confirmada no CRM). Nota A: {data.policy.qualityGradeRule.A}. Nota
-              B: {data.policy.qualityGradeRule.B}.
-            </p>
-          </div>
-          <div className="overflow-x-auto p-5 sm:px-6">
-            {ranking.length === 0 ? (
-              <AtlasEmpty
-                reason="no-activity"
-                title="Nenhuma campanha com leads na janela"
-                description="Assim que leads chegarem com campaign_id preenchido (portais, Meta ou importação), o ranking de qualidade aparece aqui. Amplie o período para 90 dias ou confira as integrações."
-                action={<Link href="/integrations" className="atlas-button-secondary inline-flex min-h-11 items-center">Ver integrações</Link>}
-              />
-            ) : (
-              <table className="w-full min-w-[1060px] text-left text-sm text-[var(--atlas-texto-medio)]">
-                <caption className="sr-only">
-                  Campanhas ordenadas pela qualidade da lead na janela de {data.period.days} dias.
-                </caption>
-                <thead>
-                  <tr className="border-b border-[rgba(148,163,184,.12)] font-mono text-micro uppercase tracking-[.14em] text-[var(--atlas-texto-fraco)]">
-                    <th scope="col" className="py-3 pr-4 font-semibold">Campanha</th>
-                    <th scope="col" className="py-3 pr-4 font-semibold">Qualidade</th>
-                    <th scope="col" className="py-3 pr-4 text-right font-semibold">Leads</th>
-                    <th scope="col" className="py-3 pr-4 text-right font-semibold">Qualif. cadastro</th>
-                    <th scope="col" className="py-3 pr-4 text-right font-semibold">Score médio</th>
-                    <th scope="col" className="py-3 pr-4 text-right font-semibold">Descartes</th>
-                    <th scope="col" className="py-3 pr-4 text-right font-semibold">Vendas</th>
-                    <th scope="col" className="py-3 pr-4 text-right font-semibold">Investimento</th>
-                    <th scope="col" className="py-3 pr-4 text-right font-semibold">CPL</th>
-                    <th scope="col" className="py-3 text-right font-semibold">CPL qualificado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ranking.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="border-b border-[rgba(148,163,184,.08)] align-top transition-colors last:border-b-0 hover:bg-white/[.02]"
-                    >
-                      <td className="py-4 pr-4">
-                        <div className="font-medium text-[var(--atlas-texto-forte)]">{row.name}</div>
-                        {/* Linha registrada por automação (ingestão/backfill) a
-                            partir de um id externo: o Atlas nunca consultou o
-                            estado dela na Meta, então o status não é impresso
-                            como se fosse fato verificado. */}
-                        <div
-                          className="mt-1 font-mono text-micro uppercase tracking-[.08em] text-[var(--atlas-texto-fraco)]"
-                          title={isAutoRegisteredCampaign(row.name) ? AUTO_REGISTERED_CAMPAIGN_STATUS_TITLE : undefined}
-                        >
-                          {row.platform} ·{" "}
-                          {isAutoRegisteredCampaign(row.name) ? AUTO_REGISTERED_CAMPAIGN_STATUS_LABEL : row.status}
-                        </div>
-                      </td>
-                      <td className="py-4 pr-4">
-                        {row.sampleSufficient && row.qualityGrade ? (
-                          <span className={`${cc5Chip} ${chipTone[gradeChips[row.qualityGrade]]}`}>
-                            NOTA {row.qualityGrade}
-                          </span>
-                        ) : (
-                          <span
-                            className={`${cc5Chip} ${chipTone.amber}`}
-                            title={`Abaixo da amostra mínima de ${minimum} leads — sem nota e sem decisão de verba.`}
-                          >
-                            AMOSTRA INSUFICIENTE
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-4 pr-4 text-right font-mono tabular-nums text-[var(--atlas-texto-forte)]">{row.leads}</td>
-                      <td className="py-4 pr-4 text-right">
-                        <span className="font-mono tabular-nums text-[var(--atlas-texto-forte)]">{row.qualifiedLeads}</span>{" "}
-                        <span
-                          className="font-mono text-xs tabular-nums text-[var(--atlas-texto-fraco)]"
-                          title={row.qualificationRate === null ? omission(row) : undefined}
-                        >
-                          ({row.qualificationRate === null ? "—" : `${row.qualificationRate}%`})
-                        </span>
-                        {row.qualificationRate !== null ? (
-                          <span
-                            aria-hidden="true"
-                            className="ml-auto mt-1.5 block h-[3px] w-16 overflow-hidden rounded-full bg-white/[.05]"
-                          >
-                            <span
-                              className="block h-full rounded-full bg-[var(--atlas-accent)] opacity-80"
-                              style={{ width: `${Math.min(100, Math.max(0, row.qualificationRate))}%` }}
-                            />
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="py-4 pr-4 text-right font-mono tabular-nums text-[var(--atlas-texto-forte)]">
-                        {row.avgScore ?? "—"}
-                      </td>
-                      <td className="py-4 pr-4 text-right">
-                        <span
-                          className={`font-mono tabular-nums ${
-                            row.discardRate !== null && row.discardRate > 25 ? "text-[var(--atlas-estado-perigo)]" : "text-[var(--atlas-texto-forte)]"
-                          }`}
-                        >
-                          {row.discarded}
-                        </span>
-                        {row.discardRate !== null && row.discarded > 0 ? (
-                          <span className="font-mono text-xs tabular-nums text-[var(--atlas-texto-fraco)]"> ({row.discardRate}%)</span>
-                        ) : null}
-                        {row.topDiscardReason ? (
-                          <div className="mt-1 text-xs text-[var(--atlas-texto-fraco)]">Principal: {row.topDiscardReason.label}</div>
-                        ) : null}
-                        {row.discardsByMetaCategory.length ? (
-                          <div className="mt-2 flex flex-wrap justify-end gap-1">
-                            {row.discardsByMetaCategory.slice(0, 3).map((item) => (
-                              <span
-                                key={item.category}
-                                className={`${cc5Chip} ${chipTone.neutral} px-2 py-0.5 tracking-[.06em]`}
-                              >
-                                {metaCategoryLabels[item.category] ?? item.category} · {item.count}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="py-4 pr-4 text-right">
-                        <span className="font-mono tabular-nums text-[var(--atlas-texto-forte)]">{row.sales}</span>{" "}
-                        <span
-                          className="font-mono text-xs tabular-nums text-[var(--atlas-texto-fraco)]"
-                          title={row.conversionRate === null ? omission(row) : undefined}
-                        >
-                          ({row.conversionRate === null ? "—" : `${row.conversionRate}%`})
-                        </span>
-                      </td>
-                      <td className="py-4 pr-4 text-right font-mono tabular-nums text-[var(--atlas-texto-forte)]">
-                        {row.spend > 0 ? brl(row.spend) : "—"}
-                      </td>
-                      <td
-                        className="py-4 pr-4 text-right font-mono tabular-nums text-[var(--atlas-texto-forte)]"
-                        title={row.costPerLead === null && !row.sampleSufficient ? omission(row) : undefined}
-                      >
-                        {row.costPerLead === null ? "—" : brl(row.costPerLead)}
-                      </td>
-                      <td
-                        className="py-4 text-right font-mono tabular-nums text-[var(--atlas-texto-forte)]"
-                        title={row.costPerQualifiedLead === null && !row.sampleSufficient ? omission(row) : undefined}
-                      >
-                        {row.costPerQualifiedLead === null ? "—" : brl(row.costPerQualifiedLead)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </section>
-      ) : null}
-
-      {/* ===== 3º na hierarquia: IA em painéis distintos e explicáveis —
-             o Analista NARRA, o Conselheiro RECOMENDA. ===== */}
+        </aside>
+      </section>
       <section
-        aria-label="Análises de IA da central de campanhas"
-        className="cc5-reveal grid items-start gap-4 xl:grid-cols-2"
-        style={{ animationDelay: "140ms" }}
+        data-v30-phase="164-meta-eligible-lead-selection"
+        className="rounded-2xl border border-violet-400/15 bg-violet-500/[.035] p-5 sm:p-6"
       >
-        <article aria-label="Analista Andromeda em dedicação integral" className={`${cc5Panel} ${cc5PanelHover} p-5 sm:p-6`}>
-          {/* Flutuação MUITO sutil do robô — keyframes inline (globals.css é
-              intocável) sob motion-safe: zero movimento em reduced-motion. */}
-          <style>{"@keyframes atlasAnalystFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}"}</style>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <p
-              className={cc5Eyebrow}
-              title="Narra a janela: compara com o período anterior de mesmo tamanho e aponta anomalias."
-            >
-              Analista · Dedicação full-time
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-300">
+              Meta · gate humano
             </p>
-            {analyst ? (
-              <span className={`${cc5Chip} ${analyst.engine === "generative" ? chipTone.accent : chipTone.neutral}`}>
-                {analyst.engine === "generative" ? "IA GENERATIVA" : "DETERMINÍSTICO"}
-              </span>
-            ) : null}
-            {analyst ? (
-              <span className="ml-auto font-mono text-micro tabular-nums text-[var(--atlas-texto-fraco)]">
-                atualizado há {analystAgeSeconds}s
-              </span>
-            ) : null}
+            <h2 className="mt-2 text-xl font-semibold text-white">
+              Lead real elegível para o teste Meta
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              A diretoria escolhe uma lead mascarada, revisa a prontidão e registra a justificativa.
+              Nenhum evento foi enviado para Meta.
+            </p>
           </div>
-          <p className="mt-1.5 font-mono text-micro leading-4 text-[var(--atlas-texto-fraco)]">
-            fonte /api/v1/ai/campaign-analyst · só agregados · zero PII · narra; quem recomenda é o conselheiro
-          </p>
-          <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-start">
-            <figure className={`${cc5Inner} shrink-0 self-center px-3 pb-2 pt-3 sm:self-start`}>
-              <div className="motion-safe:[animation:atlasAnalystFloat_7s_ease-in-out_infinite]">
-                <Image
-                  src="/brand/atlas-robot-assistant.png"
-                  alt="Robô analista Atlas em dedicação integral às campanhas"
-                  width={140}
-                  height={210}
-                  className="h-auto w-[96px] object-contain sm:w-[112px]"
+          <button
+            type="button"
+            className="atlas-button-secondary"
+            onClick={() => void loadLeadCandidates()}
+            disabled={leadCandidatesLoading}
+          >
+            {leadCandidatesLoading ? "Atualizando…" : "Atualizar candidatas"}
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          {[
+            ["Encontradas", leadCandidateSummary?.found ?? 0],
+            ["Elegíveis", leadCandidateSummary?.eligible ?? 0],
+            ["Consentidas", leadCandidateSummary?.consented ?? 0],
+            ["Com identificador", leadCandidateSummary?.withIdentifier ?? 0],
+          ].map(([label, value]) => (
+            <article key={label} className="rounded-xl border border-white/[.07] bg-[#080d17]/75 p-3">
+              <p className="text-[10px] uppercase tracking-[.12em] text-slate-500">{label}</p>
+              <p className="mt-1 text-xl font-semibold text-white">{leadCandidatesLoading ? "—" : value}</p>
+            </article>
+          ))}
+        </div>
+
+        {leadCandidatesError ? (
+          <div role="alert" className="mt-4 rounded-xl border border-rose-400/25 bg-rose-400/10 p-3 text-sm text-rose-100">
+            {leadCandidatesError}
+          </div>
+        ) : null}
+
+        {leadCandidatesLoading ? (
+          <p className="mt-5 text-sm text-slate-400">Verificando origem, consentimento, identificador e projeto…</p>
+        ) : leadCandidates.length === 0 ? (
+          <div className="mt-5 rounded-xl border border-dashed border-white/10 p-5 text-sm text-slate-400">
+            Nenhuma lead Meta foi encontrada no escopo atual. O Atlas não cria candidata fictícia.
+          </div>
+        ) : (
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(320px,.95fr)]">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {leadCandidates.slice(0, 6).map((candidate) => (
+                <MetaLeadCandidateCard
+                  key={candidate.id}
+                  candidate={candidate}
+                  selected={candidate.id === selectedLeadId}
+                  onSelect={() => {
+                    setSelectedLeadId(candidate.id);
+                    setApprovalReceipt(null);
+                    setFrozenPayloadReceipt(null);
+                    setExecutionGateReceipt(null);
+                    setCandidateNotice("");
+                  }}
                 />
-              </div>
-              <figcaption className="mt-2 border-t border-[rgba(148,163,184,.12)] pt-1.5 text-center font-mono text-micro font-semibold uppercase tracking-[.18em] text-[var(--atlas-texto-fraco)]">
-                Andromeda · on
-              </figcaption>
-            </figure>
-            <div className="min-w-0 flex-1 space-y-3">
-              {analystError ? (
-                <AtlasRecoverableError
-                  description={analystError}
-                  onRetry={() => setReloadKey((value) => value + 1)}
-                  busy={analystLoading}
-                  scope="module"
-                />
-              ) : analystLoading && !analyst ? (
-                <AtlasSkeleton className="h-24 w-full" />
-              ) : analyst && data && data.ranking.length === 0 ? (
-                <AtlasEmpty
-                  reason="no-activity"
-                  title="Nada para narrar ainda"
-                  description="Assim que campanhas tiverem leads na janela, o analista compara a janela atual com a anterior, aponta anomalias e escreve o resumo executivo aqui."
-                />
-              ) : analyst ? (
+              ))}
+            </div>
+
+            <aside
+              data-v30-phase="165-meta-director-approval-receipt"
+              className="rounded-2xl border border-sky-400/20 bg-sky-400/[.055] p-5"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-300">
+                Aprovação governada
+              </p>
+              {selectedCandidate ? (
                 <>
-                  <p aria-live="polite" className="max-w-[62ch] text-[15px] leading-8 text-[var(--atlas-texto-forte)]">
-                    {analyst.narrative}
+                  <h3 className="mt-2 font-semibold text-white">{selectedCandidate.label}</h3>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {selectedCandidate.projectName} · {selectedCandidate.readinessPct}% pronta
                   </p>
-                  {analyst.anomalies.length ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {analyst.anomalies.slice(0, 6).map((anomaly) => (
-                        <span
-                          key={`${anomaly.campaignId}-${anomaly.kind}`}
-                          title={anomaly.evidence}
-                          className={`${cc5Chip} ${semanticChip[analystAnomalyTone(anomaly)]}`}
-                        >
-                          {analystKindLabels[anomaly.kind]} {analystAnomalyDelta(anomaly)} · {anomaly.campaignName}
-                        </span>
-                      ))}
-                      {analyst.anomalies.length > 6 ? (
-                        <span className={`${cc5Chip} ${chipTone.neutral}`}>+{analyst.anomalies.length - 6}</span>
-                      ) : null}
-                    </div>
+                  <p className="mt-3 text-xs leading-5 text-slate-400">{selectedCandidate.privacy}</p>
+                  {selectedCandidate.missing.length ? (
+                    <p className="mt-3 rounded-xl bg-amber-400/10 p-3 text-xs text-amber-100">
+                      Pendências: {selectedCandidate.missing.join(", ")}.
+                    </p>
                   ) : (
-                    <p className="text-xs text-[var(--atlas-texto-fraco)]">
-                      Nenhuma anomalia entre a janela atual e a anterior de mesmo tamanho.
+                    <p className="mt-3 rounded-xl bg-emerald-400/10 p-3 text-xs text-emerald-100">
+                      Elegibilidade completa. A aprovação vale por 24 horas e não autoriza entrega externa.
                     </p>
                   )}
+                  <label className="mt-4 block text-xs text-slate-400">
+                    Justificativa da diretoria
+                    <textarea
+                      rows={3}
+                      maxLength={500}
+                      className={`mt-1 ${input}`}
+                      placeholder="Ex.: lead consentida e vinculada ao projeto escolhido para o ensaio controlado."
+                      value={approvalReason}
+                      onChange={(event) => setApprovalReason(event.target.value)}
+                    />
+                  </label>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={
+                        approvalSaving
+                        || selectedCandidate.readinessPct !== 100
+                        || selectedCandidate.riskLevel !== "baixo"
+                        || approvalReason.trim().length < 10
+                      }
+                      onClick={() => void approveCandidate()}
+                    >
+                      {approvalSaving ? "Registrando…" : "Aprovar lead por 24h"}
+                    </button>
+                    <button
+                      type="button"
+                      className="atlas-button-secondary"
+                      onClick={() => void copyCandidateHandoff()}
+                    >
+                      Copiar handoff seguro
+                    </button>
+                  </div>
                 </>
-              ) : null}
-            </div>
-          </div>
-        </article>
+              ) : (
+                <p className="mt-3 text-sm text-slate-400">Selecione uma candidata para revisar.</p>
+              )}
 
-        <article aria-label="Conselheiro Andromeda" className={`${cc5Panel} ${cc5PanelHover} p-5 sm:p-6`}>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <p
-              className={cc5Eyebrow}
-              title="Recomenda o próximo passo por campanha cruzando qualidade, funil e descartes."
-            >
-              Conselheiro · Pipeline × Andromeda
-            </p>
-            {advisor ? (
-              <span className={`${cc5Chip} ${advisor.engine === "generative" ? chipTone.accent : chipTone.neutral}`}>
-                {advisor.engine === "generative"
-                  ? `IA GENERATIVA${advisor.model ? ` · ${advisor.model}` : ""}`
-                  : "REGRAS DETERMINÍSTICAS"}
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-1.5 font-mono text-micro leading-4 text-[var(--atlas-texto-fraco)]">
-            fonte /api/v1/ai/andromeda-advisor · só agregados · zero PII · nada é aplicado na Meta automaticamente
-          </p>
-          <div className="mt-4 space-y-3">
-            <div className={`relative ${cc5Inner} p-4 pl-5`}>
-              <span aria-hidden="true" className="absolute bottom-3 left-0 top-3 w-[2px] rounded-full bg-[var(--atlas-estado-atencao)]" />
-              <p className="font-mono text-micro font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
-                Trava de segurança
+              {candidateNotice ? (
+                <p role="status" className="mt-4 text-xs text-sky-100">{candidateNotice}</p>
+              ) : null}
+              {approvalReceipt ? (
+                <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-400/[.07] p-3 text-xs text-emerald-100">
+                  <p className="font-semibold">Recibo interno registrado</p>
+                  <p className="mt-1">Validade: {approvalReceipt.expiresAt ? new Date(approvalReceipt.expiresAt).toLocaleString("pt-BR") : "não informada"}</p>
+                  <p className="mt-1">Evento externo enviado: não</p>
+                  <p className="mt-1 break-all text-emerald-200/70">Fingerprint: {approvalReceipt.candidateFingerprint.slice(0, 16)}…</p>
+                  <button
+                    type="button"
+                    data-phase="166-meta-payload-freeze"
+                    className="atlas-button-secondary mt-3 disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={payloadFreezing || approvalReceipt.deliveryAuthorized || approvalReceipt.externalEventSent}
+                    onClick={() => void freezeApprovedPayload()}
+                  >
+                    {payloadFreezing ? "Congelando…" : "Congelar payload mínimo"}
+                  </button>
+                </div>
+              ) : null}
+              {frozenPayloadReceipt ? (
+                <div className="mt-4 rounded-xl border border-violet-400/20 bg-violet-400/[.07] p-3 text-xs text-violet-100">
+                  <p className="font-semibold">Payload governado congelado</p>
+                  <p className="mt-1">Contrato: {frozenPayloadReceipt.schemaVersion}</p>
+                  <p className="mt-1">Entrega autorizada: não</p>
+                  <p className="mt-1">Evento externo enviado: não</p>
+                  <p className="mt-1 break-all text-violet-200/70">
+                    Contexto aprovado: {frozenPayloadReceipt.approvedContextFingerprint.slice(0, 16)}…
+                  </p>
+                  <p className="mt-1 break-all text-violet-200/70">
+                    Payload: {frozenPayloadReceipt.payloadFingerprint.slice(0, 16)}…
+                  </p>
+                  <button
+                    type="button"
+                    data-phase="167-meta-execution-gate"
+                    className="atlas-button-secondary mt-3 disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={
+                      executionGateAuthorizing
+                      || frozenPayloadReceipt.deliveryAuthorized
+                      || frozenPayloadReceipt.externalEventSent
+                      || Boolean(executionGateReceipt)
+                    }
+                    onClick={() => void authorizeExecutionGate()}
+                  >
+                    {executionGateAuthorizing ? "Validando dry-run…" : "Autorizar teste único por 10 min"}
+                  </button>
+                  <p className="mt-2 leading-5 text-violet-200/70">
+                    Esta autorização abre somente o gate auditável. O envio exige a confirmação final separada abaixo.
+                  </p>
+                </div>
+              ) : null}
+              {executionGateReceipt ? (
+                <div className="mt-4 rounded-xl border border-sky-400/20 bg-sky-400/[.07] p-3 text-xs text-sky-100">
+                  <p className="font-semibold">Gate de execução autorizado</p>
+                  <p className="mt-1">Dry-run estrutural: aprovado</p>
+                  <p className="mt-1">Limite: {executionGateReceipt.maxDeliveries} entrega, uso único</p>
+                  <p className="mt-1">
+                    Expira: {executionGateReceipt.expiresAt ? new Date(executionGateReceipt.expiresAt).toLocaleString("pt-BR") : "não informada"}
+                  </p>
+                  <p className="mt-1">Evento externo enviado: não</p>
+                  <p className="mt-1 break-all text-sky-200/70">
+                    Gate: {executionGateReceipt.gateFingerprint.slice(0, 16)}…
+                  </p>
+                  <button
+                    type="button"
+                    data-phase="168-meta-controlled-test-delivery"
+                    className="atlas-button-primary mt-3 disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={deliverySending || Boolean(deliveryReceipt)}
+                    onClick={() => void deliverControlledMetaTest()}
+                  >
+                    {deliverySending ? "Enviando e validando…" : "Enviar 1 evento ao dataset de teste"}
+                  </button>
+                  <p className="mt-2 leading-5 text-sky-200/70">
+                    Exige confirmação final, usa event_id determinístico e devolve somente um recibo sanitizado.
+                  </p>
+                </div>
+              ) : null}
+              {deliveryReceipt ? (
+                <div className="mt-4 rounded-xl border border-emerald-400/25 bg-emerald-400/[.08] p-3 text-xs text-emerald-100">
+                  <p className="font-semibold">Entrega Meta comprovada</p>
+                  <p className="mt-1">Status: {deliveryReceipt.status}</p>
+                  <p className="mt-1">Eventos recebidos: {deliveryReceipt.eventsReceived}</p>
+                  <p className="mt-1">Dataset: {deliveryReceipt.datasetIdMasked}</p>
+                  <p className="mt-1">Tentativas: {deliveryReceipt.attempts}</p>
+                  <p className="mt-1">Confirmado: {new Date(deliveryReceipt.deliveredAt).toLocaleString("pt-BR")}</p>
+                  <p className="mt-1">Produção habilitada: não</p>
+                  <p className="mt-1 break-all text-emerald-200/70">Evento: {deliveryReceipt.eventId}</p>
+                </div>
+              ) : null}
+              <section
+                data-phase="169-meta-test-delivery-observability"
+                className="mt-4 rounded-xl border border-white/[.09] bg-black/15 p-3"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-white">Diagnóstico seguro do teste</p>
+                    <p className="mt-1 text-[11px] leading-5 text-slate-400">
+                      Reconcilia fila e recibo sem reenviar evento, sem revelar dados da lead e sem habilitar produção.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="atlas-button-secondary px-3 py-2 text-xs"
+                    disabled={deliveryObservabilityLoading}
+                    onClick={() => void loadDeliveryObservability()}
+                  >
+                    {deliveryObservabilityLoading ? "Verificando…" : "Atualizar diagnóstico"}
+                  </button>
+                </div>
+                {deliveryObservabilityError ? (
+                  <p role="alert" className="mt-3 text-xs text-rose-200">
+                    {deliveryObservabilityError}
+                  </p>
+                ) : null}
+                {!deliveryObservabilityLoading
+                && !deliveryObservabilityError
+                && deliveryObservations.length === 0 ? (
+                  <p className="mt-3 text-xs text-slate-400">Nenhum teste controlado foi registrado.</p>
+                ) : null}
+                <div className="mt-3 space-y-2">
+                  {deliveryObservations.slice(0, 3).map((observation) => {
+                    const status = {
+                      confirmed: ["Confirmado", "text-emerald-200", "border-emerald-400/20"],
+                      waiting_local_worker: ["Aguardando worker", "text-sky-200", "border-sky-400/20"],
+                      failed_before_external_attempt: ["Falha local segura", "text-amber-200", "border-amber-400/20"],
+                      external_result_inconclusive: ["Requer conciliação manual", "text-amber-200", "border-amber-400/20"],
+                      dead_letter: ["Bloqueado para revisão", "text-rose-200", "border-rose-400/20"],
+                    }[observation.operationalStatus];
+                    return (
+                      <article
+                        key={observation.eventId}
+                        className={`rounded-lg border bg-white/[.025] p-3 ${status[2]}`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className={`text-xs font-semibold ${status[1]}`}>{status[0]}</p>
+                          <p className="text-[10px] text-slate-500">
+                            {new Date(observation.occurredAt).toLocaleString("pt-BR")}
+                          </p>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-400">
+                          <span>Tentativas: {observation.attempts}</span>
+                          <span>Recibo: {observation.hasReceipt ? "confirmado" : "pendente"}</span>
+                          <span>Reenvio: {observation.repeatBlocked ? "bloqueado" : "somente após correção local"}</span>
+                        </div>
+                        <p className="mt-2 text-[11px] leading-5 text-slate-300">{observation.nextAction}</p>
+                        <p className="mt-1 break-all text-[10px] text-slate-600">Evento: {observation.eventId}</p>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+              <p className="mt-4 border-t border-white/[.07] pt-4 text-[11px] leading-5 text-slate-500">
+                Aprovar, congelar e autorizar não disparam CAPI. Somente o botão final envia um evento ao dataset de teste; campanha e verba não mudam.
               </p>
-              <p className="mt-1.5 text-sm leading-6 text-[var(--atlas-texto-medio)]">
-                Aprovação humana obrigatória: cada recomendação é um conselho para o gestor executar — o Atlas
-                não altera verba, não pausa campanha e não envia nada à Meta automaticamente.
+            </aside>
+          </div>
+        )}
+      </section>
+      <details className="group rounded-2xl border border-white/[.07] bg-white/[.02]">
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400">
+          Gerenciar briefings e criativos
+          <span className="ml-2 text-xs font-normal text-slate-500">
+            Abrir somente quando necessário
+          </span>
+        </summary>
+        <section className="border-t border-white/[.07] p-5">
+          <h2 className="font-semibold text-white">Briefings e criativos</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Arquivos privados, versionados e vinculados à campanha.
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <select
+              aria-label="Campanha do anexo"
+              className={input}
+              value={assetCampaign}
+              onChange={(e) => setAssetCampaign(e.target.value)}
+            >
+              <option value="">Selecione a campanha</option>
+              {data?.campaigns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Tipo do anexo"
+              className={input}
+              value={assetType}
+              onChange={(e) => setAssetType(e.target.value)}
+            >
+              <option value="briefing">Briefing</option>
+              <option value="creative">Criativo</option>
+            </select>
+            <input
+              aria-label="Título do anexo"
+              className={input}
+              placeholder="Título e versão"
+              value={assetTitle}
+              onChange={(e) => setAssetTitle(e.target.value)}
+            />
+            <input
+              aria-label="Arquivo da campanha"
+              className={input}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              onChange={(e) => setAssetFile(e.target.files?.[0] ?? null)}
+            />
+          </div>
+          <button
+            className="atlas-button-primary mt-4 disabled:opacity-40"
+            disabled={
+              saving ||
+              !assetCampaign ||
+              !assetFile ||
+              assetTitle.trim().length < 2
+            }
+            onClick={() => void uploadAsset()}
+          >
+            Enviar arquivo
+          </button>
+        </section>
+      </details>
+      <details
+        id="new-campaign"
+        className="group rounded-2xl border border-white/[.07] bg-white/[.02]"
+      >
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400">
+          Criar campanha interna
+          <span className="ml-2 text-xs font-normal text-slate-500">
+            Planejamento e vínculo com projeto
+          </span>
+        </summary>
+        <section className="border-t border-white/[.07] p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="font-semibold text-white">
+                Nova campanha interna
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Persistida no Atlas One; Meta não é obrigatória para operar.
               </p>
             </div>
-            {advisorError ? (
-              <AtlasRecoverableError
-                description={advisorError}
-                onRetry={() => setReloadKey((value) => value + 1)}
-                busy={advisorLoading}
-                scope="module"
-              />
-            ) : advisorLoading && !advisor ? (
-              <AtlasSkeleton className="h-40 w-full" />
-            ) : !advisor || advisor.recommendations.length === 0 ? (
-              <AtlasEmpty
-                reason="no-activity"
-                title="Nenhuma recomendação na janela"
-                description="Assim que campanhas tiverem leads na janela, o conselheiro cruza qualidade, funil e descartes para sugerir o próximo passo — sempre sob aprovação humana."
-              />
-            ) : (
-              <ul className="space-y-3">
-                {advisor.recommendations.map((rec) => (
-                  <li key={rec.campaignId} className={`${cc5Inner} ${cc5InnerHover} p-4`}>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`${cc5Chip} ${chipTone[advisorActionChips[rec.action]]}`}>
-                        {advisorActionLabels[rec.action]}
-                      </span>
-                      <span className="font-medium text-[var(--atlas-texto-forte)]">{rec.campaignName}</span>
-                      <span className="ml-auto font-mono text-micro uppercase tracking-[.14em] text-[var(--atlas-texto-fraco)]">
-                        confiança {advisorConfidenceLabels[rec.confidence]}
-                      </span>
-                    </div>
-                    <p className="mt-2.5 text-sm leading-6 text-[var(--atlas-texto-medio)]">{rec.rationale}</p>
-                    <div className="mt-2.5 border-t border-[rgba(148,163,184,.12)] pt-2.5">
-                      <p className="font-mono text-micro font-semibold uppercase tracking-[.16em] text-[var(--atlas-accent)]">
-                        Feedback → Meta
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">{rec.metaFeedbackHint}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <span
+              className={`rounded-full px-3 py-1 text-xs ${data?.metaSync.configured ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-200"}`}
+            >
+              {data?.metaSync.configured
+                ? "Meta configurada"
+                : "Meta não conectada"}
+            </span>
           </div>
-        </article>
+          <div className="mt-5 grid gap-3 md:grid-cols-4">
+            <label className="text-xs text-slate-400">
+              Nome
+              <input
+                className={`mt-1 ${input}`}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </label>
+            <label className="text-xs text-slate-400">
+              Projeto
+              <select
+                className={`mt-1 ${input}`}
+                value={form.developmentId}
+                onChange={(e) =>
+                  setForm({ ...form, developmentId: e.target.value })
+                }
+              >
+                <option value="">Portfólio geral</option>
+                {developments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs text-slate-400">
+              Incorporadora responsável
+              <select
+                className={`mt-1 ${input}`}
+                value={form.developerId}
+                onChange={(e) =>
+                  setForm({ ...form, developerId: e.target.value })
+                }
+              >
+                <option value="">Herdar do projeto</option>
+                {developers.map((developer) => (
+                  <option key={developer.id} value={developer.id}>
+                    {developer.trade_name ||
+                      developer.legal_name ||
+                      "Incorporadora"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs text-slate-400">
+              Canal
+              <select
+                className={`mt-1 ${input}`}
+                value={form.channel}
+                onChange={(e) => setForm({ ...form, channel: e.target.value })}
+              >
+                {[
+                  "meta",
+                  "google",
+                  "youtube",
+                  "tiktok",
+                  "portal",
+                  "email",
+                  "whatsapp",
+                  "outro",
+                ].map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs text-slate-400">
+              Orçamento
+              <input
+                type="number"
+                min="0"
+                className={`mt-1 ${input}`}
+                value={form.budget}
+                onChange={(e) => setForm({ ...form, budget: e.target.value })}
+              />
+            </label>
+            <label className="text-xs text-slate-400">
+              Início
+              <input
+                type="date"
+                className={`mt-1 ${input}`}
+                value={form.startsAt}
+                onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
+              />
+            </label>
+            <label className="text-xs text-slate-400">
+              Fim
+              <input
+                type="date"
+                className={`mt-1 ${input}`}
+                value={form.endsAt}
+                onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
+              />
+            </label>
+            <label className="text-xs text-slate-400">
+              Status
+              <select
+                className={`mt-1 ${input}`}
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+              >
+                {["draft", "planned", "active", "paused", "completed"].map(
+                  (v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+            <label className="text-xs text-slate-400">
+              Objetivo
+              <input
+                className={`mt-1 ${input}`}
+                value={form.objective}
+                onChange={(e) =>
+                  setForm({ ...form, objective: e.target.value })
+                }
+              />
+            </label>
+            <label className="text-xs text-slate-400 md:col-span-4">
+              Briefing
+              <textarea
+                rows={3}
+                className={`mt-1 ${input}`}
+                value={form.briefing}
+                onChange={(e) => setForm({ ...form, briefing: e.target.value })}
+              />
+            </label>
+          </div>
+          <button
+            disabled={saving || form.name.trim().length < 2}
+            onClick={() => void create()}
+            className="atlas-button-primary mt-4 disabled:opacity-40"
+          >
+            {saving ? "Criando..." : "Criar campanha"}
+          </button>
+        </section>
+      </details>
+      <section
+        id="campaign-results"
+        className="overflow-hidden rounded-2xl border border-white/[.07] bg-white/[.02]"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[.07] p-4">
+          <div>
+            <h2 className="font-semibold text-white">Campanhas internas</h2>
+            <p className="text-xs text-slate-500">
+              Campanha → leads → vendas. Receita e custo são observados, nunca
+              estimados silenciosamente.
+            </p>
+          </div>
+          <input
+            className={`${input} max-w-xs`}
+            placeholder="Buscar campanha"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        {loading ? (
+          <p className="p-8 text-sm text-slate-400">Carregando campanhas…</p>
+        ) : !data?.campaigns.length ? (
+          <p className="p-8 text-sm text-slate-400">
+            Nenhuma campanha cadastrada. Crie a primeira campanha acima.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-white/[.02] text-left text-xs text-slate-500">
+                <tr>
+                  {[
+                    "Campanha",
+                    "Projeto",
+                    "Incorporadora",
+                    "Canal",
+                    "Período",
+                    "Investimento / verba",
+                    "Resultados",
+                    "Status",
+                    "Ações",
+                  ].map((h) => (
+                    <th key={h} className="px-4 py-3">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[.06]">
+                {data.campaigns.map((c) => (
+                  <tr key={c.id} className="text-slate-300">
+                    <td className="px-4 py-4 font-semibold text-white">
+                      {c.name}
+                      <p className="mt-1 text-xs font-normal text-slate-500">
+                        {c.objective || "Objetivo não informado"}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4">
+                      {c.developments?.name || "Portfólio"}
+                    </td>
+                    <td className="px-4 py-4">
+                      <label className="block">
+                        <span className="sr-only">
+                          Incorporadora responsável pela campanha {c.name}
+                        </span>
+                        <select
+                          className="w-full min-w-44 rounded-lg border border-white/10 bg-[#080d17] px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-sky-400/50"
+                          value={c.developer_id ?? ""}
+                          aria-label={`Incorporadora responsável pela campanha ${c.name}`}
+                          onChange={(e) =>
+                            void update(c.id, { developerId: e.target.value })
+                          }
+                        >
+                          <option value="">Herdar do projeto</option>
+                          {developers.map((developer) => (
+                            <option key={developer.id} value={developer.id}>
+                              {developer.trade_name ||
+                                developer.legal_name ||
+                                "Incorporadora"}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {c.developer_id
+                          ? "Responsável direto da campanha"
+                          : "Responsável herdada do projeto"}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4 uppercase">{c.channel}</td>
+                    <td className="px-4 py-4">
+                      {c.starts_at
+                        ? new Date(c.starts_at).toLocaleDateString("pt-BR")
+                        : "—"}{" "}
+                      →{" "}
+                      {c.ends_at
+                        ? new Date(c.ends_at).toLocaleDateString("pt-BR")
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="font-semibold text-white">
+                        {Number(c.spend || 0) > 0
+                          ? money.format(Number(c.spend))
+                          : "Custo não informado"}
+                      </span>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Verba planejada: {money.format(Number(c.budget || 0))}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4">
+                      {c.leads_count || 0} leads · {c.sales_count || 0} vendas
+                      <p className="mt-1 text-xs text-slate-500">
+                        Receita observada:{" "}
+                        {money.format(Number(c.revenue || 0))}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4">
+                      <select
+                        className="rounded-lg border border-white/10 bg-[#080d17] px-2 py-1 text-xs"
+                        value={c.status}
+                        onChange={(e) =>
+                          void update(c.id, { status: e.target.value })
+                        }
+                      >
+                        {[
+                          "draft",
+                          "planned",
+                          "active",
+                          "paused",
+                          "completed",
+                        ].map((v) => (
+                          <option key={v}>{v}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-4">
+                      <button
+                        className="text-xs font-semibold text-rose-300"
+                        onClick={() => void archive(c.id)}
+                      >
+                        Arquivar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

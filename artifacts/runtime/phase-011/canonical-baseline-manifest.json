@@ -1,0 +1,77 @@
+{
+  "schema_version": "atlas.canonical_baseline_manifest.v1",
+  "phase": 11,
+  "environment": "preparation_only",
+  "source_alias": "atlas-v3-homologacao",
+  "target": {
+    "type": "not_provisioned",
+    "postgres_major": 17,
+    "loopback": false,
+    "disposable": false,
+    "linked_project": false
+  },
+  "tooling": {
+    "supabase_cli_version": "2.109.1",
+    "cli_help_verified": true,
+    "isolated_home_used_for_help": true,
+    "telemetry_disabled_for_help": true,
+    "project_config_present": false,
+    "container_runtime_available": false
+  },
+  "inventory": {
+    "remote_ledger_evidence_present": true,
+    "remote_migration_count": 179,
+    "local_migration_file_count": 126,
+    "local_duplicate_version_count": 3,
+    "historical_chain_modified": false
+  },
+  "runtime_evidence": {
+    "cli_contract_verified": true,
+    "remote_ledger_evidence_present": true,
+    "postgres_17_target_confirmed": true,
+    "project_config_present": false,
+    "container_runtime_available": false,
+    "isolated_target_available": false,
+    "sanitized_schema_snapshot_available": false,
+    "schema_inventory_available": false,
+    "acl_snapshot_available": false,
+    "dynamic_rls_rehearsal_passed": false,
+    "schema_diff_reviewed": false,
+    "baseline_sql_generated": false,
+    "baseline_replay_passed": false,
+    "synthetic_seed_replay_passed": false,
+    "rollback_rehearsal_passed": false,
+    "manual_approval_present": false,
+    "evidence_sanitized": true,
+    "remote_write_executed": false,
+    "live_db_pull_executed": false,
+    "live_migration_history_changed": false,
+    "business_data_copied": false,
+    "auth_user_data_copied": false,
+    "build_executed": false,
+    "package_created": false
+  },
+  "privacy": {
+    "contains_project_ref": false,
+    "contains_database_url": false,
+    "contains_credentials": false,
+    "contains_access_tokens": false,
+    "contains_personal_data": false,
+    "contains_business_rows": false,
+    "contains_auth_user_rows": false,
+    "contains_raw_cli_output": false
+  },
+  "execution": {
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "migration_repair_executed": false,
+    "migration_push_executed": false,
+    "migration_renamed": false,
+    "branch_created": false,
+    "database_restored": false,
+    "user_changed": false,
+    "business_data_changed": false,
+    "build_executed": false,
+    "package_created": false
+  }
+}

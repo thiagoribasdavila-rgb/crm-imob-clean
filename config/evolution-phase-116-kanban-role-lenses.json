@@ -1,0 +1,20 @@
+{
+  "phase": 116,
+  "name": "Kanban Role Lenses",
+  "status": "implemented",
+  "objective": "Adaptar o Kanban operacional ao papel do usuário sem duplicar telas: corretor executa, gerente destrava gargalos e diretor decide por receita.",
+  "businessOutcome": "Reduz ruído visual e acelera a decisão certa para cada perfil comercial.",
+  "scope": [
+    "Lente automática baseada no contexto autenticado",
+    "Alternância manual entre Corretor, Gerente e Diretor",
+    "Ajuste de foco, ordenação, compactação e etapa móvel conforme a lente",
+    "Persistência da preferência da lente na sessão",
+    "Resumo visual da intenção da lente ativa"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-116:check",
+    "requiresTypecheck": true,
+    "requiresLint": true,
+    "buildPolicy": "defer-to-release-close"
+  }
+}

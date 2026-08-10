@@ -1,0 +1,195 @@
+{
+  "name": "ATLAS_V30_ROADMAP",
+  "status": "active",
+  "baselineVersion": "V3",
+  "targetVersion": "V30",
+  "phaseStart": 105,
+  "phaseEnd": 374,
+  "phasesPerVersion": 10,
+  "totalPlannedPhases": 270,
+  "executionModel": {
+    "cadence": "one-focused-phase-at-a-time",
+    "dailyBuild": false,
+    "buildPolicy": "run one full build only at version close or release zip",
+    "zipPolicy": "zip only at strategic milestones",
+    "zipMilestones": ["V5", "V10", "V15", "V20", "V25", "V30"],
+    "defaultValidation": ["targeted phase check", "lint when code changes", "typecheck when app code changes"],
+    "decisionRule": "fix and stabilize existing flows before creating new surfaces"
+  },
+  "northStar": {
+    "productPromise": "Transformar leads imobiliários em vendas previsíveis com operação, IA, dados e gestão em uma experiência premium.",
+    "primaryMetric": "qualified-to-visit-conversion",
+    "secondaryMetrics": [
+      "lead-response-time",
+      "follow-up-compliance",
+      "leads-with-next-action",
+      "pipeline-movement",
+      "marketing-feedback-quality",
+      "manager-decision-time"
+    ]
+  },
+  "versions": [
+    {
+      "version": "V4",
+      "phaseRange": "105-114",
+      "theme": "Operação estável e roadmap V30",
+      "outcomes": ["mapa V30 ativo", "erros críticos mapeados", "rotas principais estabilizadas", "sem tela técnica para usuário"]
+    },
+    {
+      "version": "V5",
+      "phaseRange": "115-124",
+      "theme": "Login, permissões e tenant confiável",
+      "outcomes": ["RBAC claro", "sessão estável", "perfil por função", "primeiro ZIP milestone"]
+    },
+    {
+      "version": "V6",
+      "phaseRange": "125-134",
+      "theme": "Supabase e dados reais sem ruído",
+      "outcomes": ["schema compatível", "adapters sólidos", "logs úteis", "dados preservados"]
+    },
+    {
+      "version": "V7",
+      "phaseRange": "135-144",
+      "theme": "Design system premium claro",
+      "outcomes": ["tokens visuais", "componentes limpos", "menos texto", "navegação mais rápida"]
+    },
+    {
+      "version": "V8",
+      "phaseRange": "145-154",
+      "theme": "Kanban de última geração",
+      "outcomes": ["colunas decisivas", "cards compactos", "drag/drop seguro", "próxima ação por lead"]
+    },
+    {
+      "version": "V9",
+      "phaseRange": "155-164",
+      "theme": "Clientes 360 decisivo",
+      "outcomes": ["perfil único", "histórico resumido", "próxima melhor ação", "menos dados soltos"]
+    },
+    {
+      "version": "V10",
+      "phaseRange": "165-174",
+      "theme": "Agenda, tarefas e follow-up sem perda",
+      "outcomes": ["rotina do corretor", "SLA visível", "tarefas rápidas", "ZIP milestone"]
+    },
+    {
+      "version": "V11",
+      "phaseRange": "175-184",
+      "theme": "Projetos e incorporadoras como central de venda",
+      "outcomes": ["materiais fáceis", "estoque claro", "VGV", "busca por projeto"]
+    },
+    {
+      "version": "V12",
+      "phaseRange": "185-194",
+      "theme": "Command Center executivo 10/10",
+      "outcomes": ["decisão diária", "sem excesso de gráfico", "ranking de campanhas", "saúde comercial"]
+    },
+    {
+      "version": "V13",
+      "phaseRange": "195-204",
+      "theme": "Gestão de equipe e distribuição inteligente",
+      "outcomes": ["fila online", "carga por corretor", "transferência em massa", "hierarquia clara"]
+    },
+    {
+      "version": "V14",
+      "phaseRange": "205-214",
+      "theme": "Vendas, comissão e pós-venda",
+      "outcomes": ["vendas ganhas", "SLA de comissão", "comprou em outro lugar", "aprendizado comercial"]
+    },
+    {
+      "version": "V15",
+      "phaseRange": "215-224",
+      "theme": "AI Control Center",
+      "outcomes": ["OpenAI/Kimi/Qwen preparados", "health de IA", "custos visíveis", "ZIP milestone"]
+    },
+    {
+      "version": "V16",
+      "phaseRange": "225-234",
+      "theme": "Copilot do corretor operacional",
+      "outcomes": ["mensagens sugeridas", "objeções", "resumo de lead", "ações supervisionadas"]
+    },
+    {
+      "version": "V17",
+      "phaseRange": "235-244",
+      "theme": "IA de gerente e diretor",
+      "outcomes": ["gargalos", "decisões diárias", "relatórios simples", "alertas acionáveis"]
+    },
+    {
+      "version": "V18",
+      "phaseRange": "245-254",
+      "theme": "Memory Engine e aprendizado",
+      "outcomes": ["memória por lead", "padrões de venda", "feedback humano", "base protegida"]
+    },
+    {
+      "version": "V19",
+      "phaseRange": "255-264",
+      "theme": "Meta Ads signals foundation",
+      "outcomes": ["eventos canônicos", "qualidade de sinais", "consentimento", "deduplicação"]
+    },
+    {
+      "version": "V20",
+      "phaseRange": "265-274",
+      "theme": "Andromeda learning loop",
+      "outcomes": ["feedback de venda", "públicos melhores", "campanhas ranqueadas", "ZIP milestone"]
+    },
+    {
+      "version": "V21",
+      "phaseRange": "275-284",
+      "theme": "WhatsApp oficial e reativação",
+      "outcomes": ["templates", "opt-out", "cadência", "base fria controlada"]
+    },
+    {
+      "version": "V22",
+      "phaseRange": "285-294",
+      "theme": "Revenue Engine 24/7",
+      "outcomes": ["resposta noturna", "handoff humano", "score de intenção", "teste real de lead"]
+    },
+    {
+      "version": "V23",
+      "phaseRange": "295-304",
+      "theme": "APIs de portais e mídia",
+      "outcomes": ["Google/TikTok/YouTube", "portais imobiliários", "catálogo governado", "status real"]
+    },
+    {
+      "version": "V24",
+      "phaseRange": "305-314",
+      "theme": "Relatórios financeiros e ROI",
+      "outcomes": ["CPL", "CAC", "ROI", "campanha até venda"]
+    },
+    {
+      "version": "V25",
+      "phaseRange": "315-324",
+      "theme": "Digital Twin operacional",
+      "outcomes": ["simulação de fila", "previsão de gargalo", "cenários de campanha", "ZIP milestone"]
+    },
+    {
+      "version": "V26",
+      "phaseRange": "325-334",
+      "theme": "Digital Twin avançado",
+      "outcomes": ["testar decisões antes de aplicar", "previsão de equipe", "cenários de estoque", "risco comercial"]
+    },
+    {
+      "version": "V27",
+      "phaseRange": "335-344",
+      "theme": "Performance e fluidez máxima",
+      "outcomes": ["menos espera", "cache seguro", "consultas leves", "mobile rápido"]
+    },
+    {
+      "version": "V28",
+      "phaseRange": "345-354",
+      "theme": "SaaS Enterprise",
+      "outcomes": ["multiempresa robusto", "auditoria", "limites", "admin premium"]
+    },
+    {
+      "version": "V29",
+      "phaseRange": "355-364",
+      "theme": "Segurança, governança e escala",
+      "outcomes": ["RLS comprovado", "logs", "rollback", "backup", "observabilidade"]
+    },
+    {
+      "version": "V30",
+      "phaseRange": "365-374",
+      "theme": "Produto premium pronto para escala",
+      "outcomes": ["acabamento máximo", "homologação real", "manual de operação", "ZIP final V30"]
+    }
+  ]
+}

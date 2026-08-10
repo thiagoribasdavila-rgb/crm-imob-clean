@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "phase37.local-restore-reconciliation-receipt.v1",
+  "phase": 37,
+  "sourcePhase": 36,
+  "status": "not_reconciled",
+  "reconciledAt": null,
+  "sourceEvidenceFingerprint": null,
+  "sourceContractFingerprint": null,
+  "backupManifestFingerprint": null,
+  "backupContentFingerprint": null,
+  "sourceEvidenceAccepted": false,
+  "chainIntegrityApproved": false,
+  "metricsReconciled": false,
+  "securityReconciled": false,
+  "lifecycleReconciled": false,
+  "localRestoreHomologated": false,
+  "readinessControlCandidates": {
+    "immutable_backup_verified": false,
+    "restore_drill_verified": false,
+    "data_integrity_verified": false,
+    "security_equivalence": false
+  },
+  "releaseGates": {
+    "stagingMigrationAllowed": false,
+    "productionMigrationAllowed": false,
+    "productionCompatibilityApproved": false,
+    "metaDeliveryAllowed": false,
+    "buildAllowed": false
+  },
+  "databaseTouched": false,
+  "dockerTouched": false,
+  "remoteDatabaseTouched": false,
+  "metaTouched": false,
+  "buildExecuted": false
+}

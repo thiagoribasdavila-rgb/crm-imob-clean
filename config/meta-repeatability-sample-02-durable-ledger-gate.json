@@ -1,0 +1,76 @@
+{
+  "format": "atlas_meta_repeatability_durable_ledger_gate_v1",
+  "phase": 28,
+  "mode": "durable_transactional_ledger_adapter_draft_no_migration_no_persistence_no_delivery",
+  "environment": "staging_clone",
+  "requiredSourcePhase": 27,
+  "sourceSignalContract": "config/meta-validation-only-signal-contract.json",
+  "targetSlot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2,
+    "requiredLedgerStatus": "atomic_ledger_contract_prepared_not_persisted"
+  },
+  "artifacts": {
+    "adapter": "lib/meta/meta-permit-ledger-adapter.mjs",
+    "migrationDraft": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.sql",
+    "rollbackDraft": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.rollback.sql"
+  },
+  "databaseContract": {
+    "privateSchema": "atlas_private",
+    "ledgerTable": "meta_permit_ledger",
+    "auditTable": "meta_permit_ledger_audit",
+    "reservationRpc": "atlas_prepare_meta_permit_reservation_v1",
+    "transactionBoundary": "single_rpc_transaction",
+    "strategy": "insert_on_conflict_fail_closed",
+    "initialRevision": 0,
+    "reservedRevision": 1,
+    "rowLevelSecurityRequired": true,
+    "forceRowLevelSecurityRequired": true,
+    "serviceRoleOnly": true,
+    "appendOnlyAuditRequired": true,
+    "tenantIsolationRequired": true,
+    "rollbackMustRefuseNonEmptyLedger": true
+  },
+  "draftPolicy": {
+    "supabaseCliAvailable": false,
+    "migrationFileCreated": false,
+    "migrationDraftOnly": true,
+    "migrationPromotionRequiresSupabaseCli": true,
+    "databaseConnectionAllowed": false,
+    "migrationExecutionAllowed": false,
+    "rollbackExecutionAllowed": false,
+    "reservationPersistenceAllowed": false,
+    "permitIssuanceAllowed": false,
+    "permitConsumptionAllowed": false
+  },
+  "persistedEvidence": {
+    "sanitizedReportAllowed": true,
+    "fingerprintsAllowed": true,
+    "organizationUuidAllowed": false,
+    "actorUuidAllowed": false,
+    "rawReferencesAllowed": false,
+    "rawPayloadAllowed": false,
+    "rawResponseAllowed": false,
+    "temporaryCodeAllowed": false,
+    "personalDataAllowed": false,
+    "projectIdentifiersAllowed": false,
+    "screenshotsAllowed": false
+  },
+  "releaseGate": {
+    "migrationPromotionAllowed": false,
+    "migrationExecutionAllowed": false,
+    "rollbackExecutionAllowed": false,
+    "ledgerPersistenceAllowed": false,
+    "permitIssuanceAllowed": false,
+    "permitConsumptionAllowed": false,
+    "authorizationActivationAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  }
+}

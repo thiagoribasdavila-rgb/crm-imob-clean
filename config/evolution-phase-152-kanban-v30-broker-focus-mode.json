@@ -1,0 +1,30 @@
+{
+  "phase": 152,
+  "name": "Kanban V30 Broker Focus Mode",
+  "status": "implemented",
+  "objective": "Criar um modo foco no Kanban para reduzir ruído visual e colocar o corretor diretamente no lead mais importante do recorte atual.",
+  "businessImpact": [
+    "Corretor ganha uma ação principal clara sem precisar interpretar todo o funil.",
+    "Gerente reduz dispersão porque o Kanban aponta o próximo atendimento de maior impacto.",
+    "A operação preserva os dados existentes e aumenta disciplina de próxima ação, contato e registro."
+  ],
+  "technicalScope": [
+    "Reaproveitar heatline, lote prioritário, score e sinais já calculados pelo Kanban V30.",
+    "Criar painel determinístico de foco com atalhos para Lead 360, Copilot, WhatsApp ou tarefa.",
+    "Ativar filtros de foco, modo compacto, ocultar etapas vazias e preview do lead em um clique.",
+    "Manter aprovação humana obrigatória, sem alteração de banco, migration, API externa ou disparo automático."
+  ],
+  "validation": [
+    "npm run evolution:phase-152:check",
+    "npm run typecheck",
+    "npm run lint"
+  ],
+  "files": [
+    "app/(crm)/pipeline/page.tsx",
+    "app/globals.css",
+    "docs/EVOLUTION_PHASE_152_KANBAN_V30_BROKER_FOCUS_MODE.md",
+    "scripts/check-evolution-phase-152.mjs",
+    "config/evolution-program-3000.json",
+    "package.json"
+  ]
+}

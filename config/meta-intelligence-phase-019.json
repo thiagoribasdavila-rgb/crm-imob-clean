@@ -1,0 +1,57 @@
+{
+  "phase": 19,
+  "program": "meta-andromeda-automation",
+  "mode": "sanitized_payload_quality_comparison",
+  "status": "comparison_harness_ready_branch_gate_closed",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-018.json",
+  "qualityGate": "config/meta-payload-quality-gate.json",
+  "eventInputTemplate": "config/fixtures/meta-validation-event-template.json",
+  "evidenceTemplate": "config/fixtures/meta-validation-comparison-evidence-template.json",
+  "comparisonRunner": "scripts/run-meta-validation-comparison.mjs",
+  "evidencePreflight": "scripts/preflight-meta-validation-comparison.mjs",
+  "staticAudit": "scripts/audit-meta-validation-comparison.mjs",
+  "documentation": "docs/META_VALIDATION_COMPARISON_GATE.md",
+  "officialReferences": {
+    "metaConversionsApi": "https://www.facebook.com/business/help/AboutConversionsAPI",
+    "metaQualityLeads": "https://www.facebook.com/business/ads/ad-objectives/lead-generation/lead-ads-with-forms",
+    "supabaseDataApiChange": "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically"
+  },
+  "environmentAudit": {
+    "phase17ApprovedEvidenceDetected": false,
+    "phase18BranchEvidenceDetected": false,
+    "officialMetaComparisonExecuted": false,
+    "remoteCallsExecuted": false,
+    "databaseMutationExecuted": false,
+    "reason": "O comparador esta pronto, mas depende da evidencia aprovada do branch isolado. Autotestes usam somente fixture sintetica em memoria."
+  },
+  "releaseGate": {
+    "phase17EvidenceApproved": false,
+    "localComparisonContractPassed": true,
+    "localPrivacyContractPassed": true,
+    "localClaimGovernancePassed": true,
+    "syntheticComparisonSelfTestPassed": true,
+    "officialMetaComparisonApproved": false,
+    "testEventDeliveryReady": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false,
+    "payloadPersisted": false,
+    "matchValuesPersisted": false,
+    "databaseMutation": false,
+    "productionAccess": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 20,
+    "objective": "Preparar um ensaio manual governado no Meta Test Events, com checklist de aprovacao do diretor e sem automatizar transmissao enquanto os gates 17-19 estiverem pendentes."
+  }
+}

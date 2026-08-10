@@ -1,0 +1,59 @@
+{
+  "phase": 190,
+  "name": "Conversion Core Supabase Named Remote Capture Receipt Ledger Checkpoint Chain",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Encadear checkpoints locais privados pelo hash da entrada anterior para detectar remoção, reordenação, órfãos e adulteração histórica, sem contato remoto ou alteração operacional.",
+  "evidenceLevel": "local_append_only_checkpoint_hash_chain_contract_tested_remote_capture_not_performed",
+  "runtimeHomologated": false,
+  "currentState": {
+    "chainSchemaPrepared": true,
+    "previousHashLinked": true,
+    "explicitHeadVerification": true,
+    "sequenceContinuityVerified": true,
+    "orphanDetection": true,
+    "deletionDetection": true,
+    "reorderDetection": true,
+    "checkpointIntegrityVerified": true,
+    "privateDirectoryModeEnforced": true,
+    "privateFileModeEnforced": true,
+    "remoteExecutorAvailable": false,
+    "chainCreatedInAssessment": false,
+    "currentNamedRemoteEvidenceCollected": false
+  },
+  "safety": {
+    "localChainEntryWritten": false,
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "databaseWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationPushExecuted": false,
+    "migrationHistoryRepaired": false,
+    "migrationFileRenamed": false,
+    "databaseReset": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "secretsPersisted": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "authorizationRecorded": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "procedureExecuted": false,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "limitations": [
+    "A cadeia só é criada quando o chamador informa explicitamente checkpoint, diretório privado e head anterior íntegro.",
+    "A verificação parte de um head explícito, percorre até a gênese e recusa entradas órfãs, sequências descontínuas, arquivos removidos ou conteúdo adulterado.",
+    "Esta fase não coleta evidência remota, não altera o Supabase operacional e não executa build, ZIP ou deploy."
+  ],
+  "nextAction": "Na fase 191, gerar uma prova portátil e redigida da completude da cadeia contendo somente hashes e contagens, sem recibos brutos, credenciais ou contato remoto."
+}

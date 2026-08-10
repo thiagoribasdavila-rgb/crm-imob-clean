@@ -1,0 +1,274 @@
+{
+  "schema_version": "atlas.10x.phase-007.v1",
+  "phase": 7,
+  "total_phases": 24,
+  "name": "Ensaio isolado de RLS e matriz real de acesso",
+  "objective": "Definir contratos de acesso mínimos, remover consumidores legados e preparar um ensaio reversível antes de alterar a homologação.",
+  "target_environment": "atlas-v3-homologacao",
+  "build_policy": "build_only_on_release_package",
+  "status": "rehearsal_not_executed",
+  "execution_policy": {
+    "default_mode": "local_static_assessment",
+    "remote_execution_enabled": false,
+    "requires_isolated_clone": true,
+    "requires_backup_restore_receipt": true,
+    "requires_acl_snapshot": true,
+    "requires_human_approval": true,
+    "allows_destructive_ddl": false,
+    "allows_remote_user_changes": false,
+    "allows_build": false,
+    "allows_release_package": false
+  },
+  "access_principles": [
+    "explicit_grants_define_data_api_reach",
+    "rls_defines_visible_rows_after_grant",
+    "server_only_tables_deny_anon_and_authenticated",
+    "tenant_identity_never_comes_from_request_payload",
+    "service_role_never_reaches_the_browser",
+    "legacy_tables_are_not_browser_fallbacks",
+    "positive_and_negative_paths_are_rehearsed_before_remote_change",
+    "missing_evidence_blocks_release"
+  ],
+  "roles": [
+    {
+      "role": "anon",
+      "scope": "no_business_data",
+      "expected_access": "deny"
+    },
+    {
+      "role": "broker",
+      "scope": "own_leads_and_assigned_commercial_work",
+      "expected_access": "authenticated_rls"
+    },
+    {
+      "role": "manager",
+      "scope": "direct_reports_and_team_portfolio",
+      "expected_access": "authenticated_rls"
+    },
+    {
+      "role": "superintendent",
+      "scope": "subordinate_managers_and_teams",
+      "expected_access": "authenticated_rls"
+    },
+    {
+      "role": "director_admin",
+      "scope": "organization_wide_business_data",
+      "expected_access": "authenticated_rls"
+    },
+    {
+      "role": "service_role",
+      "scope": "trusted_server_jobs_and_integrations",
+      "expected_access": "server_only"
+    },
+    {
+      "role": "cross_tenant_actor",
+      "scope": "different_organization",
+      "expected_access": "deny"
+    }
+  ],
+  "table_contracts": [
+    {
+      "table": "ai_conversations",
+      "classification": "legacy_server_only",
+      "direct_roles": ["service_role"],
+      "allowed_path": "trusted_server",
+      "canonical_replacement": "ai_conversation_sessions",
+      "decision": "deny_direct_authenticated"
+    },
+    {
+      "table": "ai_learning_events",
+      "classification": "server_only",
+      "direct_roles": ["service_role"],
+      "allowed_path": "trusted_learning_pipeline",
+      "canonical_replacement": null,
+      "decision": "deny_direct_authenticated"
+    },
+    {
+      "table": "ai_messages",
+      "classification": "legacy_server_only",
+      "direct_roles": ["service_role"],
+      "allowed_path": "trusted_server",
+      "canonical_replacement": "ai_conversation_messages",
+      "decision": "deny_direct_authenticated"
+    },
+    {
+      "table": "ai_tool_calls",
+      "classification": "legacy_server_only",
+      "direct_roles": ["service_role"],
+      "allowed_path": "trusted_server_audit",
+      "canonical_replacement": "ai_action_audit",
+      "decision": "deny_direct_authenticated"
+    },
+    {
+      "table": "ai_usage",
+      "classification": "legacy_server_only",
+      "direct_roles": ["service_role"],
+      "allowed_path": "trusted_server_billing",
+      "canonical_replacement": "ai_usage_events",
+      "decision": "deny_direct_authenticated"
+    },
+    {
+      "table": "api_rate_limit_buckets",
+      "classification": "server_only",
+      "direct_roles": ["service_role"],
+      "allowed_path": "consume_api_rate_limit_rpc",
+      "canonical_replacement": null,
+      "decision": "deny_direct_authenticated"
+    },
+    {
+      "table": "knowledge_chunks",
+      "classification": "server_only_rpc_only",
+      "direct_roles": ["service_role"],
+      "allowed_path": "tenant_bound_server_retrieval",
+      "canonical_replacement": null,
+      "decision": "deny_until_tenant_binding_proven"
+    },
+    {
+      "table": "lead_identity_registry",
+      "classification": "server_only",
+      "direct_roles": ["service_role"],
+      "allowed_path": "identity_trigger_and_deduplication_service",
+      "canonical_replacement": null,
+      "decision": "deny_direct_authenticated"
+    },
+    {
+      "table": "lead_scores",
+      "classification": "server_only_derived",
+      "direct_roles": ["service_role"],
+      "allowed_path": "trusted_scoring_pipeline",
+      "canonical_replacement": "leads.score",
+      "decision": "deny_until_provenance_and_visibility_proven"
+    },
+    {
+      "table": "projects",
+      "classification": "legacy_server_only",
+      "direct_roles": ["service_role"],
+      "allowed_path": "migration_or_read_only_compatibility_job",
+      "canonical_replacement": "developments",
+      "decision": "remove_browser_and_api_fallbacks"
+    },
+    {
+      "table": "user_provisioning_failures",
+      "classification": "legacy_server_only",
+      "direct_roles": ["service_role"],
+      "allowed_path": "trusted_auth_reconciliation",
+      "canonical_replacement": "auth_provisioning_incidents",
+      "decision": "deny_then_retire_after_trigger_verification"
+    },
+    {
+      "table": "users",
+      "classification": "legacy_server_only",
+      "direct_roles": ["service_role"],
+      "allowed_path": "migration_only",
+      "canonical_replacement": "profiles",
+      "decision": "deny_then_retire_after_parity"
+    }
+  ],
+  "function_contracts": [
+    {
+      "function": "apply_opportunity_commission_sla()",
+      "classification": "trigger_only",
+      "direct_roles": [],
+      "decision": "revoke_direct_execute"
+    },
+    {
+      "function": "refresh_commission_status()",
+      "classification": "trigger_only",
+      "direct_roles": [],
+      "decision": "revoke_direct_execute"
+    },
+    {
+      "function": "scaffold_project_intelligence()",
+      "classification": "trigger_only",
+      "direct_roles": [],
+      "decision": "revoke_direct_execute"
+    },
+    {
+      "function": "create_lead_atomic(uuid,uuid,uuid,text,text,text,text,text,numeric,numeric,integer,text[],text,integer,text,jsonb)",
+      "classification": "authenticated_owner_bound_rpc",
+      "direct_roles": ["authenticated", "service_role"],
+      "decision": "retain_pending_isolated_actor_and_tenant_tests"
+    },
+    {
+      "function": "current_organization_id()",
+      "classification": "policy_helper",
+      "direct_roles": ["authenticated", "service_role"],
+      "decision": "retain_pending_private_schema_migration"
+    },
+    {
+      "function": "current_user_role()",
+      "classification": "policy_helper",
+      "direct_roles": ["authenticated", "service_role"],
+      "decision": "retain_pending_private_schema_migration"
+    },
+    {
+      "function": "distribute_project_leads(uuid,uuid,uuid,integer)",
+      "classification": "server_business_rpc",
+      "direct_roles": ["service_role"],
+      "decision": "revoke_authenticated_actor_spoofing_surface"
+    },
+    {
+      "function": "effective_distribution_rule(uuid,uuid)",
+      "classification": "unproven_read_helper",
+      "direct_roles": ["service_role"],
+      "decision": "server_only_until_tenant_binding_proven"
+    },
+    {
+      "function": "mutate_crm_project_v1(uuid,text,uuid,jsonb,text,text)",
+      "classification": "authenticated_tenant_role_bound_rpc",
+      "direct_roles": ["authenticated", "service_role"],
+      "decision": "retain_pending_positive_and_negative_tests"
+    },
+    {
+      "function": "search_knowledge_chunks(text,uuid,integer)",
+      "classification": "unproven_read_helper",
+      "direct_roles": ["service_role"],
+      "decision": "server_only_until_document_tenant_binding_proven"
+    }
+  ],
+  "required_gates": [
+    "access_matrix_complete",
+    "legacy_project_consumers_removed",
+    "candidate_is_fail_closed",
+    "candidate_is_transactional",
+    "candidate_contains_no_destructive_ddl",
+    "pgtap_contract_complete",
+    "isolated_clone_receipt_approved",
+    "acl_snapshot_available",
+    "anon_denial_passed",
+    "authenticated_role_matrix_passed",
+    "cross_tenant_denial_passed",
+    "rpc_actor_spoofing_denial_passed",
+    "positive_owner_path_passed",
+    "positive_manager_path_passed",
+    "rollback_rehearsal_passed",
+    "security_advisors_clean",
+    "human_execution_approval"
+  ],
+  "runtime_evidence": {
+    "isolated_clone_receipt_approved": false,
+    "acl_snapshot_available": false,
+    "anon_denial_passed": false,
+    "authenticated_role_matrix_passed": false,
+    "cross_tenant_denial_passed": false,
+    "rpc_actor_spoofing_denial_passed": false,
+    "positive_owner_path_passed": false,
+    "positive_manager_path_passed": false,
+    "rollback_rehearsal_passed": false,
+    "security_advisors_clean": false,
+    "human_execution_approval": false
+  },
+  "forbidden_operations_in_phase_007": [
+    "apply remote migration",
+    "change remote grants or policies",
+    "create or delete remote users",
+    "write remote business data",
+    "drop or truncate a table",
+    "build",
+    "create release zip"
+  ],
+  "next_phase": {
+    "phase": 8,
+    "name": "Clone isolado, fixtures multi-tenant e prova dinâmica de RLS"
+  }
+}

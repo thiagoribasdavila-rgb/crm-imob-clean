@@ -2,8 +2,40 @@
   "program": "ATLAS AI OS — Evolução Contínua",
   "referenceBacklogPhases": 3000,
   "horizon": "continuous",
-  "deliveryCadence": "one-phase-per-day",
-  "currentPhase": 101,
+  "deliveryCadence": "five-phase-value-cycle",
+  "currentPhase": 360,
+  "strategicRoadmap": {
+    "active": "ATLAS_VALUE_DELIVERY_CYCLES_350_399",
+    "currentProductVersion": "V3",
+    "targetProductVersion": "V30",
+    "phaseStart": 105,
+    "phaseEnd": 399,
+    "versions": 27,
+    "phasesPerVersion": 10,
+    "releaseBuildPolicy": "one-build-at-version-close",
+    "zipMilestones": ["V5", "V10", "V15", "V20", "V25", "V30"]
+  },
+  "valueCyclePolicy": {
+    "phasesPerCycle": 5,
+    "sequence": [
+      "measure-real-baseline",
+      "implement-smallest-complete-change",
+      "integrate-existing-flow",
+      "validate-real-role-and-data",
+      "prove-gain-and-release-decision"
+    ],
+    "completionRequires": [
+      "usable-operational-outcome",
+      "before-and-after-metric",
+      "authenticated-role-validation",
+      "targeted-regression-passed",
+      "no-fictitious-production-data",
+      "rollback-or-safe-disable-path"
+    ],
+    "documentationAloneCountsAsProgress": false,
+    "technicalGateAloneCountsAsProgress": false,
+    "releaseArtifactOnlyAtCompletedCycle": true
+  },
   "decisionRule": "prioritize-operational-capacity",
   "workInProgressLimit": 1,
   "priorityOrder": [

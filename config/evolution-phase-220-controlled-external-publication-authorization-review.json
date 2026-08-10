@@ -1,0 +1,63 @@
+{
+  "phase": 220,
+  "name": "Controlled External Publication Authorization Review",
+  "status": "implemented",
+  "objective": "Revisar de forma independente se uma prova local aceita é elegível para uma futura concessão controlada de autorização externa, sem autorizar ou executar publicação, build, deploy ou promoção.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "evidenceAdjudicationPolicyHash": "3c1e11db602529c8c44e166fc272653ace3980c65772e821b742b0f0013a104c",
+    "evidenceAdjudicationMemoryHash": "5018d0ded3255a0d836d7beb3a07b248497783ec2218c693645c6e71763e2e11",
+    "authorizationReviewPolicyHash": "8e145b98ab32f714be2d04232cf46c2c8ac2ba7f293264c04ca3da2fa401930c",
+    "authorizationReviewMemoryHash": "b83fe08546d55124de13b8db9cfbd591a8ae8e8790b0dbd6336ec271643df9e3",
+    "trustedAuthorizationReviewersConfigured": 0,
+    "recordedAdjudications": 0,
+    "acceptedEvidence": 0,
+    "rejectedEvidence": 0,
+    "recordedAuthorizationReviews": 0,
+    "eligibleProofs": 0,
+    "ineligibleProofs": 0,
+    "authorizationEligibilityReviewed": false,
+    "eligibleForAuthorizationGrant": false,
+    "externalPublicationAuthorized": false,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "reviewRules": {
+    "acceptedRecordedEvidenceRequiredForEligibility": true,
+    "exactEvidenceDecisionBindingRequired": true,
+    "exactAdjudicationMemoryBindingRequired": true,
+    "exactPackageDigestBindingRequired": true,
+    "exactInventoryBindingRequired": true,
+    "independentAuthorizationReviewerRequired": true,
+    "signedReviewRequired": true,
+    "appendOnlyReviewMemoryRequired": true,
+    "duplicateEvidenceDecisionReviewRejected": true,
+    "maxReviewDelaySeconds": 900,
+    "minReasonLength": 12
+  },
+  "safety": {
+    "databaseChanged": false,
+    "authChanged": false,
+    "rlsChanged": false,
+    "externalCallExecuted": false,
+    "packageGenerated": false,
+    "authorizationEligibilityReviewed": false,
+    "eligibleForAuthorizationGrant": false,
+    "externalPublicationAuthorized": false,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 221,
+    "name": "Controlled External Publication Authorization Grant",
+    "objective": "Conceder, em contrato separado e de uso único, autorização externa estritamente vinculada a uma revisão elegível registrada, sem executar publicação, build, deploy ou promoção."
+  }
+}

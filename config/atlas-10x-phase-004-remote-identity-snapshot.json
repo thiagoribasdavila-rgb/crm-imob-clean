@@ -1,0 +1,85 @@
+{
+  "schema_version": "atlas.10x.phase-004.remote-snapshot.v1",
+  "observed_at": "2026-07-23",
+  "source": "supabase_mcp_read_only",
+  "contains_personal_data": false,
+  "target": {
+    "name": "atlas-v3-homologacao",
+    "status": "ACTIVE_HEALTHY",
+    "auth_users": 0,
+    "auth_sessions": 0,
+    "organizations": 0,
+    "profiles": 0,
+    "roles": 7,
+    "permissions": 39,
+    "role_permissions": 99,
+    "public_tables": 177,
+    "rls_enabled_tables": 177,
+    "rls_disabled_tables": 0
+  },
+  "security_advisors": {
+    "rls_enabled_without_policy": {
+      "count": 12,
+      "tables": [
+        "ai_conversations",
+        "ai_learning_events",
+        "ai_messages",
+        "ai_tool_calls",
+        "ai_usage",
+        "api_rate_limit_buckets",
+        "knowledge_chunks",
+        "lead_identity_registry",
+        "lead_scores",
+        "projects",
+        "user_provisioning_failures",
+        "users"
+      ],
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    "anon_security_definer_executable": {
+      "count": 3,
+      "functions": [
+        "apply_opportunity_commission_sla",
+        "refresh_commission_status",
+        "scaffold_project_intelligence"
+      ],
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+    },
+    "authenticated_security_definer_executable": {
+      "count": 10,
+      "functions": [
+        "apply_opportunity_commission_sla",
+        "create_lead_atomic",
+        "current_organization_id",
+        "current_user_role",
+        "distribute_project_leads",
+        "effective_distribution_rule",
+        "mutate_crm_project_v1",
+        "refresh_commission_status",
+        "scaffold_project_intelligence",
+        "search_knowledge_chunks"
+      ],
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+    }
+  },
+  "runtime_evidence": {
+    "auth_profile_parity_verified": false,
+    "organization_binding_verified": false,
+    "commercial_role_matrix_verified": false,
+    "cross_tenant_denial_verified": false,
+    "privileged_function_grants_reviewed": false,
+    "real_user_login_verified": false
+  },
+  "phase_003_prerequisite": {
+    "migration_history_reproducible": false,
+    "operational_tenant_present": false,
+    "production_ready": false
+  },
+  "conclusion": {
+    "authentication_runtime_present": true,
+    "authorization_contract_present": true,
+    "operational_identity_present": false,
+    "remote_policy_surface_clean": false,
+    "identity_rbac_ready": false
+  }
+}

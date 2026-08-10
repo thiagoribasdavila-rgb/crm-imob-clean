@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
@@ -70,21 +70,7 @@ export async function POST(request: Request) {
       if (suppression) return NextResponse.json({ error: "Este contato solicitou a interrupção das mensagens no WhatsApp." }, { status: 409 });
     }
 
-    // O worker de saída só entrega WhatsApp hoje. E-mail entrava na fila (e,
-    // pior, SEM aprovação humana), o worker o rejeitava com "canal não
-    // conectado", e após 5 tentativas a mensagem morria em dead_letter — no CRM
-    // ela ficava "queued" para sempre, parecendo enviada. Recusa honesta na
-    // porta é o único comportamento verdadeiro até o canal existir de fato.
-    if (payload.channel === "email") {
-      return NextResponse.json({
-        error: "O envio de e-mail pelo Atlas ainda não está conectado. Use o rascunho da tela da lead (botão copiar/mailto) até o canal ser ativado.",
-        code: "EMAIL_CHANNEL_NOT_CONNECTED",
-      }, { status: 501 });
-    }
-
-    // Com o e-mail recusado na porta, todo canal que chega aqui exige aprovação
-    // humana — era exatamente o e-mail que furava essa regra por engano.
-    const requiresApproval = true;
+    const requiresApproval = payload.channel !== "email";
     const { data: message, error: messageError } = await admin
       .from("messages")
       .insert({
@@ -136,24 +122,9 @@ export async function POST(request: Request) {
       { status: 202, headers: { "X-RateLimit-Remaining": String(rate.remaining) } },
     );
   } catch (error) {
-    // Mandar mensagem para a lead de outra pessoa JÁ era recusado — esta rota
-    // chama `requireLeadAccess`, que desde o commit 722ed660 aplica o piso de
-    // carteira. Mas a recusa chegava errada: a frase "Esta lead está com outra
-    // pessoa" não casa com NENHUMA das palavras da régua abaixo, então caía no
-    // `: 500` e ainda entrava no log como `message.queue_failed` nível ERROR.
-    //
-    // Recusa de autorização virando "o servidor quebrou" tem custo dos dois
-    // lados: o corretor acha que é falha e tenta de novo, e o log de erro se
-    // enche de eventos que não são erro — escondendo os que são.
-    if (ehLeadForaDaCarteira(error)) {
-      return NextResponse.json(
-        { error: error.message, code: "MESSAGE_LEAD_OUT_OF_SCOPE" },
-        { status: 403 },
-      );
-    }
     logger.error("message.queue_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao preparar mensagem.";
-    const unauthorized = /token|sessão|autoriz|organiza|escopo/i.test(message);
+    const unauthorized = /token|sessão|autoriz/i.test(message);
     return NextResponse.json({ error: message }, { status: unauthorized ? 401 : 500 });
   }
 }

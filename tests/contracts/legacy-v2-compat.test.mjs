@@ -81,6 +81,19 @@ test("compatibiliza score, temperatura, próxima ação e preferências do lead"
   assert.equal(lead.purpose, "investimento");
 });
 
+test("preserva a identidade do projeto sem confundir origem da campanha", () => {
+  const lead = mapLegacyLead({
+    project_id: "project-1",
+    project: "Inside Perdizes",
+    source: "Meta Ads | Campanha Julho",
+  });
+
+  assert.equal(lead.development_id, "project-1");
+  assert.equal(lead.project_name, "Inside Perdizes");
+  assert.equal(lead.source, "Meta Ads | Campanha Julho");
+  assert.notEqual(lead.project_name, lead.source);
+});
+
 test("compatibiliza prazo de tarefa usando due_date antes de created_at", () => {
   const task = mapLegacyTask({
     id: "task-1",

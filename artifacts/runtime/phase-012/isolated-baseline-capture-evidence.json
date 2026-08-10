@@ -1,0 +1,42 @@
+{
+  "schema_version": "atlas.isolated_baseline_capture_evidence.v1",
+  "phase": 12,
+  "status": "capture_not_executed",
+  "target": {
+    "kind": "not_authorized",
+    "loopback": false,
+    "postgres_major": 17,
+    "disposable": false,
+    "fingerprint_matched": false,
+    "connection_verified": false
+  },
+  "tooling": {
+    "supabase_cli_version": "2.109.1",
+    "project_config_present": false,
+    "container_runtime_available": false,
+    "container_runtime_responding": false,
+    "psql_available": false
+  },
+  "capture": {
+    "executed": false,
+    "exit_zero": false,
+    "contains_public_schema": false,
+    "contains_data_statements": false,
+    "contains_credentials": false,
+    "contains_personal_data": false,
+    "inventory_created": false,
+    "checksum_created": false
+  },
+  "safety": {
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "live_homologation_touched": false,
+    "linked_command_used": false,
+    "business_data_copied": false,
+    "auth_user_data_copied": false,
+    "raw_cli_output_persisted": false,
+    "database_url_persisted": false,
+    "build_executed": false,
+    "package_created": false
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "schema_version": "atlas.phase-018.evidence.v1",
+  "phase": "18/24",
+  "status": "preflight_not_observed",
+  "assessment": {
+    "gates_passed": 6,
+    "gates_total": 54,
+    "mutants_rejected": 30,
+    "mutants_total": 30,
+    "remote_observation_accepted": false
+  },
+  "validation": {
+    "phase_018_checks": "43/43",
+    "phase_017_regression": "43/43",
+    "typecheck": "passed",
+    "lint": "passed",
+    "secret_scan": "passed",
+    "secret_scan_files": 2997,
+    "credentials_detected": 0
+  },
+  "inputs": {
+    "phase_017_dossier": false,
+    "target_descriptor": false,
+    "one_shot_permit": false,
+    "sanitized_observation": false
+  },
+  "decision": {
+    "ready_for_sanitized_remediation_planning": false,
+    "remote_apply_authorized": false,
+    "production_authorized": false,
+    "real_data_copy_authorized": false
+  },
+  "privacy": {
+    "contains_credentials": false,
+    "contains_project_ref": false,
+    "contains_object_names": false,
+    "contains_raw_sql": false,
+    "contains_raw_cli_output": false,
+    "contains_personal_data": false,
+    "contains_business_data": false,
+    "contains_auth_user_data": false,
+    "contains_storage_object_data": false
+  },
+  "safety": {
+    "remote_command_executed": false,
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "branch_mutated": false,
+    "migration_applied": false,
+    "production_touched": false,
+    "main_branch_touched": false,
+    "business_or_auth_data_read": false,
+    "build_executed": false,
+    "release_package_created": false
+  },
+  "next_phase": "Fase 19/24: transformar findings sanitizados do preflight em um plano de remediação versionado e testável, sem aplicar migration remota."
+}

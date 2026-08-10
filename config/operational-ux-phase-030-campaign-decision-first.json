@@ -1,0 +1,24 @@
+{
+  "phase": 30,
+  "scope": "campaign_decision_first",
+  "primaryMetrics": [
+    "observed_sales",
+    "observed_revenue",
+    "known_spend",
+    "observed_conversion"
+  ],
+  "primaryDecision": true,
+  "secondaryOperationsCollapsed": [
+    "campaign_creation",
+    "briefing_and_creative_upload"
+  ],
+  "truthRules": {
+    "unknownSpendIsZero": false,
+    "observedRevenueIsIncremental": false,
+    "plannedBudgetIsActualSpend": false
+  },
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

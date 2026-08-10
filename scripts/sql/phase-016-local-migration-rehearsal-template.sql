@@ -1,0 +1,51 @@
+-- ATLAS AI OS — FASE 16/24
+-- MODELO DE REVISÃO DO ENSAIO LOCAL
+-- NÃO EXECUTAR: este arquivo contém somente comentários.
+--
+-- ENTRADAS HASH-VINCULADAS
+-- [ ] manifesto aprovado da Fase 15
+-- [ ] migration criada com `supabase migration new <approved_name>`
+-- [ ] teste pgTAP transacional
+-- [ ] revisão humana e permit de uso único válidos por no máximo 60 minutos
+-- [ ] todos os hashes SHA-256 e o lote selecionado conferem
+--
+-- MIGRATION
+-- [ ] uma migration e um lote por ensaio
+-- [ ] BEGIN/COMMIT explícitos
+-- [ ] SET LOCAL lock_timeout
+-- [ ] SET LOCAL statement_timeout
+-- [ ] precondições falham fechado diante de drift
+-- [ ] pós-condições verificam exatamente os objetos aprovados
+-- [ ] nenhuma linha comercial ou auth.users é lida ou alterada
+-- [ ] nenhuma correção restaura acesso inseguro
+--
+-- SUPABASE SECURITY
+-- [ ] RLS e GRANT são verificados separadamente
+-- [ ] UPDATE possui SELECT aplicável, USING e WITH CHECK
+-- [ ] policies usam TO e não usam auth.role()
+-- [ ] autorização não usa user_metadata
+-- [ ] views usam security_invoker ou não ficam expostas
+-- [ ] SECURITY DEFINER possui search_path fixo e EXECUTE mínimo
+-- [ ] PUBLIC não recebe EXECUTE privilegiado
+--
+-- TESTE DINÂMICO
+-- [ ] BEGIN/ROLLBACK; nunca COMMIT
+-- [ ] PostgreSQL major 17 é comprovado
+-- [ ] fixtures são sintéticas, locais e descartadas no rollback
+-- [ ] caminhos positivos aprovados passam
+-- [ ] anon e cross-tenant falham
+-- [ ] IDs, dados e saída bruta não são persistidos
+--
+-- SEQUÊNCIA LOCAL EXATA
+-- [ ] supabase db reset --local --no-seed
+-- [ ] supabase migration list --local
+-- [ ] supabase test db <approved_test_path> --local
+-- [ ] supabase db lint --local --level warning --fail-on error
+-- [ ] supabase db advisors --local --type security --level info --fail-on warn
+-- [ ] supabase db advisors --local --type performance --level warn --fail-on error
+-- [ ] repetir reset e teste para comprovar reprodutibilidade
+--
+-- PROIBIÇÕES
+-- [ ] nunca usar --linked, --db-url, db push, db pull ou migration repair
+-- [ ] nunca usar projeto remoto como alvo do ensaio
+-- [ ] aprovação local não autoriza homologação ou produção

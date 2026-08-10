@@ -1,0 +1,30 @@
+{
+  "phase": 136,
+  "slug": "kanban-v30-command-bar",
+  "status": "implemented",
+  "title": "Kanban V30 Command Bar",
+  "objective": "Centralizar os modos de decisão do Kanban em uma barra de comando simples, reduzindo controles espalhados.",
+  "businessImpact": [
+    "Corretor entra direto no modo vender agora",
+    "Gerente recupera SLA e oportunidades sem próxima ação com um clique",
+    "Diretor alterna para receita e forecast sem perder a visão do risco",
+    "Usuário novo entende melhor como operar o Kanban sem treinamento longo"
+  ],
+  "implemented": [
+    "Barra de comando V30 dentro do Kanban operacional",
+    "Presets: vender agora, salvar SLA, definir ação, ver receita e mapa completo",
+    "Resumo do estado atual: cards, etapas e modo foco",
+    "CSS premium responsivo para reduzir ruído e aumentar decisão"
+  ],
+  "safety": [
+    "Não altera banco",
+    "Não dispara automação",
+    "Não movimenta lead automaticamente",
+    "Apenas muda filtros, ordenação e lente de visualização"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-136:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

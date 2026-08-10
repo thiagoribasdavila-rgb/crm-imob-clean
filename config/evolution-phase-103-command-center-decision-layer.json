@@ -1,0 +1,31 @@
+{
+  "phase": 103,
+  "name": "Command Center decision layer",
+  "status": "implemented",
+  "priority": "P1-lead-conversion",
+  "objective": "Transformar o Command Center em uma tela mais decisiva, mostrando a prioridade operacional principal com evidência, próxima ação, estado da IA e saúde dos módulos.",
+  "businessOutcome": [
+    "reduz tempo para entender o que fazer agora",
+    "organiza atrasos, distribuição, leads quentes e saúde dos módulos em uma leitura única",
+    "mantém a decisão humana e usa IA como apoio explicável",
+    "melhora a experiência premium sem criar dependência nova de banco"
+  ],
+  "changedAreas": [
+    "app/(crm)/dashboard/page.tsx",
+    "app/globals.css",
+    "docs/EVOLUTION_PHASE_103_COMMAND_CENTER_DECISION_LAYER.md",
+    "scripts/check-evolution-phase-103.mjs",
+    "package.json",
+    "config/evolution-program-3000.json"
+  ],
+  "validation": {
+    "phaseCheck": "npm run evolution:phase-103:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint",
+    "build": "release-gated"
+  },
+  "releasePolicy": {
+    "zipGenerated": false,
+    "reason": "O programa atual empacota apenas em fechamento de release para evitar ZIPs intermediários sem build final."
+  }
+}

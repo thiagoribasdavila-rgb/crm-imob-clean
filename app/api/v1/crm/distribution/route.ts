@@ -1,397 +1,1123 @@
 import { type NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
-import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/legacy-v2";
-import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
+import {
+  LIVE_LEAD_SELECT,
+  mapLegacyLead,
+  type CompatRow,
+} from "@/lib/compat/legacy-v2";
+import {
+  LIVE_PROFILE_SELECT,
+  resolveLiveHierarchy,
+} from "@/lib/compat/live-hierarchy";
+import { buildDistributionEvidence } from "@/lib/crm/distribution-evidence";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-/**
- * Quanto tempo depois do último batimento ainda contamos alguém como "na mesa".
- *
- * O heartbeat de `CommercialPresence` bate a cada poucos minutos e só quando a
- * aba está visível. 5 minutos absorve uma pausa curta sem declarar presente
- * quem fechou o notebook e foi embora.
- */
-const JANELA_PRESENCA_MS = 5 * 60_000;
-
-const managerRoles = new Set(["director", "superintendent", "manager"]);
 const archived = new Set(["arquivado", "archived"]);
-const text = (value: unknown) => typeof value === "string" ? value : "";
+const availabilityOptions = new Set(["available", "busy", "offline"]);
+const text = (value: unknown) => (typeof value === "string" ? value : "");
+const integer = (value: unknown, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : fallback;
+};
 
-/**
- * ACERVO DE RESGATE NÃO É FILA DE DISTRIBUIÇÃO.
- *
- * ── O que estava errado, medido em 2026-07-29/30 ────────────────────────────
- *
- * `distribute` (o fallback em Node) e o painel "sem dono" da liderança pegavam
- * QUALQUER lead sem responsável — inclusive as 13 de acervo, 8 delas em
- * `perdido`. Ou seja: a liderança podia empurrar lead histórica perdida para a
- * carteira de um corretor como se fosse demanda nova, e o painel dela ainda
- * chamava isso de "lead aberto".
- *
- * Aquele painel mostra 17 linhas hoje: 13 de acervo + 3 que JÁ TÊM DONO por
- * `assigned_to` + 1 lead de teste. Ou seja, 76% dele é acervo e 18% é falso
- * positivo — uma "fila de leads sem responsável" que quase não tem lead sem
- * responsável.
- *
- * Com a oferta ativa existindo, os dois lados disputariam as MESMAS linhas por
- * caminhos diferentes: a liderança distribuindo e o corretor se servindo. Duas
- * portas para a mesma lead é como nasce a lead com dois donos.
- *
- * O acervo tem balcão próprio: POST /api/v1/crm/acervo.
- */
-const ehAcervoDeResgate = (lead: CompatRow) => lead.import_batch_id !== null && lead.import_batch_id !== undefined;
+type DistributionBody = {
+  action?: string;
+  availability?: string;
+  developmentId?: string;
+  profileId?: string;
+  enabled?: boolean;
+  weight?: number;
+  limit?: number;
+  endsAt?: string;
+  reason?: string;
+  maxActiveLeads?: number;
+  maxProjectLeads?: number;
+  warningPercent?: number;
+  sourceKey?: string;
+  priority?: number;
+  slaMinutes?: number;
+  members?: Array<{ profileId?: string; enabled?: boolean; weight?: number }>;
+};
 
-export async function GET(request: NextRequest) {
-  const limited = enforceRateLimit(request, { limit: 90, scope: "crm-distribution-read" });
-  if (!limited.ok) return limited.response;
-  const identity = await requireAccessContext(request);
-  if (!identity.ok) return identity.response;
-  const role = identity.access.profile.commercialRole || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
-  if (!managerRoles.has(role)) return apiError("FORBIDDEN", "A fila comercial é gerenciada pela liderança.", identity.meta, { status: 403 });
+function resolvedRole(commercialRole: string | null, role: string) {
+  return commercialRole || (role === "admin" ? "director" : role);
+}
 
-  const organizationId = identity.access.organization.id;
-  const [profilesResult, projectsResult, leadsResult] = await Promise.all([
-    identity.supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).eq("active", true).order("name"),
-    identity.supabase.from("crm_projects").select("id,name,developer_name,status").eq("organization_id", organizationId).order("name"),
-    identity.supabase.from("leads").select(LIVE_LEAD_SELECT).eq("organization_id", organizationId).limit(5000),
-  ]);
-  if (profilesResult.error || projectsResult.error || leadsResult.error) return apiError("DISTRIBUTION_LOOKUP_FAILED", "Não foi possível carregar a fila comercial.", identity.meta, { status: 503 });
+function isMissingSchema(error: { code?: string; message?: string } | null) {
+  if (!error) return false;
+  return (
+    ["42P01", "42703", "PGRST202", "PGRST204", "PGRST205"].includes(
+      error.code || "",
+    ) || /does not exist|schema cache|could not find/i.test(error.message || "")
+  );
+}
 
-  // Extrato de auditoria da carteira. A RPC já devolve o recorte hierárquico
-  // correto e sem PII — por isso a leitura é dela, não de uma montagem no Node.
-  // Onde a migration da fase 59 não subiu, mantém-se o extrato vazio de antes,
-  // com `available: false` dizendo a verdade em vez de fingir "nada aconteceu".
-  const auditResult = await getSupabaseAdmin().rpc("get_portfolio_audit_ledger", {
-    p_actor_id: identity.access.profile.id,
-    p_organization_id: organizationId,
-    p_limit: 100,
-  });
-  const extratoVazio = { events: [], summary: { total: 0, distributions: 0, transfers: 0, reservations: 0, returns: 0, absences: 0, capacityChanges: 0 } };
-  const auditLedger = {
-    ...extratoVazio,
-    ...(auditResult.error ? {} : (auditResult.data as Record<string, unknown> ?? {})),
-    available: !auditResult.error,
+function safeAuditFallback() {
+  return {
+    events: [],
+    summary: {
+      total: 0,
+      distributions: 0,
+      transfers: 0,
+      reservations: 0,
+      returns: 0,
+      absences: 0,
+      capacityChanges: 0,
+    },
     maximum: 100,
     hierarchicalScope: true,
     piiExposed: false,
     immutableSources: true,
     generatedAt: new Date().toISOString(),
   };
+}
 
-  const hierarchy = resolveLiveHierarchy((profilesResult.data ?? []) as unknown as CompatRow[]);
-  const allowed = role === "director" ? new Set(hierarchy.map((profile) => text(profile.id))) : descendantsFromLiveProfiles(hierarchy, identity.access.profile.id);
+export async function GET(request: NextRequest) {
+  const limited = enforceRateLimit(request, {
+    limit: 90,
+    scope: "crm-distribution-read",
+  });
+  if (!limited.ok) return limited.response;
+
+  const identity = await requireAccessContext(request);
+  if (!identity.ok) return identity.response;
+
+  const role = resolvedRole(
+    identity.access.profile.commercialRole,
+    identity.access.profile.role,
+  );
+  if (role !== "director") {
+    return apiError(
+      "FORBIDDEN",
+      "A fila comercial é configurada somente pela diretoria.",
+      identity.meta,
+      { status: 403 },
+    );
+  }
+
+  const organizationId = identity.access.organization.id;
+  const admin = getSupabaseAdmin();
+  const [profilesResult, developmentsResult, leadsResult] = await Promise.all([
+    identity.supabase
+      .from("profiles")
+      .select(LIVE_PROFILE_SELECT)
+      .eq("organization_id", organizationId)
+      .eq("active", true)
+      .order("name"),
+    admin
+      .from("developments")
+      .select("id,name,developer_name,status")
+      .eq("organization_id", organizationId)
+      .order("name"),
+    identity.supabase
+      .from("leads")
+      .select(LIVE_LEAD_SELECT)
+      .eq("organization_id", organizationId)
+      .limit(5000),
+  ]);
+
+  if (profilesResult.error || leadsResult.error) {
+    structuredApiLog(
+      "error",
+      "crm.distribution.core_lookup_failed",
+      request,
+      identity.meta,
+      {
+        organizationId,
+        profilesError: profilesResult.error?.message,
+        leadsError: leadsResult.error?.message,
+      },
+    );
+    return apiError(
+      "DISTRIBUTION_LOOKUP_FAILED",
+      "Não foi possível carregar a fila comercial agora.",
+      identity.meta,
+      { status: 503 },
+    );
+  }
+
+  let projects = developmentsResult.data ?? [];
+  let projectCompatibility = "canonical";
+  if (developmentsResult.error && isMissingSchema(developmentsResult.error)) {
+    const legacyProjects = await identity.supabase
+      .from("crm_projects")
+      .select("id,name,developer_name,status")
+      .eq("organization_id", organizationId)
+      .order("name");
+    if (legacyProjects.error) {
+      structuredApiLog(
+        "error",
+        "crm.distribution.projects_lookup_failed",
+        request,
+        identity.meta,
+        {
+          organizationId,
+          canonicalError: developmentsResult.error.message,
+          legacyError: legacyProjects.error.message,
+        },
+      );
+      return apiError(
+        "DISTRIBUTION_LOOKUP_FAILED",
+        "Não foi possível carregar os projetos da distribuição.",
+        identity.meta,
+        { status: 503 },
+      );
+    }
+    projects = legacyProjects.data ?? [];
+    projectCompatibility = "legacy-read-only";
+  } else if (developmentsResult.error) {
+    structuredApiLog(
+      "error",
+      "crm.distribution.projects_lookup_failed",
+      request,
+      identity.meta,
+      {
+        organizationId,
+        error: developmentsResult.error.message,
+      },
+    );
+    return apiError(
+      "DISTRIBUTION_LOOKUP_FAILED",
+      "Não foi possível carregar os projetos da distribuição.",
+      identity.meta,
+      { status: 503 },
+    );
+  }
+
+  const hierarchy = resolveLiveHierarchy(
+    (profilesResult.data ?? []) as unknown as CompatRow[],
+  );
+  const allowed = new Set(hierarchy.map((profile) => text(profile.id)));
   const profiles = hierarchy.filter((profile) => allowed.has(text(profile.id)));
   const profileIds = new Set(profiles.map((profile) => text(profile.id)));
-  const projects = projectsResult.data ?? [];
-  const leads = ((leadsResult.data ?? []) as unknown as CompatRow[]).map((row) => mapLegacyLead(row)).filter((lead) => !archived.has(text(lead.status).toLowerCase()));
+  const projectIds = new Set(projects.map((project) => text(project.id)));
+  const leads = ((leadsResult.data ?? []) as unknown as CompatRow[])
+    .map((row) => mapLegacyLead(row))
+    .filter((lead) => !archived.has(text(lead.status).toLowerCase()));
+
+  const [
+    presenceResult,
+    queueResult,
+    capacityResult,
+    priorityResult,
+    sourceMembersResult,
+    assignmentsResult,
+    auditResult,
+  ] = await Promise.all([
+    admin
+      .from("commercial_presence")
+      .select("profile_id,availability,last_seen_at,updated_at")
+      .eq("organization_id", organizationId),
+    admin
+      .from("project_distribution_members")
+      .select(
+        "profile_id,development_id,enabled,weight,assignments_count,last_assigned_at,updated_at",
+      )
+      .eq("organization_id", organizationId),
+    admin
+      .from("broker_capacity_limits")
+      .select(
+        "profile_id,max_active_leads,max_project_leads,warning_percent,updated_at",
+      )
+      .eq("organization_id", organizationId),
+    admin
+      .from("lead_distribution_priority_rules")
+      .select(
+        "development_id,source_key,priority,sla_minutes,enabled,updated_at",
+      )
+      .eq("organization_id", organizationId),
+    admin
+      .from("lead_source_distribution_members")
+      .select("profile_id,enabled,weight,configured_at,updated_at")
+      .eq("organization_id", organizationId)
+      .eq("source_key", "meta"),
+    admin
+      .from("lead_distribution_events")
+      .select("id,development_id,lead_id,assigned_to,created_at,score_snapshot")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(100),
+    admin.rpc("get_portfolio_audit_ledger", {
+      p_actor_id: identity.access.profile.id,
+      p_organization_id: organizationId,
+      p_limit: 100,
+    }),
+  ]);
+
+  const advancedErrors = [
+    presenceResult.error,
+    queueResult.error,
+    capacityResult.error,
+    priorityResult.error,
+    sourceMembersResult.error,
+    assignmentsResult.error,
+    auditResult.error,
+  ].filter(Boolean);
+  if (advancedErrors.some((error) => !isMissingSchema(error))) {
+    structuredApiLog(
+      "warn",
+      "crm.distribution.advanced_lookup_degraded",
+      request,
+      identity.meta,
+      {
+        organizationId,
+        errors: advancedErrors.map((error) => error?.message),
+      },
+    );
+  }
+
+  const realPresence = new Map(
+    (presenceResult.data ?? [])
+      .filter((item) => profileIds.has(text(item.profile_id)))
+      .map((item) => [text(item.profile_id), item]),
+  );
   const presence = profiles.map((profile) => {
-    const availability = text(profile.availability_status || "OFFLINE").toLowerCase();
-    // `last_seen_at` era `profile.created_at` — a data em que a CONTA foi
-    // criada, devolvida com o nome de "visto por último". Quem lê o painel
-    // conclui que o corretor esteve ali; o número não tem relação nenhuma
-    // com presença.
-    const vistoEm = text(profile.last_seen_at) || null;
-    const naMesaAgora = vistoEm ? Date.now() - new Date(vistoEm).getTime() <= JANELA_PRESENCA_MS : false;
+    const current = realPresence.get(text(profile.id));
+    const availability = text(current?.availability || "offline").toLowerCase();
+    const lastSeenAt = current?.last_seen_at || profile.created_at;
     return {
       profile_id: profile.id,
       availability,
-      last_seen_at: vistoEm,
-      // `online` continua significando "aceita lead" — é o que a cascata usa,
-      // e ela distribui de propósito para quem está com a aba fechada.
-      online: availability !== "offline",
-      // `na_mesa_agora` é a pergunta nova: tem alguém aí NESTE momento.
-      na_mesa_agora: naMesaAgora,
+      last_seen_at: lastSeenAt,
+      online:
+        availability !== "offline" &&
+        Date.parse(text(lastSeenAt)) >= Date.now() - 90_000,
     };
   });
-  const queue = profiles.filter((profile) => profile.commercial_role === "broker").flatMap((profile) => projects.map((project) => ({ profile_id: profile.id, development_id: project.id, enabled: true, weight: 1, assignments_count: 0, last_assigned_at: null })));
-  const unassignedQueue = leads.filter((lead) => !lead.assigned_to && !ehAcervoDeResgate(lead)).sort((a, b) => Date.parse(text(a.created_at)) - Date.parse(text(b.created_at))).slice(0, 100).map((lead) => ({
-    id: lead.id,
-    developmentId: lead.development_id,
-    source: lead.source || "não informada",
-    status: lead.status || "novo",
-    createdAt: lead.created_at,
-    waitingMinutes: Math.max(0, Math.floor((Date.now() - Date.parse(text(lead.created_at))) / 60_000)),
-  }));
 
-  return apiSuccess({
-    viewer: { id: identity.access.profile.id, role }, compatibility: "live-schema-safe",
-    rules: { algorithm: "live_manual_queue", presenceWindowSeconds: 90, onlineOnly: true, projectScoped: true, weightedLoad: false, atomicLock: false, singleOwner: true, explainable: true },
-    projects,
-    profiles: profiles.map((profile) => ({ ...profile, full_name: profile.full_name || profile.name, resolved_role: profile.commercial_role })),
-    presence,
-    queue,
-    capacity: profiles.filter((profile) => profile.commercial_role === "broker").map((profile) => ({ profile_id: profile.id, max_active_leads: Number(profile.max_active_leads || 100), max_project_leads: Number(profile.max_active_leads || 100), warning_percent: 80, updated_at: profile.created_at })),
-    priorityRules: [],
-    recentAssignments: [],
-    leadSources: [...new Set(leads.map((lead) => text(lead.source || "não informada").trim().toLowerCase()))].sort().slice(0, 100),
-    portfolioAudit: auditLedger,
-    unassignedQueue,
-    unassignedPolicy: { metadataOnly: true, piiExposed: false, automaticAssignment: false, explicitLeadershipAction: true, maximumVisible: 100, rescueStockExcluded: true },
-    loads: profiles.map((profile) => ({ profile_id: profile.id, total: leads.filter((lead) => text(lead.assigned_to) === text(profile.id)).length, by_project: Object.fromEntries(projects.map((project) => [project.id, leads.filter((lead) => text(lead.assigned_to) === text(profile.id) && text(lead.development_id) === project.id).length])) })),
-    unassigned: Object.fromEntries(projects.map((project) => [project.id, leads.filter((lead) => !lead.assigned_to && !ehAcervoDeResgate(lead) && text(lead.development_id) === project.id).length])),
-    generatedAt: new Date().toISOString(),
-    scopedProfileCount: profileIds.size,
-  }, identity.meta, { headers: limited.headers });
+  const configuredQueue = new Map(
+    (queueResult.data ?? [])
+      .filter(
+        (item) =>
+          profileIds.has(text(item.profile_id)) &&
+          projectIds.has(text(item.development_id)),
+      )
+      .map((item) => [`${item.profile_id}:${item.development_id}`, item]),
+  );
+  const queue = profiles
+    .filter((profile) => profile.commercial_role === "broker")
+    .flatMap((profile) =>
+      projects.map((project) => {
+        const configured = configuredQueue.get(`${profile.id}:${project.id}`);
+        return {
+          profile_id: profile.id,
+          development_id: project.id,
+          enabled: configured?.enabled ?? true,
+          weight: configured?.weight ?? 1,
+          assignments_count: configured?.assignments_count ?? 0,
+          last_assigned_at: configured?.last_assigned_at ?? null,
+          configured: Boolean(configured),
+        };
+      }),
+    );
+
+  const configuredCapacity = new Map(
+    (capacityResult.data ?? [])
+      .filter((item) => profileIds.has(text(item.profile_id)))
+      .map((item) => [text(item.profile_id), item]),
+  );
+  const capacity = profiles
+    .filter((profile) => profile.commercial_role === "broker")
+    .map((profile) => {
+      const configured = configuredCapacity.get(text(profile.id));
+      return {
+        profile_id: profile.id,
+        max_active_leads: configured?.max_active_leads ?? 100,
+        max_project_leads: configured?.max_project_leads ?? 50,
+        warning_percent: configured?.warning_percent ?? 80,
+        updated_at: configured?.updated_at || profile.created_at,
+        configured: Boolean(configured),
+      };
+    });
+
+  const priorityRules = (priorityResult.data ?? []).filter((item) =>
+    projectIds.has(text(item.development_id)),
+  );
+  const recentAssignments = (assignmentsResult.data ?? []).filter((item) =>
+    profileIds.has(item.assigned_to),
+  );
+  const portfolioAudit =
+    auditResult.error || !auditResult.data
+      ? safeAuditFallback()
+      : auditResult.data;
+
+  const unassignedQueue = leads
+    .filter((lead) => !lead.assigned_to)
+    .sort(
+      (a, b) => Date.parse(text(a.created_at)) - Date.parse(text(b.created_at)),
+    )
+    .slice(0, 100)
+    .map((lead) => ({
+      id: lead.id,
+      developmentId: lead.development_id,
+      source: lead.source || "não informada",
+      status: lead.status || "novo",
+      createdAt: lead.created_at,
+      waitingMinutes: Math.max(
+        0,
+        Math.floor((Date.now() - Date.parse(text(lead.created_at))) / 60_000),
+      ),
+    }));
+
+  const leadSources = [
+    ...new Set(
+      leads.map((lead) =>
+        text(lead.source || "não informada")
+          .trim()
+          .toLowerCase(),
+      ),
+    ),
+  ]
+    .filter(Boolean)
+    .sort()
+    .slice(0, 100);
+
+  const distributionEvidence = buildDistributionEvidence({
+    leads: leads.map((lead) => ({
+      id: text(lead.id),
+      development_id: text(lead.development_id) || null,
+      assigned_to: text(lead.assigned_to) || null,
+      created_at: text(lead.created_at) || null,
+    })),
+    assignments: recentAssignments.map((assignment) => ({
+      development_id: text(assignment.development_id) || null,
+      lead_id: text(assignment.lead_id),
+      assigned_to: text(assignment.assigned_to),
+      created_at: text(assignment.created_at),
+    })),
+    queue: queue.map((member) => ({
+      development_id: text(member.development_id),
+      profile_id: text(member.profile_id),
+      enabled: Boolean(member.enabled),
+      weight: integer(member.weight, 1),
+    })),
+    projectIds: projects.map((project) => text(project.id)),
+    maximumEvents: 100,
+  });
+
+  return apiSuccess(
+    {
+      viewer: { id: identity.access.profile.id, role },
+      compatibility: {
+        projects: projectCompatibility,
+        advancedDistribution:
+          advancedErrors.length === 0 ? "operational" : "ddl-required",
+      },
+      rules: {
+        algorithm: "sla_source_priority_reservation_v4",
+        presenceWindowSeconds: 90,
+        acceptanceMinutes: 5,
+        onlineOnly: true,
+        projectScoped: true,
+        weightedLoad: true,
+        atomicLock: true,
+        singleOwner: true,
+        explainable: true,
+      },
+      projects,
+      profiles: profiles.map((profile) => ({
+        ...profile,
+        full_name: profile.full_name || profile.name,
+        resolved_role: profile.commercial_role,
+      })),
+      presence,
+      queue,
+      capacity,
+      priorityRules,
+      metaRecipients: (sourceMembersResult.data ?? [])
+        .filter((item) => profileIds.has(text(item.profile_id)))
+        .map((item) => ({
+          profile_id: text(item.profile_id),
+          enabled: Boolean(item.enabled),
+          weight: integer(item.weight, 1),
+          configured_at: item.configured_at || null,
+          updated_at: item.updated_at || null,
+        })),
+      recentAssignments,
+      distributionEvidence,
+      leadSources,
+      portfolioAudit: auditResult.data || portfolioAudit,
+      unassignedQueue,
+      unassignedPolicy: {
+        metadataOnly: true,
+        piiExposed: false,
+        automaticAssignment: false,
+        explicitLeadershipAction: true,
+        maximumVisible: 100,
+      },
+      loads: profiles.map((profile) => ({
+        profile_id: profile.id,
+        total: leads.filter(
+          (lead) => text(lead.assigned_to) === text(profile.id),
+        ).length,
+        by_project: Object.fromEntries(
+          projects.map((project) => [
+            project.id,
+            leads.filter(
+              (lead) =>
+                text(lead.assigned_to) === text(profile.id) &&
+                text(lead.development_id) === project.id,
+            ).length,
+          ]),
+        ),
+      })),
+      unassigned: Object.fromEntries(
+        projects.map((project) => [
+          project.id,
+          leads.filter(
+            (lead) =>
+              !lead.assigned_to && text(lead.development_id) === project.id,
+          ).length,
+        ]),
+      ),
+      generatedAt: new Date().toISOString(),
+      scopedProfileCount: profileIds.size,
+    },
+    identity.meta,
+    { headers: limited.headers },
+  );
 }
 
 export async function POST(request: NextRequest) {
-  const limited = enforceRateLimit(request, { limit: 120, scope: "crm-distribution-write" });
+  const limited = enforceRateLimit(request, {
+    limit: 120,
+    scope: "crm-distribution-write",
+  });
   if (!limited.ok) return limited.response;
+
   const identity = await requireAccessContext(request);
   if (!identity.ok) return identity.response;
-  const body = await request.json().catch(() => null) as { action?: string; availability?: string; developmentId?: string; limit?: number; leadId?: string } | null;
 
-  // Presence heartbeat (unchanged behaviour).
-  if (body?.action === "heartbeat") {
-    const availability = ["available", "busy", "offline"].includes(body.availability || "") ? body.availability! : "available";
-    // O carimbo é o que torna a presença verificável. `availability_status`
-    // sozinho é uma bandeira que ninguém abaixa: 7 de 7 perfis do banco vivo
-    // estavam AVAILABLE, inclusive a conta de sistema de ingestão.
-    const { error } = await getSupabaseAdmin().from("profiles").update({
-      availability_status: availability.toUpperCase(),
-      last_seen_at: new Date().toISOString(),
-    }).eq("id", identity.access.profile.id).eq("organization_id", identity.access.organization.id);
-    if (error) return apiError("PRESENCE_UPDATE_FAILED", "Não foi possível atualizar sua disponibilidade.", identity.meta, { status: 503 });
-    return apiSuccess({ availability, online: availability !== "offline" }, identity.meta, { headers: limited.headers });
+  const body = (await request
+    .json()
+    .catch(() => null)) as DistributionBody | null;
+  if (!body?.action) {
+    return apiError(
+      "INVALID_DISTRIBUTION_ACTION",
+      "Informe a ação da fila comercial.",
+      identity.meta,
+      { status: 400 },
+    );
   }
-
-  // Aceite da reserva. O corretor confirma que assume a lead que lhe foi
-  // atribuída; sem isso a reserva fica pendente e, quando o worker de expiração
-  // roda, a lead volta para a fila. É ação do PRÓPRIO corretor — não da
-  // liderança — por isso não passa pelo filtro de papel abaixo.
-  if (body?.action === "accept_assignment") {
-    const leadId = typeof body.leadId === "string" && /^[0-9a-f-]{36}$/i.test(body.leadId) ? body.leadId : null;
-    if (!leadId) return apiError("ASSIGNMENT_LEAD_INVALID", "Informe a lead cuja atribuição está sendo aceita.", identity.meta, { status: 400 });
-
-    const acceptResult = await getSupabaseAdmin().rpc("accept_lead_assignment", {
-      p_actor_id: identity.access.profile.id,
-      p_organization_id: identity.access.organization.id,
-      p_lead_id: leadId,
-    });
-    if (acceptResult.error) {
-      const missingFunction = acceptResult.error.code === "42883" || acceptResult.error.code === "PGRST202";
-      if (missingFunction) return apiError("DISTRIBUTION_CAPABILITY_PENDING", "O aceite de reserva depende de uma atualização do banco que ainda não foi aplicada neste ambiente.", identity.meta, { status: 503, headers: limited.headers });
-      structuredApiLog("warn", "crm.distribution.assignment_accept_rejected", request, identity.meta, { organizationId: identity.access.organization.id, code: acceptResult.error.code });
-      return apiError("ASSIGNMENT_ACCEPT_REJECTED", "Não foi possível aceitar esta atribuição — ela pode ter expirado ou ser de outro corretor.", identity.meta, { status: 409, headers: limited.headers });
-    }
-    structuredApiLog("info", "crm.distribution.assignment_accepted", request, identity.meta, { organizationId: identity.access.organization.id, actorId: identity.access.profile.id, leadId });
-    return apiSuccess({ accepted: true, leadId, result: acceptResult.data }, identity.meta, { headers: limited.headers });
-  }
-
-  // ---------------------------------------------------------------------------
-  // Ações governadas da liderança. As três delegam a RPCs que aplicam a regra
-  // dentro de uma transação — o Node não recalcula carteira nem redistribui à
-  // mão. Todas exigem motivo escrito: são decisões que mudam a carteira alheia
-  // e precisam ficar auditáveis com a razão, não só com o autor.
-  //
-  // Como em tarefas recorrentes, nenhuma delas pressupõe que a RPC exista:
-  // banco sem a migration correspondente responde 42883/PGRST202 e a rota
-  // devolve 503 explicando, em vez de 500 opaco.
-  // ---------------------------------------------------------------------------
-  const governedActions = new Set(["cover_absence", "configure_capacity", "configure_priority"]);
-  if (body && governedActions.has(String(body.action))) {
-    const isCapacity = body.action === "configure_capacity";
-    const isPriority = body.action === "configure_priority";
-    const leadershipRole = identity.access.profile.commercialRole || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
-    if (!managerRoles.has(leadershipRole)) return apiError("FORBIDDEN", "Esta é uma ação da liderança comercial.", identity.meta, { status: 403 });
-
-    const reason = String((body as Record<string, unknown>).reason ?? "").trim();
-    if (reason.length < 10) {
-      return apiError("DISTRIBUTION_REASON_REQUIRED", "Descreva o motivo desta decisão com pelo menos 10 caracteres — ele fica no histórico.", identity.meta, { status: 400 });
-    }
-
-    const raw = body as Record<string, unknown>;
-    const admin = getSupabaseAdmin();
-    const organization = identity.access.organization.id;
-    const actor = identity.access.profile.id;
-    const asUuid = (value: unknown) => typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null;
-    const asInt = (value: unknown) => { const parsed = Math.round(Number(value)); return Number.isFinite(parsed) ? parsed : null; };
-
-    let rpcName: string;
-    let rpcArgs: Record<string, unknown>;
-    let rejectionCode: string;
-    let logEvent: string;
-
-    if (body.action === "cover_absence") {
-      const brokerId = asUuid(raw.brokerId);
-      const endsAt = typeof raw.endsAt === "string" ? new Date(raw.endsAt) : null;
-      if (!brokerId) return apiError("ABSENCE_BROKER_INVALID", "Informe o corretor ausente.", identity.meta, { status: 400 });
-      if (!endsAt || !Number.isFinite(endsAt.getTime()) || endsAt.getTime() <= Date.now()) {
-        return apiError("ABSENCE_PERIOD_INVALID", "Informe até quando dura a ausência — precisa ser uma data futura.", identity.meta, { status: 400 });
-      }
-      const limit = Math.min(Math.max(asInt(raw.limit) ?? 200, 1), 500);
-      rpcName = "redistribute_absent_broker_leads";
-      rpcArgs = { p_actor_id: actor, p_organization_id: organization, p_broker_id: brokerId, p_ends_at: endsAt.toISOString(), p_reason: reason, p_limit: limit };
-      rejectionCode = "ABSENCE_REDISTRIBUTION_REJECTED";
-      logEvent = "crm.distribution.absence_covered";
-    } else if (body.action === "configure_capacity") {
-      const profileId = asUuid(raw.profileId);
-      const maxActive = asInt(raw.maxActiveLeads);
-      const maxProject = asInt(raw.maxProjectLeads);
-      const warning = asInt(raw.warningPercent);
-      if (!profileId) return apiError("CAPACITY_PROFILE_INVALID", "Informe o corretor cuja capacidade será ajustada.", identity.meta, { status: 400 });
-      if (maxActive !== null && (maxActive < 1 || maxActive > 500)) return apiError("CAPACITY_LIMIT_INVALID", "O limite de carteira precisa ficar entre 1 e 500 leads.", identity.meta, { status: 400 });
-      if (warning !== null && (warning < 10 || warning > 100)) return apiError("CAPACITY_LIMIT_INVALID", "O alerta precisa ficar entre 10% e 100% do limite.", identity.meta, { status: 400 });
-      rpcName = "configure_broker_capacity";
-      rpcArgs = { p_actor_id: actor, p_organization_id: organization, p_profile_id: profileId, p_max_active_leads: maxActive, p_max_project_leads: maxProject, p_warning_percent: warning, p_reason: reason };
-      rejectionCode = "CAPACITY_UPDATE_REJECTED";
-      logEvent = "crm.distribution.capacity_configured";
-    } else {
-      const developmentId = asUuid(raw.developmentId);
-      const sourceKey = String(raw.sourceKey ?? "").trim().slice(0, 60) || null;
-      const priority = asInt(raw.priority);
-      const slaMinutes = asInt(raw.slaMinutes);
-      if (!developmentId && !sourceKey) return apiError("PRIORITY_TARGET_INVALID", "Informe o empreendimento ou a origem que recebe a prioridade.", identity.meta, { status: 400 });
-      if (priority === null || priority < 1 || priority > 100) return apiError("PRIORITY_VALUE_INVALID", "A prioridade precisa ficar entre 1 e 100.", identity.meta, { status: 400 });
-      if (slaMinutes !== null && (slaMinutes < 1 || slaMinutes > 10_080)) return apiError("PRIORITY_VALUE_INVALID", "O SLA precisa ficar entre 1 minuto e 7 dias.", identity.meta, { status: 400 });
-      rpcName = "configure_distribution_priority";
-      rpcArgs = { p_actor_id: actor, p_organization_id: organization, p_development_id: developmentId, p_source_key: sourceKey, p_priority: priority, p_sla_minutes: slaMinutes, p_enabled: raw.enabled !== false, p_reason: reason };
-      rejectionCode = "PRIORITY_UPDATE_REJECTED";
-      logEvent = "crm.distribution.priority_configured";
-    }
-
-    const governed = await admin.rpc(rpcName, rpcArgs);
-    // Aliases nomeados: deixam explícito no código (e para os portões que
-    // auditam esta rota) qual resultado pertence a qual decisão de governança.
-    const capacityResult = isCapacity ? governed : null;
-    const priorityResult = isPriority ? governed : null;
-    void capacityResult; void priorityResult;
-    if (governed.error) {
-      const missingFunction = governed.error.code === "42883" || governed.error.code === "PGRST202";
-      if (missingFunction) {
-        structuredApiLog("warn", "crm.distribution.capability_unavailable", request, identity.meta, { organizationId: organization, rpc: rpcName });
-        return apiError("DISTRIBUTION_CAPABILITY_PENDING", "Esta ação depende de uma atualização do banco que ainda não foi aplicada neste ambiente.", identity.meta, { status: 503, headers: limited.headers });
-      }
-      structuredApiLog("warn", `${logEvent}_rejected`, request, identity.meta, { organizationId: organization, actorId: actor, code: governed.error.code });
-      return apiError(rejectionCode, "A regra de governança recusou esta alteração.", identity.meta, { status: 409, headers: limited.headers });
-    }
-
-    structuredApiLog("info", logEvent, request, identity.meta, { organizationId: organization, actorId: actor });
-    return apiSuccess({ action: body.action, result: governed.data, humanDecided: true }, identity.meta, { headers: limited.headers });
-  }
-
-  if (body?.action !== "distribute") {
-    return apiError("DISTRIBUTION_ACTION_INVALID", "Ação de distribuição inválida.", identity.meta, { status: 400 });
-  }
-
-  // Automatic fair distribution over the live (legacy) schema. Writes only real
-  // columns/tables: leads.assigned_user_id, lead_distribution_history, lead_events.
-  const role = identity.access.profile.commercialRole || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
-  if (!managerRoles.has(role)) return apiError("FORBIDDEN", "A distribuição é uma ação da liderança.", identity.meta, { status: 403 });
 
   const organizationId = identity.access.organization.id;
-  const developmentFilter = typeof body.developmentId === "string" && body.developmentId ? body.developmentId : null;
-  const batchLimit = Math.min(Math.max(Number(body.limit) || 200, 1), 1000);
-
-  // Motor governado primeiro. distribute_project_leads_v4 distribui dentro de uma
-  // transação e é quem HONRA as regras de prioridade e os limites de carteira —
-  // sem passar por ele, configurar prioridade seria enfeite: nada leria a regra.
-  // Também cria a reserva com prazo de aceite, coisa que o laço em Node não
-  // consegue fazer com segurança contra concorrência.
-  //
-  // Onde a migration da fase 58 não subiu, o Postgres responde 42883/PGRST202 e
-  // caímos no algoritmo least-load abaixo, que é o comportamento atual e segue
-  // funcionando. Nenhum ambiente perde capacidade; alguns ganham.
-  const governedEngine = await getSupabaseAdmin().rpc("distribute_project_leads_v4", {
-    p_actor_id: identity.access.profile.id,
-    p_organization_id: organizationId,
-    p_development_id: developmentFilter,
-    p_limit: batchLimit,
-    p_acceptance_minutes: 5,
-  });
-  if (!governedEngine.error) {
-    structuredApiLog("info", "crm.distribution.governed_engine", request, identity.meta, { organizationId, actorId: identity.access.profile.id, limit: batchLimit });
-    return apiSuccess({ engine: "distribute_project_leads_v4", priorityHonoured: true, capacityHonoured: true, result: governedEngine.data }, identity.meta, { headers: limited.headers });
-  }
-  if (governedEngine.error.code !== "42883" && governedEngine.error.code !== "PGRST202") {
-    structuredApiLog("warn", "crm.distribution.governed_engine_rejected", request, identity.meta, { organizationId, code: governedEngine.error.code });
-    return apiError("DISTRIBUTION_REJECTED", "A regra de governança recusou esta distribuição.", identity.meta, { status: 409, headers: limited.headers });
-  }
-
-  const [profilesResult, leadsResult] = await Promise.all([
-    identity.supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).eq("active", true),
-    identity.supabase.from("leads").select(LIVE_LEAD_SELECT).eq("organization_id", organizationId).limit(20000),
-  ]);
-  if (profilesResult.error || leadsResult.error) return apiError("DISTRIBUTION_LOOKUP_FAILED", "Não foi possível carregar a fila comercial.", identity.meta, { status: 503 });
-
-  const hierarchy = resolveLiveHierarchy((profilesResult.data ?? []) as unknown as CompatRow[]);
-  const scope = role === "director" ? new Set(hierarchy.map((profile) => text(profile.id))) : descendantsFromLiveProfiles(hierarchy, identity.access.profile.id);
-  const leads = ((leadsResult.data ?? []) as unknown as CompatRow[]).map((row) => mapLegacyLead(row)).filter((lead) => !archived.has(text(lead.status).toLowerCase()));
-
-  // Current active load per broker (org-wide — capacity is a personal limit).
-  const loadByBroker = new Map<string, number>();
-  for (const lead of leads) {
-    const owner = text(lead.assigned_to);
-    if (owner) loadByBroker.set(owner, (loadByBroker.get(owner) ?? 0) + 1);
-  }
-
-  // Eligible brokers: inside the leader's scope, role broker, online, with spare capacity.
-  const eligible = hierarchy
-    .filter((profile) => profile.commercial_role === "broker" && scope.has(text(profile.id)) && text(profile.availability_status || "").toUpperCase() !== "OFFLINE")
-    .map((profile) => {
-      const id = text(profile.id);
-      return { id, name: text(profile.full_name || profile.name) || "Corretor", capacity: Number(profile.max_active_leads || 100), load: loadByBroker.get(id) ?? 0 };
-    })
-    .filter((broker) => broker.load < broker.capacity);
-  if (!eligible.length) return apiError("DISTRIBUTION_NO_BROKER", "Nenhum corretor disponível com capacidade no seu escopo.", identity.meta, { status: 409 });
-
-  // Unassigned queue, oldest first, optionally scoped to one project.
-  const queue = leads
-    // Acervo de resgate fica FORA: ele tem balcão próprio (o corretor se serve
-    // em /api/v1/crm/acervo) e não pode ser empurrado como demanda nova.
-    .filter((lead) => !lead.assigned_to && !ehAcervoDeResgate(lead))
-    .filter((lead) => !developmentFilter || text(lead.development_id) === developmentFilter)
-    .sort((a, b) => Date.parse(text(a.created_at)) - Date.parse(text(b.created_at)))
-    .slice(0, batchLimit);
-
-  // Greedy least-load assignment (fair): each lead goes to the least-loaded broker with capacity.
-  const planByBroker = new Map<string, string[]>();
-  for (const lead of queue) {
-    let pick: (typeof eligible)[number] | null = null;
-    for (const broker of eligible) {
-      if (broker.load >= broker.capacity) continue;
-      if (!pick || broker.load < pick.load) pick = broker;
-    }
-    if (!pick) break; // every eligible broker is at capacity
-    pick.load += 1;
-    const planned = planByBroker.get(pick.id) ?? [];
-    planned.push(text(lead.id));
-    planByBroker.set(pick.id, planned);
-  }
-
-  // Persist per broker: idempotent update (only still-unassigned rows) + audit trail.
+  const actorId = identity.access.profile.id;
+  const role = resolvedRole(
+    identity.access.profile.commercialRole,
+    identity.access.profile.role,
+  );
   const admin = getSupabaseAdmin();
-  const distribution: Array<{ brokerId: string; brokerName: string; count: number }> = [];
-  let assignedTotal = 0;
-  for (const broker of eligible) {
-    const ids = planByBroker.get(broker.id);
-    if (!ids || !ids.length) continue;
-    const { data: updated, error: updateError } = await admin
-      .from("leads")
-      // As DUAS colunas de dono. Esta rota gravava só `assigned_user_id`, e a
-      // lead distribuída aparecia SEM DONO em toda tela que lê `assigned_to`.
-      .update({ assigned_to: broker.id, assigned_user_id: broker.id })
-      .eq("organization_id", organizationId)
-      .is("assigned_user_id", null)
-      .in("id", ids)
-      .select("id");
-    if (updateError) return apiError("DISTRIBUTION_ASSIGN_FAILED", "Falha ao atribuir os leads selecionados.", identity.meta, { status: 503 });
-    const assignedIds = (updated ?? []).map((row) => String(row.id));
-    if (!assignedIds.length) continue;
-    // Audit trail is best-effort: a logging failure must not undo a valid assignment.
-    await admin.from("lead_distribution_history").insert(assignedIds.map((leadId) => ({ organization_id: organizationId, lead_id: leadId, assigned_user_id: broker.id, reason: "auto:least-load" })));
-    await admin.from("lead_events").insert(assignedIds.map((leadId) => ({ organization_id: organizationId, lead_id: leadId, event_type: "lead_assigned", type: "distribution", description: `Lead distribuído para ${broker.name}`, created_by: identity.access.profile.id, metadata: { algorithm: "least-load", actorRole: role } })));
-    distribution.push({ brokerId: broker.id, brokerName: broker.name, count: assignedIds.length });
-    assignedTotal += assignedIds.length;
+
+  if (body.action === "heartbeat") {
+    const availability = availabilityOptions.has(body.availability || "")
+      ? body.availability!
+      : "available";
+    const heartbeatResult = await admin.rpc("touch_commercial_presence", {
+      p_actor_id: actorId,
+      p_organization_id: organizationId,
+      p_availability: availability,
+    });
+    if (heartbeatResult.error) {
+      structuredApiLog(
+        "warn",
+        "crm.distribution.presence_failed",
+        request,
+        identity.meta,
+        {
+          actorId,
+          error: heartbeatResult.error.message,
+        },
+      );
+      return apiError(
+        "PRESENCE_UPDATE_FAILED",
+        "Não foi possível atualizar sua disponibilidade.",
+        identity.meta,
+        { status: 503 },
+      );
+    }
+    return apiSuccess(
+      { availability, online: availability !== "offline" },
+      identity.meta,
+      { headers: limited.headers },
+    );
   }
 
-  return apiSuccess({
-    assigned: assignedTotal,
-    distribution,
-    remainingUnassigned: Math.max(0, leads.filter((lead) => !lead.assigned_to).length - assignedTotal),
-    eligibleBrokers: eligible.length,
-    rules: { algorithm: "least-load", fair: true, capacityRespected: true, onlineOnly: true, oldestFirst: true, idempotent: true, singleOwner: true, scope: role === "director" ? "organization" : "team" },
-    generatedAt: new Date().toISOString(),
-  }, identity.meta, { headers: limited.headers });
+  // Heartbeat é a única ação pessoal deste endpoint. Toda leitura ou mutação
+  // da roleta é uma decisão de diretoria, inclusive a distribuição imediata.
+  if (role !== "director") {
+    return apiError(
+      "FORBIDDEN",
+      "Somente a diretoria pode alterar a distribuição.",
+      identity.meta,
+      { status: 403 },
+    );
+  }
+
+  if (body.action === "distribute") {
+    const developmentId = text(body.developmentId);
+    const limit = integer(body.limit, 1);
+    if (!developmentId || limit < 1 || limit > 100) {
+      return apiError(
+        "INVALID_DISTRIBUTION_BATCH",
+        "Selecione um projeto e um lote entre 1 e 100 leads.",
+        identity.meta,
+        { status: 400 },
+      );
+    }
+    const distributionResult = await admin.rpc("distribute_project_leads_v4", {
+      p_actor_id: actorId,
+      p_organization_id: organizationId,
+      p_development_id: developmentId,
+      p_limit: limit,
+      p_acceptance_minutes: 5,
+    });
+    if (distributionResult.error) {
+      structuredApiLog(
+        "warn",
+        "crm.distribution.rejected",
+        request,
+        identity.meta,
+        {
+          actorId,
+          organizationId,
+          developmentId,
+          limit,
+          error: distributionResult.error.message,
+        },
+      );
+      return apiError(
+        "DISTRIBUTION_REJECTED",
+        "A distribuição não foi concluída. Revise presença, capacidade e as migrations da fila.",
+        identity.meta,
+        { status: 409 },
+      );
+    }
+    structuredApiLog(
+      "info",
+      "crm.distribution.completed",
+      request,
+      identity.meta,
+      {
+        actorId,
+        organizationId,
+        developmentId,
+        limit,
+        distributed: distributionResult.data?.distributed,
+      },
+    );
+    return apiSuccess(distributionResult.data, identity.meta, {
+      headers: limited.headers,
+    });
+  }
+
+  const profilesResult = await admin
+    .from("profiles")
+    .select(LIVE_PROFILE_SELECT)
+    .eq("organization_id", organizationId)
+    .eq("active", true);
+  if (profilesResult.error) {
+    return apiError(
+      "DISTRIBUTION_SCOPE_UNAVAILABLE",
+      "Não foi possível validar o escopo da equipe.",
+      identity.meta,
+      { status: 503 },
+    );
+  }
+  const hierarchy = resolveLiveHierarchy(
+    (profilesResult.data ?? []) as unknown as CompatRow[],
+  );
+
+  if (body.action === "configure_source_members") {
+    const sourceKey = text(body.sourceKey).trim().toLowerCase();
+    const reason = text(body.reason).trim();
+    const members = Array.isArray(body.members) ? body.members : [];
+    const uniqueMembers = new Map(
+      members.map((member) => [text(member.profileId), member]),
+    );
+    const selected = [...uniqueMembers.entries()].map(([profileId, member]) => ({
+      profile: hierarchy.find((profile) => text(profile.id) === profileId),
+      weight: integer(member.weight, 1),
+    }));
+    const invalid =
+      sourceKey !== "meta" ||
+      reason.length < 10 ||
+      reason.length > 500 ||
+      members.length < 1 ||
+      members.length > 25 ||
+      uniqueMembers.size !== members.length ||
+      uniqueMembers.has("") ||
+      selected.some(
+        ({ profile, weight }) =>
+          !profile || profile.commercial_role !== "broker" || weight < 1 || weight > 10,
+      );
+    if (invalid) {
+      return apiError(
+        "INVALID_META_RECIPIENTS",
+        "Selecione corretores válidos, sem repetição, e informe um motivo auditável.",
+        identity.meta,
+        { status: 400 },
+      );
+    }
+    const result = await admin.rpc("configure_source_distribution_members", {
+      p_actor_id: actorId,
+      p_organization_id: organizationId,
+      p_source_key: "meta",
+      p_members: selected.map(({ profile, weight }) => ({
+        profile_id: profile!.id,
+        weight,
+      })),
+      p_reason: reason,
+    });
+    if (result.error) {
+      structuredApiLog("warn", "crm.distribution.meta_recipients_rejected", request, identity.meta, {
+        actorId,
+        organizationId,
+        recipientCount: selected.length,
+        error: result.error.message,
+      });
+      return apiError(
+        "META_RECIPIENTS_REJECTED",
+        "Não foi possível salvar a roleta exclusiva da Meta. Confirme que a atualização da fila foi aplicada.",
+        identity.meta,
+        { status: 409 },
+      );
+    }
+    structuredApiLog("info", "crm.distribution.meta_recipients_configured", request, identity.meta, {
+      actorId,
+      organizationId,
+      recipientCount: selected.length,
+    });
+    return apiSuccess(result.data, identity.meta, { headers: limited.headers });
+  }
+  const target = hierarchy.find(
+    (profile) => text(profile.id) === body.profileId,
+  );
+
+  const allowed = new Set(hierarchy.map((profile) => text(profile.id)));
+
+  if (body.action === "configure_members") {
+    const developmentId = text(body.developmentId);
+    const members = Array.isArray(body.members) ? body.members : [];
+    if (!developmentId || members.length < 1 || members.length > 100) {
+      return apiError(
+        "INVALID_DISTRIBUTION_ROSTER",
+        "Selecione um projeto e entre 1 e 100 corretores.",
+        identity.meta,
+        { status: 400 },
+      );
+    }
+    const uniqueMembers = new Map(
+      members.map((member) => [text(member.profileId), member]),
+    );
+    if (uniqueMembers.size !== members.length || uniqueMembers.has("")) {
+      return apiError(
+        "INVALID_DISTRIBUTION_ROSTER",
+        "A lista da roleta contém corretores inválidos ou repetidos.",
+        identity.meta,
+        { status: 400 },
+      );
+    }
+    const scopedTargets = [...uniqueMembers.entries()].map(
+      ([profileId, member]) => ({
+        profile: hierarchy.find((profile) => text(profile.id) === profileId),
+        enabled: member.enabled,
+        weight: integer(member.weight, 1),
+      }),
+    );
+    const hasInvalidTarget = scopedTargets.some(
+      ({ profile, enabled, weight }) =>
+        !profile ||
+        profile.commercial_role !== "broker" ||
+        !allowed.has(text(profile.id)) ||
+        typeof enabled !== "boolean" ||
+        weight < 1 ||
+        weight > 10,
+    );
+    if (hasInvalidTarget) {
+      return apiError(
+        "BROKER_OUT_OF_SCOPE",
+        "Um ou mais corretores não pertencem ao seu escopo comercial.",
+        identity.meta,
+        { status: 403 },
+      );
+    }
+    const development = await admin
+      .from("developments")
+      .select("id")
+      .eq("id", developmentId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    if (development.error || !development.data) {
+      return apiError(
+        "DEVELOPMENT_OUT_OF_SCOPE",
+        "O projeto informado não pertence a esta organização.",
+        identity.meta,
+        { status: 404 },
+      );
+    }
+    const updatedAt = new Date().toISOString();
+    const rosterResult = await admin
+      .from("project_distribution_members")
+      .upsert(
+        scopedTargets.map(({ profile, enabled, weight }) => ({
+          organization_id: organizationId,
+          development_id: developmentId,
+          profile_id: profile!.id,
+          enabled,
+          weight,
+          updated_at: updatedAt,
+        })),
+        { onConflict: "development_id,profile_id" },
+      )
+      .select(
+        "profile_id,development_id,enabled,weight,assignments_count,last_assigned_at,updated_at",
+      );
+    if (rosterResult.error) {
+      structuredApiLog(
+        "warn",
+        "crm.distribution.roster_rejected",
+        request,
+        identity.meta,
+        {
+          actorId,
+          developmentId,
+          memberCount: scopedTargets.length,
+          error: rosterResult.error.message,
+        },
+      );
+      return apiError(
+        "DISTRIBUTION_ROSTER_REJECTED",
+        "Não foi possível salvar a equipe deste projeto.",
+        identity.meta,
+        { status: 409 },
+      );
+    }
+    structuredApiLog(
+      "info",
+      "crm.distribution.roster_configured",
+      request,
+      identity.meta,
+      {
+        actorId,
+        developmentId,
+        memberCount: scopedTargets.length,
+        enabledCount: scopedTargets.filter((member) => member.enabled).length,
+      },
+    );
+    return apiSuccess(
+      { members: rosterResult.data, configured: scopedTargets.length },
+      identity.meta,
+      { headers: limited.headers },
+    );
+  }
+
+  if (
+    !target ||
+    target.commercial_role !== "broker" ||
+    !allowed.has(text(target.id))
+  ) {
+    return apiError(
+      "BROKER_OUT_OF_SCOPE",
+      "O corretor informado não pertence ao seu escopo comercial.",
+      identity.meta,
+      { status: 403 },
+    );
+  }
+
+  if (body.action === "configure_member") {
+    const developmentId = text(body.developmentId);
+    const weight = integer(body.weight, 1);
+    if (
+      !developmentId ||
+      typeof body.enabled !== "boolean" ||
+      weight < 1 ||
+      weight > 10
+    ) {
+      return apiError(
+        "INVALID_DISTRIBUTION_MEMBER",
+        "Informe projeto, elegibilidade e peso entre 1 e 10.",
+        identity.meta,
+        { status: 400 },
+      );
+    }
+    const development = await admin
+      .from("developments")
+      .select("id")
+      .eq("id", developmentId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    if (development.error || !development.data) {
+      return apiError(
+        "DEVELOPMENT_OUT_OF_SCOPE",
+        "O projeto informado não pertence a esta organização.",
+        identity.meta,
+        { status: 404 },
+      );
+    }
+    const memberResult = await admin
+      .from("project_distribution_members")
+      .upsert(
+        {
+          organization_id: organizationId,
+          development_id: developmentId,
+          profile_id: target.id,
+          enabled: body.enabled,
+          weight,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "development_id,profile_id" },
+      )
+      .select(
+        "profile_id,development_id,enabled,weight,assignments_count,last_assigned_at,updated_at",
+      )
+      .single();
+    if (memberResult.error) {
+      structuredApiLog(
+        "warn",
+        "crm.distribution.member_rejected",
+        request,
+        identity.meta,
+        {
+          actorId,
+          profileId: target.id,
+          developmentId,
+          error: memberResult.error.message,
+        },
+      );
+      return apiError(
+        "DISTRIBUTION_MEMBER_REJECTED",
+        "Não foi possível atualizar a elegibilidade do corretor.",
+        identity.meta,
+        { status: 409 },
+      );
+    }
+    structuredApiLog(
+      "info",
+      "crm.distribution.member_configured",
+      request,
+      identity.meta,
+      {
+        actorId,
+        profileId: target.id,
+        developmentId,
+        enabled: body.enabled,
+        weight,
+      },
+    );
+    return apiSuccess(memberResult.data, identity.meta, {
+      headers: limited.headers,
+    });
+  }
+
+  if (body.action === "cover_absence") {
+    const reason = text(body.reason).trim();
+    const limit = integer(body.limit, 200);
+    const endsAt = text(body.endsAt);
+    if (
+      reason.length < 10 ||
+      reason.length > 500 ||
+      limit < 1 ||
+      limit > 200 ||
+      !endsAt ||
+      !Number.isFinite(Date.parse(endsAt))
+    ) {
+      return apiError(
+        "INVALID_ABSENCE_COVERAGE",
+        "Informe período, motivo auditável e um lote válido.",
+        identity.meta,
+        { status: 400 },
+      );
+    }
+    const absenceResult = await admin.rpc("redistribute_absent_broker_leads", {
+      p_actor_id: actorId,
+      p_organization_id: organizationId,
+      p_broker_id: target.id,
+      p_ends_at: endsAt,
+      p_reason: reason,
+      p_limit: limit,
+    });
+    if (absenceResult.error) {
+      structuredApiLog(
+        "warn",
+        "crm.distribution.absence_rejected",
+        request,
+        identity.meta,
+        {
+          actorId,
+          profileId: target.id,
+          error: absenceResult.error.message,
+        },
+      );
+      return apiError(
+        "ABSENCE_REDISTRIBUTION_REJECTED",
+        "A cobertura não foi aplicada. Confirme equipe disponível, período e capacidade.",
+        identity.meta,
+        { status: 409 },
+      );
+    }
+    structuredApiLog(
+      "info",
+      "crm.distribution.absence_covered",
+      request,
+      identity.meta,
+      {
+        actorId,
+        profileId: target.id,
+        transferred: absenceResult.data?.transferred,
+        endsAt,
+      },
+    );
+    return apiSuccess(absenceResult.data, identity.meta, {
+      headers: limited.headers,
+    });
+  }
+
+  if (body.action === "configure_capacity") {
+    const reason = text(body.reason).trim();
+    const maxActiveLeads = integer(body.maxActiveLeads, 100);
+    const maxProjectLeads = integer(body.maxProjectLeads, 50);
+    const warningPercent = integer(body.warningPercent, 80);
+    if (
+      reason.length < 10 ||
+      reason.length > 500 ||
+      maxActiveLeads < 1 ||
+      maxActiveLeads > 2000 ||
+      maxProjectLeads < 1 ||
+      maxProjectLeads > 1000 ||
+      maxProjectLeads > maxActiveLeads ||
+      warningPercent < 50 ||
+      warningPercent > 95
+    ) {
+      return apiError(
+        "INVALID_CAPACITY",
+        "Revise os limites, o percentual de alerta e o motivo auditável.",
+        identity.meta,
+        { status: 400 },
+      );
+    }
+    const capacityResult = await admin.rpc("configure_broker_capacity", {
+      p_actor_id: actorId,
+      p_organization_id: organizationId,
+      p_profile_id: target.id,
+      p_max_active_leads: maxActiveLeads,
+      p_max_project_leads: maxProjectLeads,
+      p_warning_percent: warningPercent,
+      p_reason: reason,
+    });
+    if (capacityResult.error) {
+      structuredApiLog(
+        "warn",
+        "crm.distribution.capacity_rejected",
+        request,
+        identity.meta,
+        {
+          actorId,
+          profileId: target.id,
+          error: capacityResult.error.message,
+        },
+      );
+      return apiError(
+        "CAPACITY_UPDATE_REJECTED",
+        "Não foi possível atualizar a capacidade desta carteira.",
+        identity.meta,
+        { status: 409 },
+      );
+    }
+    structuredApiLog(
+      "info",
+      "crm.distribution.capacity_configured",
+      request,
+      identity.meta,
+      {
+        actorId,
+        profileId: target.id,
+        maxActiveLeads,
+        maxProjectLeads,
+        warningPercent,
+      },
+    );
+    return apiSuccess(capacityResult.data, identity.meta, {
+      headers: limited.headers,
+    });
+  }
+
+  if (body.action === "configure_priority") {
+    const developmentId = text(body.developmentId);
+    const sourceKey = text(body.sourceKey).trim().toLowerCase();
+    const reason = text(body.reason).trim();
+    const priority = integer(body.priority, 5);
+    const slaMinutes = integer(body.slaMinutes, 60);
+    if (
+      !developmentId ||
+      !sourceKey ||
+      sourceKey.length > 120 ||
+      reason.length < 10 ||
+      reason.length > 500 ||
+      priority < 1 ||
+      priority > 10 ||
+      slaMinutes < 5 ||
+      slaMinutes > 10_080
+    ) {
+      return apiError(
+        "INVALID_DISTRIBUTION_PRIORITY",
+        "Revise origem, prioridade, SLA e motivo auditável.",
+        identity.meta,
+        { status: 400 },
+      );
+    }
+    const priorityResult = await admin.rpc("configure_distribution_priority", {
+      p_actor_id: actorId,
+      p_organization_id: organizationId,
+      p_development_id: developmentId,
+      p_source_key: sourceKey,
+      p_priority: priority,
+      p_sla_minutes: slaMinutes,
+      p_enabled: body.enabled !== false,
+      p_reason: reason,
+    });
+    if (priorityResult.error) {
+      structuredApiLog(
+        "warn",
+        "crm.distribution.priority_rejected",
+        request,
+        identity.meta,
+        {
+          actorId,
+          developmentId,
+          sourceKey,
+          error: priorityResult.error.message,
+        },
+      );
+      return apiError(
+        "PRIORITY_UPDATE_REJECTED",
+        "Não foi possível salvar a prioridade desta origem.",
+        identity.meta,
+        { status: 409 },
+      );
+    }
+    structuredApiLog(
+      "info",
+      "crm.distribution.priority_configured",
+      request,
+      identity.meta,
+      {
+        actorId,
+        developmentId,
+        sourceKey,
+        priority,
+        slaMinutes,
+      },
+    );
+    return apiSuccess(priorityResult.data, identity.meta, {
+      headers: limited.headers,
+    });
+  }
+
+  return apiError(
+    "INVALID_DISTRIBUTION_ACTION",
+    "Ação de distribuição não reconhecida.",
+    identity.meta,
+    { status: 400 },
+  );
 }

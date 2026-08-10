@@ -1,0 +1,27 @@
+{
+  "schema": "atlas.meta-final-execution-gate.v1",
+  "status": "awaiting_explicit_confirmation",
+  "preparationReference": null,
+  "gate": {
+    "operatorReference": null,
+    "confirmedScope": null,
+    "confirmedAt": null,
+    "approvalExpiresAt": null,
+    "confirmationPhrase": null
+  },
+  "execution": {
+    "requested": false,
+    "performed": false,
+    "budgetChanged": false,
+    "audienceChanged": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticConfirmation": true,
+    "automaticExecution": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

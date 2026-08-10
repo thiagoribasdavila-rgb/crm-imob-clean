@@ -1,0 +1,61 @@
+{
+  "phase": 26,
+  "program": "meta-andromeda-automation",
+  "mode": "sample_02_ephemeral_consumable_manual_permit_contract",
+  "status": "manual_permit_contract_ready_issuance_gate_closed",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-025.json",
+  "permitContractGate": "config/meta-repeatability-sample-02-manual-permit-contract-gate.json",
+  "requestTemplate": "config/fixtures/meta-repeatability-sample-02-manual-permit-contract-request-template.json",
+  "contractTemplate": "config/fixtures/meta-repeatability-sample-02-manual-permit-contract-template.json",
+  "contractRunner": "scripts/run-meta-repeatability-sample-02-manual-permit-contract.mjs",
+  "contractPreflight": "scripts/preflight-meta-repeatability-sample-02-manual-permit-contract.mjs",
+  "staticAudit": "scripts/audit-meta-repeatability-sample-02-manual-permit-contract.mjs",
+  "documentation": "docs/META_REPEATABILITY_SAMPLE_02_MANUAL_PERMIT_CONTRACT.md",
+  "environmentAudit": {
+    "officialPhase25ReceiptDetected": false,
+    "officialPermitContractRequestDetected": false,
+    "officialPermitContractGenerated": false,
+    "permitIssued": false,
+    "remoteCallsExecuted": false,
+    "databaseMutationExecuted": false,
+    "reason": "O contrato e os validadores estao prontos, mas comprovante e pedido oficiais nao foram fornecidos. Autotestes usam somente fixtures sinteticas em memoria."
+  },
+  "releaseGate": {
+    "localPermitContractPassed": true,
+    "syntheticPermitContractSelfTestPassed": true,
+    "officialPermitContractGenerated": false,
+    "permitIssuanceAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "maximumValiditySeconds": 120,
+    "minimumValiditySeconds": 15,
+    "singleUse": true,
+    "consumeBeforeAction": true,
+    "atomicConsumptionRequired": true,
+    "operatorBoundToPhase25": true,
+    "nonceAndIdempotencyRequired": true,
+    "rawReferencesPersisted": false,
+    "temporaryCodePersisted": false,
+    "payloadPersisted": false,
+    "rawResponsePersisted": false,
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false,
+    "databaseMutation": false,
+    "productionAccess": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 27,
+    "objective": "Preparar o ledger de emissao e consumo atomico da permissao, sem emitir permissao e sem transmitir evento."
+  }
+}

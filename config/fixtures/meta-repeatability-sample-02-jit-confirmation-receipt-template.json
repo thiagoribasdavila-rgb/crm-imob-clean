@@ -1,0 +1,73 @@
+{
+  "format": "atlas_meta_repeatability_jit_confirmation_receipt_v1",
+  "phase": 25,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "expiresAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "containsTemporaryCode": false,
+  "payloadPersisted": false,
+  "rawResponsePersisted": false,
+  "screenshotPersisted": false,
+  "sourceEvidence": {
+    "phase24Approved": false,
+    "phase24Fingerprint": null,
+    "phase24ExpiresAt": null,
+    "phase23Fingerprint": null,
+    "baselineEventIdFingerprint": null,
+    "draftRoleReferenceFingerprints": {
+      "director": null,
+      "security": null,
+      "operator": null,
+      "reviewer": null
+    }
+  },
+  "slot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2
+  },
+  "event": {
+    "eventName": null,
+    "classification": null,
+    "eventIdFingerprint": null,
+    "syntheticRecordFingerprint": null
+  },
+  "humanGovernance": {
+    "confirmationReferenceFingerprint": null,
+    "directorReconfirmed": false,
+    "securityReconfirmed": false,
+    "operatorReconfirmed": false,
+    "reviewerReconfirmed": false,
+    "directorReconfirmationFingerprint": null,
+    "securityReconfirmationFingerprint": null,
+    "operatorReconfirmationFingerprint": null,
+    "reviewerReconfirmationFingerprint": null,
+    "fourDistinctReconfirmations": false,
+    "draftReferencesNotReusedVerified": false
+  },
+  "activation": {
+    "status": "not_prepared",
+    "singleUse": true,
+    "consumed": false,
+    "authorizationActivated": false,
+    "manualObservationAllowed": false
+  },
+  "releaseGates": {
+    "jitConfirmationReceiptPrepared": false,
+    "phase24DraftLinked": false,
+    "authorizationActivationAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  },
+  "issueCodes": ["phase24_draft_or_reconfirmation_request_missing"],
+  "errorCode": "phase24_draft_or_reconfirmation_request_missing"
+}

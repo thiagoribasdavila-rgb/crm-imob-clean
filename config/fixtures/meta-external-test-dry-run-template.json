@@ -1,0 +1,17 @@
+{
+  "schema": "atlas.meta-external-test-dry-run.v1",
+  "status": "not_run",
+  "operatorGateReference": null,
+  "steps": [],
+  "simulation": {
+    "externalCallsMade": false,
+    "secretsRead": false,
+    "customerPayloadRead": false,
+    "productionTouched": false,
+    "dispatchEnabled": false
+  },
+  "result": {
+    "readyForSeparateExternalCommand": false,
+    "blockers": ["operator_gate_not_verified"]
+  }
+}

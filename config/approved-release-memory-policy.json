@@ -1,0 +1,20 @@
+{
+  "schema": "atlas.approved-release-memory-policy.v1",
+  "compositionId": "conversion-core-candidate",
+  "compositionDecisionHash": "468bcb65ac7ff6412df595580d8ac328644c646301b0c77cf55c787ad6b5bc8c",
+  "finalApprovalPolicyHash": "808518cd61008b5da6eb94a9d506a4544bdf0723c6d60acbf5d7ce8f731610eb",
+  "finalApprovalDecisionSchema": "atlas.final-release-approval-decision.v1",
+  "maxCommitDelaySeconds": 1800,
+  "exactFinalApprovalDecisionBindingRequired": true,
+  "approvedOutcomeRequired": true,
+  "acceptedGateResultsRequired": true,
+  "appendOnly": true,
+  "hashChainRequired": true,
+  "duplicateApprovalDecisionRejected": true,
+  "duplicateApprovalIdRejected": true,
+  "duplicateApprovalNonceRejected": true,
+  "automaticPackageGeneration": false,
+  "automaticDeploy": false,
+  "automaticReleasePromotion": false,
+  "policyHash": "37af76ac19a603949ccb56c1fe127919bc9e595770822df11b4a7e61a54e497a"
+}

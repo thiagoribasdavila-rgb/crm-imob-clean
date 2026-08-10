@@ -1,0 +1,91 @@
+{
+  "phase": 171,
+  "name": "Operational Memory and Large Delivery Program",
+  "status": "implemented",
+  "objective": "Evoluir a operação real em módulos grandes, reutilizando capacidades canônicas e registrando somente memória comprovada por evidências.",
+  "principles": {
+    "singleCanonicalOwnerPerCapability": true,
+    "noParallelImplementations": true,
+    "verifiedEvidenceOnly": true,
+    "noRawPiiInOperationalMemory": true,
+    "noProductionMutationDuringPlanning": true,
+    "oneCleanBuildPerHomologatedModule": true,
+    "oneZipPerHomologatedModule": true
+  },
+  "deliveryModules": [
+    {
+      "id": "conversion-core",
+      "name": "Conversão operacional ponta a ponta",
+      "outcome": "Lead recebido, distribuído, atendido e avançado com próxima ação comprovada.",
+      "reuse": ["lead-intake", "distribution", "lead-360", "pipeline", "tasks"],
+      "status": "disposable_workspace_ready_runtime_blocked"
+    },
+    {
+      "id": "commercial-memory",
+      "name": "Memória comercial supervisionada",
+      "outcome": "Decisões, ações e resultados alimentam contexto agregado sem armazenar PII bruta.",
+      "reuse": ["atlas-memory-context", "decision-ledger", "outcome-memory", "scoring-calibration"],
+      "status": "planned"
+    },
+    {
+      "id": "marketing-feedback",
+      "name": "Marketing conectado ao resultado",
+      "outcome": "Campanha, incorporador, corretor, etapa e resultado possuem evidência reconciliável.",
+      "reuse": ["campaign-attribution", "developer-report", "meta-capi", "conversion-evidence"],
+      "status": "planned"
+    },
+    {
+      "id": "communication-continuity",
+      "name": "Continuidade de atendimento",
+      "outcome": "Contato, consentimento, conversa e próxima ação permanecem auditáveis no CRM.",
+      "reuse": ["whatsapp-governance", "conversation-ledger", "opt-out", "follow-up"],
+      "status": "planned"
+    },
+    {
+      "id": "release-hardening",
+      "name": "Homologação e pacote Hostinger",
+      "outcome": "Regressão, runtime, rollback, build limpo, manifesto e checksum comprovados.",
+      "reuse": ["release-gates", "runtime-evidence", "rollback", "hostinger-package"],
+      "status": "planned"
+    }
+  ],
+  "moduleGate": {
+    "required": [
+      "escopo declarado concluído",
+      "sem proprietário canônico concorrente",
+      "contratos aprovados",
+      "typecheck aprovado",
+      "lint aprovado",
+      "evidência de runtime proporcional ao risco",
+      "isolamento por organização preservado",
+      "plano de rollback pronto",
+      "aprovação explícita da diretoria"
+    ],
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "completionMemory": {
+    "path": "config/release-module-completion-memory.json",
+    "artifactMemoryPath": "config/release-module-artifact-memory.json",
+    "mode": "append-only-hash-chain",
+    "localCompletionIsReleaseApproval": false,
+    "zipDerivedOnlyFromEligibleEntries": true,
+    "artifactBytesMustMatchBeforeZip": true,
+    "policy": "Cada revisão concluída recebe evidências, hash e gates próprios. Somente revisões homologadas em runtime, com build limpo, rollback pronto e aprovação da diretoria podem compor um ZIP."
+  },
+  "currentDelivery": {
+    "moduleId": "conversion-core",
+    "status": "disposable_workspace_ready_runtime_blocked",
+    "reason": "O executor autenticado agora roda somente em cópia temporária sem .env, caches ou metadados remotos; Docker/Supabase local e rastreabilidade Git ainda bloqueiam a prova de runtime, build e pacote."
+  },
+  "databaseMutation": false,
+  "externalCall": false,
+  "buildExecuted": false,
+  "zipGenerated": false,
+  "nextPhase": {
+    "phase": 175,
+    "name": "Lançador de workspace descartável do núcleo de conversão",
+    "status": "implemented"
+  }
+}

@@ -1,7 +1,5 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { toLearningEventRow, type CommercialFact } from "@/lib/ai/learning-loop";
-import { isMissingColumn, isMissingRelation } from "@/lib/compat/legacy-v2";
 
 type LeadEventInput = {
   organizationId: string;
@@ -31,41 +29,6 @@ export async function recordLiveLeadEvent(admin: SupabaseClient, input: LeadEven
   return { data, error };
 }
 
-/**
- * Ponto ÚNICO de gravação do aprendizado comercial (ai_learning_events).
- *
- * Concentrar aqui existe para a tabela não virar lixo: se cada rota inventar o
- * próprio shape, a contagem de "o que converte" deixa de ser somável e o
- * aprendizado perde o valor antes de existir.
- *
- * Nunca lança e nunca reverte nada: o chamador o coloca no Promise.allSettled
- * best-effort ao lado da movimentação comercial, porque falha de aprendizado
- * jamais pode desfazer uma venda que o corretor acabou de registrar.
- *
- * O preço de ser best-effort é que a falha some. Por isso `drift`: tabela ou
- * coluna ausente é uma classe de erro diferente de indisponibilidade momentânea
- * — ela significa que NENHUMA linha será gravada nunca, e o chamador precisa
- * conseguir distinguir isso para registrar como erro, não como aviso. Um
- * aprendizado que falha em silêncio para sempre entrega zero com aparência de
- * entrega verde.
- */
-export async function recordCommercialLearningEvent(admin: SupabaseClient, fact: CommercialFact) {
-  const row = toLearningEventRow(fact);
-  // null aqui é decisão do núcleo puro (etapa fora da taxonomia, sem lead ou
-  // organização): silêncio deliberado, não falha — por isso `skipped`.
-  if (!row) return { data: null, error: null, skipped: true, drift: false };
-  try {
-    const { data, error } = await admin
-      .from("ai_learning_events")
-      .insert(row)
-      .select("id,lead_id,event_type,converted,conversion_stage,created_at")
-      .single();
-    return { data, error, skipped: false, drift: isMissingRelation(error) || isMissingColumn(error) };
-  } catch (cause) {
-    return { data: null, error: { message: cause instanceof Error ? cause.message : String(cause) }, skipped: false, drift: false };
-  }
-}
-
 export function mapLiveLeadEvent(row: Record<string, unknown>) {
   const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata as Record<string, unknown> : {};
   return {
@@ -79,4 +42,31 @@ export function mapLiveLeadEvent(row: Record<string, unknown>) {
   };
 }
 
-export { liveLeadUpdatePayload } from "@/lib/compat/payload-de-lead";
+export function liveLeadUpdatePayload(body: Record<string, unknown>, currentStatus: unknown) {
+  const budgetMin = body.budget_min === null || body.budget_min === "" ? null : Number(body.budget_min);
+  const budgetMax = body.budget_max === null || body.budget_max === "" ? null : Number(body.budget_max);
+  const bedrooms = body.bedrooms === null || body.bedrooms === "" ? null : Number(body.bedrooms);
+  const preferredNeighborhoods = Array.isArray(body.preferred_regions)
+    ? body.preferred_regions.map((value) => String(value).trim()).filter(Boolean).slice(0, 20)
+    : [];
+  const purpose = typeof body.purpose === "string" ? body.purpose.trim() : "";
+  const notes = typeof body.notes === "string"
+    ? body.notes.replace(/^Objetivo declarado:\s*(moradia|investimento|loca[cç][aã]o)\.?\s*/i, "").trim()
+    : "";
+  const enrichedNotes = [purpose ? `Objetivo declarado: ${purpose}.` : "", notes].filter(Boolean).join("\n").slice(0, 5000) || null;
+
+  return {
+    name: typeof body.name === "string" ? body.name.trim() : null,
+    email: typeof body.email === "string" && body.email.trim() ? body.email.trim().toLowerCase() : null,
+    phone: typeof body.phone === "string" && body.phone.trim() ? body.phone.replace(/\D/g, "") : null,
+    source: typeof body.source === "string" && body.source.trim() ? body.source.trim() : null,
+    status: typeof body.status === "string" && body.status.trim() ? body.status.trim().toLowerCase() : String(currentStatus || "novo").toLowerCase(),
+    temperature: typeof body.temperature === "string" && body.temperature.trim() ? body.temperature.trim().toLowerCase() : "frio",
+    score_ia: Number.isFinite(Number(body.score)) ? Math.min(100, Math.max(0, Math.round(Number(body.score)))) : 0,
+    budget_min: Number.isFinite(budgetMin) ? budgetMin : null,
+    budget_max: Number.isFinite(budgetMax) ? budgetMax : null,
+    preferred_bedrooms: Number.isFinite(bedrooms) ? bedrooms : null,
+    preferred_neighborhoods: preferredNeighborhoods,
+    notes: enrichedNotes,
+  };
+}

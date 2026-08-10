@@ -1,0 +1,59 @@
+{
+  "phase": 352,
+  "cycle": "350-354",
+  "objective": "Registrar a primeira ação comercial e seu próximo compromisso em uma única transação auditável",
+  "status": "implementation_validated_runtime_evidence_pending",
+  "primaryMetric": "median-lead-to-first-action-minutes",
+  "operation": {
+    "endpoint": "/api/v1/leads/[id]/first-action",
+    "rpc": "record_lead_first_action",
+    "writes": [
+      "activities",
+      "tasks",
+      "leads",
+      "lead_events"
+    ],
+    "atomic": true,
+    "idempotent": true,
+    "humanConfirmationRequired": true,
+    "automaticContact": false
+  },
+  "security": {
+    "authenticatedAccessContext": true,
+    "tenantAndHierarchyScope": true,
+    "activeActorRequired": true,
+    "activeSameOrganizationAssigneeRequired": true,
+    "serviceRoleOnlyRpc": true,
+    "rateLimited": true,
+    "personalDataInLogs": false
+  },
+  "validated": {
+    "targetedContracts": "18/18 passed",
+    "typecheck": "passed",
+    "changedFilesLint": "passed with zero warnings",
+    "valueCycleContract": "passed: 10 cycles, 50 phases, continuous 350-399",
+    "secretScan": "passed: 4351 files, zero credentials detected"
+  },
+  "remoteState": {
+    "migrationApplied": false,
+    "dataChanged": false,
+    "reason": "A migration foi preparada localmente, mas credenciais seguras de homologação não estão disponíveis neste ambiente."
+  },
+  "runtimeEvidence": {
+    "status": "pending",
+    "nextPhase": 353,
+    "requiredProof": [
+      "usuário corretor autenticado",
+      "lead real dentro do escopo",
+      "uma atividade criada",
+      "uma tarefa futura criada",
+      "lead atualizada",
+      "evento auditável criado",
+      "repetição idempotente sem duplicidade"
+    ]
+  },
+  "officialPhaseMarker": 349,
+  "programAdvanceAuthorized": false,
+  "buildZipDeployPerformed": false,
+  "safeDisable": "Remover o formulário e a rota; a migration ainda não foi aplicada remotamente e nenhum dado foi alterado."
+}

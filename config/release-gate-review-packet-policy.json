@@ -1,0 +1,20 @@
+{
+  "schema": "atlas.release-gate-review-packet-policy.v1",
+  "compositionId": "conversion-core-candidate",
+  "compositionDecisionHash": "468bcb65ac7ff6412df595580d8ac328644c646301b0c77cf55c787ad6b5bc8c",
+  "evidencePlanHash": "c42803abb3c0c0d68c958db17edcfdc43f93acd04d6c2e90b8f40b0373d42a95",
+  "admissionPolicyHash": "11e71b2a3144878a34549433105c743d88cf3e3d8f6b9f6c349b308f634ab753",
+  "evaluationPolicyHash": "a5976ab426078894dd1c929243bee639f77cf34127d99e33a6711b880cd83cc0",
+  "maxPacketDelaySeconds": 300,
+  "requireRevalidatedEvaluation": true,
+  "requireFreshEvidenceAtPreparation": true,
+  "humanReviewRequired": true,
+  "approvalMayNotBeInferred": true,
+  "automaticGateExecution": false,
+  "automaticApproval": false,
+  "automaticReleaseMemoryUpdate": false,
+  "automaticPackageGeneration": false,
+  "automaticDeploy": false,
+  "automaticReleasePromotion": false,
+  "policyHash": "cb13e2e4e22d668bc25e53a2ca706fdac640c98e6f12491de6a7e43644d1db8c"
+}

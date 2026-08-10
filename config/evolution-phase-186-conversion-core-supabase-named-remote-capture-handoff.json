@@ -1,0 +1,52 @@
+{
+  "phase": 186,
+  "name": "Conversion Core Supabase Named Remote Capture Handoff",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Preparar um handoff em memória, curto, vinculado por hashes e consumível uma única vez entre revisão humana válida e adaptador de captura já obtida.",
+  "evidenceLevel": "local_ephemeral_handoff_contract_tested_remote_capture_not_performed",
+  "runtimeHomologated": false,
+  "currentState": {
+    "authorizationRequestPrepared": true,
+    "maximumHandoffLifetimeSeconds": 120,
+    "processLocalSingleUseEnforced": true,
+    "captureBindingUsesSha256": true,
+    "bearerTokenGenerated": false,
+    "remoteExecutorAvailable": false,
+    "handoffIssued": false,
+    "currentNamedRemoteEvidenceCollected": false
+  },
+  "safety": {
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationPushExecuted": false,
+    "migrationHistoryRepaired": false,
+    "migrationFileRenamed": false,
+    "databaseReset": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "secretsPersisted": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "authorizationRecorded": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "procedureExecuted": false,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "limitations": [
+    "O consumo único existe somente no processo que mantém a closure da sessão.",
+    "Nenhum executor remoto, credencial ou token portável foi criado.",
+    "A captura precisa existir antes do consumo; o handoff não a coleta."
+  ],
+  "nextAction": "Na fase 187, desenhar um recibo persistente e idempotente de consumo sem adicionar executor remoto nem alterar o banco operacional."
+}

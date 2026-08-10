@@ -1,0 +1,27 @@
+{
+  "schema": "atlas.meta-observation-interpretation.v1",
+  "status": "awaiting_human_interpretation",
+  "observationReference": null,
+  "interpretation": {
+    "reviewerReference": null,
+    "conclusion": null,
+    "evidenceLevel": null,
+    "recommendedNextStep": null,
+    "interpretedAt": null,
+    "causalClaim": false
+  },
+  "execution": {
+    "optimizationRequested": false,
+    "budgetChanged": false,
+    "audienceChanged": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticConclusion": true,
+    "automaticOptimization": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

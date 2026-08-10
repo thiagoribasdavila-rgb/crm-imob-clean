@@ -4,13 +4,8 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const contract = JSON.parse(readFileSync(resolve(root, "config/hierarchy-enforcement.json"), "utf8"));
 const security = readFileSync(resolve(root, "lib/api/security.ts"), "utf8");
-// O catálogo por papel saiu do sidebar para lib/atlas/navigation.ts, que o
-// sidebar importa (getAtlasNavigationForIdentity). Procurar os papéis só no
-// componente virou falso negativo — a decisão de visibilidade continua
-// existindo, agora numa camada única e reaproveitável. Os dois são lidos juntos.
-const sidebar = ["components/atlas/sidebar.tsx", "lib/atlas/navigation.ts"]
-  .map((file) => readFileSync(resolve(root, file), "utf8"))
-  .join("\n");
+const sidebar = readFileSync(resolve(root, "components/atlas/sidebar.tsx"), "utf8");
+const navigation = readFileSync(resolve(root, "lib/atlas/navigation.ts"), "utf8");
 const hierarchyMigration = readFileSync(resolve(root, "supabase/migrations/20260716212459_commercial_hierarchy_and_bulk_transfer.sql"), "utf8");
 const profileMigration = readFileSync(resolve(root, "supabase/migrations/20260717072714_secure_commercial_profile_hierarchy.sql"), "utf8");
 const exportRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/export/route.ts"), "utf8");
@@ -24,7 +19,9 @@ const errors = [];
 
 for (const layer of ["frontend", "api", "database", "exports", "reports", "integrations"]) if (!contract.layers.includes(layer)) errors.push("camada ausente: " + layer);
 if (!security.includes("resolveCommercialRole") || !security.includes("options.roles?.length && !options.roles.includes(effectiveRole)")) errors.push("controle central ainda usa somente papel legado");
-for (const role of ["director", "superintendent", "manager", "broker"]) if (!sidebar.includes(role)) errors.push("navegação sem perfil: " + role);
+if (!sidebar.includes("getAtlasNavigationForIdentity({ role, accessRole })")) errors.push("barra lateral não usa política central de navegação");
+for (const role of ["director", "superintendent", "manager", "broker"]) if (!navigation.includes(`"${role}"`)) errors.push("navegação sem perfil: " + role);
+if (!navigation.includes("canAccessAtlasItem(item, identity)")) errors.push("política central não aplica identidade ao filtrar navegação");
 if (!hierarchyMigration.includes("private.can_view_commercial_profile") || !hierarchyMigration.includes("private.can_access_commercial_lead")) errors.push("banco sem hierarquia comercial");
 if (!profileMigration.includes("profile_authorization_fields_are_server_managed") || !profileMigration.includes("supervisor_outside_actor_hierarchy")) errors.push("campos ou vínculos hierárquicos desprotegidos");
 if (!exportRoute.includes('eq("organization_id"') || !exportRoute.includes('role === "broker"') || !exportRoute.includes('eq("assigned_to"') || !exportRoute.includes("MAX_ROWS = 10_000")) errors.push("exportação não replica organização e carteira");

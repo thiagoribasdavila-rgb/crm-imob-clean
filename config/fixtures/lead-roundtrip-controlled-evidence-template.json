@@ -1,0 +1,36 @@
+{
+  "schema": "atlas.lead-roundtrip-controlled-evidence.v1",
+  "status": "not_executed",
+  "scenarioReference": "lead-roundtrip-synthetic-001",
+  "permitReference": null,
+  "runReference": null,
+  "startedAt": null,
+  "finishedAt": null,
+  "receipts": {
+    "intakeReceipt": null,
+    "deduplicationReceipt": null,
+    "tenantReceipt": null,
+    "assignmentReceipt": null,
+    "activityReceipt": null,
+    "pipelineReceipt": null,
+    "signalMappingReceipt": null,
+    "cleanupReceipt": null
+  },
+  "assertions": {
+    "syntheticOnly": false,
+    "singleTenant": false,
+    "singleBroker": false,
+    "singleCopilot": false,
+    "duplicateBlocked": false,
+    "auditPreserved": false,
+    "signalNotEmitted": false,
+    "cleanupCompleted": false
+  },
+  "decision": {
+    "humanReviewed": false,
+    "leadRoundTripValidated": false,
+    "metaTestMayBePlanned": false,
+    "productionAllowed": false,
+    "zipAllowed": false
+  }
+}

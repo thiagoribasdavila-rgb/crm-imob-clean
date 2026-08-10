@@ -7,7 +7,7 @@
   "productionDataModified": false,
   "runtimeNavigationChanged": true,
   "taskActions": {
-    "contextualTransitions": 15,
+    "contextualTransitions": 14,
     "singlePersistentSlot": true,
     "defaultAction": {
       "label": "Novo lead",

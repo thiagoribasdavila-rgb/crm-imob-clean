@@ -1,0 +1,17 @@
+{
+  "schema": "atlas.meta-commercial-outbox.v1",
+  "status": "empty_dispatch_disabled",
+  "events": [],
+  "dispatch": {
+    "enabled": false,
+    "automaticRetry": false,
+    "provider": null
+  },
+  "forbidden": {
+    "secrets": true,
+    "rawSessions": true,
+    "customerData": true,
+    "personalData": true,
+    "automaticProductionDispatch": true
+  }
+}

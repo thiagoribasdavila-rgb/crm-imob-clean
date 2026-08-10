@@ -1,0 +1,20 @@
+{
+  "schema": "atlas.controlled-external-publication-authorization-review-memory.v1",
+  "policyHash": "8e145b98ab32f714be2d04232cf46c2c8ac2ba7f293264c04ca3da2fa401930c",
+  "entries": [],
+  "summary": {
+    "recordedReviews": 0,
+    "eligibleProofs": 0,
+    "ineligibleProofs": 0,
+    "latestEntryHash": null,
+    "eligibleForAuthorizationGrant": false,
+    "externalPublicationAuthorized": false,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "b83fe08546d55124de13b8db9cfbd591a8ae8e8790b0dbd6336ec271643df9e3"
+}

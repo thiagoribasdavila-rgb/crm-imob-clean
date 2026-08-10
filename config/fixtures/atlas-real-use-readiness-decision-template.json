@@ -1,0 +1,24 @@
+{
+  "schema": "atlas.real-use-readiness-decision.v1",
+  "status": "pending_evidence_review",
+  "createdAt": null,
+  "evidenceFingerprint": null,
+  "review": {
+    "scope": "isolated-staging",
+    "result": "not_reviewed",
+    "decisionReference": null,
+    "releaseAuthorized": false
+  },
+  "execution": {
+    "buildAllowed": false,
+    "packageAllowed": false,
+    "deploymentAllowed": false
+  },
+  "forbidden": {
+    "secrets": true,
+    "rawSessions": true,
+    "authorizationClaims": true,
+    "customerRecords": true,
+    "personalData": true
+  }
+}

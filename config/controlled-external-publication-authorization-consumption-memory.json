@@ -1,0 +1,18 @@
+{
+  "schema": "atlas.controlled-external-publication-authorization-consumption-memory.v1",
+  "policyHash": "5432b274150ffe505cdb6bd67621ae5af10a7f21d7f1b008a2c40b59969464e9",
+  "entries": [],
+  "summary": {
+    "recordedConsumptions": 0,
+    "consumedSingleUseGrants": 0,
+    "latestEntryHash": null,
+    "authorizationConsumed": false,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "cea7cdb5eb007c98784fc45359f6aeb4413656480679338cade104a7274a8fa2"
+}

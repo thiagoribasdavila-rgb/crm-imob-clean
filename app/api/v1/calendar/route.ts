@@ -2,8 +2,6 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { readCompatibleLeads, readCompatibleTasks } from "@/lib/atlas/core-v2/live-repositories";
-import { isMissingRelation } from "@/lib/compat/legacy-v2";
-import { tarefaEncerrada } from "@/lib/crm/task-status";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +17,7 @@ type CalendarItem = {
   overdue: boolean;
 };
 
-// Esta lista nao reconhecia "done" — tarefa concluida pelo Copiloto continuava
-// ocupando a agenda.
-const terminalTasks = { has: (status: string) => tarefaEncerrada(status) };
+const terminalTasks = new Set(["concluida", "cancelada", "completed", "cancelled"]);
 const terminalVisits = new Set(["completed", "cancelled", "no_show"]);
 
 export async function GET(request: NextRequest) {
@@ -36,23 +32,33 @@ export async function GET(request: NextRequest) {
     readCompatibleLeads(identity.supabase, { organizationId, limit: 2000 }),
     identity.supabase
       .from("lead_visits")
-      .select("id,lead_id,scheduled_at,status,format,location")
+      .select("id,lead_id,broker_id,development_id,scheduled_at,status,format,location,notes")
       .eq("organization_id", organizationId)
       .order("scheduled_at", { ascending: true })
-      .limit(2000),
+      .limit(2_000),
   ]);
   if (!tasks.ok || !leads.ok) return apiError("CALENDAR_LOAD_FAILED", "Não foi possível carregar a agenda comercial.", identity.meta, { status: 500 });
-  const visitsTableMissing = Boolean(visits.error && isMissingRelation(visits.error));
-  if (visits.error && !visitsTableMissing) return apiError("CALENDAR_LOAD_FAILED", "Não foi possível carregar a agenda comercial.", identity.meta, { status: 500 });
   const leadRows = leads.rows;
   const leadMap = new Map(leadRows.map((lead) => [String(lead.id), lead]));
   const taskRows = tasks.rows;
-  // Visitas são um complemento do calendário. Bases V2 (ou ambientes onde a
-  // migration de lead_visits ainda não foi aplicada) não têm esta relação;
-  // tarefas e follow-ups continuam disponíveis sem bloquear a agenda.
-  const visitRows: Array<Record<string, unknown>> = visitsTableMissing ? [] : (visits.data ?? []);
+  // Visitas são um complemento do calendário. Bases V2 podem não ter esta
+  // relação; tarefas e follow-ups continuam disponíveis sem bloquear a agenda.
+  const visitRows: Array<Record<string, unknown>> = visits.error
+    ? []
+    : ((visits.data ?? []) as Array<Record<string, unknown>>);
 
-  const activeVisitKeys = new Set(visitRows.filter((visit) => !terminalVisits.has(String(visit.status))).map((visit) => `${visit.lead_id}:${new Date(String(visit.scheduled_at)).toISOString()}`));
+  const activeVisitKeys = new Set(
+    visitRows
+      .filter(
+        (visit) =>
+          !terminalVisits.has(String(visit.status)) &&
+          Number.isFinite(Date.parse(String(visit.scheduled_at))),
+      )
+      .map(
+        (visit) =>
+          `${visit.lead_id}:${new Date(String(visit.scheduled_at)).toISOString()}`,
+      ),
+  );
   const items: CalendarItem[] = [];
   for (const task of taskRows) {
     if (terminalTasks.has(String(task.status)) || !task.due_at) continue;
@@ -60,15 +66,11 @@ export async function GET(request: NextRequest) {
     items.push({ id: String(task.id), kind: "task", title: String(task.title || "Tarefa comercial"), at: String(task.due_at), status: String(task.status||"pendente"), detail: `${lead?.name || "Sem lead"} · prioridade ${task.priority || "média"}`, href: task.lead_id ? `/leads/${task.lead_id}/tasks` : "/tasks", leadId: task.lead_id ? String(task.lead_id) : null, overdue: new Date(String(task.due_at)).getTime() < now });
   }
   for (const visit of visitRows) {
-    if (terminalVisits.has(String(visit.status))) continue;
-    // `visit.lead` NUNCA existiu: o select acima pede
-    // "id,lead_id,scheduled_at,status,format,location" e não faz join. Toda
-    // visita da agenda aparecia como "Cliente · local a confirmar" — sem dizer
-    // com QUEM é, que é a única informação que importa numa agenda.
-    //
-    // O `leadMap` já está montado logo acima, com os mesmos leads. Resolver por
-    // ele custa nada e não precisa de join novo.
-    const lead = visit.lead_id ? leadMap.get(String(visit.lead_id)) : null;
+    if (
+      terminalVisits.has(String(visit.status)) ||
+      !Number.isFinite(Date.parse(String(visit.scheduled_at)))
+    ) continue;
+    const lead = leadMap.get(String(visit.lead_id));
     items.push({ id: String(visit.id), kind: "visit", title: visit.format === "video" ? "Videochamada" : "Visita ao projeto", at: String(visit.scheduled_at), status: String(visit.status||"agendado"), detail: `${lead?.name || "Cliente"} · ${visit.location || "local a confirmar"}`, href: `/leads/${visit.lead_id}/schedule`, leadId: visit.lead_id ? String(visit.lead_id) : null, overdue: new Date(String(visit.scheduled_at)).getTime() < now });
   }
   for (const lead of leadRows) {
@@ -84,6 +86,11 @@ export async function GET(request: NextRequest) {
     scope: { organizationId, actorId: identity.access.profile.id, hierarchicalRls: true },
     summary: { total: items.length, overdue: items.filter((item) => item.overdue).length, tasks: items.filter((item) => item.kind === "task").length, visits: items.filter((item) => item.kind === "visit").length, followUps: items.filter((item) => item.kind === "follow_up").length },
     items,
+    sources: {
+      tasks: "public.tasks",
+      visits: visits.error ? "awaiting-ddl" : "public.lead_visits",
+      followUps: "public.leads.next_action_at",
+    },
     generatedAt: new Date().toISOString(),
   }, identity.meta, { headers: { ...rate.headers, "Cache-Control": "no-store" } });
 }

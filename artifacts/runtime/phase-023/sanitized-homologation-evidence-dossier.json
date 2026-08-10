@@ -1,0 +1,64 @@
+{
+  "schema_version": "atlas.phase-023.evidence.v1",
+  "phase": "23/24",
+  "status": "homologation_evidence_not_generated",
+  "assessment": {
+    "gates_passed": 16,
+    "gates_total": 84,
+    "mutants_rejected": 113,
+    "mutants_total": 113,
+    "security_tests_required": 18,
+    "dossier_ready": false,
+    "commands_executed": 0
+  },
+  "validation": {
+    "phase_023_checks": "61/61",
+    "phase_022_regression": "61/61",
+    "typecheck": "passed",
+    "lint": "passed",
+    "secret_scan": "passed",
+    "secret_scan_files": 3032,
+    "credentials_detected": 0
+  },
+  "inputs": {
+    "phase_022_assessment_available": true,
+    "execution_receipt_exists": false,
+    "human_review_exists": false
+  },
+  "decision": {
+    "ready_for_human_homologation_decision": false,
+    "human_approval_required": true,
+    "remote_apply_authorized": false,
+    "linked_project_authorized": false,
+    "production_authorized": false
+  },
+  "privacy": {
+    "contains_credentials": false,
+    "contains_personal_data": false,
+    "contains_business_data": false,
+    "contains_auth_user_data": false,
+    "contains_storage_objects": false,
+    "contains_raw_sql": false,
+    "contains_raw_cli_output": false,
+    "contains_connection_strings": false
+  },
+  "safety": {
+    "evaluator_executed_command": false,
+    "evaluator_wrote_file": false,
+    "local_database_started": false,
+    "docker_accessed": false,
+    "migration_applied": false,
+    "pgtap_executed": false,
+    "lint_executed": false,
+    "rollback_executed": false,
+    "cleanup_executed": false,
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "linked_project_accessed": false,
+    "production_touched": false,
+    "business_or_auth_data_read": false,
+    "build_executed": false,
+    "release_package_created": false
+  },
+  "next_phase": "Fase 24/24: decisão humana final de homologação a partir de um dossiê realmente formado."
+}

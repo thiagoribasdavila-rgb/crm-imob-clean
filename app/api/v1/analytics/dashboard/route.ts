@@ -1,12 +1,16 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
-import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/legacy-v2";
-import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
+import { LIVE_LEAD_SELECT, isMissingColumn, mapLegacyLead, type CompatRow } from "@/lib/compat/legacy-v2";
+import { LIVE_PROFILE_SELECT, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
 
 export const dynamic = "force-dynamic";
 
 const TERMINAL = new Set(["ganho", "perdido", "arquivado", "comprou_outro", "won", "lost", "closed"]);
+const SUPERINTENDENT_PROFILE_SELECT =
+  "id,full_name,role,access_role,commercial_role,reports_to,active,organization_id,team,max_active_leads,availability_status";
+const SUPERINTENDENT_LEAD_SELECT =
+  "id,name,source,status,score,temperature,assigned_to,created_at,organization_id,next_action_at,development_id,budget_max";
 const normalize = (value: unknown) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const text = (value: unknown) => typeof value === "string" ? value : "";
 const number = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -21,22 +25,67 @@ export async function GET(request: NextRequest) {
   if (actorRole !== "superintendent") return apiError("FORBIDDEN", "Este painel comparativo é exclusivo da superintendência.", identity.meta, { status: 403 });
 
   const organizationId = identity.access.organization.id;
-  const [profileResult, leadResult] = await Promise.all([
-    identity.supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).eq("active", true).limit(1000),
-    identity.supabase.from("leads").select(LIVE_LEAD_SELECT).eq("organization_id", organizationId).limit(10000),
-  ]);
-  if (profileResult.error || leadResult.error) return apiError("TEAM_SUMMARY_FAILED", "Não foi possível consolidar os números das equipes.", identity.meta, { status: 503 });
+  const canonicalProfileResult = await identity.supabase
+    .from("profiles")
+    .select(SUPERINTENDENT_PROFILE_SELECT)
+    .eq("organization_id", organizationId)
+    .eq("active", true)
+    .limit(1000);
+  let profileRows = (canonicalProfileResult.data ?? []) as unknown as CompatRow[];
+  let profileError = canonicalProfileResult.error;
+  if (isMissingColumn(canonicalProfileResult.error)) {
+    const legacyProfileResult = await identity.supabase
+      .from("profiles")
+      .select(LIVE_PROFILE_SELECT)
+      .eq("organization_id", organizationId)
+      .eq("active", true)
+      .limit(1000);
+    profileRows = (legacyProfileResult.data ?? []) as unknown as CompatRow[];
+    profileError = legacyProfileResult.error;
+  }
 
-  const profiles = resolveLiveHierarchy((profileResult.data ?? []) as unknown as CompatRow[]);
-  const leads = ((leadResult.data ?? []) as unknown as CompatRow[]).map(mapLegacyLead);
-  const visibleIds = descendantsFromLiveProfiles(profiles, identity.access.profile.id);
-  const managers = profiles.filter((profile) => profile.commercial_role === "manager" && visibleIds.has(text(profile.id)));
-  const brokers = profiles.filter((profile) => profile.commercial_role === "broker" && visibleIds.has(text(profile.id)));
+  const canonicalLeadResult = await identity.supabase
+    .from("leads")
+    .select(SUPERINTENDENT_LEAD_SELECT)
+    .eq("organization_id", organizationId)
+    .limit(10000);
+  let leadRows = (canonicalLeadResult.data ?? []) as unknown as CompatRow[];
+  let leadError = canonicalLeadResult.error;
+  if (isMissingColumn(canonicalLeadResult.error)) {
+    const legacyLeadResult = await identity.supabase
+      .from("leads")
+      .select(LIVE_LEAD_SELECT)
+      .eq("organization_id", organizationId)
+      .limit(10000);
+    leadRows = (legacyLeadResult.data ?? []) as unknown as CompatRow[];
+    leadError = legacyLeadResult.error;
+  }
+  if (profileError || leadError) return apiError("TEAM_SUMMARY_FAILED", "Não foi possível consolidar os números das equipes.", identity.meta, { status: 503 });
+
+  const profiles = resolveLiveHierarchy(profileRows);
+  const leads = leadRows.map(mapLegacyLead);
+  const managers = profiles.filter(
+    (profile) =>
+      profile.commercial_role === "manager" &&
+      profile.reports_to === identity.access.profile.id,
+  );
+  const managerIds: Set<unknown> = new Set(managers.map((profile) => text(profile.id)));
+  const brokers = profiles.filter(
+    (profile) =>
+      profile.commercial_role === "broker" &&
+      profile.reports_to && managerIds.has(profile.reports_to),
+  );
+  const visibleIds = new Set([
+    ...managerIds,
+    ...brokers.map((profile) => text(profile.id)),
+  ]);
   const now = Date.now();
 
   const rows = managers.map((manager) => {
-    const teamIds = descendantsFromLiveProfiles(profiles, text(manager.id));
-    const teamBrokers = brokers.filter((broker) => teamIds.has(text(broker.id)));
+    const teamBrokers = brokers.filter(
+      (broker) => text(broker.reports_to) === text(manager.id),
+    );
+    const teamIds = new Set(teamBrokers.map((broker) => text(broker.id)));
     const portfolio = leads.filter((lead) => teamIds.has(text(lead.assigned_to)));
     const activeLeads = portfolio.filter((lead) => !TERMINAL.has(normalize(lead.status)));
     const won = portfolio.filter((lead) => normalize(lead.status) === "ganho").length;
@@ -73,6 +122,7 @@ export async function GET(request: NextRequest) {
   return apiSuccess({
     scope: { role: "superintendent", actorId: identity.access.profile.id, directManagersOnly: true, directBrokersPerManagerOnly: true, parallelStructuresExcluded: true, unassignedExcluded: true },
     totals,
+    teamPresence: { source: "commercial_presence", online: totals.online, available: totals.available },
     benchmark: { conversionRate: benchmark, minimumLeadsPerTeam: 30, comparableManagers: comparable.length },
     distribution: { averageActivePerBroker: Math.round(averageLoad * 10) / 10, spread: loadSpread, imbalanced: loadSpread >= Math.max(5, Math.ceil(averageLoad * 0.4)), metric: "active_leads_per_broker_by_direct_manager" },
     managers: enrichedRows.sort((left, right) => right.firstContactOverdue - left.firstContactOverdue || right.followUpOverdue - left.followUpOverdue || right.activeLeads - left.activeLeads),

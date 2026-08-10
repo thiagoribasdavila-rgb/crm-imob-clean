@@ -1,0 +1,31 @@
+{
+  "phase": 154,
+  "name": "Meta Director Campaign Conversion Center",
+  "status": "implemented",
+  "objective": "Transformar a página de campanhas em uma central executiva para criação, qualificação e decisão de campanhas Meta com foco em conversão real.",
+  "businessImpact": [
+    "Diretor passa a enxergar campanhas por qualidade comercial, não só volume de leads.",
+    "Brief de campanha orienta projeto, público, promessa e evento de otimização antes de subir no Meta.",
+    "Campanhas só são recomendadas para escala quando existe amostra e sinal do CRM.",
+    "Andromeda passa a ser tratado como loop de informação: lead, qualificação, visita, proposta e venda retornam como sinais."
+  ],
+  "technicalScope": [
+    "Reaproveitar /api/v1/campaign-intelligence sem criar migration ou automação externa.",
+    "Evoluir app/(crm)/marketing/campaigns/page.tsx para uma experiência client-side com fallback seguro.",
+    "Adicionar leitura de período, métricas executivas, fila de decisões, gates de qualidade e ranking por conversão.",
+    "Manter decisão humana obrigatória e bloquear qualquer alteração automática de verba ou campanha."
+  ],
+  "validation": [
+    "npm run evolution:phase-154:check",
+    "npm run typecheck",
+    "npm run lint"
+  ],
+  "files": [
+    "app/(crm)/marketing/campaigns/page.tsx",
+    "docs/EVOLUTION_PHASE_154_META_DIRECTOR_CAMPAIGN_CONVERSION_CENTER.md",
+    "scripts/check-evolution-phase-154.mjs",
+    "config/evolution-phase-154-meta-director-campaign-conversion-center.json",
+    "config/evolution-program-3000.json",
+    "package.json"
+  ]
+}

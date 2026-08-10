@@ -1,0 +1,46 @@
+{
+  "phase": 208,
+  "name": "Release Gate Execution Authorization",
+  "status": "implemented",
+  "objective": "Derivar uma autorização separada, explícita, assinada, curta e de uso único para executar somente gates aprovados, sem executar gates ou promover a release.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "authorizationPolicyHash": "578ff48a805dd2b10df870fa44d94974c81317ae9f77f5883bb603b69751fa69",
+    "trustedExecutionAuthorizersConfigured": 0,
+    "humanDecisionRegisterAvailable": false,
+    "executionAuthorizationIssued": false,
+    "authorizedGateCount": 0,
+    "gatesExecuted": false,
+    "releaseApproved": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "authorizationRules": {
+    "requiredDecisionRegisterStatus": "human_review_complete_approved",
+    "unanimousExplicitApprovalRequired": true,
+    "exactDecisionRegisterBindingRequired": true,
+    "exactApprovedGateSetRequired": true,
+    "separateExecutionAuthorityRequired": true,
+    "oneShotAuthorizationRequired": true,
+    "authorizerRole": "release-controller",
+    "maximumAuthorizationDelaySeconds": 300,
+    "maximumAuthorizationValiditySeconds": 900
+  },
+  "safety": {
+    "remoteAccess": false,
+    "databaseMutation": false,
+    "migrationApplied": false,
+    "gateExecution": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 209,
+    "name": "Authorized Release Gate Execution",
+    "objective": "Consumir uma autorização válida uma única vez, executar somente os gates autorizados em ambiente isolado e registrar recibos verificáveis, sem aprovar, empacotar, implantar ou promover a release."
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "phase": 21,
+  "name": "leads-lead360-decision-density",
+  "objective": "Reduzir o ruído inicial de Leads e Lead 360 sem retirar contato, prioridade, próxima ação, filtros, acompanhamento ou operações de CRM.",
+  "canonicalSurfaces": ["leads", "lead-360"],
+  "alwaysVisible": [
+    "identificação e contato",
+    "decisão principal da carteira",
+    "fila de prioridade",
+    "métricas operacionais",
+    "busca e filtros",
+    "tabela de leads",
+    "próxima ação recomendada",
+    "registro de acompanhamento",
+    "edição do perfil comercial"
+  ],
+  "progressive": [
+    "diagnóstico da carteira",
+    "contexto completo do relacionamento",
+    "qualidade e memória unificada",
+    "explicação do score e qualificação",
+    "histórico completo",
+    "matching de imóveis"
+  ],
+  "rules": [
+    "A primeira leitura deve responder quem atender, como contatar e qual ação executar.",
+    "Busca, filtros, transferência, edição, acompanhamento e próxima ação permanecem imediatamente acessíveis.",
+    "Diagnósticos e memória permanecem no mesmo contexto por divulgação progressiva nativa.",
+    "Nenhum cálculo, API, persistência, RLS, hierarquia ou regra comercial é alterado.",
+    "Estados de carregamento, vazio, erro e confirmação permanecem explícitos."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

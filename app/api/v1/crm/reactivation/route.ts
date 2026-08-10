@@ -39,13 +39,11 @@ export async function GET(request: NextRequest) {
   ]);
   const failed = [profilesResult, batchesResult, contactsResult, projectsResult, experienceResult].find((item) => item.error);
   if (failed?.error) {
-    const [legacyProfiles, archivedLeads, activeOrganizations] = await Promise.all([
+    const [legacyProfiles, archivedLeads] = await Promise.all([
       admin.from("profiles").select("*").eq("organization_id", org).eq("active", true),
       admin.from("leads").select("id", { count: "exact", head: true }).eq("organization_id", org).in("status", ["arquivado", "archived"]),
-      admin.from("organizations").select("id", { count: "exact", head: true }).eq("status", "ACTIVE"),
     ]);
     if (legacyProfiles.error || archivedLeads.error) return apiError("REACTIVATION_LOOKUP_FAILED", "Não foi possível carregar a central de reativação.", identity.meta, { status: 500 });
-    const projectResult = (activeOrganizations.count ?? 0) === 1 ? await admin.from("projects").select("*").order("name") : { data: [] };
     const profiles = (legacyProfiles.data ?? []).map((item) => mapLegacyProfile(item));
     const role = roleOf(identity.access.profile.role, identity.access.profile.commercialRole);
     const visible = role === "director" ? new Set(profiles.map((item) => String(item.id))) : descendants(profiles.map((item) => ({ id: String(item.id), reports_to: item.reports_to ? String(item.reports_to) : null })), identity.access.profile.id);
@@ -53,7 +51,7 @@ export async function GET(request: NextRequest) {
     return apiSuccess({
       viewer: { id: identity.access.profile.id, role }, compatibility: "protected-memory-read-only",
       targets: profiles.filter((item) => visible.has(String(item.id)) && String(item.commercial_role || item.role) === "broker"),
-      projects: (projectResult.data ?? []).map((item) => mapLegacyProject(item)),
+      projects: (projectsResult.data ?? []).map((item) => mapLegacyProject(item)),
       batches: coldCount ? [{ id: "protected-cold-memory", name: "Memória histórica protegida", owner_id: identity.access.profile.id, development_id: null, source_type: "protected_memory", status: "memory_only", quality_status: "protected", imported_count: coldCount, eligible_count: 0, queued_count: 0, delivered_count: 0, read_count: 0, replied_count: 0, failed_count: 0, created_at: new Date().toISOString(), summary: {} }] : [],
       offers: [], experiences: [], governance: { automaticActivation: false, piiExposed: false, consentRequired: true, coldMemoryCount: coldCount },
     }, identity.meta, { headers: rate.headers });
@@ -152,7 +150,7 @@ export async function POST(request: NextRequest) {
       let lead = existingMap.get(item.phone);
       let reason: string | null = blocked.has(item.phone) ? "opt_out" : qualityMap.has(item.phone) ? "invalid_phone_history" : (occurrences.get(item.phone) || 0) > 1 ? "duplicado_no_arquivo" : lead ? "lead_ja_existente" : null;
       if (!lead && !reason) {
-        const created = await admin.from("leads").insert({ organization_id: org, assigned_to: ownerId, assigned_user_id: ownerId, development_id: body.developmentId || null, name: item.name, phone: item.phone, email: item.email, source: sourceType === "company_legacy" ? "Base antiga" : "Base externa do corretor", status: "novo", metadata: { reactivation: { batchId: batch.id, consentBasis: body.consentBasis.trim(), importedBy: identity.access.profile.id } } }).select("id,phone,phone_normalized,assigned_to").single();
+        const created = await admin.from("leads").insert({ organization_id: org, assigned_to: ownerId, development_id: body.developmentId || null, name: item.name, phone: item.phone, email: item.email, source: sourceType === "company_legacy" ? "Base antiga" : "Base externa do corretor", status: "novo", metadata: { reactivation: { batchId: batch.id, consentBasis: body.consentBasis.trim(), importedBy: identity.access.profile.id } } }).select("id,phone,phone_normalized,assigned_to").single();
         if (created.data) lead = created.data;
         else reason = "falha_ao_criar_lead";
       }

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "phase32.pg17-compatibility-evidence.v1",
+  "phase": 32,
+  "status": "not_run",
+  "environment": "local_ephemeral_pg17",
+  "sourceReference": {
+    "phase30EvidenceFingerprint": null,
+    "phase31ReceiptFingerprint": null,
+    "sharedArtifactFingerprintsMatched": false
+  },
+  "runtime": {
+    "engineDetected": false,
+    "engine": "docker_compose",
+    "databaseHealthy": false,
+    "imageReference": "supabase/postgres:17.6.1.149",
+    "imageFingerprint": null,
+    "targetFingerprint": null,
+    "postgresVersion": null,
+    "currentUser": null
+  },
+  "artifactFingerprints": {},
+  "eventSequence": [],
+  "compatibility": {
+    "blockedExtensionsDetected": [],
+    "freshVolumeProven": false,
+    "pg17Verified": false
+  },
+  "rehearsal": {
+    "baselineApplied": false,
+    "migrationApplied": false,
+    "securityVerified": false,
+    "permitReservationExecuted": false,
+    "rollbackAttempted": false,
+    "rollbackApproved": false,
+    "finalLedgerObjectsAbsent": false,
+    "volumesDestroyed": false
+  },
+  "releaseGates": {
+    "sourceEvidenceProven": false,
+    "isolatedRuntimeProven": false,
+    "pg17CompatibilityApproved": false,
+    "securityRehearsalApproved": false,
+    "rollbackRehearsalApproved": false,
+    "cleanupApproved": false
+  },
+  "databaseTouched": false,
+  "remoteDatabaseTouched": false,
+  "metaTouched": false,
+  "buildExecuted": false
+}

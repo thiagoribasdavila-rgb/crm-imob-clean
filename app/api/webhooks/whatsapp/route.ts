@@ -5,7 +5,6 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { assessCustomerExperience } from "@/lib/atlas/customer-experience";
 import { enforceDistributedRateLimit } from "@/lib/security/abuse-protection";
-import { fecharPrimeiroContatoPorWhatsapp, descreverContatoDeWhatsapp } from "@/lib/crm/whatsapp-first-contact";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +16,24 @@ function normalizePhone(value: string) {
 function isOptOut(value: string) {
   const normalized = value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
   return /^(sair|pare|parar|cancelar|remover|stop|unsubscribe|nao quero mais|nao me envie mais)$/.test(normalized);
+}
+
+type WhatsAppLineConfig = {
+  brokerProfileId?: string;
+  displayPhone?: string;
+  recordConversations?: boolean;
+};
+
+function lineConfig(value: unknown): WhatsAppLineConfig {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as WhatsAppLineConfig : {};
+}
+
+function isUuid(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function isMissingCanonicalPhoneColumn(error: { code?: string; message?: string } | null) {
+  return error?.code === "42703" || /phone_normalized/i.test(error?.message || "");
 }
 
 export async function GET(request: Request) {
@@ -61,7 +78,7 @@ export async function POST(request: Request) {
 
         const { data: integration } = await admin
           .from("integrations")
-          .select("organization_id")
+          .select("id,organization_id,config,external_account_id")
           .eq("provider", "whatsapp")
           .eq("external_account_id", phoneNumberId)
           .maybeSingle();
@@ -96,65 +113,89 @@ export async function POST(request: Request) {
             const { error: optOutError } = await admin.rpc("register_whatsapp_opt_out", { p_organization_id: integration.organization_id, p_recipient: sender, p_source: "whatsapp_inbound", p_external_message_id: incoming.id });
             if (optOutError) throw optOutError;
           }
-          const { data: conversation } = await admin
+          const config = lineConfig(integration.config);
+          const brokerProfileId = isUuid(config.brokerProfileId) ? config.brokerProfileId : null;
+          // Namespacing the conversation by the official line prevents a client who
+          // messages two brokers from having their conversations merged.
+          const externalThreadId = `${phoneNumberId}:${sender}`;
+          const { data: scopedConversation } = await admin
             .from("conversations")
             .select("id,lead_id,assigned_to")
             .eq("organization_id", integration.organization_id)
             .eq("channel", "whatsapp")
-            .eq("external_thread_id", sender)
+            .eq("external_thread_id", externalThreadId)
             .maybeSingle();
 
-          let conversationId = conversation?.id;
-          const conversationLeadId = conversation?.lead_id || null;
-          // A lead pode vir da conversa existente OU do match por telefone feito
-          // logo abaixo, quando a conversa nasce agora. As duas pontas precisam
-          // chegar ao fechamento do relógio, senão a PRIMEIRA mensagem de uma
-          // lead nova — justamente a que mais importa — não fecharia nada.
-          let leadDesteEvento: string | null = conversationLeadId;
-          const conversationOwnerId = conversation?.assigned_to || null;
-          if (!conversationId) {
-            // Antes a conversa nascia SEM lead_id e nada fazia o match depois:
-            // a mensagem existia no inbox, mas nunca aparecia na timeline da
-            // lead — o corretor respondia sem contexto. O telefone é o elo
-            // natural: `sender` já vem normalizado (dígitos com DDI 55), e as
-            // leads guardam o mesmo formato em phone_normalized (trigger do
-            // contrato canônico) ou dígitos em phone. Match ambíguo (dois leads
-            // com o mesmo número) fica sem vínculo — errar por omissão é
-            // melhor que colar a conversa na lead errada.
-            let matchedLeadId: string | null = null;
-            const { data: phoneMatches } = await admin
-              .from("leads")
-              .select("id")
+          // Keep old conversations visible after the multi-line upgrade. Only the
+          // primary/unmapped line uses this legacy lookup, avoiding cross-broker merges.
+          const { data: legacyConversation } = scopedConversation || brokerProfileId
+            ? { data: null }
+            : await admin
+              .from("conversations")
+              .select("id,lead_id,assigned_to")
               .eq("organization_id", integration.organization_id)
-              .or(`phone_normalized.eq.${sender},phone.eq.${sender}`)
-              .limit(2);
-            if (phoneMatches?.length === 1) {
-              matchedLeadId = phoneMatches[0].id;
-              leadDesteEvento = matchedLeadId;
-            }
+              .eq("channel", "whatsapp")
+              .eq("external_thread_id", sender)
+              .maybeSingle();
+          const conversation = scopedConversation || legacyConversation;
 
+          const canonicalLeadLookup = await admin
+            .from("leads")
+            .select("id,assigned_to")
+            .eq("organization_id", integration.organization_id)
+            .eq("phone_normalized", sender)
+            .limit(2);
+          if (canonicalLeadLookup.error && !isMissingCanonicalPhoneColumn(canonicalLeadLookup.error)) throw canonicalLeadLookup.error;
+          const legacyLeadLookup = canonicalLeadLookup.error
+            ? await admin
+              .from("leads")
+              .select("id,assigned_to")
+              .eq("organization_id", integration.organization_id)
+              .eq("phone", sender)
+              .limit(2)
+            : null;
+          if (legacyLeadLookup?.error) throw legacyLeadLookup.error;
+          const leadCandidates = canonicalLeadLookup.data ?? legacyLeadLookup?.data;
+          const matchedLead = leadCandidates?.length === 1 ? leadCandidates[0] : null;
+
+          let conversationId = conversation?.id;
+          const conversationLeadId = conversation?.lead_id || matchedLead?.id || null;
+          const conversationOwnerId = conversation?.assigned_to || matchedLead?.assigned_to || brokerProfileId || null;
+          if (!conversationId) {
             const { data: created, error: createError } = await admin
               .from("conversations")
               .insert({
                 organization_id: integration.organization_id,
                 channel: "whatsapp",
-                external_thread_id: sender,
-                lead_id: matchedLeadId,
+                external_thread_id: externalThreadId,
                 status: "open",
                 unread_count: 1,
                 last_message_at: new Date().toISOString(),
+                lead_id: conversationLeadId,
+                assigned_to: conversationOwnerId,
               })
               .select("id")
               .single();
             if (createError || !created) throw createError ?? new Error("Falha ao criar conversa.");
             conversationId = created.id;
-            if (matchedLeadId) logger.info("whatsapp.conversation_linked_by_phone", { organizationId: integration.organization_id, conversationId, leadId: matchedLeadId });
           } else {
+            const updates: Record<string, unknown> = { last_message_at: new Date().toISOString(), unread_count: 1, status: "open" };
+            if (!conversation?.lead_id && conversationLeadId) updates.lead_id = conversationLeadId;
+            if (!conversation?.assigned_to && conversationOwnerId) updates.assigned_to = conversationOwnerId;
             await admin
               .from("conversations")
-              .update({ last_message_at: new Date().toISOString(), unread_count: 1, status: "open" })
+              .update(updates)
               .eq("id", conversationId);
           }
+
+          const { data: duplicateMessage } = await admin
+            .from("messages")
+            .select("id")
+            .eq("organization_id", integration.organization_id)
+            .eq("external_message_id", incoming.id)
+            .limit(1)
+            .maybeSingle();
+          if (duplicateMessage) { duplicates += 1; continue; }
 
           const { data: inboundMessage, error: messageError } = await admin.from("messages").insert({
             organization_id: integration.organization_id,
@@ -162,64 +203,18 @@ export async function POST(request: Request) {
             direction: "inbound",
             channel: "whatsapp",
             sender,
+            recipient: config.displayPhone || phoneNumberId,
             content: incoming.text?.body ?? `[${incoming.type ?? "mensagem"}]`,
+            media: [{ type: "whatsapp_cloud_line", integrationId: integration.id, phoneNumberId, brokerProfileId, recorded: config.recordConversations !== false }],
             status: "received",
             external_message_id: incoming.id,
             created_at: incoming.timestamp ? new Date(Number(incoming.timestamp) * 1000).toISOString() : new Date().toISOString(),
           }).select("id").single();
           if (messageError?.code === "23505") { duplicates += 1; continue; }
           if (messageError) throw messageError;
-
-          // ── A CONVERSA FECHA O RELÓGIO ──────────────────────────────────
-          //
-          // Medido: 217 leads, UMA contatada — e o WhatsApp, que é o canal que
-          // a operação de fato usa, não tocava em `first_contacted_at`. Uma
-          // conversa inteira acontecia e a lead seguia como "SLA vencido, sem
-          // primeiro contato". O corretor atendia e o painel cobrava.
-          //
-          // Entrada não é a empresa cumprindo prazo, mas é prova de que a
-          // conversa começou. Deixar o relógio correndo numa lead que está
-          // conversando faz o painel gritar sobre quem já está sendo atendido —
-          // e alarme falso é como um painel perde a confiança de quem olha.
-          //
-          // A origem fica registrada para separar "nós corremos atrás" de "ela
-          // veio". Best-effort de propósito: derrubar a entrega da mensagem
-          // porque a medição falhou seria trocar um dado por outro maior.
-          const leadDaConversa = leadDesteEvento;
-          if (leadDaConversa && !optedOut) {
-            const fechamento = await fecharPrimeiroContatoPorWhatsapp(admin, {
-              organizationId: integration.organization_id,
-              leadId: leadDaConversa,
-              origem: "entrada",
-              ocorridoEm: incoming.timestamp
-                ? new Date(Number(incoming.timestamp) * 1000).toISOString()
-                : new Date().toISOString(),
-            });
-            if (fechamento.fechou) {
-              logger.info("whatsapp.primeiro_contato_fechado", {
-                organizationId: integration.organization_id,
-                leadId: leadDaConversa,
-                origem: "entrada",
-                nota: descreverContatoDeWhatsapp("entrada"),
-              });
-            } else if (fechamento.motivo && !fechamento.jaEstavaFechado) {
-              logger.warn("whatsapp.primeiro_contato_nao_fechado", {
-                organizationId: integration.organization_id,
-                leadId: leadDaConversa,
-                motivo: fechamento.motivo,
-                indisponivel: fechamento.indisponivel,
-              });
-            }
-          }
           if (!optedOut && inboundMessage?.id) {
             const { error: journeyError } = await admin.rpc("route_nightly_journey_reply", { p_organization_id: integration.organization_id, p_conversation_id: conversationId, p_message_id: inboundMessage.id });
             if (journeyError) throw journeyError;
-          }
-          // WhatsApp Intelligence (entrada) — enfileira análise por LLM apenas se
-          // habilitado (custo opt-in). Best-effort: nunca derruba o webhook.
-          if (process.env.ATLAS_WHATSAPP_NLU_ENABLED === "true" && !optedOut && inboundMessage?.id && conversationLeadId && incomingText) {
-            const { error: nluError } = await admin.from("integration_outbox").insert({ organization_id: integration.organization_id, topic: "whatsapp.inbound.analyze", aggregate_type: "message", aggregate_id: inboundMessage.id, payload: { conversationId, leadId: conversationLeadId } });
-            if (nluError) logger.warn("whatsapp.nlu_enqueue_skipped", { code: nluError.code });
           }
           await admin.from("lead_reactivation_contacts").update({ status: "replied" }).eq("organization_id", integration.organization_id).eq("phone", sender).in("status", ["queued", "sent"]);
           const { data: repliedContacts } = await admin.from("lead_reactivation_contacts").select("batch_id").eq("organization_id", integration.organization_id).eq("phone", sender).eq("status", "replied");

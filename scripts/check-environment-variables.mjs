@@ -6,6 +6,7 @@ const contract = JSON.parse(readFileSync(resolve(root, "config/environment-varia
 const envExample = readFileSync(resolve(root, ".env.example"), "utf8");
 const errors = [];
 const variables = contract.variables || [];
+const variablePatterns = contract.variablePatterns || [];
 const byName = new Map();
 
 for (const variable of variables) {
@@ -18,6 +19,18 @@ for (const variable of variables) {
   if (variable.secret && variable.scope !== "server") errors.push(`segredo fora do servidor: ${variable.name}`);
 }
 
+const compiledPatterns = variablePatterns.map((pattern) => {
+  if (!pattern.pattern || !pattern.purpose) errors.push(`padrão de variável inválido: ${pattern.pattern || "sem expressão"}`);
+  if (pattern.secret && pattern.scope !== "server") errors.push(`padrão secreto fora do servidor: ${pattern.pattern}`);
+  try {
+    return { ...pattern, regex: new RegExp(pattern.pattern) };
+  } catch {
+    errors.push(`expressão de variável inválida: ${pattern.pattern}`);
+    return { ...pattern, regex: /$a/ };
+  }
+});
+const isClassified = (name) => byName.has(name) || compiledPatterns.some((pattern) => pattern.regex.test(name));
+
 for (const [groupName, group] of Object.entries(contract.alternativeGroups || {})) {
   if (!group.minimumConfigured || !group.members?.length) errors.push(`grupo alternativo inválido: ${groupName}`);
   for (const name of group.members || []) {
@@ -27,7 +40,7 @@ for (const [groupName, group] of Object.entries(contract.alternativeGroups || {}
 }
 
 const exampleNames = [...envExample.matchAll(/^([A-Z][A-Z0-9_]+)=/gm)].map((match) => match[1]);
-for (const name of exampleNames) if (!byName.has(name)) errors.push(`variável do .env.example sem classificação: ${name}`);
+for (const name of exampleNames) if (!isClassified(name)) errors.push(`variável do .env.example sem classificação: ${name}`);
 
 const ignoredDirectories = new Set([".git", ".next", "node_modules", "outputs", "tmp"]);
 const sourceExtensions = new Set([".js", ".cjs", ".mjs", ".ts", ".tsx"]);
@@ -47,7 +60,7 @@ function scan(directory) {
   }
 }
 for (const directory of ["app", "components", "lib", "scripts", "utils"]) scan(resolve(root, directory));
-for (const name of discovered) if (!byName.has(name)) errors.push(`variável usada no código sem classificação: ${name}`);
+for (const name of discovered) if (!isClassified(name)) errors.push(`variável usada no código sem classificação: ${name}`);
 
 for (const name of ["ATLAS_BOOTSTRAP_SECRET", "ATLAS_TEST_EMAIL", "ATLAS_TEST_PASSWORD", "ATLAS_IMPORT_ORGANIZATION_ID", "ATLAS_IMPORT_OWNER_ID", "ATLAS_IMPORT_ACTOR_ID"]) {
   if (byName.get(name)?.requirement !== "temporary") errors.push(`variável temporária sem política temporária: ${name}`);
@@ -64,4 +77,4 @@ if (errors.length) {
 }
 
 const counts = variables.reduce((summary, variable) => ({ ...summary, [variable.requirement]: (summary[variable.requirement] || 0) + 1 }), {});
-console.log(`ATLAS ENVIRONMENT VARIABLES: PASSED (${variables.length} classificadas; ${discovered.size} usos estáticos; ${counts.required || 0} obrigatórias; ${counts.temporary || 0} temporárias)`);
+console.log(`ATLAS ENVIRONMENT VARIABLES: PASSED (${variables.length} explícitas + ${variablePatterns.length} famílias; ${discovered.size} usos estáticos; ${counts.required || 0} obrigatórias; ${counts.temporary || 0} temporárias)`);

@@ -1,0 +1,85 @@
+{
+  "phase": 30,
+  "program": "meta-andromeda-automation",
+  "mode": "sample_02_local_ephemeral_supabase_runtime_rehearsal",
+  "status": "local_ephemeral_runtime_prepared_execution_blocked",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-029.json",
+  "runtimeGate": "config/meta-repeatability-sample-02-local-runtime-gate.json",
+  "evidenceTemplate": "config/fixtures/meta-repeatability-sample-02-local-runtime-template.json",
+  "composeFile": "infra/meta-phase30/compose.yaml",
+  "baselineSql": "supabase/tests/fixtures/phase_030_meta_permit_ledger_baseline.sql",
+  "verificationSql": "supabase/tests/database/phase_030_meta_permit_ledger_verify.sql",
+  "cleanupVerificationSql": "supabase/tests/database/phase_030_meta_permit_ledger_cleanup_verify.sql",
+  "officialMigration": "supabase/migrations/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
+  "sourceDraft": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.sql",
+  "rollbackDraft": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.rollback.sql",
+  "preflight": "scripts/preflight-meta-repeatability-sample-02-local-runtime.mjs",
+  "runner": "scripts/run-meta-repeatability-sample-02-local-runtime.mjs",
+  "staticAudit": "scripts/audit-meta-repeatability-sample-02-local-runtime.mjs",
+  "documentation": "docs/META_REPEATABILITY_SAMPLE_02_LOCAL_RUNTIME.md",
+  "manualWorkflow": ".github/workflows/atlas-meta-phase30-local-rehearsal.yml",
+  "toolAudit": {
+    "supabaseCliPinnedVersion": "2.109.1",
+    "supabasePostgresImage": "supabase/postgres:15.14.1.149",
+    "officialDocsVerifiedAt": "2026-07-19",
+    "containerRuntimeDetectedInCurrentWorkspace": false,
+    "psqlDetectedInCurrentWorkspace": false
+  },
+  "environmentAudit": {
+    "composePrepared": true,
+    "localhostBindingEnforced": true,
+    "remoteDatabaseConfigured": false,
+    "linkedProjectConfigured": false,
+    "productionConfigured": false,
+    "localRehearsalExecuted": false,
+    "migrationExecuted": false,
+    "databaseMutationExecuted": false,
+    "metaMutationExecuted": false,
+    "buildExecuted": false
+  },
+  "databaseImprovements": {
+    "foreignKeySupportIndexesAddedBeforeExecution": true,
+    "actorLedgerIndex": "meta_permit_ledger_actor_idx",
+    "auditLedgerIndex": "meta_permit_ledger_audit_ledger_idx",
+    "auditActorIndex": "meta_permit_ledger_audit_actor_idx"
+  },
+  "releaseGate": {
+    "staticContractApproved": true,
+    "preflightSelfTestsPrepared": true,
+    "ephemeralRunnerPrepared": true,
+    "manualCiWorkflowPrepared": true,
+    "isolatedRuntimeAvailable": false,
+    "localRehearsalExecuted": false,
+    "migrationRehearsalApproved": false,
+    "rollbackRehearsalApproved": false,
+    "volumeCleanupApproved": false,
+    "ledgerPersistenceAllowed": false,
+    "nextPhaseAllowed": false
+  },
+  "governance": {
+    "exactHumanApprovalRequired": true,
+    "localhostOnly": true,
+    "ephemeralVolumeRequired": true,
+    "volumeDestructionRequired": true,
+    "remoteDatabaseAccess": false,
+    "productionAccess": false,
+    "linkedProjectAccess": false,
+    "permitReservation": false,
+    "permitIssuance": false,
+    "permitConsumption": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 31,
+    "objective": "Executar o ensaio no runtime local/CI autorizado, validar migration, RLS, indices, rollback e destruicao do volume, preservando evidencia sem segredos.",
+    "blockedUntil": [
+      "Docker Compose disponivel localmente ou workflow manual autorizado",
+      "aprovacao humana exata EXECUTE_PHASE30_LOCAL_EPHEMERAL_ONLY",
+      "evidencia aprovada de migration, rollback e limpeza"
+    ]
+  }
+}

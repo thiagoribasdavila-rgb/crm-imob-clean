@@ -1,0 +1,83 @@
+{
+  "format": "atlas_meta_repeatability_atomic_ledger_preparation_v1",
+  "phase": 27,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "containsTemporaryCode": false,
+  "payloadPersisted": false,
+  "rawResponsePersisted": false,
+  "screenshotPersisted": false,
+  "sourceEvidence": {
+    "phase26Approved": false,
+    "phase26Fingerprint": null,
+    "phase25Fingerprint": null,
+    "phase26GeneratedAt": null,
+    "phase25ExpiresAt": null
+  },
+  "slot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2
+  },
+  "event": {
+    "eventName": null,
+    "classification": null,
+    "eventIdFingerprint": null,
+    "syntheticRecordFingerprint": null
+  },
+  "identity": {
+    "ledgerReferenceFingerprint": null,
+    "ledgerKeyFingerprint": null,
+    "contractReferenceFingerprint": null,
+    "permitNonceFingerprint": null,
+    "idempotencyFingerprint": null
+  },
+  "atomicPolicy": {
+    "strategy": "compare_and_set",
+    "expectedRevision": 0,
+    "proposedRevision": 1,
+    "singleWinnerRequired": true,
+    "duplicateReservationRejected": true,
+    "atomicConsumptionRequired": true,
+    "appendOnlyAuditRequired": true
+  },
+  "rehearsal": {
+    "inMemoryOnly": true,
+    "attemptCount": 0,
+    "winnerCount": 0,
+    "duplicateRejectionCount": 0,
+    "databaseTouched": false,
+    "filesystemLedgerTouched": false,
+    "networkTouched": false
+  },
+  "lifecycle": {
+    "status": "not_prepared",
+    "reservationPersisted": false,
+    "permitIssued": false,
+    "permitUsable": false,
+    "permitConsumed": false,
+    "actionExecuted": false,
+    "eventDelivered": false
+  },
+  "releaseGates": {
+    "atomicLedgerContractPrepared": false,
+    "phase26ContractLinked": false,
+    "ledgerPersistenceAllowed": false,
+    "permitIssuanceAllowed": false,
+    "permitConsumptionAllowed": false,
+    "authorizationActivationAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  },
+  "issueCodes": ["phase26_contract_or_ledger_request_missing"],
+  "errorCode": "phase26_contract_or_ledger_request_missing"
+}

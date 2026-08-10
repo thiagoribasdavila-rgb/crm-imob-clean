@@ -1,0 +1,32 @@
+{
+  "schema_version": "atlas.10x.phase-002.v1",
+  "phase": 2,
+  "total_phases": 24,
+  "name": "Backup, restauração e rollback comprovados",
+  "objective": "Garantir que o Atlas V3 possa recuperar banco, arquivos e aplicação sem depender do V2 removido.",
+  "build_policy": "build_only_on_release_package",
+  "production_policy": "blocked_until_recovery_drill_passes",
+  "rollback_strategy": "previous_v3_release",
+  "legacy_v2_accepted": false,
+  "required_evidence": [
+    "snapshot do banco restaurado em ambiente isolado",
+    "inventário e recuperação dos arquivos do Storage",
+    "pacote imutável da versão anterior com SHA-256",
+    "URL HTTPS da versão anterior diferente da versão atual",
+    "login, leads, pipeline, agenda e integrações críticas testados",
+    "tempo de recuperação e resposta HTTP registrados",
+    "aprovação humana da diretoria"
+  ],
+  "static_checks": [
+    "contrato de recuperação versionado",
+    "rollback legado não qualifica aceite executivo",
+    "resultado aprovado exige HTTP entre 200 e 399",
+    "evidência do Storage é obrigatória",
+    "pacote imutável é obrigatório",
+    "build e ZIP não são gerados nesta fase"
+  ],
+  "next_phase": {
+    "phase": 3,
+    "name": "Paridade de ambientes e schema remoto"
+  }
+}

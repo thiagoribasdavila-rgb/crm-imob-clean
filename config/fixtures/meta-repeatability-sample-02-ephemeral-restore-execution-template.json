@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "phase36.local-restore-evidence.v1",
+  "phase": 36,
+  "sourcePhase": 35,
+  "status": "not_executed",
+  "runId": null,
+  "startedAt": null,
+  "finishedAt": null,
+  "sourceContractFingerprint": null,
+  "sourceReadinessFingerprint": null,
+  "backupManifestFingerprint": null,
+  "backupContentFingerprint": null,
+  "environment": "local_ephemeral_restore",
+  "runtime": {
+    "engine": "docker_compose",
+    "networkMode": "none",
+    "publishedPorts": false,
+    "databaseHealthy": false,
+    "imageFingerprint": null,
+    "postgresVersion": null,
+    "targetFingerprint": null
+  },
+  "validation": {
+    "backupHashVerified": false,
+    "backupSizeVerified": false,
+    "logicalBackupSafetyApproved": false,
+    "postgresMajorMatches": false,
+    "catalogFingerprintMatches": false,
+    "catalogCountsMatch": false,
+    "securityApproved": false,
+    "authCountsMatch": false,
+    "storageMetadataCountsMatch": false,
+    "migrationCountMatches": false,
+    "restoreDurationWithinLimit": false,
+    "targetDestructionVerified": false
+  },
+  "restore": {
+    "attempted": false,
+    "completed": false,
+    "approved": false,
+    "durationMs": null,
+    "volumesDestroyed": false
+  },
+  "releaseGates": {
+    "localRestoreApproved": false,
+    "stagingMigrationAllowed": false,
+    "productionMigrationAllowed": false,
+    "productionCompatibilityApproved": false
+  },
+  "localDatabaseTouched": false,
+  "remoteDatabaseTouched": false,
+  "metaTouched": false,
+  "buildExecuted": false
+}

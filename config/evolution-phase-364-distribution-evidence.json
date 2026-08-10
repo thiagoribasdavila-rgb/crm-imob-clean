@@ -1,0 +1,29 @@
+{
+  "schema": "atlas.evolution-phase.v1",
+  "phase": 364,
+  "cycle": 22,
+  "name": "Tempo e equilíbrio da distribuição por projeto",
+  "status": "implemented_local_authenticated_runtime_proof_pending",
+  "scope": "authenticated_organization",
+  "remoteDatabaseChanged": false,
+  "releaseArtifactGenerated": false,
+  "metrics": {
+    "primary": "median-lead-assignment-minutes",
+    "secondary": [
+      "p90-lead-assignment-minutes",
+      "assignment-event-coverage",
+      "broker-load-deviation",
+      "assignment-concentration-percent"
+    ],
+    "minimumMeasuredSample": 5,
+    "maximumRecentEvents": 100
+  },
+  "truthPolicy": {
+    "unknownIsZero": false,
+    "insufficientSampleIsMeasured": false,
+    "concentrationProvesFairness": false,
+    "piiIncluded": false
+  },
+  "rollback": "Remover o painel da Fase 364 e o cálculo de evidência da resposta GET; o algoritmo transacional de distribuição permanece inalterado.",
+  "nextPhase": 365
+}

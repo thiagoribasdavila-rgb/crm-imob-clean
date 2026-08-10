@@ -1,0 +1,59 @@
+{
+  "format": "atlas_meta_repeatability_jit_confirmation_gate_v1",
+  "phase": 25,
+  "mode": "just_in_time_reconfirmation_receipt_no_delivery",
+  "environment": "staging_clone",
+  "requiredSourcePhase": 24,
+  "sourceSignalContract": "config/meta-validation-only-signal-contract.json",
+  "targetSlot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2,
+    "requiredDraftStatus": "awaiting_just_in_time_confirmation"
+  },
+  "validity": {
+    "maximumMinutes": 5,
+    "clockSkewSeconds": 300,
+    "mustExpireBeforeSourceDraft": true,
+    "expiresClosed": true,
+    "singleUse": true
+  },
+  "humanGovernance": {
+    "roles": ["director", "security", "operator", "reviewer"],
+    "minimumIndependentRoles": 4,
+    "freshReferencesRequired": true,
+    "referencesFromDraftMayBeReused": false,
+    "rawReferencesMayBePersisted": false,
+    "receiptMayActivateAuthorization": false
+  },
+  "eventScope": {
+    "sameDraftEventRequired": true,
+    "canonicalEventRequired": true,
+    "syntheticRecordOnly": true,
+    "maximumDeliveries": 1,
+    "realCustomerDataAllowed": false
+  },
+  "persistedEvidence": {
+    "sourceFingerprintAllowed": true,
+    "eventFingerprintAllowed": true,
+    "syntheticRecordFingerprintAllowed": true,
+    "hashedRoleReferencesAllowed": true,
+    "rawRoleReferencesAllowed": false,
+    "rawPayloadAllowed": false,
+    "rawResponseAllowed": false,
+    "temporaryCodeAllowed": false,
+    "personalDataAllowed": false,
+    "projectIdentifiersAllowed": false,
+    "screenshotsAllowed": false
+  },
+  "releaseGate": {
+    "authorizationActivationAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  }
+}

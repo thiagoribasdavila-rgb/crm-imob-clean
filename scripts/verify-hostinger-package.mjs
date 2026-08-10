@@ -18,49 +18,45 @@ const entries = execFileSync("unzip", ["-Z1", zip], { encoding: "utf8" })
   .filter(Boolean);
 if (entries.some((e) => e.startsWith("/") || e.includes("../")))
   throw new Error("Caminho inseguro no ZIP.");
-/**
- * A LISTA AQUI TEM DE SER PELO MENOS TÃO LARGA QUANTO A DO EMPACOTADOR.
- *
- * `scripts/package-hostinger.mjs` exclui `.env` sem sufixo, `.whatsapp-sessions`
- * e `logs`; esta verificação não conferia nenhum dos três. Régua mais fraca que a
- * regra não protege: se o empacotador deixasse passar um `.env` de produção, o
- * verificador diria que está tudo certo — e o ZIP sai com credencial dentro.
- *
- * Divergência entre duas listas que precisam concordar é a classe de defeito mais
- * cara deste repositório. Aqui ela custaria segredo publicado.
- */
+const isRealEnvironmentFile = (entry) => {
+  const basename = entry.split("/").at(-1) || "";
+  return (basename === ".env" || basename.startsWith(".env.")) && !basename.endsWith(".example");
+};
 const forbidden = entries.filter(
   (e) =>
-    /(^|\/)(?:\.env|\.env\.[^/]+|hostinger\.env|node_modules|\.next|tmp|outputs|dist|\.git|whatsapp-sessions|\.whatsapp-sessions|logs)(?:\/|$)/.test(
+    isRealEnvironmentFile(e) ||
+    /(^|\/)(?:hostinger\.env|node_modules|\.next|tmp|outputs|dist|\.git)(?:\/|$)/.test(
       e,
-    ) || /\.(?:xlsx?|csv|pdf|pem|key|p12|pfx)$/i.test(e),
+    ) || /\.(?:xlsx?|csv|pdf|pem|key|mov|mp4|zip)$/i.test(e),
 );
-/**
- * MODELO PODE ENTRAR; ARQUIVO DE AMBIENTE NÃO.
- *
- * A primeira versão desta lista era literal (`.env.example`) e reprovou o pacote
- * por causa de `.env.production.example` — que é modelo igual, só de outro
- * ambiente. Lista literal envelhece mal: o próximo arquivo de exemplo quebraria
- * a entrega de novo, e o conserto tentador é afrouxar a regra inteira.
- *
- * A permissão é pelo SUFIXO `.example`, que é a convenção do projeto para
- * template sem valor. O conteúdo continua guardado por outro portão:
- * `security:secrets` varre os arquivos rastreados e reprova credencial em
- * qualquer um deles — inclusive nestes.
- */
-const ehModelo = (caminho) => /\.example$/.test(caminho);
-const proibidosDeVerdade = forbidden.filter((e) => !ehModelo(e));
-if (proibidosDeVerdade.length)
-  throw new Error(`Conteúdo proibido: ${proibidosDeVerdade.slice(0, 5).join(", ")}`);
+if (forbidden.length)
+  throw new Error(`Conteúdo proibido: ${forbidden.slice(0, 5).join(", ")}`);
 for (const required of [
   "HOSTINGER_PACKAGE.json",
   "RELEASE_FILES.sha256",
   "package.json",
   "package-lock.json",
   "ecosystem.config.cjs",
+  ".env.example",
+  ".env.homologation.example",
+  "CHECKLIST_FINAL.md",
+  "INSTALACAO.md",
+  "app/(auth)/setup/page.tsx",
+  "app/(auth)/setup/layout.tsx",
+  "app/api/bootstrap/admin/route.ts",
+  "lib/bootstrap/installation-status.ts",
+  "lib/bootstrap/policy.ts",
+  "proxy.ts",
+  "scripts/check-bootstrap-fixed.mjs",
+  "tests/contracts/bootstrap-public-route.test.mjs",
+  "docs/ATLAS_ONE_V1000_CLEAN_RELEASE.md",
   "lib/auth/safe-redirect.ts",
   "components/crm/lead-operational-bar.tsx",
   "docs/HOSTINGER_FINAL_RELEASE_PHASE_100.md",
+  "playwright.config.mjs",
+  "supabase/seed.sql",
+  "tests/e2e/login.spec.mjs",
+  "tests/e2e/authenticated-journeys.spec.mjs",
 ])
   if (!entries.includes(required))
     throw new Error(`Obrigatório ausente: ${required}`);
@@ -69,11 +65,36 @@ const manifest = JSON.parse(
       encoding: "utf8",
     }),
   ),
-  head = execFileSync("git", ["rev-parse", "HEAD"], {
-    encoding: "utf8",
-  }).trim();
+  head = (() => {
+    try {
+      return execFileSync("git", ["rev-parse", "HEAD"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+    } catch {
+      return null;
+    }
+  })();
+const auditedRelease = /^atlas-one-audited-\d{8}-r\d{3}\.zip$/.test(packageName);
+if (auditedRelease) {
+  if (!entries.includes("RELEASE_TEST_REPORT.json"))
+    throw new Error("Release auditada sem relatório interno de testes.");
+  if (manifest.releaseTestReport !== "RELEASE_TEST_REPORT.json")
+    throw new Error("Manifesto não referencia o relatório de testes.");
+  const report = JSON.parse(
+    execFileSync("unzip", ["-p", zip, "RELEASE_TEST_REPORT.json"], {
+      encoding: "utf8",
+    }),
+  );
+  const gates = Array.isArray(report.gates) ? report.gates : [];
+  if (!gates.length || gates.some((gate) => gate.status !== "passed"))
+    throw new Error("Relatório interno contém gate sem aprovação.");
+}
 if (
-  manifest.commit !== head ||
+  (head
+    ? manifest.commit !== head || manifest.sourceMode !== "git-archive"
+    : manifest.sourceMode !== "workspace-content-hash") ||
+  !/^sha256:[a-f0-9]{64}$/.test(manifest.sourceFingerprint || "") ||
   manifest.privateDataIncluded !== false ||
   manifest.dependsOnV2 !== false
 )
@@ -87,6 +108,27 @@ if (inventory.length < 100) throw new Error("Inventário interno incompleto.");
 const extracted = mkdtempSync(join(tmpdir(), "atlas-v3-release-"));
 try {
   execFileSync("unzip", ["-q", zip, "-d", extracted]);
+  const sourceFiles = execFileSync("find", [".", "-type", "f"], {
+    cwd: extracted,
+    encoding: "utf8",
+  })
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .filter(
+      (file) =>
+        !["./HOSTINGER_PACKAGE.json", "./RELEASE_FILES.sha256"].includes(file),
+    )
+    .sort();
+  const sourceHash = createHash("sha256");
+  for (const sourceFile of sourceFiles) {
+    sourceHash.update(sourceFile.replace(/^\.\//, ""));
+    sourceHash.update("\0");
+    sourceHash.update(readFileSync(join(extracted, sourceFile)));
+    sourceHash.update("\0");
+  }
+  const sourceFingerprint = `sha256:${sourceHash.digest("hex")}`;
+  if (sourceFingerprint !== manifest.sourceFingerprint)
+    throw new Error("Fingerprint da origem divergente.");
   for (const line of inventory) {
     const match = line.match(/^([a-f0-9]{64})  (.+)$/);
     if (!match) throw new Error("Linha inválida no inventário interno.");

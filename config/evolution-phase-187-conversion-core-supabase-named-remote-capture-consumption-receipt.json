@@ -1,0 +1,52 @@
+{
+  "phase": 187,
+  "name": "Conversion Core Supabase Named Remote Capture Consumption Receipt",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Registrar localmente, de forma privada, imutável e idempotente, o resultado já consumido pelo handoff sem persistir captura bruta ou criar capacidade remota.",
+  "evidenceLevel": "local_consumption_receipt_contract_tested_remote_capture_not_performed",
+  "runtimeHomologated": false,
+  "currentState": {
+    "consumptionReceiptSchemaPrepared": true,
+    "privateFileModeEnforced": true,
+    "immutableConflictDetectionEnforced": true,
+    "idempotentReplayRecognized": true,
+    "rawCapturePersisted": false,
+    "remoteExecutorAvailable": false,
+    "receiptPersistedInAssessment": false,
+    "currentNamedRemoteEvidenceCollected": false
+  },
+  "safety": {
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationPushExecuted": false,
+    "migrationHistoryRepaired": false,
+    "migrationFileRenamed": false,
+    "databaseReset": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "secretsPersisted": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "authorizationRecorded": false,
+    "authorizationConsumed": false,
+    "handoffIssued": false,
+    "procedureExecuted": false,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "limitations": [
+    "O recibo só pode ser persistido quando o chamador fornece explicitamente um diretório físico dentro da raiz.",
+    "O recibo contém hashes e resumo estrutural; nunca contém captura bruta, SQL, nomes de migrations, credenciais ou referência crua do projeto.",
+    "Esta fase não coleta evidência, não executa operação remota e não altera o Supabase operacional."
+  ],
+  "nextAction": "Na fase 188, desenhar um verificador local de integridade e replay do ledger de recibos, ainda sem contato remoto ou alteração operacional."
+}

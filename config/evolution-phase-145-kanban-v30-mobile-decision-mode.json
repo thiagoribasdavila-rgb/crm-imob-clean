@@ -1,0 +1,19 @@
+{
+  "phase": 145,
+  "name": "Kanban V30 Mobile Decision Mode",
+  "status": "implemented",
+  "area": "pipeline-kanban",
+  "priority": "P1-broker-productivity",
+  "objective": "Reduzir ruído e número de toques no Kanban mobile, mostrando a próxima melhor ação da etapa ativa antes da lista de cards.",
+  "businessImpact": [
+    "Ajuda o corretor a decidir mais rápido no celular",
+    "Evita perder o lead prioritário dentro de colunas longas",
+    "Traz ação, contexto e Copilot para a primeira dobra mobile",
+    "Mantém o desktop limpo e preserva a arquitetura atual"
+  ],
+  "validation": [
+    "npm run evolution:phase-145:check",
+    "npm run typecheck",
+    "npm run lint"
+  ]
+}

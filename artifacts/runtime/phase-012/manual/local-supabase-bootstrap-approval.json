@@ -1,0 +1,12 @@
+{
+  "schema_version": "atlas.local_supabase_bootstrap_approval.v1",
+  "approved": true,
+  "approver_role": "authorized_operator",
+  "target_kind": "local_configuration_only",
+  "expected_command": "supabase init",
+  "expected_cli_version": "2.109.1",
+  "project_fingerprint": "aa170f86423cb6cdeb23001a3a6a16b0635138a4adde87e32e570840466b3770",
+  "expires_at": "2026-07-23T08:24:22Z",
+  "remote_access_allowed": false,
+  "notes": "Autorização dada pelo usuário na conversa para continuar o passo restrito informado. Autoriza apenas a criação local de supabase/config.toml; não autoriza link, start, banco, migration, dados, build ou ZIP."
+}

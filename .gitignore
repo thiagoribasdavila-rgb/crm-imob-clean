@@ -22,6 +22,7 @@
 /dist/
 /outputs/
 /tmp/
+/.tmp/
 
 # misc
 .DS_Store
@@ -36,11 +37,11 @@ yarn-error.log*
 /.atlas-route-quarantine-*
 /.atlas-route-quarantine.lock
 
-# env files (can opt-in for committing if needed)
+# env files reais nunca entram no repositório; apenas modelos sem credenciais
 .env*
-# exceções: exemplos sem segredo são parte do pacote
+/.private-backups/
 !.env.example
-!.env.production.example
+!.env.homologation.example
 hostinger.env
 
 # vercel
@@ -51,28 +52,3 @@ hostinger.env
 next-env.d.ts
 
 /app/generated/prisma
-.env.local
-
-# backups locais de env (nunca versionar)
-_env_bak_to_delete/
-*.bak
-*.env.bak
-
-# cache local do Supabase CLI (specific da máquina, nunca versionar)
-supabase/.temp/
-
-# output solto de `supabase migration list` (relatório pontual, não é fonte)
-migration-status.txt
-migrations.json
-
-# Credenciais de sessão do WhatsApp — defesa em profundidade.
-# O lugar certo delas é ATLAS_WHATSAPP_SESSION_DIR, fora do repositório; esta
-# entrada existe para o caso de alguém apontar o diretório para cá por engano.
-whatsapp-sessions/
-.whatsapp-sessions/
-
-# Arquivo de importação de variáveis para o hPanel da Hostinger.
-# Gerado a partir do .env.local, contém VALORES REAIS, e vive fora do repositório
-# (em ~/atlas-v3-releases/final-hostinger/). Esta linha existe para que ele nunca
-# entre no git nem por acidente de `git add`.
-atlas-one-hostinger-production.env

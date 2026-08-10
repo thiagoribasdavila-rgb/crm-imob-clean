@@ -1,0 +1,26 @@
+{
+  "phase": 128,
+  "name": "Pipeline V30 Kanban Decision Board",
+  "status": "implemented",
+  "area": "pipeline",
+  "priority": "P1-lead-conversion",
+  "objective": "Redesenhar o pipeline para uma leitura mais decisiva: próxima melhor ação, lead mais importante, quatro rotas de execução e Kanban com menos ruído visual.",
+  "businessImpact": [
+    "O corretor sabe qual lead atacar primeiro sem interpretar todo o quadro.",
+    "O gerente enxerga SLA, cadência e gargalo com menor esforço cognitivo.",
+    "A IA aparece como ação prática de abordagem e não como painel separado.",
+    "O Kanban mantém os dados existentes, mas fica mais limpo para uso diário."
+  ],
+  "technicalScope": [
+    "Cria o cálculo pipelineV30Decision com urgências, quentes, sem ação, propostas, clareza e ruído.",
+    "Adiciona a camada atlas-pipeline-v30-decision-layer ao topo do Pipeline.",
+    "Marca o quadro com data-v30-kanban=\"decision-board\" para aplicar redução de ruído visual.",
+    "Refina os cards em modo compacto, recolhendo detalhes secundários e destacando IA: preparar abordagem.",
+    "Não altera banco de dados, APIs, autenticação, RBAC ou regras de movimentação."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-128:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

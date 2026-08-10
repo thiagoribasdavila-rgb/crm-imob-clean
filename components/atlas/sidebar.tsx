@@ -2,59 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { getAtlasNavigationForIdentity, type AtlasNavigationItem } from "@/lib/atlas/navigation";
-import { AtlasLogo } from "@/components/atlas/atlas-logo";
-import { NavIcon, type AtlasNavigationId } from "@/components/atlas/nav-icons";
-import { useAlertaDeLeadNova } from "@/components/atlas/use-alerta-de-lead-nova";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { atlasNavigation, getAtlasNavigationForIdentity, getAtlasRoleRoutineForIdentity, getAtlasSecondaryNavigationForIdentity } from "@/lib/atlas/navigation";
+type NavigationItem = (typeof atlasNavigation)[number];
+const FAVORITES_KEY = "atlas:sidebar-favorites:v1";
 
-/**
- * O TRILHO — a barra lateral depois da poda (2026-07-29).
- *
- * ── O QUE SAIU, E POR QUÊ ────────────────────────────────────────────────────
- *
- * O pedido foi "minimalista, menos ruído visual". O que saiu não foram
- * destinos — todo item que existia continua aqui, no mesmo grupo. Saiu o cromo
- * que não navega:
- *
- * · A BUSCA PRÓPRIA. O ⌘K (components/CommandPalette.tsx) já monta a lista a
- *   partir do MESMO getAtlasNavigationForIdentity, com as mesmas permissões.
- *   Duas buscas na mesma tela obrigam a pessoa a escolher qual usar, e a da
- *   barra era a pior das duas (só filtrava o que já estava visível). Ficou uma
- *   linha que abre a paleta — descoberta sem campo de texto duplicado.
- *
- * · OS FAVORITOS. Uma estrela em toda linha, reservando 48px à direita de cada
- *   item, para uma função que resolve um problema que a paleta já resolve
- *   melhor. Com ela foram embora o localStorage próprio e a seção "Favoritos",
- *   que duplicava itens na mesma coluna — a pessoa via "Leads" duas vezes.
- *
- * · O SELO "ATUAL". A cor, o fundo, o traço à esquerda e o aria-current já
- *   dizem isso. O selo era a quarta vez.
- *
- * · O RODAPÉ "Ambiente protegido / Contexto multi-tenant ativo". Texto fixo,
- *   nunca muda, não leva a lugar nenhum. Ocupava o canto onde o olho procura
- *   informação viva e devolvia decoração.
- *
- * O QUE EU TENTEI TIRAR E TIVE DE DEVOLVER: a armadilha de foco do menu no
- * celular. Achei que o dock inferior tornava o menu dispensável — não torna, o
- * menu continua existindo, e sem Escape, sem trap e sem trava de rolagem quem
- * usa teclado fica preso tabulando uma tela que não vê. O guard da fase 033
- * pegou. Está de volta, e agora com contrato.
- *
- * ── O QUE ENTROU ─────────────────────────────────────────────────────────────
- *
- * · Ícones SVG (nav-icons.tsx) no lugar de glifos unicode, que vinham da fonte
- *   do sistema e desenhavam 17 pesos diferentes na mesma coluna.
- * · O aviso de lead nova, na única linha onde ele significa alguma coisa.
- *
- * A prop `collapsed` continua sendo honrada: recolher a barra é uma preferência
- * que as pessoas já aprenderam, e tirá-la seria remover capacidade em nome de
- * estética — não foi o que se pediu.
- */
-
-type NavigationItem = AtlasNavigationItem;
-
-function estaAtivo(pathname: string, href: string) {
+function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -76,194 +29,245 @@ export function Sidebar({
   accessRole,
 }: SidebarProps) {
   const pathname = usePathname();
-  const barra = useRef<HTMLElement>(null);
-  const alerta = useAlertaDeLeadNova();
+  const sidebarRef = useRef<HTMLElement>(null);
+  const [query, setQuery] = useState("");
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  // Fecha o menu do celular ao navegar: sem isto, a pessoa toca num destino e
-  // a página troca atrás de um painel que continua aberto por cima.
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) || "[]") as unknown;
+      if (Array.isArray(saved)) setFavorites(saved.filter((item): item is string => typeof item === "string"));
+    } catch {
+      window.localStorage.removeItem(FAVORITES_KEY);
+    }
+  }, []);
+
   useEffect(() => {
     onCloseMobile();
+    setQuery("");
   }, [pathname, onCloseMobile]);
 
-  /**
-   * O MENU DO CELULAR É UM DIÁLOGO — e diálogo tem obrigações.
-   *
-   * Escape fecha, Tab não escapa para o conteúdo inerte atrás, o corpo não
-   * rola sob o painel, e o foco VOLTA para o botão que abriu. Sem as quatro,
-   * quem navega por teclado ou leitor de tela fica preso: continua tabulando
-   * uma tela que não vê, e ao fechar é jogado para o topo do documento.
-   *
-   * Eu tinha removido este bloco na primeira versão da poda, achando que o
-   * dock inferior tornava o menu dispensável. Não torna — o menu continua
-   * existindo, e o guard da fase 033 pegou a remoção.
-   */
   useEffect(() => {
     if (!mobileOpen) return;
-    const raiz = barra.current;
-    const focoAnterior = document.activeElement as HTMLElement | null;
-    raiz?.querySelector<HTMLElement>("a, button")?.focus();
-
-    const aoTeclar = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+    const sidebar = sidebarRef.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCloseMobile();
+      if (event.key !== "Tab" || !sidebar) return;
+      const focusable = Array.from(sidebar.querySelectorAll<HTMLElement>(focusableSelector)).filter((element) => element.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable.at(-1)!;
+      if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
-        onCloseMobile();
-        return;
-      }
-      if (event.key !== "Tab" || !raiz) return;
-      const focaveis = raiz.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
-      if (!focaveis.length) return;
-      const primeiro = focaveis[0];
-      const ultimo = focaveis[focaveis.length - 1];
-      if (event.shiftKey && document.activeElement === primeiro) {
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
         event.preventDefault();
-        ultimo.focus();
-      } else if (!event.shiftKey && document.activeElement === ultimo) {
-        event.preventDefault();
-        primeiro.focus();
+        first.focus();
       }
     };
-
-    document.addEventListener("keydown", aoTeclar);
-    const overflowAnterior = document.body.style.overflow;
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    window.requestAnimationFrame(() => document.getElementById("atlas-sidebar-search-input")?.focus());
     return () => {
-      document.removeEventListener("keydown", aoTeclar);
-      document.body.style.overflow = overflowAnterior;
-      const previousFocus = focoAnterior;
-      previousFocus?.focus();
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+      if (sidebar?.contains(document.activeElement)) previousFocus?.focus();
     };
   }, [mobileOpen, onCloseMobile]);
 
-  const itens = useMemo(
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (event.key !== "/" || target?.matches("input, textarea, select, [contenteditable='true']")) return;
+      if (collapsed && !mobileOpen) return;
+      event.preventDefault();
+      document.getElementById("atlas-sidebar-search-input")?.focus();
+    };
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, [collapsed, mobileOpen]);
+
+  const permittedItems = useMemo(
     () => getAtlasNavigationForIdentity({ role, accessRole }),
-    [role, accessRole],
+    [accessRole, role],
   );
-  const grupos = useMemo(() => [...new Set(itens.map((item) => item.group))], [itens]);
+  const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
+  const visibleItems = useMemo(() => normalizedQuery
+    ? permittedItems.filter((item) => `${item.label} ${item.group} ${item.keywords} ${item.businessOutcome}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery))
+    : permittedItems, [normalizedQuery, permittedItems]);
+  const favoriteItems = permittedItems.filter((item) => favorites.includes(item.href));
+  const roleRoutine = useMemo(
+    () => getAtlasRoleRoutineForIdentity({ role, accessRole }),
+    [accessRole, role],
+  );
+  const secondaryItems = useMemo(
+    () => getAtlasSecondaryNavigationForIdentity({ role, accessRole }),
+    [accessRole, role],
+  );
+  const routineItems = normalizedQuery
+    ? []
+    : roleRoutine.items.filter((item) => !favorites.includes(item.href));
+  const groupedItems = normalizedQuery
+    ? visibleItems
+    : secondaryItems.filter((item) => !favorites.includes(item.href));
+  const visibleGroups = [...new Set(groupedItems.map((item) => item.group))];
+  const secondaryCurrentItem = secondaryItems.find((item) => isActive(pathname, item.href));
 
-  /**
-   * Abre a paleta pelo mesmo atalho que o teclado usa. Despachar o evento em
-   * vez de manter estado próprio é o que garante UM só dono do "está aberta?" —
-   * a paleta escuta este teclado desde sempre.
-   */
-  const abrirPaleta = useCallback(() => {
-    onCloseMobile();
-    window.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true, bubbles: true }),
-    );
-  }, [onCloseMobile]);
+  useEffect(() => {
+    if (secondaryCurrentItem) setMoreOpen(true);
+  }, [secondaryCurrentItem]);
 
-  function renderItem(item: NavigationItem) {
-    const ativo = estaAtivo(pathname, item.href);
-    // O aviso mora só em Leads. Pendurá-lo em qualquer outro item seria
-    // decoração: nenhuma outra tela responde à chegada de uma lead.
-    //
-    // E ele só existe quando tem o que dizer: `chegou` (há N esperando) ou
-    // `nao-medido` (não consegui olhar). Com `nenhuma` NÃO renderiza nada —
-    // uma pastilha com "0" permanente ao lado de Leads é ruído puro, e foi
-    // exatamente o que apareceu na primeira vez que abri a tela.
-    const mostraAviso =
-      item.id === "leads" && (alerta.estado === "chegou" || alerta.estado === "nao-medido");
+  function toggleFavorite(href: string) {
+    setFavorites((current) => {
+      const next = current.includes(href) ? current.filter((item) => item !== href) : [...current, href];
+      window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function renderNavItem(item: NavigationItem, favoriteCopy = false) {
+    const active = isActive(pathname, item.href);
+    const pinned = favorites.includes(item.href);
     return (
-      <Link
-        key={item.href}
-        href={item.href}
-        className="atlas-rail-link"
-        data-active={ativo ? "true" : "false"}
-        // O título nomeia o destino quando a barra está recolhida; ícone sem
-        // nome é enigma, não minimalismo.
-        title={collapsed ? item.label : undefined}
-        aria-label={collapsed ? item.label : undefined}
-        aria-current={ativo ? "page" : undefined}
-        onClick={onCloseMobile}
-      >
-        <span className="atlas-rail-icon">
-          <NavIcon id={item.id as AtlasNavigationId} />
-        </span>
-        <span className="atlas-rail-label">{item.label}</span>
-        {/* Visualmente redundante (cor + traço + fundo já marcam), mas quem
-            ouve a tela não vê nenhum dos três. Fica só para o leitor. */}
-        {ativo ? <span className="sr-only">Atual</span> : null}
-        {mostraAviso ? (
-          <span
-            className="atlas-rail-badge"
-            data-estado={alerta.estado}
-            data-chegou={alerta.chegouAgora ? "true" : "false"}
-            title={alerta.explicacao}
-            // O aria-live fica AQUI e não no <nav>: o leitor de tela anuncia a
-            // mudança do número, sem recitar o menu inteiro a cada releitura.
-            aria-live="polite"
-          >
-            {alerta.estado === "nao-medido" ? "?" : alerta.novas}
-            <span className="sr-only"> {alerta.explicacao}</span>
+      <div className="atlas-nav-item" key={`${favoriteCopy ? "favorite-" : ""}${item.href}`}>
+        <Link href={item.href} className="atlas-nav-link" data-active={active ? "true" : "false"} title={`${item.label} — ${item.businessOutcome}`} aria-label={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined} onClick={onCloseMobile}>
+          <span className="atlas-nav-icon" aria-hidden="true">{item.icon}</span>
+          <span className="atlas-nav-text atlas-sidebar-label">
+            <span className="atlas-nav-title">{item.label}</span>
+            <span className="atlas-nav-copy sr-only">{item.businessOutcome}</span>
           </span>
-        ) : null}
-      </Link>
+        </Link>
+        <button type="button" className="atlas-nav-favorite atlas-sidebar-label" data-pinned={pinned ? "true" : "false"} onClick={() => toggleFavorite(item.href)} aria-label={pinned ? `Remover ${item.label} dos favoritos` : `Fixar ${item.label} nos favoritos`} title={pinned ? "Remover dos favoritos" : "Fixar nos favoritos"}>{pinned ? "★" : "☆"}</button>
+      </div>
     );
   }
 
+  function renderGroups() {
+    return visibleGroups.map((group) => {
+      const groupItems = groupedItems.filter((item) => item.group === group);
+      const groupHeadingId = `atlas-nav-group-${group.toLocaleLowerCase("pt-BR").replaceAll(" ", "-")}`;
+      const groupIsCurrent = groupItems.some((item) => isActive(pathname, item.href));
+      return (
+        <section className="atlas-nav-group" data-current={groupIsCurrent ? "true" : "false"} aria-labelledby={groupHeadingId} key={group}>
+          <h2 id={groupHeadingId} className="atlas-sidebar-section atlas-sidebar-label"><span>{group}</span></h2>
+          {groupItems.map((item) => renderNavItem(item))}
+        </section>
+      );
+    });
+  }
+
   return (
-    <aside
-      id="atlas-primary-sidebar"
-      ref={barra}
-      className="atlas-sidebar"
-      aria-label="Menu principal do Atlas"
-      data-collapsed={collapsed ? "true" : "false"}
-      data-mobile-open={mobileOpen ? "true" : "false"}
-    >
-      <div className="atlas-sidebar-brand">
-        <Link href="/command-center" className="atlas-brand-link" onClick={onCloseMobile}>
-          <AtlasLogo size={38} className="shrink-0" />
-          <span className="atlas-sidebar-label">
-            <strong>
-              ATLAS <em>AI</em>
-            </strong>
-          </span>
-        </Link>
-        <button
-          type="button"
-          className="atlas-sidebar-close"
-          onClick={onCloseMobile}
-          aria-label="Fechar menu"
-        >
-          ×
-        </button>
-      </div>
-
-      <button type="button" className="atlas-rail-hint" onClick={abrirPaleta}>
-        <span>Buscar em tudo</span>
-        <kbd>⌘K</kbd>
-      </button>
-
-      <nav className="atlas-rail-nav" aria-label="Navegação principal">
-        {/* <section> + <h2> ligados por aria-labelledby, e não <div> + <p>:
-            quem usa leitor de tela navega por região e por cabeçalho, e sem
-            isso os quatro grupos viram uma lista plana de 17 links sem
-            hierarquia. Foi exatamente o que a primeira versão desta reescrita
-            fez — o guard da fase 026 pegou. O silêncio visual vem do CSS, não
-            de rebaixar a marcação. */}
-        {grupos.map((grupo) => {
-          const groupHeadingId = `atlas-nav-group-${grupo.toLocaleLowerCase("pt-BR").replaceAll(" ", "-")}`;
-          return (
-            <section className="atlas-nav-group" aria-labelledby={groupHeadingId} key={grupo}>
-              <h2 id={groupHeadingId} className="atlas-rail-group-label">{grupo}</h2>
-              {itens.filter((item) => item.group === grupo).map(renderItem)}
-            </section>
-          );
-        })}
-      </nav>
-
+    <>
       <button
         type="button"
-        className="atlas-sidebar-toggle"
-        onClick={onToggle}
-        aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
-        aria-expanded={!collapsed}
+        className="atlas-sidebar-backdrop"
+        data-open={mobileOpen ? "true" : "false"}
+        onClick={onCloseMobile}
+        aria-label="Fechar menu"
+      />
+      <aside
+        id="atlas-primary-sidebar"
+        ref={sidebarRef}
+        className="atlas-sidebar"
+        aria-label="Menu principal do Atlas"
+        data-collapsed={collapsed ? "true" : "false"}
+        data-mobile-open={mobileOpen ? "true" : "false"}
       >
-        <span aria-hidden="true">{collapsed ? "›" : "‹"}</span>
-        <span className="atlas-sidebar-label">Recolher menu</span>
-      </button>
-    </aside>
+        <div className="atlas-sidebar-brand">
+          <Link
+            href="/dashboard"
+            className="atlas-brand-link"
+            onClick={onCloseMobile}
+          >
+            <span className="atlas-brand-mark">A</span>
+            <span className="atlas-sidebar-label">
+              <strong>ATLAS ONE</strong>
+              <small>Operação comercial</small>
+            </span>
+          </Link>
+          <button
+            type="button"
+            className="atlas-sidebar-close"
+            onClick={onCloseMobile}
+            aria-label="Fechar menu"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="atlas-sidebar-search atlas-sidebar-label">
+          <span aria-hidden="true">⌕</span>
+          <label className="sr-only" htmlFor="atlas-sidebar-search-input">Buscar uma tela</label>
+          <input
+            id="atlas-sidebar-search-input"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar tela..."
+            autoComplete="off"
+          />
+          {query ? <button type="button" onClick={() => setQuery("")} aria-label="Limpar busca">×</button> : <kbd>/</kbd>}
+        </div>
+
+        <div className="atlas-sidebar-decision sr-only" aria-label="Estado da operação Atlas One">
+          <span>ONE</span>
+          <strong>Operação conectada</strong>
+          <small>Dados e ações no mesmo contexto.</small>
+        </div>
+
+        <nav className="atlas-sidebar-nav" aria-label="Navegação principal" data-navigation-style="atlas-one-canonical">
+          {!normalizedQuery && routineItems.length ? (
+            <section className="atlas-nav-group atlas-nav-routine" data-current={routineItems.some((item) => isActive(pathname, item.href)) ? "true" : "false"} aria-labelledby="atlas-nav-routine-heading">
+              <h2 id="atlas-nav-routine-heading" className="atlas-sidebar-section atlas-sidebar-label">
+                <span>{roleRoutine.label}</span>
+                <small className="sr-only">{roleRoutine.description}</small>
+              </h2>
+              {routineItems.map((item) => renderNavItem(item))}
+            </section>
+          ) : null}
+          {!normalizedQuery && favoriteItems.length ? (
+            <section className="atlas-nav-group atlas-nav-favorites" data-current={favoriteItems.some((item) => isActive(pathname, item.href)) ? "true" : "false"} aria-labelledby="atlas-nav-favorites-heading">
+              <h2 id="atlas-nav-favorites-heading" className="atlas-sidebar-section atlas-sidebar-label"><span>Favoritos</span></h2>
+              {favoriteItems.map((item) => renderNavItem(item, true))}
+            </section>
+          ) : null}
+          {normalizedQuery ? renderGroups() : null}
+          {!normalizedQuery && groupedItems.length ? (
+            <section className="atlas-nav-more atlas-sidebar-label" data-current={secondaryCurrentItem ? "true" : "false"}>
+              <button type="button" className="atlas-nav-more-trigger" aria-expanded={moreOpen} aria-controls="atlas-nav-more-content" onClick={() => setMoreOpen((current) => !current)}>
+                <span aria-hidden="true">•••</span>
+                <span><strong>Mais</strong><small>{secondaryCurrentItem ? `Agora: ${secondaryCurrentItem.label}` : `${groupedItems.length} áreas disponíveis`}</small></span>
+                <span aria-hidden="true">{moreOpen ? "⌃" : "⌄"}</span>
+              </button>
+              {moreOpen ? <div id="atlas-nav-more-content" className="atlas-nav-more-content">{renderGroups()}</div> : null}
+            </section>
+          ) : null}
+          {!visibleItems.length ? <div className="atlas-sidebar-empty atlas-sidebar-label"><span>⌕</span><strong>Nenhuma tela encontrada</strong><small>Tente buscar por leads, vendas ou projetos.</small><button type="button" onClick={() => setQuery("")}>Limpar busca</button></div> : null}
+        </nav>
+
+        <div className="atlas-sidebar-footer">
+          <span className="atlas-tenant-indicator" aria-hidden="true" />
+          <span className="atlas-sidebar-label">
+            <strong>Protegido</strong>
+            <small className="sr-only">Ambiente protegido. Contexto multi-tenant ativo.</small>
+          </span>
+        </div>
+
+        <button
+          type="button"
+          className="atlas-sidebar-toggle"
+          onClick={onToggle}
+          aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+          aria-expanded={!collapsed}
+        >
+          <span aria-hidden="true">{collapsed ? "›" : "‹"}</span>
+          <span className="atlas-sidebar-label">Recolher menu</span>
+        </button>
+      </aside>
+    </>
   );
 }

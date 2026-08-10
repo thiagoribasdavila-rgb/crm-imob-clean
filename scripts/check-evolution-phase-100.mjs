@@ -32,7 +32,7 @@ const checks = [
   ["Gate oficial continua bloqueado", gates.status === "blocked" && gates.approved === false && gates.automaticDeploy === false && gates.gates.consistentDatabase === false && gates.gates.criticalTestsPassed === false && gates.gates.directorApproval === false],
   ["Release oficial exige aprovação e exatamente um build", releaseScript.includes("gates.approved !== true") && releaseScript.includes("gates.localBuildsRequired !== 1") && releaseScript.includes('run("npm", ["run", "build"])')],
   ["Pacote nasce de commit reproduzível e recusa alterações", packageScript.includes('git", ["archive", "--format=tar", "HEAD"]') && packageScript.includes("Existem alterações versionadas sem commit")],
-  ["Pacote e verificador excluem dados privados", packageScript.includes("env\\.local") && packageScript.includes("privateDataIncluded: false") && verifyScript.includes("Conteúdo proibido") && verifyScript.includes("Checksum externo divergente")],
+  ["Pacote e verificador excluem dados privados", packageScript.includes("isRealEnvironmentFile") && packageScript.includes("privateDataIncluded: false") && verifyScript.includes("isRealEnvironmentFile") && verifyScript.includes("Conteúdo proibido") && verifyScript.includes("Checksum externo divergente")],
   ["Relatório explica aprovação técnica, bloqueio, segurança e próximo gate", report.includes("Evidências aprovadas") && report.includes("Por que o ZIP foi bloqueado") && report.includes("Gate para o próximo pacote") && report.includes("Segurança preservada") && report.includes("Próxima etapa recomendada")],
 ];
 

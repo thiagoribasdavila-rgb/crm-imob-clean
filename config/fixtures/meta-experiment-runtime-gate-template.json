@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-experiment-runtime-gate.v1",
+  "status": "not_evaluated",
+  "planReference": null,
+  "authorizationReference": null,
+  "runtime": {
+    "environment": "staging",
+    "attemptNumber": 0,
+    "authorizationActive": false,
+    "planIntegrityVerified": false
+  },
+  "execution": {
+    "dispatchAllowed": false,
+    "metaContacted": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "environmentOverride": true,
+    "attemptOverride": true,
+    "planOverride": true,
+    "automaticRetry": true,
+    "customerData": true,
+    "secrets": true
+  }
+}

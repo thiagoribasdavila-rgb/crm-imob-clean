@@ -1,0 +1,62 @@
+{
+  "phase": 31,
+  "program": "meta-andromeda-automation",
+  "sourcePhase": 30,
+  "environment": "local_ephemeral",
+  "schemaVersion": "phase31.runtime-evidence.v1",
+  "maximumRuntimeMinutes": 20,
+  "runtime": {
+    "engine": "docker_compose",
+    "postgresImage": "supabase/postgres:15.14.1.149",
+    "postgresMajor": 15,
+    "targetIdentity": "127.0.0.1:55432/atlas_phase30",
+    "remoteTarget": false,
+    "productionTarget": false
+  },
+  "requiredEventSequence": [
+    "runtime_started",
+    "baseline_applied",
+    "migration_applied",
+    "security_verified",
+    "rollback_started",
+    "rollback_verified",
+    "runtime_destroyed"
+  ],
+  "requiredArtifacts": {
+    "compose": "infra/meta-phase30/compose.yaml",
+    "baseline": "supabase/tests/fixtures/phase_030_meta_permit_ledger_baseline.sql",
+    "migration": "supabase/migrations/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
+    "verification": "supabase/tests/database/phase_030_meta_permit_ledger_verify.sql",
+    "rollback": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.rollback.sql",
+    "cleanupVerification": "supabase/tests/database/phase_030_meta_permit_ledger_cleanup_verify.sql"
+  },
+  "requiredRehearsalState": {
+    "baselineApplied": true,
+    "migrationApplied": true,
+    "securityVerified": true,
+    "permitReservationExecuted": false,
+    "rollbackAttempted": true,
+    "rollbackApproved": true,
+    "finalLedgerObjectsAbsent": true,
+    "volumesDestroyed": true
+  },
+  "requiredReleaseGates": {
+    "isolatedRuntimeProven": true,
+    "migrationRehearsalApproved": true,
+    "rollbackRehearsalApproved": true,
+    "cleanupApproved": true
+  },
+  "prohibitedEvidence": {
+    "secrets": true,
+    "tokens": true,
+    "passwords": true,
+    "connectionStrings": true,
+    "rawRemoteUrls": true
+  },
+  "prohibitedClaims": {
+    "remoteDatabaseTouched": true,
+    "metaTouched": true,
+    "buildExecuted": true,
+    "permitReservationExecuted": true
+  }
+}

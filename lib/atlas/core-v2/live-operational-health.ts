@@ -17,7 +17,6 @@ import {
   resolveOperationalWriteReadiness,
   type OperationalWriteReadiness,
 } from "./live-write-readiness";
-import { contarAlcancaveis, contarNoFunil } from "./contagem-por-modulo";
 
 export const ATLAS_OPERATIONAL_HEALTH_VERSION = "module-health-v2";
 
@@ -61,12 +60,6 @@ function readState(
     href: string;
     ready: string;
     empty: string;
-    /**
-     * Contagem própria do módulo. Sem ela, `result.count` — e foi por isso que
-     * Leads, Pipeline e Clientes 360 mostravam 482 iguais: os três liam o mesmo
-     * total. Ver `contagem-por-modulo.ts`.
-     */
-    count?: number;
   },
 ): OperationalModuleReadHealth {
   if (!result.ok) {
@@ -80,14 +73,13 @@ function readState(
     };
   }
 
-  const count = input.count ?? result.count;
   return {
     id: input.id,
     label: input.label,
     state: "operational",
-    detail: count > 0 ? input.ready : input.empty,
+    detail: result.count > 0 ? input.ready : input.empty,
     href: input.href,
-    count,
+    count: result.count,
   };
 }
 
@@ -149,7 +141,6 @@ export async function readOperationalModuleHealth(
   const tasks = taskResult.ok ? taskResult.rows : [];
   const developments = developmentResult.ok ? developmentResult.rows : [];
   const opportunities = leads.map(leadAsOpportunity);
-  const alcancaveis = contarAlcancaveis(leads);
 
   const readModules: OperationalModuleReadHealth[] = [
     readState(leadResult, {
@@ -165,8 +156,6 @@ export async function readOperationalModuleHealth(
       href: "/pipeline",
       ready: "Funil comercial conectado",
       empty: "Funil pronto para novas oportunidades",
-      // O funil não "contém" o que já foi ganho ou perdido — isso é histórico.
-      count: contarNoFunil(leads),
     }),
     readState(taskResult, {
       id: "tasks-and-agenda",
@@ -175,17 +164,13 @@ export async function readOperationalModuleHealth(
       ready: "Prazos operacionais conectados",
       empty: "Agenda pronta para novas ações",
     }),
-    // O semáforo continua existindo (o módulo "customers-360" é contrato de
-    // várias fases), mas o destino agora é /leads: a tela /customers foi
-    // aposentada em 2026-07-29 e só responde por redirect. Mandar o operador
-    // para uma porta que apenas reencaminha é um salto a mais sem informação.
     !leadResult.ok
       ? {
           id: "customers-360",
           label: "Clientes 360",
           state: "unavailable",
           detail: "Conexão temporariamente indisponível",
-          href: "/leads",
+          href: "/customers",
           count: null,
         }
       : {
@@ -193,13 +178,10 @@ export async function readOperationalModuleHealth(
           label: "Clientes 360",
           state: profiles.ok ? "operational" : "degraded",
           detail: profiles.ok
-            ? (alcancaveis > 0 ? "Visão unificada conectada" : "Base pronta para novos clientes")
+            ? (leadResult.count > 0 ? "Visão unificada conectada" : "Base pronta para novos clientes")
             : "Clientes disponíveis; equipe em atualização",
-          href: "/leads",
-          // Quem dá para ALCANÇAR — telefone ou e-mail. Uma visão unificada de
-          // alguém que ninguém consegue chamar não é cliente 360, é linha de
-          // banco. Era `leadResult.count`: o mesmo total de Leads e de Pipeline.
-          count: alcancaveis,
+          href: "/customers",
+          count: leadResult.count,
         },
     readState(developmentResult, {
       id: "developments",

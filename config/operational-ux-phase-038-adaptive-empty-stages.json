@@ -1,0 +1,20 @@
+{
+  "phase": 38,
+  "scope": "adaptive_empty_kanban_stages",
+  "compactWidth": 148,
+  "expandedWidth": 270,
+  "expansionTriggers": [
+    "stage_focus",
+    "stage_action",
+    "movement_neighbor",
+    "drag_start",
+    "drag_target"
+  ],
+  "stagesRemainVisible": true,
+  "dropTargetsPreserved": true,
+  "mobileNavigationPreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

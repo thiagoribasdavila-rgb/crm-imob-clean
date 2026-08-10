@@ -1,0 +1,39 @@
+{
+  "phase": 169,
+  "name": "Meta Test Delivery Observability",
+  "status": "implemented",
+  "stream": "meta-andromeda-conversion-automation",
+  "objective": "Reconciliar fila e recibo do teste Meta em uma leitura operacional sanitizada, bloqueando reenvio automático e orientando a diretoria sem expor dados da lead.",
+  "businessProblem": "Uma falha local, demora do worker ou resposta externa inconclusiva podia levar o operador a repetir manualmente o teste e produzir sinal duplicado.",
+  "implemented": [
+    "Classificação determinística entre confirmado, aguardando worker, falha local, resultado externo inconclusivo e dead letter",
+    "Endpoint GET exclusivo para admin e diretoria, isolado por organização",
+    "Reconciliação entre meta_conversion_events e recibos sanitizados em atlas_events",
+    "Bloqueio explícito de reenvio quando houve qualquer tentativa externa",
+    "Orientação de conciliação manual no Events Manager pelo mesmo event_id",
+    "Painel compacto na Sala de Campanhas sem PII, token, erro bruto ou payload Meta",
+    "Nenhum POST, chamada de rede Meta ou processamento de fila na camada de observabilidade"
+  ],
+  "acceptanceCriteria": [
+    "Atualizar o diagnóstico nunca cria nem reenvia evento",
+    "Tentativa externa sem recibo é inconclusiva e permanece bloqueada para repetição",
+    "Somente falha anterior à tentativa externa pode ser novamente avaliada após correção local",
+    "Produção permanece desabilitada",
+    "A resposta não contém telefone, e-mail, CPF, token ou last_error",
+    "A consulta respeita organização e papéis de diretoria"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-169:check",
+    "contracts": "node --experimental-strip-types --test tests/contracts/meta-test-delivery-observability.test.mjs",
+    "tests": "npm test",
+    "typecheck": "npm run typecheck",
+    "lint": "targeted changed files",
+    "secretScan": "npm run security:secrets",
+    "build": "deferred-to-release-close"
+  },
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "automatedExternalDelivery": false,
+  "nextPhaseRecommendation": "Na fase 170, fechar o gate de versão com regressão consolidada, evidência operacional e decisão explícita antes de qualquer build ou ZIP."
+}

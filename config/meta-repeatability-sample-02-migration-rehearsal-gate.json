@@ -1,0 +1,44 @@
+{
+  "phase": 29,
+  "program": "meta-andromeda-automation",
+  "environment": "staging_clone",
+  "cli": {
+    "package": "supabase",
+    "version": "2.109.1",
+    "invocation": "npm exec --yes --package=supabase@2.109.1 -- supabase"
+  },
+  "approval": {
+    "required": true,
+    "exactValue": "APPLY_PHASE29_TO_ISOLATED_CLONE_ONLY"
+  },
+  "targetIdentity": {
+    "directDatabaseUrlRequired": true,
+    "linkedProjectForbidden": true,
+    "expectedHostRequired": true,
+    "expectedDatabaseNameRequired": true,
+    "isolatedProjectRefRequired": true,
+    "productionHostRequiredForComparison": true,
+    "productionProjectRefRequiredForComparison": true,
+    "productionIdentityMustDiffer": true
+  },
+  "allowedMutation": {
+    "isolatedSchemaRehearsal": true,
+    "createLedgerObjects": true,
+    "verifyLedgerObjects": true,
+    "rollbackLedgerObjects": true,
+    "persistPermitReservation": false
+  },
+  "prohibitedActions": {
+    "linkedProjectAccess": true,
+    "productionMutation": true,
+    "permitIssuance": true,
+    "permitConsumption": true,
+    "realMetaEventDelivery": true,
+    "testMetaEventDelivery": true,
+    "campaignMutation": true,
+    "budgetMutation": true,
+    "audienceMutation": true,
+    "deployment": true,
+    "build": true
+  }
+}

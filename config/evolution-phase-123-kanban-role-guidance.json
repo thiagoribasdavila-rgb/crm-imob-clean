@@ -1,0 +1,24 @@
+{
+  "phase": 123,
+  "name": "Kanban role-based bottleneck guidance",
+  "status": "implemented",
+  "area": "pipeline",
+  "priority": "P1-lead-conversion",
+  "objective": "Transformar o radar de gargalos do Kanban em orientação acionável por perfil comercial.",
+  "businessImpact": [
+    "Corretor recebe orientação de execução imediata.",
+    "Gerente recebe orientação de destravamento de equipe e cadência.",
+    "Diretor recebe orientação de risco de receita, forecast e governança comercial."
+  ],
+  "technicalScope": [
+    "Adiciona helpers de texto por lente ativa do Kanban.",
+    "Reutiliza identityLens e effectiveKanbanLens já existentes.",
+    "Mantém a experiência compacta e sem novas dependências.",
+    "Não altera banco, APIs ou permissões."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-123:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

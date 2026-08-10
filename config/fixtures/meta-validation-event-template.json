@@ -1,0 +1,43 @@
+{
+  "format": "atlas_meta_validation_event_input_v1",
+  "phase": 18,
+  "environment": "staging_clone",
+  "synthetic": true,
+  "eventName": "QualifiedLead",
+  "eventId": "synthetic-crm-stage-lead-0001-qualificacao",
+  "occurredAt": "2026-07-19T08:00:00.000Z",
+  "actionSource": "system_generated",
+  "organizationReference": "synthetic-organization-0001",
+  "leadReference": "synthetic-lead-0001",
+  "consent": {
+    "dataSharingConsent": true,
+    "capturedAt": "2026-07-19T07:55:00.000Z",
+    "source": "synthetic_test_fixture"
+  },
+  "match": {
+    "email": "validation@example.invalid",
+    "phone": "+5511000000000"
+  },
+  "evidence": {
+    "consentSnapshot": true,
+    "leadReceived": true,
+    "forwardStageTransition": true,
+    "authenticatedActor": true,
+    "pipelineHistory": true,
+    "meaningfulContact": true,
+    "structuredQualification": true,
+    "humanConfirmed": true,
+    "confirmedAppointment": false,
+    "formalProposalSubmitted": false,
+    "confirmedCommercialOutcome": false,
+    "externalPurchaseRecord": false,
+    "notCountedAsAtlasSale": false
+  },
+  "customData": {
+    "crm_stage": "qualificacao",
+    "previous_crm_stage": "contato",
+    "stage_rank": 2,
+    "content_type": "product",
+    "content_ids": ["synthetic-project-0001"]
+  }
+}

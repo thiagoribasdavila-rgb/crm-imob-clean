@@ -1,0 +1,41 @@
+{
+  "phase": 167,
+  "name": "Meta Controlled Execution Gate",
+  "status": "implemented",
+  "stream": "meta-andromeda-conversion-automation",
+  "objective": "Autorizar de forma explícita, temporária, idempotente e auditável uma única execução futura do payload Meta congelado, sem realizar entrega externa nesta fase.",
+  "businessProblem": "O payload da fase 166 estava íntegro e aprovado, mas ainda faltava um gate independente que provasse autorização humana recente, dry-run técnico aprovado e limite de uso antes do envio controlado.",
+  "implemented": [
+    "Contrato atlas.meta.execution-gate.v1 separado da aprovação e do payload congelado",
+    "Confirmação explícita AUTORIZAR_TESTE_META_UNICO exigida no servidor",
+    "Janela de autorização limitada a dez minutos e nunca superior à aprovação original",
+    "Dry-run estrutural com cinco verificações obrigatórias",
+    "Autorização limitada a uma entrega futura",
+    "Chave idempotente SHA-256 vinculada ao tenant, payload e fingerprint",
+    "Revalidação server-side da aprovação, do payload congelado e das fingerprints",
+    "Persistência auditável em atlas_events sem migration",
+    "Interface da diretoria com recibo e prova de que nenhum evento externo foi enviado"
+  ],
+  "acceptanceCriteria": [
+    "Somente admin, diretor decisor ou diretor podem abrir o gate",
+    "A confirmação explícita deve ser exata",
+    "A aprovação e o payload devem pertencer ao mesmo tenant e estar vigentes",
+    "As fingerprints devem permanecer íntegras",
+    "O dry-run deve estar aprovado",
+    "maxDeliveries deve ser igual a um",
+    "externalEventSent deve permanecer false",
+    "A rota não pode acessar CAPI, token Meta, fila externa ou fetch"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-167:check",
+    "tests": "npm test",
+    "typecheck": "npm run typecheck",
+    "lint": "targeted changed files",
+    "secretScan": "npm run security:secrets",
+    "build": "deferred-to-release-close"
+  },
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "nextPhaseRecommendation": "Executar na fase 168 um único envio real controlado, consumindo um gate vigente e registrando o recibo técnico da Meta sem permitir repetição."
+}

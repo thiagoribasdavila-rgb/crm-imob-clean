@@ -1,0 +1,132 @@
+{
+  "format": "atlas_phase_360_disposable_local_rls_proof_v1",
+  "phase": 360,
+  "mode": "execute",
+  "status": "passed",
+  "migrationCount": 134,
+  "fixtures": {
+    "syntheticOnly": true,
+    "organizations": 2,
+    "profiles": 4,
+    "leads": 2,
+    "insertedInDisposableTestOnly": true,
+    "transactionRollback": true,
+    "fixtureHash": "e40ceca93d9e0114f7b5f73bf731201d228acf2bd14155d46d352383b16290ec"
+  },
+  "proof": {
+    "brokerScope": true,
+    "managerScope": true,
+    "directorScope": true,
+    "crossTenantReadDenied": true,
+    "crossTenantWriteDenied": true,
+    "privilegedRpcsServerOnly": true
+  },
+  "normalization": {
+    "mappings": [
+      {
+        "originalVersion": "20260716235900",
+        "normalizedVersion": "20260716235901",
+        "file": "20260716235900_omnichannel_integrations.sql",
+        "normalizedFile": "20260716235901_omnichannel_integrations.sql"
+      },
+      {
+        "originalVersion": "20260717203000",
+        "normalizedVersion": "20260717203001",
+        "file": "20260717203000_phase_35_follow_up_sla_cycles.sql",
+        "normalizedFile": "20260717203001_phase_35_follow_up_sla_cycles.sql"
+      },
+      {
+        "originalVersion": "20260717213000",
+        "normalizedVersion": "20260717213001",
+        "file": "20260717213000_v3_legacy_runtime_schema_bridge.sql",
+        "normalizedFile": "20260717213001_v3_legacy_runtime_schema_bridge.sql"
+      }
+    ],
+    "guardInjections": [
+      {
+        "file": "20260719092358_phase_029_meta_permit_atomic_ledger.sql",
+        "setting": "app.atlas_meta_ledger_environment",
+        "injected": true
+      }
+    ],
+    "testIsolation": {
+      "target": "supabase/tests/database/phase_008_dynamic_rls_isolation.test.sql",
+      "disabled": [
+        {
+          "file": "phase_007_rls_access_matrix.test.sql",
+          "disabledFile": "phase_007_rls_access_matrix.test.sql.phase360-disabled"
+        },
+        {
+          "file": "phase_013_rls_jwt_contract.test.sql",
+          "disabledFile": "phase_013_rls_jwt_contract.test.sql.phase360-disabled"
+        },
+        {
+          "file": "phase_030_meta_permit_ledger_cleanup_verify.sql",
+          "disabledFile": "phase_030_meta_permit_ledger_cleanup_verify.sql.phase360-disabled"
+        },
+        {
+          "file": "phase_030_meta_permit_ledger_verify.sql",
+          "disabledFile": "phase_030_meta_permit_ledger_verify.sql.phase360-disabled"
+        },
+        {
+          "file": "phase_032_meta_permit_ledger_pg17_verify.sql",
+          "disabledFile": "phase_032_meta_permit_ledger_pg17_verify.sql.phase360-disabled"
+        }
+      ],
+      "defaultDiscoveryUsed": true
+    },
+    "canonicalMigrationsModified": false,
+    "canonicalTestModified": false,
+    "stagedTest": {
+      "file": "phase_008_dynamic_rls_isolation.test.sql",
+      "workspaceShared": true,
+      "removedAfterExecution": true
+    }
+  },
+  "commands": [
+    {
+      "command": "supabase start --exclude analytics,vector",
+      "passed": true,
+      "status": 0,
+      "durationMs": 50945,
+      "diagnostic": null
+    },
+    {
+      "command": "supabase db reset --local --no-seed",
+      "passed": true,
+      "status": 0,
+      "durationMs": 37010,
+      "diagnostic": null
+    },
+    {
+      "command": "supabase test db --local /Users/thiagoribasdavila/Documents/Aplas v 3/.atlas-phase360-pgtap-suCz9b/phase_008_dynamic_rls_isolation.test.sql",
+      "passed": true,
+      "status": 0,
+      "durationMs": 2740,
+      "tap": {
+        "passed": 20,
+        "failed": 0,
+        "format": "summary",
+        "resultPass": true
+      },
+      "summary": "/Users/thiagoribasdavila/Documents/Aplas v 3/.atlas-phase360-pgtap-suCz9b/phase_008_dynamic_rls_isolation.test.sql .. ok\nAll tests successful.\nFiles=1, Tests=20,  0 wallclock secs ( 0.01 usr +  0.00 sys =  0.01 CPU)\nResult: PASS\n\nConnecting to local database...\npsql:/Users/thiagoribasdavila/Documents/Aplas v 3/.atlas-phase360-pgtap-suCz9b/phase_008_dynamic_rls_isolation.test.sql:3: NOTICE:  extension \"pgtap\" already exists, skipping\n",
+      "diagnostic": null
+    },
+    {
+      "command": "supabase db lint --local --level error --fail-on error",
+      "passed": true,
+      "status": 0,
+      "durationMs": 2468,
+      "diagnostic": null
+    }
+  ],
+  "safety": {
+    "disposableWorkspace": true,
+    "environmentSanitized": true,
+    "remoteCommandsAllowed": false,
+    "linkedProjectUsed": false,
+    "operationalDatabaseTouched": false,
+    "secretsExposed": false
+  },
+  "blockers": []
+}

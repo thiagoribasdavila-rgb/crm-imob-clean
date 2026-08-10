@@ -1,0 +1,49 @@
+{
+  "phase": 351,
+  "cycle": "350-354",
+  "objective": "Unificar a prioridade de entrada usando os componentes e APIs existentes",
+  "status": "implementation_validated_runtime_evidence_pending",
+  "primaryMetric": "single-intake-priority-decision",
+  "decisionOrder": [
+    "unassigned-leads",
+    "ambiguous-provenance",
+    "operational-sample",
+    "next-action-coverage",
+    "first-action-coverage",
+    "first-action-median",
+    "distribution-balance",
+    "healthy-cadence"
+  ],
+  "dataContract": {
+    "endpoint": "/api/v1/analytics/lead-intake",
+    "usesExistingAggregatesOnly": true,
+    "historicalImportsExcluded": true,
+    "unknownMetricsRemainNull": true,
+    "personalDataReturned": false,
+    "tenantAndHierarchyScopeRequired": true,
+    "automaticMutation": false,
+    "humanDecisionRequired": true
+  },
+  "validated": {
+    "targetedRegression": "13/13",
+    "typecheck": "passed",
+    "changedFilesLint": "passed",
+    "responsiveLayout": "implemented",
+    "valueCycleContract": "passed",
+    "secretScan": "passed"
+  },
+  "runtimeEvidence": {
+    "status": "blocked",
+    "reason": "Os valores locais de Supabase e da conta de teste estão vazios; a prioridade não pode ser apresentada como decisão validada com dados reais.",
+    "requiredLocalVariables": [
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "ATLAS_TEST_EMAIL",
+      "ATLAS_TEST_PASSWORD",
+      "ATLAS_DEFAULT_ORGANIZATION_ID"
+    ]
+  },
+  "programAdvanceAuthorized": false,
+  "safeDisable": "Remover o bloco visual e o campo aditivo priority; nenhuma migration, distribuição automática ou escrita remota foi realizada."
+}

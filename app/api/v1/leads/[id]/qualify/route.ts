@@ -1,9 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { qualifyRealEstateLead } from "@/lib/ai/lead-qualification";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -51,28 +50,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       historicalMemories: memoriesResult.data ?? [],
     });
 
-    // ── UMA PONTUAÇÃO, NÃO DUAS ──────────────────────────────────────────
-    //
-    // O banco tinha `score` e `score_ia` como se fossem a mesma coisa, e
-    // discordavam: leads com score_ia 35 e 50 tinham score ZERO.
-    //
-    // `score_ia` é a canônica — é o que `lib/compat/live-writes.ts` grava na
-    // criação, o que 27 arquivos leem, e o que `isQualifiedLead` consulta para
-    // decidir se a conversão vai para a Meta. Esta rota gravava só `score`, que
-    // ninguém lia para decidir nada.
-    //
-    // Gravamos as DUAS com o mesmo valor: `score_ia` porque é a verdade, e
-    // `score` porque telas antigas ainda a leem. Escrever as duas juntas é o
-    // que impede de divergirem de novo — remover a coluna antiga é migração
-    // para outro dia, e até lá o risco não é a coluna existir: é ela mentir.
-    //
-    // `classificacao_ia` entra junto pelo mesmo motivo: era ela que ficava
-    // congelada enquanto `temperature` avançava.
     const { error } = await admin.from("leads").update({
       score: qualification.score,
-      score_ia: qualification.score,
       temperature: qualification.temperature,
-      classificacao_ia: qualification.temperature,
       purpose: lead.purpose || null,
       metadata: { ...metadata, qualificationAnswers: answers, aiQualification: qualification },
       updated_at: new Date().toISOString(),
@@ -89,21 +69,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       metadata: { score: qualification.score, confidence: qualification.confidence, historicalDataConfidence: qualification.historicalIntelligence.dataConfidence, historicalAdjustment: qualification.historicalIntelligence.adjustment, temperature: qualification.temperature, answered: Object.keys(newAnswers) },
       occurred_at: new Date().toISOString(),
     });
-    if (Object.keys(newAnswers).length) { const answerSignature = Object.entries(answers).sort(([a],[b]) => a.localeCompare(b)).map(([key,value]) => `${key}-${value}`).join("-"); const { error: campaignEventError } = await admin.from("campaign_events").upsert({ organization_id: identity.organizationId, lead_id: id, event_type: "qualification_signal", source: "crm-qualification", external_event_id: `qualification-${id}-${answerSignature}`, payload: { decision_signals: Object.entries(newAnswers).map(([key, value]) => `${key}:${value}`) }, occurred_at: new Date().toISOString() }, { onConflict: "organization_id,source,external_event_id", ignoreDuplicates: true });
-    // O 200 de sucesso era devolvido mesmo com o upsert falhando (ex.: tabela
-    // ausente pelo schema drift) — a resposta continua igual, mas a falha do
-    // sinal de aprendizado agora fica registrada.
-    if (campaignEventError) logger.warn("lead.qualify.campaign_event_failed", { organizationId: identity.organizationId, leadId: id, error: campaignEventError.message }); }
+    if (Object.keys(newAnswers).length) { const answerSignature = Object.entries(answers).sort(([a],[b]) => a.localeCompare(b)).map(([key,value]) => `${key}-${value}`).join("-"); await admin.from("campaign_events").upsert({ organization_id: identity.organizationId, lead_id: id, event_type: "qualification_signal", source: "crm-qualification", external_event_id: `qualification-${id}-${answerSignature}`, payload: { decision_signals: Object.entries(newAnswers).map(([key, value]) => `${key}:${value}`) }, occurred_at: new Date().toISOString() }, { onConflict: "organization_id,source,external_event_id", ignoreDuplicates: true }); }
     return NextResponse.json({ qualification: { ...qualification, progress: { answered: Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length, total: 3, percent: Math.round(Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length / 3 * 100) }, scoreChange: { previous: Number(lead.score || 0), current: qualification.score, delta: qualification.score - Number(lead.score || 0) } } });
   } catch (error) {
-    // Requalificar lead alheia reescreve `score_ia`, `temperature` e o metadata
-    // inteiro — medido em 2026-07-29 com sessão de corretor: 200 e score do
-    // colega alterado. É a pontuação que decide o que a Meta aprende.
-    if (ehLeadForaDaCarteira(error)) {
-      return NextResponse.json({ error: error.message, code: "QUALIFY_OUT_OF_SCOPE" }, { status: 403 });
-    }
     const message = error instanceof Error ? error.message : "Falha na qualificação.";
-    const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
+    const status = /sessão|token|autenticação/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

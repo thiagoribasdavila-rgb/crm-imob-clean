@@ -1,0 +1,42 @@
+{
+  "phase": 201,
+  "name": "Release Gate Evidence Matrix",
+  "status": "implemented",
+  "objective": "Converter cada gate pendente em evidências verificáveis, sem executar homologação, alterar memória ou gerar pacote.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "modules": 2,
+    "gates": 8,
+    "satisfiedGates": 0,
+    "requiredEvidenceItems": 14,
+    "missingEvidenceItems": 14,
+    "invalidEvidenceItems": 0,
+    "allEvidenceSatisfied": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "planHash": "c42803abb3c0c0d68c958db17edcfdc43f93acd04d6c2e90b8f40b0373d42a95",
+    "matrixHash": "0d48e525b2831b1c2a8a3d380e23f839eee9350d69ca65c28d3a2134c271218a"
+  },
+  "evidenceRules": {
+    "exactModuleRevisionAndHashRequired": true,
+    "exactCompositionDecisionRequired": true,
+    "validityWindowRequired": true,
+    "singleEvidencePerRequirementRequired": true,
+    "humanApprovalCannotBeInferred": true,
+    "evidenceDoesNotUpdateMemoryAutomatically": true
+  },
+  "safety": {
+    "remoteAccess": false,
+    "databaseMutation": false,
+    "migrationApplied": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 202,
+    "name": "Release evidence intake contract",
+    "objective": "Receber e validar recibos de evidência sem executar gates ou promover release automaticamente."
+  }
+}

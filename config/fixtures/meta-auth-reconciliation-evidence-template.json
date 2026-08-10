@@ -1,0 +1,65 @@
+{
+  "format": "atlas_meta_auth_reconciliation_evidence_v1",
+  "phase": 16,
+  "environment": "staging_clone",
+  "generatedAt": null,
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "projectIdentifiersPersisted": false,
+  "rawLogsPersisted": false,
+  "remoteExecutionPerformed": false,
+  "sourceEvidence": {
+    "format": "atlas_meta_auth_isolated_rehearsal_evidence_v1",
+    "phase": 15,
+    "approved": false,
+    "sha256": null
+  },
+  "contract": {
+    "expected": {
+      "organizationsCreated": 2,
+      "authUsersCreated": 9,
+      "profilesCreated": 9,
+      "leadsCreated": 4,
+      "minimumScenarioCount": 15
+    },
+    "observed": {
+      "organizationsCreated": 0,
+      "authUsersCreated": 0,
+      "profilesCreated": 0,
+      "leadsCreated": 0,
+      "scenarioCount": 0
+    }
+  },
+  "reconciliation": {
+    "approved": false,
+    "driftCount": 0,
+    "issueCodes": []
+  },
+  "cleanup": {
+    "complete": false,
+    "zeroResidual": false,
+    "residual": {
+      "organizations": -1,
+      "profiles": -1,
+      "leads": -1,
+      "authUsers": -1
+    },
+    "errorCodes": []
+  },
+  "releaseGates": {
+    "isolatedAuthJwtRlsEvidenceApproved": false,
+    "productionAllowed": false,
+    "metaEventDeliveryAllowed": false,
+    "deploymentAllowed": false
+  },
+  "prohibitedActions": {
+    "productionMutation": false,
+    "realMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false
+  },
+  "errorCode": null
+}

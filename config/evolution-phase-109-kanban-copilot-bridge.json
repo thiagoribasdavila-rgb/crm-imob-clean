@@ -1,0 +1,23 @@
+{
+  "phase": 109,
+  "name": "Kanban Copilot Bridge",
+  "status": "implemented",
+  "productGoal": "reduzir atrito entre identificar uma oportunidade no Kanban e executar uma abordagem assistida por IA",
+  "businessOutcome": "corretor ganha atalhos contextuais para mensagem, resumo e objeções sem sair do fluxo comercial",
+  "scope": [
+    "pipeline card copilot intent links",
+    "priority queue IA message shortcut",
+    "message composer pipeline context prefill",
+    "premium compact copilot bridge styling"
+  ],
+  "nonGoals": [
+    "envio automático de mensagens",
+    "alteração de banco",
+    "ativação de provedores externos de IA"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-109:check",
+    "requiresBuild": false,
+    "requiresDatabaseMigration": false
+  }
+}

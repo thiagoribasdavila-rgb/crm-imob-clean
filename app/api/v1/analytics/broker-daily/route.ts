@@ -1,25 +1,13 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
-import { filtroDaCarteiraDaPessoa } from "@/lib/crm/escopo-de-leitura";
-import { primeiroContatoAtrasado } from "@/lib/crm/acervo-de-resgate";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   LIVE_LEAD_SELECT,
-  LIVE_LEAD_SELECT_WITH_SLA,
   isMissingColumn,
   mapLegacyLead,
   mapLegacyTask,
   type CompatRow,
 } from "@/lib/compat/legacy-v2";
-import {
-  computeAttentionSignals,
-  groupAttentionSignalsByLead,
-  severityRank,
-  HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS,
-  HOT_SCORE_THRESHOLD,
-  NEVER_CONTACTED_CRITICAL_HOURS,
-  STAGE_STALE_THRESHOLD_DAYS,
-} from "@/lib/atlas/attention-signals";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +21,26 @@ const DONE = new Set([
   "cancelada",
 ]);
 const DAY = 86_400_000;
+const BROKER_LEAD_SELECT = [
+  "id",
+  "name",
+  "source",
+  "status",
+  "score",
+  "temperature",
+  "assigned_to",
+  "created_at",
+  "organization_id",
+  "next_action_at",
+  "development_id",
+  "first_contact_due_at",
+  "first_contacted_at",
+  "first_contact_sla_minutes",
+  "first_response_minutes",
+  "first_contact_sla_met",
+].join(",");
+const BROKER_TASK_SELECT =
+  "id,title,description,status,assigned_to,lead_id,created_at,organization_id,priority,due_at";
 const normalize = (value: unknown) =>
   String(value || "")
     .normalize("NFD")
@@ -42,21 +50,6 @@ const timestamp = (value: unknown) => {
   const parsed = typeof value === "string" ? Date.parse(value) : Number.NaN;
   return Number.isFinite(parsed) ? parsed : null;
 };
-
-// Probabilidade de conversão — mesma fórmula base do preditor de produção
-// (build_lead_prediction_explanation): inclui o peso da ETAPA, que o antigo
-// priorityScore ignorava, empurrando para o topo os leads mais perto da venda.
-const STAGE_WEIGHT: Record<string, number> = {
-  contato: 4,
-  qualificacao: 12,
-  visita: 20,
-  proposta: 30,
-  contrato: 42,
-};
-const conversionProbabilityPct = (score: number, status: unknown) =>
-  Math.round(
-    Math.max(1, Math.min(95, 10 + score * 0.55 + (STAGE_WEIGHT[normalize(status)] ?? 0))),
-  );
 
 export async function GET(request: NextRequest) {
   const rate = enforceRateLimit(request, {
@@ -72,21 +65,32 @@ export async function GET(request: NextRequest) {
   const organizationId = identity.access.organization.id;
   const brokerId = identity.access.profile.id;
   const now = Date.now();
-  const [leadResultInicial, taskResult] = await Promise.all([
-    // Com SLA: sem first_contacted_at esta rota não tem como saber quem nunca
-    // foi contatado — e era exatamente por ler o select base que a carteira
-    // 99% intocada aparecia como "Operação em dia".
-    identity.supabase
+  let leadResult = await identity.supabase
+    .from("leads")
+    .select(BROKER_LEAD_SELECT)
+    .eq("organization_id", organizationId)
+    .eq("assigned_to", identity.access.profile.id)
+    .limit(1000);
+  if (isMissingColumn(leadResult.error)) {
+    leadResult = await identity.supabase
       .from("leads")
-      .select(LIVE_LEAD_SELECT_WITH_SLA)
+      .select(LIVE_LEAD_SELECT)
       .eq("organization_id", organizationId)
-      // As DUAS colunas de posse, pelo módulo compartilhado. Filtrar só por
-      // `assigned_user_id` escondia do dia da pessoa os leads que estão na
-      // carteira dela pela coluna legada — medido: 3 abertos, 1 nunca
-      // contatado. O painel dizia menos trabalho do que existe.
-      .or(filtroDaCarteiraDaPessoa(brokerId))
-      .limit(1000),
-    identity.supabase
+      .eq("assigned_user_id", brokerId)
+      .limit(1000);
+  }
+
+  const canonicalTaskResult = await identity.supabase
+    .from("tasks")
+    .select(BROKER_TASK_SELECT)
+    .eq("organization_id", organizationId)
+    .eq("assigned_to", brokerId)
+    .order("due_at", { ascending: true, nullsFirst: false })
+    .limit(1000);
+  let taskRows = (canonicalTaskResult.data ?? []) as unknown as CompatRow[];
+  let taskError = canonicalTaskResult.error;
+  if (isMissingColumn(canonicalTaskResult.error)) {
+    const legacyTaskResult = await identity.supabase
       .from("tasks")
       .select(
         "id,title,description,status,user_id,lead_id,created_at,organization_id,priority,due_date",
@@ -94,27 +98,12 @@ export async function GET(request: NextRequest) {
       .eq("organization_id", organizationId)
       .eq("user_id", brokerId)
       .order("due_date", { ascending: true, nullsFirst: false })
-      .limit(1000),
-  ]);
-
-  // Base legada sem as colunas do SLA: cai para o select base e DECLARA que
-  // não mediu. O que não pode acontecer é o número virar zero silencioso.
-  let primeiroContatoMensuravel = true;
-  let leadResult = leadResultInicial;
-  if (leadResult.error && isMissingColumn(leadResult.error)) {
-    primeiroContatoMensuravel = false;
-    leadResult = await identity.supabase
-      .from("leads")
-      .select(LIVE_LEAD_SELECT)
-      .eq("organization_id", organizationId)
-      // O MESMO filtro do caminho principal. Divergir aqui faria a base legada
-      // esconder leads que a base atual mostra — dois caminhos para a mesma
-      // verdade é a classe de defeito mais cara deste repositório.
-      .or(filtroDaCarteiraDaPessoa(brokerId))
       .limit(1000);
+    taskRows = (legacyTaskResult.data ?? []) as unknown as CompatRow[];
+    taskError = legacyTaskResult.error;
   }
 
-  if (leadResult.error || taskResult.error) {
+  if (leadResult.error || taskError) {
     return apiError(
       "BROKER_DAILY_LOAD_FAILED",
       "Não foi possível preparar sua operação diária.",
@@ -127,7 +116,7 @@ export async function GET(request: NextRequest) {
     .map(mapLegacyLead)
     .filter((lead) => !CLOSED.has(normalize(lead.status)));
   const activeIds = new Set(activeLeads.map((lead) => String(lead.id)));
-  const openTasks = ((taskResult.data ?? []) as unknown as CompatRow[])
+  const openTasks = taskRows
     .map(mapLegacyTask)
     .filter(
       (task) =>
@@ -144,100 +133,21 @@ export async function GET(request: NextRequest) {
       .map((task) => String(task.lead_id)),
   );
 
-  // Fase 100 · Sinais de atenção proativos: estende a mesma carteira já
-  // carregada acima (activeLeads) com sinais determinísticos de
-  // pipeline_history, followups e lead_events — sem duplicar a leitura de leads.
-  const attentionSignals = await computeAttentionSignals(
-    identity.supabase,
-    organizationId,
-    activeLeads.map((lead) => ({
-      id: String(lead.id),
-      status: String(lead.status || "novo"),
-      score: Number(lead.score || 0),
-      temperature: typeof lead.temperature === "string" ? lead.temperature : null,
-      createdAt: typeof lead.created_at === "string" ? lead.created_at : null,
-      firstContactedAt: typeof lead.first_contacted_at === "string" ? lead.first_contacted_at : null,
-      firstContactDueAt: typeof lead.first_contact_due_at === "string" ? lead.first_contact_due_at : null,
-    })),
-    { now, primeiroContatoMensuravel },
-  );
-  const attentionByLead = groupAttentionSignalsByLead(attentionSignals);
-  const attentionQueueCompleta = activeLeads
-    .map((lead) => {
-      const bucket = attentionByLead.get(String(lead.id));
-      if (!bucket) return null;
-      return {
-        leadId: String(lead.id),
-        leadName: String(lead.name || "Lead sem nome"),
-        status: String(lead.status || "novo"),
-        score: Number(lead.score || 0),
-        topSeverity: bucket.topSeverity,
-        topReason: bucket.topReason,
-        signals: bucket.signals.map((signal) => ({
-          kind: signal.kind,
-          severity: signal.severity,
-          reason: signal.reason,
-          detail: signal.detail,
-          since: signal.since,
-          metric: signal.metric,
-        })),
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => item !== null)
-    .sort((left, right) => severityRank(right.topSeverity) - severityRank(left.topSeverity) || right.signals.length - left.signals.length);
-
-  // O TOTAL é contado antes do corte de exibição. Publicar
-  // `attentionQueue.length` (o valor cortado) fazia o anel "Fila atendida" da
-  // central usar um teto de paginação como nota de saúde: com o corte em 20,
-  // uma carteira de 500 leads inteiramente travada ainda desenhava 96%. A
-  // fórmula era matematicamente incapaz de dar nota ruim.
-  const LIMITE_DA_FILA = 20;
-  const attentionQueue = attentionQueueCompleta.slice(0, LIMITE_DA_FILA);
-
-  const prioritiesCompletas = activeLeads
+  const priorities = activeLeads
     .map((lead) => {
       const score = Number(lead.score || 0);
       const hot = normalize(lead.temperature) === "quente" || score >= 70;
       const createdAt = timestamp(lead.created_at);
       const nextActionAt = timestamp(lead.next_action_at);
-      // ── O ÚLTIMO LUGAR ONDE O PREDICADO ERA POR ETAPA ────────────────────
-      //
-      // O bônus de +120 ("lead aguardando primeiro contato") decidia por
-      // `status === "novo"` há mais de 15 min. Medido em 2026-07-29 na
-      // carteira do Diego: dos 132 nunca contatados, 22 JÁ SAÍRAM de "novo"
-      // (16 em contato, 6 em qualificação) sem ninguém ter registrado uma
-      // ligação. Eles não ganhavam o empurrão e afundavam na fila — justamente
-      // os que estão parados há mais tempo, porque alguém mexeu na etapa e
-      // não ligou.
-      //
-      // Agora é por COLUNA, o mesmo predicado que o sinal de atenção, o
-      // número do painel, o risco da diretoria e o filtro da lista já usam.
-      // Base sem a coluna cai para o predicado antigo — e o recuo é
-      // DECLARADO, nunca silencioso.
-      //
-      // ── E O ÚLTIMO LUGAR QUE NÃO SABIA A DIFERENÇA ENTRE PEDIR CONTATO E
-      //    SER ACERVO DE RESGATE ──────────────────────────────────────────
-      //
-      // `!lead.first_contacted_at` sozinho ignora o prazo. Os outros três
-      // predicados de atraso do código (ai/proactive, marketing/stop-loss,
-      // weekly-report, pipeline) exigem `first_contact_due_at < now`, e por isso
-      // o acervo sem prazo sai da conta deles de graça. AQUI não saía.
-      //
-      // Hoje o acervo escapa por acidente: CLOSED tira perdido/arquivado de
-      // `activeLeads` — 8 das 13 do pool e 16.733 das 17.151 do v1. Mas as 5 em
-      // `novo`/`contato` JÁ contam como atrasadas, e no dia em que alguém mover
-      // status de acervo para dentro do funil voltam ~17 mil violações de uma vez.
-      const firstContactOverdue = primeiroContatoMensuravel
-        ? primeiroContatoAtrasado(lead, now)
-        : normalize(lead.status) === "novo" &&
-          createdAt !== null &&
-          createdAt < now - 15 * 60_000;
+      const firstContactOverdue =
+        normalize(lead.status) === "novo" &&
+        createdAt !== null &&
+        createdAt < now - 15 * 60_000;
       const followUpOverdue = nextActionAt !== null && nextActionAt < now;
       const taskOverdue = overdueByLead.has(String(lead.id));
       const noNextAction = nextActionAt === null;
-      const conversionProbability = conversionProbabilityPct(score, lead.status);
       const priorityScore =
-        conversionProbability +
+        score +
         (firstContactOverdue ? 120 : 0) +
         (followUpOverdue ? 90 : 0) +
         (taskOverdue ? 50 : 0) +
@@ -265,15 +175,12 @@ export async function GET(request: NextRequest) {
               : noNextAction
                 ? "Definir uma próxima ação com data"
                 : "Revisar o histórico e executar a ação programada";
-      const attentionBucket = attentionByLead.get(String(lead.id));
       return {
         leadId: String(lead.id),
         leadName: String(lead.name || "Lead sem nome"),
         status: String(lead.status || "novo"),
         score,
         priorityScore,
-        conversionProbability,
-        probabilityBasis: "raw" as const,
         reason,
         nextBestAction,
         dueAt: lead.next_action_at ? String(lead.next_action_at) : null,
@@ -282,22 +189,10 @@ export async function GET(request: NextRequest) {
         developmentId: lead.development_id
           ? String(lead.development_id)
           : null,
-        // Fase 100 · sinais adicionais de atenção proativa para este lead
-        // (etapa parada, follow-up vencido, quente sem contato). Não altera
-        // `reason`/`priorityScore` acima para não mudar o comportamento
-        // já existente da fila explicável.
-        attentionSignals: (attentionBucket?.signals ?? []).map((signal) => ({
-          kind: signal.kind,
-          severity: signal.severity,
-          reason: signal.reason,
-          detail: signal.detail,
-          since: signal.since,
-          metric: signal.metric,
-        })),
       };
     })
-    .sort((left, right) => right.priorityScore - left.priorityScore);
-  const priorities = prioritiesCompletas.slice(0, 7);
+    .sort((left, right) => right.priorityScore - left.priorityScore)
+    .slice(0, 7);
 
   const agenda = openTasks
     .filter((task) => {
@@ -313,17 +208,14 @@ export async function GET(request: NextRequest) {
       leadId: task.lead_id ? String(task.lead_id) : null,
       overdue: (timestamp(task.due_at) ?? now) < now,
     }));
-  // Predicado por COLUNA (first_contacted_at nulo), não por etapa. O antigo
-  // — status "novo" há mais de 15 min — erra dos dois lados: nesta base perde
-  // 19 leads que avançaram para "contato"/"qualificação" sem ninguém ter
-  // registrado uma ligação, e conta 5 que já foram contatados e seguem em
-  // "novo". `null` quando as colunas não existem: não medido nunca é zero.
-  // MESMA função do laço acima — não uma segunda escrita do predicado. O número
-  // da faixa e o motivo de cada card TÊM de concordar: quando divergiram, o
-  // painel dizia "22 atrasadas" e listava outras.
-  const firstContactOverdue = primeiroContatoMensuravel
-    ? activeLeads.filter((lead) => primeiroContatoAtrasado(lead, now)).length
-    : null;
+  const firstContactOverdue = activeLeads.filter((lead) => {
+    const createdAt = timestamp(lead.created_at);
+    return (
+      normalize(lead.status) === "novo" &&
+      createdAt !== null &&
+      createdAt < now - 15 * 60_000
+    );
+  }).length;
   const followUpOverdue = activeLeads.filter(
     (lead) =>
       (timestamp(lead.next_action_at) ?? Number.MAX_SAFE_INTEGER) < now,
@@ -344,53 +236,17 @@ export async function GET(request: NextRequest) {
             (timestamp(task.due_at) ?? Number.MAX_SAFE_INTEGER) < now,
         ).length,
         firstContactOverdue,
-        primeiroContatoMensuravel,
         followUpOverdue,
         agendaNext7Days: agenda.length,
-        // O total real, não o tamanho da página. Ver LIMITE_DA_FILA acima.
-        leadsNeedingAttention: attentionQueueCompleta.length,
-        leadsNeedingAttentionExibidos: attentionQueue.length,
       },
       priorities,
-      // "7 de 448" em vez de "7": o crachá da central dizia só o tamanho da
-      // página, o que faz uma carteira inteira parada parecer sete pendências.
-      prioritiesTotal: prioritiesCompletas.length,
       agenda,
-      // Fase 100 · Sinais de atenção proativos: fila própria (não limitada a 7
-      // itens como `priorities`) só com leads que dispararam pelo menos um dos
-      // três sinais determinísticos abaixo. Reaproveita activeLeads já lido
-      // nesta rota; nenhuma tabela nova, nenhuma migration.
-      attention: {
-        explainable: true,
-        humanApprovalRequired: true,
-        rules: {
-          staleStage: `Sem mudança de etapa em pipeline_history além do limite por etapa (${Object.entries(STAGE_STALE_THRESHOLD_DAYS).map(([stage, days]) => `${stage}: ${days}d`).join(", ")}); usa leads.created_at quando o lead nunca mudou de etapa.`,
-          followUpOverdue: "followups.scheduled_at no passado com completed=false.",
-          highScoreNoContact: `score_ia >= ${HOT_SCORE_THRESHOLD} ou temperatura "quente" sem nenhuma linha em lead_events nos últimos ${HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS} dias úteis.`,
-          neverContacted: primeiroContatoMensuravel
-            ? `leads.first_contacted_at nulo com first_contact_due_at vencido (crítico a partir de ${NEVER_CONTACTED_CRITICAL_HOURS}h de atraso); sem prazo gravado, conta desde a criação.`
-            : "Não medido: as colunas de SLA de primeiro contato não existem nesta base.",
-        },
-        queue: attentionQueue,
-        // O corte é declarado para que ninguém leia o tamanho da lista como
-        // se fosse o tamanho do problema.
-        total: attentionQueueCompleta.length,
-        truncated: attentionQueueCompleta.length > attentionQueue.length,
-      },
       ranking: {
         explainable: true,
-        driver: "conversion_probability",
-        probabilityModel: {
-          basis: "raw",
-          formula: "clamp(1,95, 10 + score*0.55 + stage_weight)",
-          calibrationApplied: false,
-          note: "A calibração ativa aprovada é aplicada na visão de previsão por lead; a fila em lote usa a probabilidade base (idêntica quando não há modelo aprovado).",
-        },
         signals: [
-          "conversion_probability",
           "score_ia",
-          "new_lead_age",
-          "next_contact",
+          "first_contact_sla",
+          "follow_up",
           "overdue_task",
           "temperature",
           "missing_next_action",

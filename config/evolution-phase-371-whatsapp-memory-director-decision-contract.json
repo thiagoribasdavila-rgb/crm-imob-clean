@@ -1,0 +1,19 @@
+{
+  "phase": 371,
+  "name": "WhatsApp memory director decision contract",
+  "status": "implemented_local",
+  "scope": "authenticated_organization",
+  "audience": ["admin", "director"],
+  "mutates_remote_state": false,
+  "contains_pii": false,
+  "reads_message_content": false,
+  "automatic_decision": false,
+  "approval_persisted": false,
+  "allowed_roles": ["admin", "director"],
+  "allowed_decisions": ["approve", "reject"],
+  "minimum_reason_length": 20,
+  "required_human_confirmations": 2,
+  "requires_idempotency_key": true,
+  "requires_audit_event": true,
+  "promotion_gate": "authenticated_idempotent_decision_endpoint_pending"
+}

@@ -1,0 +1,60 @@
+{
+  "phase": 175,
+  "name": "Conversion Core Disposable Workspace Launcher",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Executar a prova autenticada somente em uma cópia temporária sem arquivos de ambiente, metadados Git, caches, artefatos, archives ou referências locais do Supabase remoto.",
+  "evidenceLevel": "disposable_workspace_ready_runtime_blocked",
+  "runtimeHomologated": false,
+  "isolationContract": {
+    "sourceEnvironmentCopied": false,
+    "sourceSymlinksCopied": false,
+    "gitMetadataCopied": false,
+    "buildArtifactsCopied": false,
+    "supabaseRemoteMetadataCopied": false,
+    "nodeModulesReusedByLocalSymlink": true,
+    "sensitiveLocalFilesCopied": false,
+    "childEnvironmentAllowlisted": true,
+    "cleanupGuaranteedByFinally": true,
+    "arbitraryPathCleanupAllowed": false
+  },
+  "runtimeEvidence": {
+    "disposableWorkspaceContractPassed": true,
+    "dockerAvailable": false,
+    "localSupabaseAvailable": false,
+    "authenticatedJourneyExecuted": false,
+    "reason": "O lançador descartável está comprovado por fixtures hostis, mas a jornada real continua bloqueada pela ausência de Docker e Supabase local neste host."
+  },
+  "safety": {
+    "sourceEnvironmentModified": false,
+    "productionCredentialsUsed": false,
+    "productionDatabaseTouched": false,
+    "externalIntegrationsCalled": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeBlockers": [
+    {
+      "id": "docker-runtime-unavailable",
+      "reason": "A CLI Supabase local depende de containers e Docker não está disponível."
+    },
+    {
+      "id": "local-supabase-unavailable",
+      "reason": "A pilha Supabase local descartável não está em execução."
+    },
+    {
+      "id": "source-traceability-missing",
+      "reason": "O diretório canônico atual não contém metadados Git; release permanece sem proveniência comprovável."
+    }
+  ],
+  "releaseGate": {
+    "contractsPassed": true,
+    "authenticatedIsolatedRuntimePassed": false,
+    "sourceTraceabilityPassed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Disponibilizar Docker/Supabase local e preencher exclusivamente ATLAS_E2E_ISOLATED_* para executar a jornada dentro do workspace descartável."
+}

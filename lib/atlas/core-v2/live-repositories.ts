@@ -3,8 +3,6 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   LIVE_LEAD_SELECT,
-  LIVE_LEAD_SELECT_WITH_SLA,
-  isMissingColumn,
   leadAsOpportunity,
   mapLegacyLead,
   mapLegacyProject,
@@ -14,17 +12,11 @@ import {
 import { ATLAS_LIVE_READ_COMPATIBILITY_VERSION } from "./live-capability-resolver";
 
 export const LIVE_TASK_SELECT = "id,title,description,status,user_id,lead_id,created_at,organization_id,priority,due_date";
-/**
- * Colunas do empreendimento, lidas de `developments`.
- *
- * `code` e `address` mudaram de nome na migração V3 (`project_code`,
- * `address_line`). Os aliases mantêm a forma que `mapLegacyProject` e as telas
- * já esperam, sem obrigar ninguém a renomear campo em cascata.
- */
-export const LIVE_DEVELOPMENT_SELECT = "id,organization_id,name,developer_name,code:project_code,status,city,neighborhood,address:address_line,launch_date,delivery_date,created_at,updated_at";
+export const LIVE_DEVELOPMENT_SELECT = "id,organization_id,name,developer_name,code,status,city,neighborhood,address,launch_date,delivery_date,created_at,updated_at";
 
 const MAX_READ_LIMIT = 5_000;
 const archivedLeadStatuses = "(arquivado,ARQUIVADO,archived,ARCHIVED)";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type CompatibleReadInput = {
   organizationId: string;
@@ -33,23 +25,6 @@ type CompatibleReadInput = {
 
 type CompatibleLeadReadInput = CompatibleReadInput & {
   includeArchived?: boolean;
-  /**
-   * Restringe a leitura ao que este dono pode ACIONAR — e à fila sem dono.
-   *
-   * Precisa acontecer no BANCO, não depois: `mapLegacyLead` devolve
-   * `assigned_to`/`assigned_user_id` nulos, então filtrar em memória deixava
-   * passar justamente as leads de outra pessoa. Relatado pelo dono do produto:
-   * o corretor via 199 leads e recebia 403 ao mover 3 delas, com a mensagem
-   * "ela não aparece na sua carteira" — aparecia.
-   *
-   * Ausente = sem restrição (liderança vê o funil inteiro).
-   */
-  ownerId?: string | null;
-  /**
-   * Vários donos de uma vez — o funil de uma EQUIPE. Tem precedência sobre
-   * `ownerId`: quem pede a equipe já resolveu quem está dentro dela.
-   */
-  ownerIds?: string[] | null;
 };
 
 type CompatibleReadFailure = {
@@ -69,8 +44,6 @@ type CompatibleReadSuccess<T> = {
   tenantColumn: "organization_id";
   compatibility: typeof ATLAS_LIVE_READ_COMPATIBILITY_VERSION;
   generatedAt: string;
-  /** false quando o banco não tem as colunas de SLA da fase 34. */
-  slaDisponivel?: boolean;
 };
 
 export type CompatibleReadResult<T> = CompatibleReadSuccess<T> | CompatibleReadFailure;
@@ -112,6 +85,55 @@ function success<T>(rows: T[], count: number | null, source: string): Compatible
   };
 }
 
+function textValue(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+async function enrichLeadProjectNames(
+  client: SupabaseClient,
+  organizationId: string,
+  rows: CompatRow[],
+) {
+  const developmentIds = [
+    ...new Set(
+      rows
+        .map((row) => textValue(row.development_id || row.project_id))
+        .filter((id) => UUID_PATTERN.test(id)),
+    ),
+  ];
+
+  if (!developmentIds.length) return rows;
+
+  // This lookup is best-effort. A lead remains visible even if a legacy
+  // project was removed or is not visible to this user through RLS.
+  const projects = await client
+    .from("crm_projects")
+    .select("id,name")
+    .eq("organization_id", organizationId)
+    .in("id", developmentIds);
+  if (projects.error) return rows;
+
+  const namesById = new Map(
+    (projects.data ?? []).map((project) => [String(project.id), textValue(project.name)]),
+  );
+
+  return rows.map((row) => {
+    const developmentId = textValue(row.development_id || row.project_id);
+    const linkedName = namesById.get(developmentId) || "";
+    const legacyProject = textValue(row.project);
+    const legacyProjectIsId = UUID_PATTERN.test(legacyProject);
+    const projectName = linkedName || (legacyProjectIsId ? "" : legacyProject);
+
+    return {
+      ...row,
+      // Campaign origin and commercial project are independent facts.
+      project: projectName || null,
+      project_name: projectName || null,
+      development_name: linkedName || projectName || null,
+    };
+  });
+}
+
 export async function readCompatibleLeads(
   client: SupabaseClient,
   input: CompatibleLeadReadInput,
@@ -119,51 +141,23 @@ export async function readCompatibleLeads(
   const { organizationId, limit } = normalizedInput(input);
   if (!organizationId) return invalidTenant();
 
-  // Tenta com as colunas de SLA; se o banco não as tiver (42703), repete sem
-  // elas. É o que permite o mesmo código servir o schema da fase 34 e o legado,
-  // sem que a ausência do SLA derrube a leitura inteira do pipeline.
-  const executar = async (colunas: string) => {
-    let query = client
-      .from("leads")
-      .select(colunas, { count: "exact" })
-      .eq("organization_id", organizationId);
-    if (!input.includeArchived) query = query.not("status", "in", archivedLeadStatuses);
-    // Dono, ou lead da fila (sem dono em nenhuma das duas colunas — elas
-    // divergem nesta base). Espelha a regra que `move_pipeline_lead` já aplica
-    // na escrita: leitura e escrita têm de concordar.
-    if (input.ownerIds?.length) {
-      // Uma lead conta como da equipe se QUALQUER uma das duas colunas de dono
-      // apontar para alguém dela. Sem lead-sem-dono aqui: a fila de não
-      // atribuídos não pertence a equipe nenhuma, e incluí-la faria o funil do
-      // gerente inchar com o que ainda não é dele.
-      const ids = input.ownerIds.join(",");
-      query = query.or(`assigned_user_id.in.(${ids}),assigned_to.in.(${ids})`);
-    } else if (input.ownerId) {
-      query = query.or(
-        `assigned_user_id.eq.${input.ownerId},assigned_to.eq.${input.ownerId},and(assigned_user_id.is.null,assigned_to.is.null)`,
-      );
-    }
-    return query.order("created_at", { ascending: false, nullsFirst: false }).limit(limit);
-  };
+  let query = client
+    .from("leads")
+    .select(LIVE_LEAD_SELECT, { count: "exact" })
+    .eq("organization_id", organizationId);
 
-  let comSla = true;
-  let result = await executar(LIVE_LEAD_SELECT_WITH_SLA);
-  if (result.error && isMissingColumn(result.error)) {
-    comSla = false;
-    result = await executar(LIVE_LEAD_SELECT);
-  }
+  if (!input.includeArchived) query = query.not("status", "in", archivedLeadStatuses);
+  const result = await query.order("created_at", { ascending: false, nullsFirst: false }).limit(limit);
   if (result.error) return unavailable(result.error.code);
 
-  return {
-    ...success(
-      ((result.data ?? []) as unknown as CompatRow[]).map(mapLegacyLead),
-      result.count,
-      "public.leads",
-    ),
-    // Quem consome precisa saber se o SLA veio nulo por não ter sido medido ou
-    // por o banco não suportar a medição. São coisas diferentes.
-    slaDisponivel: comSla,
-  };
+  const mappedRows = ((result.data ?? []) as unknown as CompatRow[]).map(mapLegacyLead);
+  const rows = await enrichLeadProjectNames(client, organizationId, mappedRows);
+
+  return success(
+    rows,
+    result.count,
+    "public.leads",
+  );
 }
 
 export async function readCompatiblePipeline(
@@ -201,15 +195,13 @@ export async function readCompatibleTasks(
   );
 }
 
-/*
- * `readCompatibleCustomers` foi REMOVIDA em 2026-07-29, junto com a tela que a
- * chamava. Ela nunca leu nada de próprio: chamava `readCompatibleLeads` e só
- * trocava o rótulo da origem — era essa a prova de que "Clientes 360" e
- * "Leads" eram a mesma lista. Com a rota apagada, ficou sem chamador nenhum.
- *
- * Manter alias sem chamador é convidar a próxima pessoa a acreditar que existe
- * uma leitura de clientes. Não existe: existe `readCompatibleLeads`.
- */
+export async function readCompatibleCustomers(
+  client: SupabaseClient,
+  input: CompatibleLeadReadInput,
+): Promise<CompatibleReadResult<CompatRow>> {
+  const leads = await readCompatibleLeads(client, input);
+  return leads.ok ? { ...leads, source: "public.leads+public.profiles+public.crm_projects" } : leads;
+}
 
 export async function readCompatibleDevelopments(
   client: SupabaseClient,
@@ -218,24 +210,8 @@ export async function readCompatibleDevelopments(
   const { organizationId, limit } = normalizedInput(input);
   if (!organizationId) return invalidTenant();
 
-  // Lê `developments`, e não `crm_projects`.
-  //
-  // As duas guardavam os MESMOS empreendimentos com identificadores
-  // DIFERENTES. Esta função lia a segunda; as 174 leads apontam para a
-  // primeira. Resultado medido: a tela de Projetos mostrava quatro
-  // empreendimentos com ZERO leads, sendo que Inside Perdizes tem 174.
-  //
-  // `developments` é a canônica sem discussão: 33 tabelas a referenciam,
-  // contra 6 de `crm_projects` — e nenhuma dessas 6 tem uma única linha
-  // apontando para lá. A tabela antiga tinha 4 linhas para as quais nada
-  // aponta.
-  //
-  // A migration 20260727010000 garantiu que todo projeto do cadastro antigo
-  // exista no novo (na prática, uma linha: o Spin Mood). `crm_projects` NÃO foi
-  // apagada — nada aponta para ela, então não há o que repontar, e derrubá-la
-  // seria destruição sem ganho.
   const result = await client
-    .from("developments")
+    .from("crm_projects")
     .select(LIVE_DEVELOPMENT_SELECT, { count: "exact" })
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false, nullsFirst: false })
@@ -245,6 +221,6 @@ export async function readCompatibleDevelopments(
   return success(
     ((result.data ?? []) as unknown as CompatRow[]).map(mapLegacyProject),
     result.count,
-    "public.developments",
+    "public.crm_projects",
   );
 }

@@ -1,0 +1,57 @@
+{
+  "format": "atlas_meta_test_events_repeatability_plan_gate_v1",
+  "phase": 23,
+  "mode": "sanitized_repeatability_plan_no_delivery",
+  "environment": "staging_clone",
+  "sourceSignalContract": "config/meta-validation-only-signal-contract.json",
+  "requiredSourcePhase": 22,
+  "sampling": {
+    "baselineApprovedSamples": 1,
+    "targetApprovedSamples": 3,
+    "additionalObservationsPlanned": 2,
+    "maximumDeliveriesPerObservation": 1,
+    "minimumTemporalSeparationMinutes": 15,
+    "newAuthorizationPerObservation": true,
+    "uniqueSyntheticRecordPerObservation": true,
+    "uniqueEventIdFingerprintPerObservation": true,
+    "authorizationFingerprintsMayBeReused": false,
+    "stopSequenceOnFirstFailure": true
+  },
+  "humanGovernance": {
+    "minimumIndependentRolesPerObservation": 4,
+    "roles": ["director", "security", "operator", "reviewer"],
+    "preAuthorizationAllowed": false,
+    "automaticAuthorizationAllowed": false
+  },
+  "interpretation": {
+    "targetMaySupportTechnicalRepeatabilityAssessment": true,
+    "targetSufficientForAutomaticDelivery": false,
+    "targetSufficientForProduction": false,
+    "targetSufficientForEventMatchQualityClaim": false,
+    "targetSufficientForOptimizationClaim": false,
+    "targetSufficientForCampaignMutation": false
+  },
+  "persistedEvidence": {
+    "sourceFingerprintAllowed": true,
+    "baselineEventFingerprintAllowed": true,
+    "planControlsAllowed": true,
+    "futureEventFingerprintAllowed": false,
+    "approvalFingerprintAllowedBeforeAuthorization": false,
+    "rawPayloadAllowed": false,
+    "rawResponseAllowed": false,
+    "temporaryCodeAllowed": false,
+    "personalDataAllowed": false,
+    "projectIdentifiersAllowed": false,
+    "screenshotsAllowed": false
+  },
+  "releaseGate": {
+    "nextControlledTestAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionDeliveryAllowed": false,
+    "campaignMutationAllowed": false,
+    "budgetMutationAllowed": false,
+    "audienceMutationAllowed": false,
+    "deploymentAllowed": false
+  }
+}

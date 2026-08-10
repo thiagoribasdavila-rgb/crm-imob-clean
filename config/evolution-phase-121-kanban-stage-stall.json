@@ -1,0 +1,24 @@
+{
+  "phase": 121,
+  "name": "Kanban stage stall signal",
+  "status": "implemented",
+  "area": "pipeline",
+  "priority": "P1-lead-conversion",
+  "objective": "Mostrar tempo parado na etapa dentro da fila inteligente do Kanban para acelerar decisões comerciais.",
+  "businessImpact": [
+    "Ajuda corretor e gestor a identificar gargalos antes da oportunidade esfriar.",
+    "Reduz dependência de leitura manual do histórico do lead.",
+    "Mantém a fila inteligente compacta, acionável e sem ruído visual."
+  ],
+  "technicalScope": [
+    "Reutiliza updated_at, last_interaction_at e created_at como referência segura enquanto não houver histórico granular de etapa.",
+    "Adiciona helper de cálculo de tempo parado no cliente.",
+    "Adiciona chip visual com tom success, info, warning ou danger.",
+    "Mantém ações de Lead 360, telefone, WhatsApp, IA, tarefa e avanço de etapa intactas."
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-121:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": "atlas.security_remediation_backlog_evidence.v1",
+  "phase": 14,
+  "status": "backlog_not_generated",
+  "source": {
+    "phase_013_snapshot_available": false,
+    "canonical_inventory_integrity_accepted": false,
+    "historical_migrations_used_as_runtime_proof": false
+  },
+  "backlog": {
+    "generated": false,
+    "review_status": "unapproved",
+    "p0_findings": 0,
+    "p1_findings": 0,
+    "approved_findings": 0,
+    "sql_applied": false
+  },
+  "safety": {
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "live_homologation_touched": false,
+    "linked_command_used": false,
+    "business_data_read": false,
+    "auth_user_data_read": false,
+    "migration_created": false,
+    "migration_applied": false,
+    "build_executed": false,
+    "package_created": false
+  }
+}

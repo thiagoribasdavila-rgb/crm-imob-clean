@@ -1,0 +1,45 @@
+{
+  "phase": 354,
+  "cycle": "350-354",
+  "objective": "Comparar ganho real, executar regressão e decidir liberação do ciclo",
+  "status": "gate_implemented_runtime_blocked",
+  "primaryMetric": "median-lead-to-first-action-minutes",
+  "command": "npm run evolution:phase-354:gate",
+  "evidenceCommands": {
+    "phase353Persistence": "npm run verify:phase-353:first-action",
+    "phase354AfterSnapshot": "npm run capture:phase-354:after",
+    "releaseDecision": "npm run evolution:phase-354:gate"
+  },
+  "requiredEvidence": [
+    "artifacts/runtime/phase-350/lead-intake-baseline.json",
+    "artifacts/runtime/phase-353/first-action-evidence.json",
+    "artifacts/runtime/phase-354/lead-intake-after.json"
+  ],
+  "releaseRules": {
+    "authenticatedBaselineRequired": true,
+    "atomicPersistenceProofRequired": true,
+    "authenticatedAfterSnapshotRequired": true,
+    "measuredMedianReductionRequired": true,
+    "unknownMetricRemainsNull": true,
+    "retroactiveBaselineAccepted": false,
+    "singleLeadSampleAcceptedAsMedian": false
+  },
+  "currentDecision": {
+    "status": "blocked",
+    "reason": "Os três artefatos autenticados ainda não existem e a fase 353 permanece sem prova remota. A regressão local está aprovada, mas não substitui evidência autenticada de operação.",
+    "officialPhaseMarker": 349,
+    "programAdvanceAuthorized": false,
+    "buildZipDeployAuthorized": false
+  },
+  "localValidation": {
+    "performedAt": "2026-08-09",
+    "phaseContracts": "13/13_passed",
+    "typecheck": "passed",
+    "lintChangedFiles": "passed",
+    "secretScan": "4361_files_zero_credentials",
+    "affectedLegacyChain": "242/242_passed_after_contract_mapping_and_temporal_fixture_alignment",
+    "fullRegression": "6136/6136_passed_zero_failures"
+  },
+  "safeDisable": "Remover o comando do package.json e ignorar este gate não altera aplicação, banco ou dados.",
+  "buildZipDeployPerformed": false
+}

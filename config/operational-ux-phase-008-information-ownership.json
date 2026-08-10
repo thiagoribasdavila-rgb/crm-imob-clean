@@ -1,0 +1,24 @@
+{
+  "phase": 8,
+  "objective": "Remover repetição visual entre navegação lateral e topo sem perder contexto ou acessibilidade.",
+  "informationOwnership": {
+    "sidebar": ["destinationLabel", "roleRoutine", "favorites", "search", "securityState"],
+    "topbar": ["organization", "group", "currentSection", "businessOutcome", "primaryAction"],
+    "page": ["decisionContext", "workingData", "moduleActions"]
+  },
+  "requirements": {
+    "businessOutcomeStillSearchable": true,
+    "businessOutcomeStillAccessible": true,
+    "activeRouteUsesAriaCurrent": true,
+    "securityContextStillAccessible": true,
+    "rbacPreserved": true
+  },
+  "infrastructureMutation": {
+    "schema": false,
+    "data": false,
+    "rls": false,
+    "authentication": false,
+    "integrations": false,
+    "release": false
+  }
+}

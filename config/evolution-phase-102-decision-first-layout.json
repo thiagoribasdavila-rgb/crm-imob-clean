@@ -1,0 +1,27 @@
+{
+  "phase": 102,
+  "name": "Decision-First Layout System",
+  "status": "completed",
+  "scope": "premium-layout-and-kanban-decision-layer",
+  "productionApproved": false,
+  "liveDatabaseMutation": false,
+  "liveMigrationApplied": false,
+  "objective": "Repensar o layout para ser mais assertivo, decisivo, proativo e com menos ruído visual.",
+  "changedAreas": [
+    "pipeline-kanban",
+    "decision-command-strip",
+    "layout-principles-documentation",
+    "phase-validation"
+  ],
+  "businessImpact": [
+    "reduz tempo para identificar a próxima ação",
+    "prioriza SLA e risco antes de métricas decorativas",
+    "melhora foco do corretor sem perder visão do gerente",
+    "prepara o padrão para demais telas do ATLAS"
+  ],
+  "validation": {
+    "phaseCheck": "npm run evolution:phase-102:check",
+    "typecheckRecommended": "npm run typecheck",
+    "buildDeferredUntilPackageClose": true
+  }
+}

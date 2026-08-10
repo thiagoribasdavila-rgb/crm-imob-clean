@@ -26,6 +26,7 @@ type Props = {
   currentSource: string | null;
   projects: LeadContextProjectOption[];
   saving: boolean;
+  initiallyEditing?: boolean;
   onSubmit: (input: LeadContextCorrectionInput) => Promise<void>;
 };
 
@@ -38,9 +39,10 @@ export function LeadContextCorrection({
   currentSource,
   projects,
   saving,
+  initiallyEditing = false,
   onSubmit,
 }: Props) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initiallyEditing);
   const [projectId, setProjectId] = useState(currentProjectId || "");
   const [source, setSource] = useState(currentSource || "");
   const [reason, setReason] = useState("");
@@ -164,7 +166,7 @@ export function LeadContextCorrection({
             </label>
           </fieldset>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-rotulo leading-5 text-slate-500">
+            <p className="text-[11px] leading-5 text-slate-500">
               A API confirma organização, escopo da lead, projeto e versão atual antes de salvar.
             </p>
             <button type="submit" disabled={!valid || saving} className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-50">

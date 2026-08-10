@@ -98,7 +98,7 @@ create policy crm_project_events_select_managers
   for select
   to authenticated
   using (
-    organization_id = private.current_organization_id()
+    organization_id = (select public.current_organization_id())
     and private.can_manage_projects(organization_id)
   );
 
@@ -133,14 +133,14 @@ create policy crm_projects_select_tenant
   on public.crm_projects
   for select
   to authenticated
-  using (organization_id = private.current_organization_id());
+  using (organization_id = (select public.current_organization_id()));
 
 create policy crm_projects_insert_managers
   on public.crm_projects
   for insert
   to authenticated
   with check (
-    organization_id = private.current_organization_id()
+    organization_id = (select public.current_organization_id())
     and private.can_manage_projects(organization_id)
   );
 
@@ -149,11 +149,11 @@ create policy crm_projects_update_managers
   for update
   to authenticated
   using (
-    organization_id = private.current_organization_id()
+    organization_id = (select public.current_organization_id())
     and private.can_manage_projects(organization_id)
   )
   with check (
-    organization_id = private.current_organization_id()
+    organization_id = (select public.current_organization_id())
     and private.can_manage_projects(organization_id)
   );
 
@@ -196,7 +196,7 @@ begin
   end if;
 
   if p_organization_id is null
-    or p_organization_id <> private.current_organization_id()
+    or p_organization_id <> (select public.current_organization_id())
     or not private.can_manage_projects(p_organization_id)
   then
     raise exception using errcode = '42501', message = 'project-write-not-authorized';

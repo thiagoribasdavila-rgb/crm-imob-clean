@@ -1,0 +1,60 @@
+{
+  "phase": 216,
+  "name": "Authorized Package Publication Decision",
+  "status": "implemented",
+  "objective": "Decidir explicitamente se a evidência comprometida de um pacote exato autoriza sua publicação, sem executar publicação, build, deploy ou promoção.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "approvalPolicyHash": "808518cd61008b5da6eb94a9d506a4544bdf0723c6d60acbf5d7ce8f731610eb",
+    "memoryPolicyHash": "37af76ac19a603949ccb56c1fe127919bc9e595770822df11b4a7e61a54e497a",
+    "memoryHash": "04de684a4dacf1080468bf849fc929f9c7ac007621ce942f59c70bb4046abf76",
+    "packageAuthorizationPolicyHash": "e3608e6505c0fb02b7f9bf2e9fe80a18b3c41247d16eccc842350bd97c3c3d00",
+    "packageAssemblyPolicyHash": "3bac555b2ffc20ef3b3b10a099f047cc2241d23d62a11bb9b991a4921b157f96",
+    "packageAssemblyMemoryHash": "50c76a3b36e9d376bf618169223040fdb7cbe614d3079816427ad86a2dec1d14",
+    "packageEvidencePolicyHash": "323de29546dc45655e749f45174a1ffb385ce1823b74e15fbee9cf98fedfe9ae",
+    "packageEvidenceMemoryHash": "a8c8b87a16c92c1374fa6e509b4aaa64edc8ddcab51a9c77c1498b89b5209434",
+    "publicationDecisionPolicyHash": "4e930b1d97a3331cb21a80f738662de546e4ede6fd9622a3085d3dc1d800727a",
+    "publicationDecisionMemoryHash": "a4c98007ca445fa70d0e73b2da3d02e559f467b891409eafd47e2e41f142bbfe",
+    "trustedPublicationDirectorsConfigured": 0,
+    "committedPackageEvidence": 0,
+    "recordedPublicationDecisions": 0,
+    "authorizedPackages": 0,
+    "publicationAuthorized": false,
+    "publicationExecuted": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "decisionRules": {
+    "independentPublicationDirectorRequired": true,
+    "exactEvidenceCommitmentBindingRequired": true,
+    "exactEvidenceMemoryBindingRequired": true,
+    "exactPackageDigestBindingRequired": true,
+    "exactInventoryBindingRequired": true,
+    "signatureRequired": true,
+    "appendOnlyDecisionMemoryRequired": true,
+    "duplicateEvidenceDecisionRejected": true,
+    "duplicatePackageDecisionRejected": true,
+    "maxDecisionDelaySeconds": 900,
+    "minReasonLength": 12
+  },
+  "safety": {
+    "databaseChanged": false,
+    "authChanged": false,
+    "rlsChanged": false,
+    "externalCallExecuted": false,
+    "packageGenerated": false,
+    "publicationAuthorized": false,
+    "publicationExecuted": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 217,
+    "name": "Authorized Publication Execution Authorization",
+    "objective": "Autorizar separadamente a execução de uma publicação aprovada, sem publicar, compilar, implantar ou promover automaticamente."
+  }
+}

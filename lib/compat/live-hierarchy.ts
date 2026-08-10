@@ -8,11 +8,40 @@ export function resolveLiveHierarchy(rows: CompatRow[]) {
   const superintendents = profiles.filter((profile) => profile.commercial_role === "superintendent");
   const managers = profiles.filter((profile) => profile.commercial_role === "manager");
   const preferredDirector = directors.find((profile) => String(profile.role).toLocaleUpperCase("pt-BR") === "DIRETOR") || directors[0];
+  const teamKey = (profile: CompatRow) => String(profile.team || "").trim().toLocaleLowerCase("pt-BR");
+  const sameTeam = (profile: CompatRow, candidates: CompatRow[]) => {
+    const team = teamKey(profile);
+    return team ? candidates.find((candidate) => teamKey(candidate) === team) : undefined;
+  };
 
   return profiles.map((profile) => {
     if (profile.reports_to) return profile;
-    if (profile.commercial_role === "broker") return { ...profile, reports_to: managers[0]?.id ?? superintendents[0]?.id ?? preferredDirector?.id ?? null, hierarchy_source: "derived-live-profile" };
-    if (profile.commercial_role === "manager") return { ...profile, reports_to: superintendents[0]?.id ?? preferredDirector?.id ?? null, hierarchy_source: "derived-live-profile" };
+    if (profile.commercial_role === "broker") {
+      const manager = sameTeam(profile, managers);
+      const superintendent = sameTeam(profile, superintendents);
+      return {
+        ...profile,
+        reports_to:
+          manager?.id
+          ?? superintendent?.id
+          ?? preferredDirector?.id
+          ?? null,
+        hierarchy_source:
+          manager || superintendent
+            ? "derived-live-team"
+            : "derived-live-director-fallback",
+      };
+    }
+    if (profile.commercial_role === "manager") {
+      const superintendent = sameTeam(profile, superintendents);
+      return {
+        ...profile,
+        reports_to: superintendent?.id ?? preferredDirector?.id ?? null,
+        hierarchy_source: superintendent
+          ? "derived-live-team"
+          : "derived-live-director-fallback",
+      };
+    }
     if (profile.commercial_role === "superintendent") return { ...profile, reports_to: preferredDirector?.id ?? null, hierarchy_source: "derived-live-profile" };
     return { ...profile, reports_to: null, hierarchy_source: "live-profile" };
   });

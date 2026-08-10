@@ -1,0 +1,46 @@
+{
+  "phase": 204,
+  "name": "Evidence Matrix Admission Contract",
+  "status": "implemented",
+  "objective": "Admitir atomicamente na fila da matriz apenas recibos íntegros, vigentes, inéditos e com procedência criptográfica verificada.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "admissionPolicyHash": "11e71b2a3144878a34549433105c743d88cf3e3d8f6b9f6c349b308f634ab753",
+    "admissionsReceived": 0,
+    "admissionsAccepted": 0,
+    "recordsAdmitted": 0,
+    "provenanceVerified": false,
+    "eligibleForEvidenceMatrix": false,
+    "evidenceMatrixEvaluated": false,
+    "gatesExecuted": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "deployExecuted": false
+  },
+  "admissionRules": {
+    "atomicAdmission": true,
+    "exactProvenanceResultRequired": true,
+    "expiredEvidenceRejected": true,
+    "duplicateIntakeRejected": true,
+    "duplicateEvidenceIdRejected": true,
+    "duplicateRecordHashRejected": true,
+    "maximumAdmissionDelaySeconds": 600,
+    "automaticEvidenceMatrixEvaluation": false,
+    "automaticGateExecution": false,
+    "automaticReleasePromotion": false
+  },
+  "safety": {
+    "remoteAccess": false,
+    "databaseMutation": false,
+    "migrationApplied": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 205,
+    "name": "Admitted evidence matrix evaluation",
+    "objective": "Avaliar a cobertura dos gates somente com recibos admitidos, sem atualizar memória, empacotar ou promover release."
+  }
+}

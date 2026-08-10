@@ -1,0 +1,22 @@
+name: atlas-meta-phase36
+
+services:
+  postgres:
+    image: supabase/postgres:17.6.1.149
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    environment:
+      POSTGRES_DB: atlas_phase36_restore
+      POSTGRES_PASSWORD: atlas_phase36_ephemeral_only
+      POSTGRES_USER: postgres
+    network_mode: "none"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d atlas_phase36_restore"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+    volumes:
+      - phase36-postgres-data:/var/lib/postgresql/data
+    restart: "no"
+
+volumes:
+  phase36-postgres-data:

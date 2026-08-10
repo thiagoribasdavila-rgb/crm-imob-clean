@@ -1,0 +1,85 @@
+{
+  "phase": 31,
+  "program": "meta-andromeda-automation",
+  "mode": "sample_02_runtime_evidence_contract_and_reconciliation",
+  "status": "runtime_evidence_contract_prepared_execution_evidence_missing",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-030.json",
+  "evidenceGate": "config/meta-repeatability-sample-02-runtime-evidence-gate.json",
+  "reconciliationTemplate": "config/fixtures/meta-repeatability-sample-02-runtime-evidence-reconciliation-template.json",
+  "sourceEvidenceTemplate": "config/fixtures/meta-repeatability-sample-02-local-runtime-template.json",
+  "sourceRunner": "scripts/run-meta-repeatability-sample-02-local-runtime.mjs",
+  "preflight": "scripts/preflight-meta-repeatability-sample-02-runtime-evidence.mjs",
+  "reconciler": "scripts/run-meta-repeatability-sample-02-runtime-evidence-reconciliation.mjs",
+  "staticAudit": "scripts/audit-meta-repeatability-sample-02-runtime-evidence.mjs",
+  "documentation": "docs/META_REPEATABILITY_SAMPLE_02_RUNTIME_EVIDENCE.md",
+  "manualWorkflow": ".github/workflows/atlas-meta-phase30-local-rehearsal.yml",
+  "evidenceContract": {
+    "schemaVersion": "phase31.runtime-evidence.v1",
+    "orderedEventsRequired": true,
+    "monotonicTimestampsRequired": true,
+    "exactArtifactFingerprintsRequired": true,
+    "runtimeImageFingerprintRequired": true,
+    "localTargetFingerprintRequired": true,
+    "postgresVersionRequired": true,
+    "secretFreeEvidenceRequired": true,
+    "maximumRuntimeMinutes": 20
+  },
+  "toolAudit": {
+    "officialDocsVerifiedAt": "2026-07-19",
+    "projectNodeRuntime": 24,
+    "currentRehearsalPostgresMajor": 15,
+    "supabasePostgresImage": "supabase/postgres:15.14.1.149",
+    "containerRuntimeDetectedInCurrentWorkspace": false,
+    "postgres17CompatibilityRequiredNext": true
+  },
+  "environmentAudit": {
+    "staticEvidenceContractApproved": true,
+    "negativeMutationSelfTestsPrepared": true,
+    "reconciliationRunnerPrepared": true,
+    "manualWorkflowUpdated": true,
+    "runtimeEvidenceReceived": false,
+    "runtimeEvidenceApproved": false,
+    "localRehearsalExecuted": false,
+    "databaseMutationExecuted": false,
+    "metaMutationExecuted": false,
+    "buildExecuted": false
+  },
+  "releaseGate": {
+    "evidenceSchemaApproved": true,
+    "eventOrderContractApproved": true,
+    "artifactIntegrityContractApproved": true,
+    "secretRedactionContractApproved": true,
+    "failClosedReconciliationApproved": true,
+    "runtimeEvidenceReceived": false,
+    "runtimeEvidenceApproved": false,
+    "postgres17CompatibilityApproved": false,
+    "nextPhaseAllowed": false
+  },
+  "governance": {
+    "evidenceReadOnlyReconciliation": true,
+    "evidenceMustRemainInsideWorkspace": true,
+    "symbolicLinksRejected": true,
+    "maximumEvidenceBytes": 1048576,
+    "remoteDatabaseAccess": false,
+    "productionAccess": false,
+    "linkedProjectAccess": false,
+    "permitReservation": false,
+    "permitIssuance": false,
+    "permitConsumption": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 32,
+    "objective": "Executar o ensaio efemero autorizado, reconciliar a evidencia aprovada e abrir uma matriz separada de compatibilidade Postgres 15 para 17 sem tocar producao.",
+    "blockedUntil": [
+      "Docker Compose disponivel localmente ou workflow manual autorizado",
+      "evidencia phase31.runtime-evidence.v1 aprovada",
+      "hashes de todos os artefatos conferidos",
+      "ordem migration-seguranca-rollback-destruicao comprovada"
+    ]
+  }
+}

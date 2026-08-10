@@ -1,0 +1,19 @@
+{
+  "phase": 56,
+  "scope": "forecast_snapshot_measurement",
+  "canonicalRoute": "/atlas-v3/forecast",
+  "immutableSnapshot": true,
+  "sameOpportunityCohort": true,
+  "horizonsDays": [30, 60, 90],
+  "evaluationBeforeHorizon": false,
+  "automaticEvaluation": false,
+  "minimumComparableWindows": 3,
+  "minimumOpportunitySample": 5,
+  "organizationIsolationPreserved": true,
+  "managementOnly": true,
+  "automaticCommercialAction": false,
+  "migrationCreated": true,
+  "migrationAppliedRemotely": false,
+  "externalDeliveryDuringPhase": false,
+  "buildExecuted": false
+}

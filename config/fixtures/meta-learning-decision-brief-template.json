@@ -1,0 +1,27 @@
+{
+  "schema": "atlas.meta-learning-decision-brief.v1",
+  "status": "not_prepared",
+  "confidenceReference": null,
+  "lineageReference": null,
+  "brief": {
+    "decisionQuestion": null,
+    "evidenceSummaryClass": null,
+    "confidenceBand": null,
+    "recommendedHumanAction": null,
+    "limitationsAcknowledged": false
+  },
+  "execution": {
+    "campaignChanged": false,
+    "audienceChanged": false,
+    "budgetChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticApproval": true,
+    "automaticCampaignChanges": true,
+    "automaticAudienceChanges": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

@@ -65,7 +65,7 @@ export function evaluateExecutiveAcceptance(e: ExecutiveAcceptanceEvidence) {
     },
     {
       key: "rollback",
-      label: "Rollback simulado",
+      label: "Rollback para versão anterior do V3",
       severity: "critical",
       passed: e.rollbackPassed,
       evidence: String(e.rollbackPassed),

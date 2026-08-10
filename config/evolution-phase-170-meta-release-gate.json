@@ -1,0 +1,47 @@
+{
+  "phase": 170,
+  "name": "Meta Track Release Gate",
+  "status": "implemented",
+  "stream": "meta-andromeda-conversion-automation",
+  "objective": "Consolidar a regressão das fases Meta 166 a 169 e impedir build, ZIP ou produção sem evidência completa e decisão explícita da diretoria.",
+  "currentDecision": "pending_director_approval",
+  "technicalEvidence": [
+    "phase-166",
+    "phase-167",
+    "phase-168",
+    "phase-169",
+    "contracts",
+    "typecheck",
+    "lint",
+    "secret-scan"
+  ],
+  "releaseControls": {
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false,
+    "productionAllowed": false,
+    "approvalScope": "single_release_build",
+    "approverRoles": ["director", "director_decisor"]
+  },
+  "acceptanceCriteria": [
+    "Evidência ausente ou reprovada bloqueia o gate",
+    "Teste técnico aprovado não equivale a autorização humana",
+    "Somente decisão explícita da diretoria pode liberar um único build",
+    "Build aprovado ainda não libera ZIP, deploy ou produção",
+    "Nenhuma chamada Meta, migration ou mutação de dados ocorre nesta fase"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-170:check",
+    "contracts": "node --experimental-strip-types --test tests/contracts/meta-track-release-gate.test.mjs",
+    "tests": "npm test",
+    "typecheck": "npm run typecheck",
+    "lint": "targeted changed files",
+    "secretScan": "npm run security:secrets",
+    "build": "blocked-pending-explicit-director-approval"
+  },
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "zipGenerated": false,
+  "nextPhaseRecommendation": "Na fase 171, após aprovação explícita, executar o único build limpo e registrar sua evidência antes de decidir sobre o ZIP."
+}

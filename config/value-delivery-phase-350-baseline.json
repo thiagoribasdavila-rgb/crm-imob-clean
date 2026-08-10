@@ -1,0 +1,40 @@
+{
+  "phase": 350,
+  "cycle": "350-354",
+  "objective": "Medir baseline real por dia, projeto, origem e corretor",
+  "status": "implementation_validated_runtime_evidence_pending",
+  "primaryMetric": "median-lead-to-first-action-minutes",
+  "secondaryMetrics": [
+    "new-leads-with-owner-rate",
+    "new-leads-with-next-action-rate",
+    "leads-received-per-broker-per-day"
+  ],
+  "dataContract": {
+    "endpoint": "/api/v1/analytics/lead-intake",
+    "historicalImportsExcluded": true,
+    "unknownMetricsRemainNull": true,
+    "personalDataReturned": false,
+    "tenantAndHierarchyScopeRequired": true
+  },
+  "validated": {
+    "targetedRegression": "9/9",
+    "typecheck": "passed",
+    "changedFilesLint": "passed",
+    "valueCycleContract": "passed",
+    "secretScan": "passed"
+  },
+  "runtimeEvidence": {
+    "status": "blocked",
+    "reason": "Os valores locais de Supabase e da conta de teste estão vazios; nenhuma leitura autenticada pode ser apresentada como evidência real.",
+    "requiredLocalVariables": [
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "ATLAS_TEST_EMAIL",
+      "ATLAS_TEST_PASSWORD",
+      "ATLAS_DEFAULT_ORGANIZATION_ID"
+    ]
+  },
+  "programAdvanceAuthorized": false,
+  "safeDisable": "Consumidores podem ignorar os novos campos aditivos; nenhuma migration ou escrita remota foi realizada."
+}

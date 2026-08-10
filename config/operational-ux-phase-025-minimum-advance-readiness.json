@@ -1,0 +1,23 @@
+{
+  "phase": 25,
+  "name": "minimum-advance-readiness",
+  "objective": "Mostrar de forma explicável o contexto mínimo necessário para avançar uma lead, sem usar score opaco nem bloquear automaticamente o funil.",
+  "canonicalSurface": "lead-360",
+  "requirements": [
+    "contato válido",
+    "projeto de interesse",
+    "faixa de investimento",
+    "região prioritária",
+    "tipologia mínima",
+    "continuidade programada"
+  ],
+  "rules": [
+    "Cada requisito deriva de dados já persistidos no CRM.",
+    "A primeira lacuna oferece uma ação direta para a fonte canônica.",
+    "A prontidão é orientação operacional e não bloqueio automático.",
+    "A cobertura ampliada existente permanece visível como contexto secundário.",
+    "Nenhuma API, tabela, RLS, automação ou regra de movimentação é alterada."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

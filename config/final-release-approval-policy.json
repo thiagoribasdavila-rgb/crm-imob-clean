@@ -1,0 +1,35 @@
+{
+  "schema": "atlas.final-release-approval-policy.v1",
+  "compositionId": "conversion-core-candidate",
+  "compositionDecisionHash": "468bcb65ac7ff6412df595580d8ac328644c646301b0c77cf55c787ad6b5bc8c",
+  "evidencePlanHash": "c42803abb3c0c0d68c958db17edcfdc43f93acd04d6c2e90b8f40b0373d42a95",
+  "humanDecisionPolicyHash": "c30603b77ad359f2235c3293eafed53ce0fde4e69d52c96e162bd5bdf509f75a",
+  "authorizationPolicyHash": "578ff48a805dd2b10df870fa44d94974c81317ae9f77f5883bb603b69751fa69",
+  "executionPolicyHash": "b81d2a352eeefd7e7e0ac6446bfefdb5b2ca02b810209d6103c3929608482cfb",
+  "adjudicationPolicyHash": "5d6993af43a39cf1c24f527a9aa07c750af9a5e93c0d27e6af335534cd6d8c39",
+  "approverRole": "release-approval-director",
+  "signatureAlgorithm": "ed25519",
+  "trustedApprovers": [],
+  "maxDecisionDelaySeconds": 1800,
+  "minReasonLength": 12,
+  "allowedOutcomes": [
+    "approved",
+    "rejected"
+  ],
+  "allowedReasonCodes": [
+    "release-approved",
+    "gate-results-rejected",
+    "risk-not-accepted",
+    "evidence-inconclusive"
+  ],
+  "exactAdjudicationRegisterBindingRequired": true,
+  "acceptedGateResultsRequiredForApproval": true,
+  "independentFinalApproverRequired": true,
+  "signatureRequired": true,
+  "automaticReleaseApproval": false,
+  "automaticReleaseMemoryUpdate": false,
+  "automaticPackageGeneration": false,
+  "automaticDeploy": false,
+  "automaticReleasePromotion": false,
+  "policyHash": "808518cd61008b5da6eb94a9d506a4544bdf0723c6d60acbf5d7ce8f731610eb"
+}

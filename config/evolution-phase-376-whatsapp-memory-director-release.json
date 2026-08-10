@@ -1,0 +1,13 @@
+{
+  "phase": 376,
+  "name": "WhatsApp memory director audited release",
+  "status": "verified",
+  "scope": "local_source_and_installable_package",
+  "remote_deploy_included": false,
+  "migration_file_packaged": true,
+  "remote_migration_applied": false,
+  "remote_state_mutated": false,
+  "secrets_in_package": false,
+  "requires_clean_build": true,
+  "requires_package_verification": true
+}

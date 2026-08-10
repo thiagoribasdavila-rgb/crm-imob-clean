@@ -1,0 +1,24 @@
+{
+  "schema": "atlas.meta-feedback-external-test-approval.v1",
+  "status": "pending",
+  "decisionReference": null,
+  "eventReference": null,
+  "environment": "staging",
+  "approvals": {
+    "director": null,
+    "security": null
+  },
+  "execution": {
+    "externalTestAllowed": false,
+    "productionAllowed": false,
+    "retryAllowed": false,
+    "automaticPromotionAllowed": false
+  },
+  "forbidden": {
+    "sharedApproval": true,
+    "expiredApproval": true,
+    "secrets": true,
+    "customerData": true,
+    "automaticCampaignChanges": true
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "atlas.meta-copilot-memory-consumption.v1",
+  "status": "pending_context_validation",
+  "publicationReference": null,
+  "context": {
+    "requestedScope": null,
+    "publishedScope": null,
+    "sourceReference": null,
+    "expiresAt": null,
+    "usedAt": null
+  },
+  "response": {
+    "sourceDisclosed": false,
+    "presentedAsGuidance": false,
+    "presentedAsFact": false,
+    "actionExecuted": false
+  },
+  "forbidden": {
+    "automationUse": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

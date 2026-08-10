@@ -1,0 +1,14 @@
+{
+  "phase": 42,
+  "scope": "kanban_stage_numeric_summary",
+  "metrics": ["lead_volume", "stage_value", "stage_probability"],
+  "singleReadingLine": true,
+  "probabilityExplicitlyLabeled": true,
+  "canonicalCalculationsPreserved": true,
+  "newIndicatorCreated": false,
+  "cardMovementPreserved": true,
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

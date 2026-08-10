@@ -1,0 +1,59 @@
+{
+  "phase": 22,
+  "program": "meta-andromeda-automation",
+  "mode": "sanitized_test_events_evidence_reconciliation",
+  "status": "evidence_reconciliation_ready_external_evidence_gate_closed",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-021.json",
+  "reconciliationGate": "config/meta-test-events-evidence-reconciliation-gate.json",
+  "evidenceTemplate": "config/fixtures/meta-test-events-evidence-reconciliation-template.json",
+  "reconciliationRunner": "scripts/run-meta-test-events-evidence-reconciliation.mjs",
+  "evidencePreflight": "scripts/preflight-meta-test-events-evidence-reconciliation.mjs",
+  "staticAudit": "scripts/audit-meta-test-events-evidence-reconciliation.mjs",
+  "documentation": "docs/META_TEST_EVENTS_EVIDENCE_RECONCILIATION.md",
+  "officialReferences": {
+    "metaConversionsApi": "https://www.facebook.com/business/help/AboutConversionsAPI",
+    "metaConversionsApiDeveloperGuide": "https://developers.facebook.com/docs/marketing-api/conversions-api/using-the-api/",
+    "supabaseApiSecurity": "https://supabase.com/docs/guides/api/securing-your-api"
+  },
+  "environmentAudit": {
+    "phase19ApprovedEvidenceDetected": false,
+    "phase20ApprovedEvidenceDetected": false,
+    "phase21ApprovedEvidenceDetected": false,
+    "officialReconciliationPerformed": false,
+    "remoteCallsExecuted": false,
+    "databaseMutationExecuted": false,
+    "reason": "A cadeia e os validadores estao prontos, mas as evidencias oficiais 19-21 nao foram fornecidas. Autotestes usam somente fixtures sinteticas em memoria."
+  },
+  "releaseGate": {
+    "localReconciliationContractPassed": true,
+    "syntheticChainSelfTestPassed": true,
+    "officialEvidenceChainReconciled": false,
+    "singleSampleSufficientForAutomation": false,
+    "nextControlledTestAllowed": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "payloadPersisted": false,
+    "rawResponsePersisted": false,
+    "temporaryCodePersisted": false,
+    "screenshotPersisted": false,
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false,
+    "databaseMutation": false,
+    "productionAccess": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 23,
+    "objective": "Preparar um plano minimo de repetibilidade para eventos canonicos, com amostras limitadas, nova autorizacao por execucao e sem liberar automacao ou producao."
+  }
+}

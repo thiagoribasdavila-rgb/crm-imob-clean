@@ -1,0 +1,23 @@
+{
+  "phase": 372,
+  "name": "WhatsApp memory director decision persistence boundary",
+  "status": "implemented_local",
+  "scope": "authenticated_organization",
+  "audience": ["admin", "director"],
+  "mutates_remote_state": false,
+  "contains_pii": false,
+  "reads_message_content": false,
+  "automatic_decision": false,
+  "append_only": true,
+  "force_rls": true,
+  "service_role_only_write": true,
+  "director_read_only": true,
+  "idempotent": true,
+  "audit_event_atomic": true,
+  "evidence_freshness_hours": 24,
+  "remote_migration_applied": false,
+  "endpoint_exposed": false,
+  "decision_persisted": false,
+  "learning_activated": false,
+  "promotion_gate": "remote_reconciliation_and_server_evidence_endpoint_pending"
+}

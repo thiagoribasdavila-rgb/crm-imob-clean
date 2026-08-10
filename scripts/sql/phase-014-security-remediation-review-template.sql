@@ -1,0 +1,55 @@
+-- ATLAS AI OS — FASE 14/24
+-- MODELO DE REVISÃO SOMENTE — NÃO EXECUTAR
+-- Nenhuma linha deste arquivo é SQL executável.
+--
+-- Fonte obrigatória:
+-- snapshot canônico da Fase 13 capturado no clone PostgreSQL 17 isolado.
+-- Migrations históricas são referência e nunca comprovam o estado efetivo do banco.
+--
+-- Ordem obrigatória:
+-- 1. CONTAIN_EXPOSURE
+-- 2. REPAIR_RLS_POLICIES
+-- 3. RESTORE_MINIMAL_GRANTS
+-- 4. HARDEN_VIEWS
+-- 5. HARDEN_PRIVILEGED_FUNCTIONS
+-- 6. HARDEN_DEFAULT_PRIVILEGES
+-- 7. REHEARSE_AND_APPROVE
+--
+-- Regras de revisão:
+-- RLS e grants são controles independentes e ambos precisam ser explícitos.
+-- UPDATE precisa de política SELECT aplicável, USING e WITH CHECK.
+-- Views expostas precisam operar como security_invoker ou sair da API.
+-- SECURITY DEFINER precisa de search_path fixo e EXECUTE mínimo.
+-- PUBLIC não deve herdar EXECUTE de funções privilegiadas.
+-- user_metadata não é fonte confiável para autorização.
+-- auth.role() não deve permanecer em políticas novas ou revisadas.
+-- Os defaults de grants do Supabase mudaram em 2026; nunca assumir exposição automática.
+--
+-- Exemplo conceitual P0 — tabela exposta sem RLS:
+-- ALTER TABLE <schema>.<table> ENABLE ROW LEVEL SECURITY;
+-- REVOKE ALL ON TABLE <schema>.<table> FROM anon;
+-- Revisar predicados de tenant antes de restaurar qualquer grant.
+--
+-- Exemplo conceitual P1 — UPDATE incompleto:
+-- CREATE POLICY <select_policy> ON <schema>.<table> FOR SELECT TO authenticated USING (<tenant_predicate>);
+-- CREATE POLICY <update_policy> ON <schema>.<table> FOR UPDATE TO authenticated USING (<tenant_predicate>) WITH CHECK (<tenant_predicate>);
+--
+-- Exemplo conceitual P0 — view exposta:
+-- ALTER VIEW <schema>.<view> SET (security_invoker = true);
+-- Ou revogar SELECT dos papéis de API até a revisão de compatibilidade.
+--
+-- Exemplo conceitual P0/P1 — função privilegiada:
+-- REVOKE EXECUTE ON FUNCTION <signature> FROM PUBLIC;
+-- ALTER FUNCTION <signature> SET search_path = '';
+-- GRANT EXECUTE ON FUNCTION <signature> TO <approved_role>;
+--
+-- Exemplo conceitual P0 — privilégios padrão amplos:
+-- ALTER DEFAULT PRIVILEGES FOR ROLE <owner> IN SCHEMA <schema> REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+--
+-- Processo posterior, somente após aprovação:
+-- criar uma migration nova com a CLI Supabase;
+-- ensaiar a migration no clone isolado;
+-- executar testes dinâmicos de RLS por papel e tenant;
+-- executar advisors do Supabase;
+-- registrar rollback, evidências e aprovação humana;
+-- somente então considerar uma janela controlada de implantação.

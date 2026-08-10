@@ -1,0 +1,29 @@
+{
+  "schema": "atlas.release-evidence-manifest.v1",
+  "status": "pending",
+  "sourceCommit": null,
+  "evidenceFingerprint": null,
+  "ledgerEntryHash": null,
+  "releaseGateReference": null,
+  "requiredChecks": {
+    "cleanGitSource": false,
+    "isolatedStaging": false,
+    "databaseConsistency": false,
+    "environmentPrepared": false,
+    "criticalTestsPassed": false,
+    "minimumCommercialOperationWorking": false,
+    "directorApproval": false
+  },
+  "execution": {
+    "buildAllowed": false,
+    "packageAllowed": false,
+    "deploymentAllowed": false
+  },
+  "forbidden": {
+    "secrets": true,
+    "rawSessions": true,
+    "authorizationClaims": true,
+    "customerRecords": true,
+    "personalData": true
+  }
+}

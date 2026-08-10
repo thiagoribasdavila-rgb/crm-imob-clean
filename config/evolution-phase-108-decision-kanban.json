@@ -1,0 +1,29 @@
+{
+  "phase": 108,
+  "name": "Decision-grade Kanban for real commercial operation",
+  "status": "implemented",
+  "objective": "Transformar o Kanban em uma superfície de decisão rápida: quem atender agora, por qual motivo e qual próxima ação executar.",
+  "businessImpact": [
+    "Reduz tempo para o corretor identificar a próxima oportunidade relevante.",
+    "Mostra cobertura de próxima ação, urgência e proteção de leads quentes sem abrir relatórios separados.",
+    "Ajuda gerentes a enxergar gargalos por etapa com menor ruído visual.",
+    "Mantém a movimentação do funil simples, rastreável e compatível com a base atual."
+  ],
+  "changedSurfaces": [
+    "Pipeline / Kanban comercial",
+    "Cards de lead no Kanban",
+    "Cabeçalho de etapas",
+    "Pulso operacional do quadro"
+  ],
+  "experienceRules": [
+    "Cada card deve responder qual ação executar agora.",
+    "Cada etapa deve explicar o gargalo prioritário.",
+    "O topo do Kanban deve resumir qualidade operacional sem excesso de gráficos.",
+    "Detalhes secundários ficam recolhidos para reduzir ruído visual."
+  ],
+  "validation": {
+    "phaseCheck": "npm run evolution:phase-108:check",
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint"
+  }
+}

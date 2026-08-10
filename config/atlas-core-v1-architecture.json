@@ -68,10 +68,8 @@
   "legacySurfaces": [
     {
       "path": "app/(atlas)",
-      "status": "retired",
-      "reason": "parallel-generation-with-route-collisions-and-missing-components-layout-sidebar-import",
-      "retiredAt": "2026-07-21",
-      "retiredNote": "Quarentena concluída: app/(atlas)/{crm,dashboard}/page.tsx importavam @/components/crm/CRMHeader e CRMStats, que nunca existiram no HEAD (dead code desde o commit — não apenas 'candidato'); app/(atlas)/layout.tsx confirmava o import quebrado de @/components/layout/Sidebar aqui documentado. A colisão de rota prevista neste finding (app/(atlas)/crm e app/(atlas)/dashboard resolviam os mesmos paths de app/(crm)) quebrava o build do Next.js. Removido; nada substitui — o grupo (crm) real já cobria as mesmas rotas."
+      "status": "quarantine-candidate",
+      "reason": "parallel-generation-with-route-collisions-and-missing-components-layout-sidebar-import"
     },
     {
       "path": "components/Sidebar.tsx",
@@ -85,24 +83,18 @@
     },
     {
       "path": "components/analytics/MetricCard.tsx",
-      "status": "retired",
-      "reason": "unstyled-any-typed-duplicate-metric-contract",
-      "retiredAt": "2026-07-21",
-      "retiredNote": "Ausente na varredura de validação de 2026-07-21 (data exata da remoção não determinada pelo histórico disponível). O próprio reason já descrevia como duplicata não-canônica a aposentar — ausência consistente com a intenção registrada, não uma perda acidental."
+      "status": "retire-after-import-proof",
+      "reason": "unstyled-any-typed-duplicate-metric-contract"
     },
     {
       "path": "components/crm/KanbanBoard.tsx",
-      "status": "retired",
-      "reason": "legacy-inline-style-board-without-governed-movement",
-      "retiredAt": "2026-07-21",
-      "retiredNote": "Ausente na varredura de validação de 2026-07-21 (data exata da remoção não determinada pelo histórico disponível). O próprio reason já descrevia como board legado sem movimentação governada — ausência consistente com a intenção registrada."
+      "status": "retire-after-live-pipeline-parity",
+      "reason": "legacy-inline-style-board-without-governed-movement"
     },
     {
       "path": "components/crm/PipelineBoard.tsx",
-      "status": "retired",
-      "reason": "static-stage-board-outside-operational-pipeline",
-      "retiredAt": "2026-07-21",
-      "retiredNote": "Ausente na varredura de validação de 2026-07-21 (data exata da remoção não determinada pelo histórico disponível). O próprio reason já descrevia como board estático fora do pipeline operacional — ausência consistente com a intenção registrada."
+      "status": "retire-after-live-pipeline-parity",
+      "reason": "static-stage-board-outside-operational-pipeline"
     },
     {
       "path": "components/atlas/Pipeline.tsx",
@@ -111,10 +103,8 @@
     },
     {
       "path": "components/pipeline/KanbanCard.tsx",
-      "status": "retired",
-      "reason": "placeholder-card-with-any-props-and-inline-style",
-      "retiredAt": "2026-07-21",
-      "retiredNote": "Ausente na varredura de validação de 2026-07-21 (data exata da remoção não determinada pelo histórico disponível). O próprio reason já descrevia como card placeholder any-typed — ausência consistente com a intenção registrada."
+      "status": "retire-after-import-proof",
+      "reason": "placeholder-card-with-any-props-and-inline-style"
     }
   ],
   "dataAccess": {

@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-learning-experiment-decision.v1",
+  "status": "pending_director_decision",
+  "briefReference": null,
+  "decision": {
+    "outcome": null,
+    "directorReference": null,
+    "decidedAt": null,
+    "objectiveClass": null,
+    "stopConditionClass": null
+  },
+  "execution": {
+    "experimentPlanPrepared": false,
+    "externalTestAllowed": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "automaticApproval": true,
+    "automaticExecution": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true,
+    "automaticCampaignChanges": true
+  }
+}

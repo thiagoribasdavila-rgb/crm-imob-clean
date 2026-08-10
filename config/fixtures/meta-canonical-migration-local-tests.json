@@ -1,0 +1,149 @@
+{
+  "format": "atlas_meta_canonical_migration_local_tests_v1",
+  "sanitized": true,
+  "containsPersonalData": false,
+  "sentinels": {
+    "ownerA": "00000000-0000-4000-8000-000000000001",
+    "ownerB": "00000000-0000-4000-8000-000000000002",
+    "projectA": "00000000-0000-4000-8000-000000000011",
+    "projectB": "00000000-0000-4000-8000-000000000012"
+  },
+  "pairCases": [
+    {
+      "id": "insert_legacy_owner_copies_canonical",
+      "operation": "insert",
+      "legacy": "ownerA",
+      "canonical": null,
+      "expectedLegacy": "ownerA",
+      "expectedCanonical": "ownerA"
+    },
+    {
+      "id": "insert_canonical_owner_copies_legacy",
+      "operation": "insert",
+      "legacy": null,
+      "canonical": "ownerA",
+      "expectedLegacy": "ownerA",
+      "expectedCanonical": "ownerA"
+    },
+    {
+      "id": "insert_matching_owner_is_preserved",
+      "operation": "insert",
+      "legacy": "ownerA",
+      "canonical": "ownerA",
+      "expectedLegacy": "ownerA",
+      "expectedCanonical": "ownerA"
+    },
+    {
+      "id": "insert_owner_conflict_is_rejected",
+      "operation": "insert",
+      "legacy": "ownerA",
+      "canonical": "ownerB",
+      "expectedError": "contract_conflict"
+    },
+    {
+      "id": "update_legacy_owner_syncs_canonical",
+      "operation": "update",
+      "oldLegacy": "ownerA",
+      "oldCanonical": "ownerA",
+      "legacy": "ownerB",
+      "canonical": "ownerA",
+      "expectedLegacy": "ownerB",
+      "expectedCanonical": "ownerB"
+    },
+    {
+      "id": "update_canonical_owner_syncs_legacy",
+      "operation": "update",
+      "oldLegacy": "ownerA",
+      "oldCanonical": "ownerA",
+      "legacy": "ownerA",
+      "canonical": "ownerB",
+      "expectedLegacy": "ownerB",
+      "expectedCanonical": "ownerB"
+    },
+    {
+      "id": "update_both_owner_contracts_conflict",
+      "operation": "update",
+      "oldLegacy": "ownerA",
+      "oldCanonical": "ownerA",
+      "legacy": "ownerB",
+      "canonical": null,
+      "expectedError": "contract_conflict"
+    },
+    {
+      "id": "insert_legacy_project_copies_canonical",
+      "operation": "insert",
+      "legacy": "projectA",
+      "canonical": null,
+      "expectedLegacy": "projectA",
+      "expectedCanonical": "projectA"
+    },
+    {
+      "id": "update_canonical_project_syncs_legacy",
+      "operation": "update",
+      "oldLegacy": "projectA",
+      "oldCanonical": "projectA",
+      "legacy": "projectA",
+      "canonical": "projectB",
+      "expectedLegacy": "projectB",
+      "expectedCanonical": "projectB"
+    }
+  ],
+  "scoreCases": [
+    {
+      "id": "insert_legacy_score_repairs_masked_zero",
+      "operation": "insert",
+      "legacy": 82,
+      "canonical": 0,
+      "expectedLegacy": 82,
+      "expectedCanonical": 82
+    },
+    {
+      "id": "insert_canonical_score_syncs_legacy_default",
+      "operation": "insert",
+      "legacy": 0,
+      "canonical": 74,
+      "expectedLegacy": 74,
+      "expectedCanonical": 74
+    },
+    {
+      "id": "insert_nonzero_score_conflict_is_rejected",
+      "operation": "insert",
+      "legacy": 71,
+      "canonical": 84,
+      "expectedError": "score_conflict"
+    },
+    {
+      "id": "update_legacy_score_syncs_canonical",
+      "operation": "update",
+      "oldLegacy": 60,
+      "oldCanonical": 60,
+      "legacy": 77,
+      "canonical": 60,
+      "expectedLegacy": 77,
+      "expectedCanonical": 77
+    },
+    {
+      "id": "update_canonical_score_syncs_legacy",
+      "operation": "update",
+      "oldLegacy": 60,
+      "oldCanonical": 60,
+      "legacy": 60,
+      "canonical": 91,
+      "expectedLegacy": 91,
+      "expectedCanonical": 91
+    },
+    {
+      "id": "score_above_range_is_rejected",
+      "operation": "insert",
+      "legacy": 101,
+      "canonical": null,
+      "expectedError": "score_range"
+    }
+  ],
+  "roleCases": [
+    { "id": "admin_maps_director", "legacy": "admin", "expected": "director" },
+    { "id": "manager_maps_manager", "legacy": "manager", "expected": "manager" },
+    { "id": "broker_maps_broker", "legacy": "broker", "expected": "broker" },
+    { "id": "unknown_role_is_rejected", "legacy": "owner", "expectedError": "unknown_role" }
+  ]
+}

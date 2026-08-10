@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "atlas.v30.consolidation.status.v1",
+  "generatedAt": "2026-07-23T16:26:43.450Z",
+  "classification": "candidato_local_aguardando_ambiente_real",
+  "score": {
+    "programPhases": 30,
+    "locallyApproved": 26,
+    "sourceProgressPercent": 86.7,
+    "preFinalLocalProgressPercent": 92.9,
+    "codeTestFailures": 0
+  },
+  "gates": {
+    "waitingInstallation": 0,
+    "waitingEnvironment": 2,
+    "buildExecuted": false,
+    "packageCreated": false,
+    "deploymentExecuted": false,
+    "realJourneyApproved": false
+  },
+  "sourceTraceability": {
+    "gitMetadataPresent": false,
+    "mode": "workspace-content-hash",
+    "finalRepositoryReconciliationRequired": true
+  },
+  "existingArtifact": {
+    "detected": true,
+    "zipPath": "dist/hostinger/atlas-v3-hostinger-homologation.zip",
+    "manifestPath": "dist/hostinger/atlas-v3/HOSTINGER_PACKAGE.json",
+    "sourceFingerprint": null,
+    "eligibleForRelease": false,
+    "status": "pre_gate_artifact_rejected",
+    "reason": "artefato anterior às correções e às evidências das fases 26–28; a fase 29 ainda não foi autorizada"
+  },
+  "pendingPhases": [
+    {
+      "id": 27,
+      "title": "Jornadas E2E autenticadas",
+      "status": "waiting_environment",
+      "blockers": [
+        "test:e2e: gate executado e bloqueado somente por dependências do ambiente real",
+        "smoke:v3: depende de aplicação executando em URL de homologação",
+        "routes:real: depende de URL, Supabase e conta de teste reais"
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Carga, segurança e recuperação",
+      "status": "waiting_environment",
+      "blockers": [
+        "security:dependencies: depende do registry npm para auditoria atualizada",
+        "preflight:production: gate executado e bloqueado somente por dependências do ambiente real",
+        "runtime:evidence:check: gate executado e bloqueado somente por dependências do ambiente real"
+      ]
+    }
+  ],
+  "runtimeEvidence": [
+    {
+      "path": "artifacts/runtime/human-gates/f02-f16-upstream-readiness-evidence.json",
+      "status": "upstream_technical_chain_blocked",
+      "ready": false
+    },
+    {
+      "path": "artifacts/runtime/human-gates/f17-f21-readiness-evidence.json",
+      "status": "human_gate_chain_blocked",
+      "ready": false
+    },
+    {
+      "path": "artifacts/runtime/phase-022/environment-readiness-evidence.json",
+      "status": "local_rehearsal_environment_blocked",
+      "ready": false
+    },
+    {
+      "path": "artifacts/runtime/phase-023/sanitized-homologation-evidence-dossier.json",
+      "status": "homologation_evidence_not_generated",
+      "ready": false
+    },
+    {
+      "path": "artifacts/runtime/phase-024/final-human-homologation-decision-evidence.json",
+      "status": "final_homologation_decision_contract_ready_phase_023_dossier_and_human_decision_required",
+      "ready": false
+    }
+  ],
+  "nextRequiredActions": [
+    "preencher o .env.local já preparado com Supabase e contas exclusivas de homologação, sem enviar segredos ao chat",
+    "concluir backup, restauração, ledger e ensaio isolado do Supabase",
+    "executar jornadas autenticadas de ADMIN, diretor, gerente e corretor",
+    "validar uma lead Meta real, um evento CAPI de teste, WhatsApp oficial e uma chamada de IA controlada",
+    "obter decisão humana final de homologação",
+    "executar o único build completo, validar o pacote e então gerar o ZIP Hostinger"
+  ]
+}

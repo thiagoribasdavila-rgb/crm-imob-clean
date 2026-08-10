@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { OperationalState } from "@/lib/ui/operational-state";
 
 export type AtlasEmptyReason =
   | "first-use"
@@ -27,12 +28,21 @@ function safeFailureDescription(description?: string) {
 export function AtlasBadge({
   children,
   tone = "neutral",
+  operationalState,
+  title,
 }: {
   children: ReactNode;
   tone?: "neutral" | "success" | "warning" | "danger" | "info" | "violet";
+  operationalState?: OperationalState;
+  title?: string;
 }) {
   return (
-    <span className={`atlas-badge atlas-badge-${tone}`} data-tone={tone}>
+    <span
+      className={`atlas-badge atlas-badge-${tone}`}
+      data-tone={tone}
+      data-operational-state={operationalState}
+      title={title}
+    >
       {children}
     </span>
   );
@@ -55,6 +65,7 @@ export function AtlasEmpty({
     <div
       className="atlas-empty-state flex min-h-56 flex-col items-center justify-center rounded-2xl p-8 text-center"
       role="status"
+      data-card-purpose="empty"
       data-empty-reason={reason}
       data-has-action={Boolean(action)}
     >
@@ -105,7 +116,13 @@ export function AtlasRecoverableError({
         <div>
           <p className="text-sm font-semibold text-rose-100">{title}</p>
           <p className="mt-1 text-xs leading-5 text-slate-300">Seus dados permanecem protegidos.</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">{safeFailureDescription(description)}</p>
+          <details
+            className="atlas-recovery-disclosure"
+            data-information-depth="analysis"
+          >
+            <summary>Detalhes para recuperação</summary>
+            <p>{safeFailureDescription(description)}</p>
+          </details>
         </div>
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">

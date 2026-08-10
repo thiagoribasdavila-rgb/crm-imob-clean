@@ -1,0 +1,38 @@
+{
+  "format": "atlas_meta_repeatability_durable_ledger_request_v1",
+  "phase": 28,
+  "environment": "staging_clone",
+  "requestedAt": null,
+  "sourcePhase27Fingerprint": null,
+  "slot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2
+  },
+  "operation": {
+    "type": "validate_durable_ledger_adapter_draft",
+    "connectDatabase": false,
+    "executeMigration": false,
+    "executeRollback": false,
+    "persistReservation": false,
+    "issuePermit": false,
+    "consumePermit": false,
+    "executeAction": false,
+    "deliverEvent": false
+  },
+  "controls": {
+    "sourceLedgerReviewed": false,
+    "privateSchemaRequired": false,
+    "tenantIsolationRequired": false,
+    "serviceRoleOnlyRequired": false,
+    "rowLevelSecurityRequired": false,
+    "appendOnlyAuditRequired": false,
+    "rollbackRefusesNonEmptyLedger": false,
+    "supabaseCliPromotionRequired": false,
+    "realCustomerDataIncluded": false,
+    "stopWithoutRetry": false,
+    "campaignUnchanged": false,
+    "budgetUnchanged": false,
+    "audienceUnchanged": false,
+    "noPerformanceClaim": false
+  }
+}

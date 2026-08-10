@@ -1,0 +1,69 @@
+{
+  "schema_version": "atlas.local_supabase_bootstrap.v1",
+  "scope": "pre-f12-local-configuration",
+  "status": "local_supabase_bootstrap_complete",
+  "checked_at": "2026-07-23T08:05:19.431Z",
+  "project_fingerprint": "aa170f86423cb6cdeb23001a3a6a16b0635138a4adde87e32e570840466b3770",
+  "tooling": {
+    "cli_present": true,
+    "cli_version": "2.109.1",
+    "cli_version_expected": "2.109.1",
+    "cli_version_matches": true,
+    "isolated_home": true,
+    "telemetry_disabled": true
+  },
+  "source": {
+    "supabase_directory_present": true,
+    "migrations_count": 124,
+    "migration_names_unique": true,
+    "linked_project_marker_absent": true
+  },
+  "local_config": {
+    "exists": true,
+    "sha256": "af57a3a022d411fdeb185416d11476c59cece9e9b6a59c0e6db4a7cf75cc1594",
+    "project_id": "Aplas_v_3",
+    "postgres_major": 17,
+    "contains_literal_secret": false,
+    "valid": true
+  },
+  "authorization": {
+    "receipt_present": true,
+    "receipt_valid": true,
+    "not_expired": true,
+    "fingerprint_matches": true,
+    "forbids_remote": true,
+    "approval_created_by_assessor": false
+  },
+  "readiness": {
+    "gates": {
+      "cli_present": true,
+      "cli_version_matches": true,
+      "supabase_directory_present": true,
+      "migrations_present": true,
+      "migration_names_unique": true,
+      "linked_project_marker_absent": true,
+      "config_absent_before_execution": false,
+      "approval_receipt_valid": true,
+      "approval_not_expired": true,
+      "approval_fingerprint_matches": true,
+      "approval_forbids_remote": true
+    },
+    "blockers": [
+      "config_absent_before_execution"
+    ],
+    "ready_to_execute": false
+  },
+  "safety": {
+    "init_executed": false,
+    "force_used": false,
+    "linked_project_accessed": false,
+    "remote_accessed": false,
+    "database_started": false,
+    "migration_applied": false,
+    "data_accessed": false,
+    "credentials_read": false,
+    "build_executed": false,
+    "release_package_created": false
+  },
+  "next_action": "Reexecutar F12 e F22; disponibilizar runtime de containers e psql antes de solicitar a autorização JIT do ensaio descartável."
+}

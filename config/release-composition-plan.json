@@ -1,0 +1,13 @@
+{
+  "schema": "atlas.release-composition-plan.v1",
+  "compositionId": "conversion-core-candidate",
+  "sourceGraphHash": "badbc8cabb2dabc83a7c6861287bcfa1ef3c6962c18c3482d0b56402194e6928",
+  "roots": [
+    {
+      "moduleId": "conversion-core-isolated-readiness",
+      "revision": 1,
+      "entryHash": "5d76302e95051f129bc2d191c0c44548790361f2882c4276c93a9140b50a9577"
+    }
+  ],
+  "planHash": "0957d75027b05ab13168cb3afea0375a630adc596df3ec29046614642fa4a342"
+}

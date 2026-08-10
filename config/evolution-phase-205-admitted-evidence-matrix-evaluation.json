@@ -1,0 +1,47 @@
+{
+  "phase": 205,
+  "name": "Admitted Evidence Matrix Evaluation",
+  "status": "implemented",
+  "objective": "Avaliar a cobertura dos gates exclusivamente com lotes admitidos e revalidados, preservando a separação de responsabilidade por papel e sem promover release.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "evaluationPolicyHash": "a5976ab426078894dd1c929243bee639f77cf34127d99e33a6711b880cd83cc0",
+    "admissionsEvaluated": 0,
+    "recordsEvaluated": 0,
+    "evidenceMatrixEvaluated": false,
+    "evidenceCoverageComplete": false,
+    "gatesExecuted": false,
+    "releaseMemoryUpdated": false,
+    "packageGenerated": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "evaluationRules": {
+    "revalidateEveryAdmission": true,
+    "evaluateAdmittedRecordsOnly": true,
+    "roleSeparatedAdmissions": true,
+    "duplicateEvidenceRejectedAcrossAdmissions": true,
+    "maximumEvaluationDelaySeconds": 600,
+    "maximumAdmissionsPerEvaluation": 50,
+    "incompleteCoverageAllowed": true,
+    "automaticGateExecution": false,
+    "automaticReleaseMemoryUpdate": false,
+    "automaticPackageGeneration": false,
+    "automaticDeploy": false,
+    "automaticReleasePromotion": false
+  },
+  "safety": {
+    "remoteAccess": false,
+    "databaseMutation": false,
+    "migrationApplied": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 206,
+    "name": "Release gate review packet",
+    "objective": "Transformar a matriz avaliada em um pacote de revisão humana rastreável, ainda sem atualizar memória, empacotar ou promover release."
+  }
+}

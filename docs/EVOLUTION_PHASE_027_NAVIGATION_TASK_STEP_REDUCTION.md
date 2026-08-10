@@ -23,7 +23,7 @@ Esses destinos já existiam. Nenhum formulário, endpoint ou fluxo comercial par
 
 ## Fonte única e permissão
 
-As 15 transições contextuais ficam em `lib/atlas/navigation.ts`, próximas aos catálogos oficiais. A resolução considera:
+As 14 transições contextuais operacionais ficam em `lib/atlas/navigation.ts`, próximas aos catálogos oficiais. A resolução considera:
 
 - caminho atual exato, sem depender de texto visual;
 - papel comercial;

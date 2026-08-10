@@ -102,7 +102,6 @@ create policy ai_insights_org_select on public.ai_insights for select to authent
 revoke all on table public.idempotency_keys from anon, authenticated;
 revoke all on table public.integration_outbox from anon, authenticated;
 revoke all on table public.dead_letter_events from anon, authenticated;
-revoke all on table public.user_provisioning_failures from anon, authenticated;
 
 -- Índices das expressões usadas pelas políticas críticas.
 create index if not exists idx_profiles_org_hierarchy_active

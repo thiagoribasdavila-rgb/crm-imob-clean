@@ -1,0 +1,39 @@
+{
+  "phase": 178,
+  "name": "Conversion Core Supabase Migration Collision Dossier",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Inventariar e classificar as colisões de versão das migrations sem alterar arquivos, histórico remoto ou banco operacional.",
+  "evidenceLevel": "local_static_collision_dossier",
+  "runtimeHomologated": false,
+  "collisionEvidence": {
+    "migrationFiles": 131,
+    "uniqueVersions": 128,
+    "duplicateVersions": 3,
+    "remoteHistoryRead": false,
+    "operationalEnvironmentTouched": false,
+    "sqlBodiesPersisted": false
+  },
+  "safety": {
+    "migrationFilesRenamed": false,
+    "migrationsApplied": false,
+    "migrationHistoryRepaired": false,
+    "databaseReset": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "contractsPassed": true,
+    "collisionDossierGenerated": true,
+    "remoteHistoryEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "localMigrationRuntimePassed": false,
+    "sourceTraceabilityPassed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Em sessão operacional autorizada e sem imprimir segredos, coletar somente a lista do histórico remoto e confrontá-la com hashes e objetos deste dossiê."
+}
+

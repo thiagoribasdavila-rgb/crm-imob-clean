@@ -1,0 +1,27 @@
+{
+  "phase": 23,
+  "name": "lead-operational-timeline",
+  "objective": "Consolidar no Lead 360 a próxima ação, tarefas abertas, visitas e acompanhamentos recentes sem criar uma segunda fonte de dados.",
+  "canonicalSurface": "lead-360",
+  "sources": [
+    "leads.next_action_at",
+    "tasks",
+    "activities",
+    "lead_events"
+  ],
+  "priorityOrder": [
+    "tarefas vencidas",
+    "próximas ações",
+    "visitas registradas",
+    "histórico recente"
+  ],
+  "rules": [
+    "A linha operacional reutiliza exclusivamente o payload canônico do Lead 360.",
+    "Tarefas concluídas ou canceladas não disputam atenção com ações abertas.",
+    "Atrasos aparecem antes dos próximos compromissos e do histórico.",
+    "O histórico completo permanece disponível sob demanda.",
+    "Nenhuma API, tabela, RLS, automação ou regra comercial é alterada."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

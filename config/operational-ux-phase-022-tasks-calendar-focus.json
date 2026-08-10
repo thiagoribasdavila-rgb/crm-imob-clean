@@ -1,0 +1,32 @@
+{
+  "phase": 22,
+  "name": "tasks-calendar-action-focus",
+  "objective": "Colocar atrasos, compromissos de hoje e próximas ações na primeira leitura de Tarefas e Agenda, preservando criação, execução, filtros, equipe e composição temporal.",
+  "canonicalSurfaces": ["tasks", "calendar"],
+  "alwaysVisible": [
+    "tarefas vencidas",
+    "compromissos de hoje",
+    "minha fila",
+    "próximas ações",
+    "fila comercial priorizada",
+    "criação de tarefa",
+    "atenção imediata da agenda",
+    "linha do tempo",
+    "estado de sincronização"
+  ],
+  "progressive": [
+    "indicadores completos da rotina",
+    "recorrências ativas",
+    "carga da equipe por responsável",
+    "composição da agenda"
+  ],
+  "rules": [
+    "A primeira leitura deve responder o que atrasou, o que acontece hoje e qual ação vem a seguir.",
+    "Criação, conclusão, reagendamento, filtros e navegação para a lead permanecem acessíveis.",
+    "A carga da equipe permanece disponível à liderança sem competir com a fila de execução.",
+    "Rótulos internos de implementação não aparecem como prioridade visual para o usuário.",
+    "Nenhuma API, persistência, RLS, hierarquia, recorrência ou regra comercial é alterada."
+  ],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

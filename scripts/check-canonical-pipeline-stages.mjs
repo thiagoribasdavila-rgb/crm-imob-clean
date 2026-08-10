@@ -7,7 +7,21 @@ for (const field of contract.editableFields) if (!settingsApi.includes(field) ||
 if (!api.includes("canonicalPipelineStage") || !api.includes("mergePipelineStageSettings") || !api.includes('stageContract: "canonical-v1"')) failures.push("API do pipeline não aplica contrato canônico");
 if (!dataContracts.includes("PIPELINE_STAGE_KEYS") || !dataContracts.includes("canonicalPipelineStage")) failures.push("contratos de fronteira mantêm uma lista concorrente");
 if (!board.includes("payload.stages") || !board.includes("Configurar etapas") || !settingsPage.includes('data-phase="31-stage-settings"')) failures.push("Kanban não consome ou não permite configurar etapas");
-if (!settingsApi.includes('["admin", "director", "superintendent"]') || !migration.includes("enable row level security")) failures.push("edição sem governança de gestão e tenant");
+const managementRoles = ["admin", "director", "superintendent"];
+const hasManagementGovernance = managementRoles.every((role) =>
+  settingsApi.includes(`=== "${role}"`)
+);
+const hasTenantScope = settingsApi.includes('eq("organization_id"')
+  && settingsApi.includes("identity.access.organization.id");
+const hasRowLevelSecurity = /enable\s+row\s+level\s+security/i.test(migration);
+const hasTenantPolicy = migration.includes("current_organization_id()")
+  && migration.includes("pipeline_stage_settings_read");
+if (
+  !hasManagementGovernance
+  || !hasTenantScope
+  || !hasRowLevelSecurity
+  || !hasTenantPolicy
+) failures.push("edição sem governança de gestão e tenant");
 if (!core.includes('negociacao: "proposta"') || !core.includes('vend') && !core.includes('venda: "ganho"')) failures.push("aliases históricos não são normalizados");
 if (failures.length) { console.error("ETAPAS CANÔNICAS Fase 31: REPROVADO"); for (const failure of failures) console.error(`- ${failure}`); process.exit(1); }
 console.log(`ETAPAS CANÔNICAS Fase 31: aprovado — ${contract.canonicalKeys.length} chaves, ${contract.editableFields.length} campos editáveis e ${contract.consumers.length} consumidores alinhados.`);

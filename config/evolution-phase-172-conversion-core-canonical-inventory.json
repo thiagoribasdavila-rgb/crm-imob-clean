@@ -1,0 +1,102 @@
+{
+  "phase": 172,
+  "name": "Conversion Core Canonical Inventory",
+  "status": "implemented",
+  "objective": "Fixar os proprietários canônicos da jornada de conversão antes de qualquer alteração funcional, evitando duplicidade e preservando a operação real.",
+  "moduleId": "conversion-core",
+  "inventoryPolicy": {
+    "filePresenceDoesNotProveRuntime": true,
+    "contractEvidenceDoesNotReplaceAuthenticatedRuntime": true,
+    "oneCanonicalOwnerPerOperation": true,
+    "alternateRoutesMustHaveDistinctResponsibilities": true,
+    "noProductionMutation": true,
+    "noBuildBeforeHomologation": true,
+    "noZipBeforeHomologation": true
+  },
+  "capabilities": [
+    {
+      "id": "lead-list-and-portfolio-scope",
+      "route": "/leads",
+      "frontendOwner": "app/(crm)/leads/page.tsx",
+      "apiOwner": "app/api/v1/crm/leads/route.ts",
+      "operations": ["GET"],
+      "dataOwners": ["leads", "profiles"],
+      "contractEvidence": ["tests/contracts/leads-quality-filters.test.mjs", "tests/contracts/leads-lead360-density.test.mjs"],
+      "status": "contract_verified_runtime_pending"
+    },
+    {
+      "id": "lead-intake",
+      "route": "/leads/new",
+      "frontendOwner": "app/(crm)/leads/new/page.tsx",
+      "apiOwner": "app/api/v1/leads/route.ts",
+      "operations": ["POST"],
+      "dataOwners": ["leads", "crm_projects"],
+      "contractEvidence": ["tests/contracts/lead-intake-analytics.test.mjs"],
+      "status": "contract_verified_runtime_pending"
+    },
+    {
+      "id": "lead-360",
+      "route": "/leads/[id]",
+      "frontendOwner": "app/(crm)/leads/[id]/page.tsx",
+      "apiOwner": "app/api/v1/leads/[id]/route.ts",
+      "operations": ["GET", "PATCH", "POST"],
+      "dataOwners": ["leads", "lead_events", "activities", "tasks", "profiles", "crm_projects", "marketing_campaigns", "opportunities", "conversations"],
+      "contractEvidence": ["tests/contracts/lead360-operational-snapshot.test.mjs", "tests/contracts/lead360-prioritized-timeline.test.mjs", "tests/contracts/lead360-progressive-profile-edit.test.mjs", "tests/contracts/lead360-single-decision-flow.test.mjs"],
+      "status": "contract_verified_runtime_pending"
+    },
+    {
+      "id": "pipeline-kanban",
+      "route": "/pipeline",
+      "frontendOwner": "app/(crm)/pipeline/page.tsx",
+      "apiOwner": "app/api/v1/pipeline/route.ts",
+      "operations": ["GET", "PATCH"],
+      "dataOwners": ["leads", "pipeline_history", "pipeline_stage_settings", "lead_events"],
+      "contractEvidence": ["tests/contracts/minimum-advance-readiness.test.mjs", "tests/contracts/lead-operational-timeline.test.mjs"],
+      "status": "contract_verified_runtime_pending"
+    },
+    {
+      "id": "lead-distribution",
+      "route": "/distribution",
+      "frontendOwner": "app/(crm)/distribution/page.tsx",
+      "apiOwner": "app/api/v1/crm/distribution/route.ts",
+      "operations": ["GET", "POST"],
+      "dataOwners": ["profiles", "developments", "crm_projects", "leads", "commercial_presence", "project_distribution_members", "broker_capacity_limits", "lead_distribution_priority_rules", "lead_source_distribution_members", "lead_distribution_events"],
+      "contractEvidence": ["tests/contracts/distribution-roster.test.mjs"],
+      "status": "contract_verified_runtime_pending"
+    },
+    {
+      "id": "task-center",
+      "route": "/tasks",
+      "frontendOwner": "app/(crm)/tasks/page.tsx",
+      "apiOwner": "app/api/v1/tasks/route.ts",
+      "operations": ["GET", "POST", "PATCH"],
+      "dataOwners": ["tasks", "profiles", "leads", "task_recurrences", "lead_events"],
+      "contractEvidence": ["tests/contracts/tasks-calendar-focus.test.mjs"],
+      "status": "contract_verified_runtime_pending"
+    }
+  ],
+  "complementaryRouteDecisions": [
+    {
+      "routes": ["app/api/v1/crm/leads/route.ts", "app/api/v1/leads/route.ts"],
+      "decision": "preserve",
+      "reason": "A primeira rota é a consulta hierárquica da carteira; a segunda é exclusivamente o cadastro atômico. Não são proprietários concorrentes da mesma operação."
+    },
+    {
+      "routes": ["app/api/v1/pipeline/route.ts", "app/api/v1/pipeline/stages/route.ts"],
+      "decision": "preserve",
+      "reason": "A primeira movimenta oportunidades; a segunda configura etapas para liderança. Responsabilidades distintas."
+    }
+  ],
+  "baseline": {
+    "capabilitiesInventoried": 6,
+    "canonicalOwnerConflicts": 0,
+    "contractEvidencePresent": true,
+    "authenticatedRuntimeEvidenceComplete": false,
+    "moduleStatus": "inventory_complete_runtime_pending"
+  },
+  "databaseMutation": false,
+  "externalCall": false,
+  "buildExecuted": false,
+  "zipGenerated": false,
+  "nextDeliveryGate": "Executar prova autenticada e isolada por organização para cada capacidade antes de qualquer pacote de instalação."
+}

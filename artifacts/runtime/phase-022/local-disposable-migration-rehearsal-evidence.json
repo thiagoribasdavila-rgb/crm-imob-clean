@@ -1,0 +1,69 @@
+{
+  "schema_version": "atlas.phase-022.evidence.v1",
+  "phase": "22/24",
+  "status": "local_rehearsal_not_executed",
+  "assessment": {
+    "gates_passed": 31,
+    "gates_total": 83,
+    "mutants_rejected": 85,
+    "mutants_total": 85,
+    "negative_tests_required": 18,
+    "plan_ready": false,
+    "commands_executed": 0
+  },
+  "baseline": {
+    "cli_version": "2.109.1",
+    "migration_files": 126,
+    "migration_manifest_sha256": "4cfd1ab1450b916a6b38406b62bb862e51bbd6f1f8fd642a05cabd4061f0bd79",
+    "existing_migration_modified": false
+  },
+  "validation": {
+    "phase_022_checks": "61/61",
+    "phase_021_regression": "48/48",
+    "typecheck": "passed",
+    "lint": "passed",
+    "secret_scan": "passed",
+    "secret_scan_files": 3061,
+    "credentials_detected": 0
+  },
+  "inputs": {
+    "phase_021_assessment_available": true,
+    "authoring_receipt_exists": false,
+    "rehearsal_authorization_exists": false,
+    "source_config_exists": true
+  },
+  "decision": {
+    "ready_for_single_disposable_local_rehearsal": false,
+    "remote_apply_authorized": false,
+    "linked_project_authorized": false,
+    "production_authorized": false,
+    "human_review_required": true
+  },
+  "privacy": {
+    "contains_credentials": false,
+    "contains_personal_data": false,
+    "contains_business_data": false,
+    "contains_auth_user_data": false,
+    "contains_storage_objects": false,
+    "contains_raw_cli_output": false
+  },
+  "safety": {
+    "evaluator_executed_command": false,
+    "evaluator_wrote_file": false,
+    "local_database_started": false,
+    "docker_accessed": false,
+    "migration_applied": false,
+    "pgtap_executed": false,
+    "lint_executed": false,
+    "rollback_executed": false,
+    "cleanup_executed": false,
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "linked_project_accessed": false,
+    "production_touched": false,
+    "business_or_auth_data_read": false,
+    "build_executed": false,
+    "release_package_created": false
+  },
+  "next_phase": "Fase 23/24: consolidar a evidência sanitizada do ensaio local autorizado, revisar pgTAP, lint, rollback e cleanup para decisão humana, ainda sem aplicar migration em projeto linked ou produção."
+}

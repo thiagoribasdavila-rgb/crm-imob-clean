@@ -1,0 +1,134 @@
+{
+  "phase": 40,
+  "program": "meta-andromeda-automation",
+  "sourcePhase": 39,
+  "environment": "offline_isolated_staging_replay_execution_packet",
+  "schemaVersion": "phase40.isolated-staging-replay-execution-packet-gate.v1",
+  "maximumInputBytes": 1048576,
+  "maximumApprovalValidityHours": 4,
+  "maximumWindowMinutes": 120,
+  "maximumWindowLeadHours": 24,
+  "requiredSources": {
+    "stagingReplayContract": {
+      "schemaVersion": "phase39.isolated-staging-replay-contract.v1",
+      "phase": 39,
+      "sourcePhase": 38,
+      "status": "contract_prepared_replay_blocked"
+    },
+    "operationalWindow": {
+      "schemaVersion": "phase40.staging-replay-window.v1",
+      "status": "authorized",
+      "environment": "staging"
+    },
+    "credentialAttestation": {
+      "schemaVersion": "phase40.ephemeral-credential-attestation.v1",
+      "status": "verified_in_memory_only",
+      "environment": "staging"
+    },
+    "humanExecutionApproval": {
+      "schemaVersion": "phase40.staging-replay-execution-approval.v1",
+      "status": "approved_for_isolated_staging_execution",
+      "scope": "execute_phase40_isolated_staging_replay_only",
+      "decision": "EXECUTE_ISOLATED_STAGING_ONLY",
+      "approverRole": "DIRETOR_DECISOR"
+    }
+  },
+  "orderedReplayStages": [
+    "verify_source_fingerprints",
+    "verify_isolated_target",
+    "capture_pre_replay_snapshot",
+    "apply_migrations_stop_on_error",
+    "run_database_lint",
+    "run_pgtap_rls_negative_tests",
+    "verify_auth_storage_realtime_data_api",
+    "capture_performance_baseline",
+    "run_security_and_performance_advisors",
+    "execute_rollback_dry_run",
+    "reconcile_evidence",
+    "destroy_disposable_target"
+  ],
+  "requiredContractState": {
+    "sourceProjectionAccepted": true,
+    "stagingTargetAccepted": true,
+    "rollbackPlanAccepted": true,
+    "humanApprovalAccepted": true,
+    "contractPrepared": true,
+    "executionApprovalRequired": true,
+    "replayExecuted": false
+  },
+  "requiredWindowProperties": {
+    "isolatedStagingOnly": true,
+    "productionTarget": false,
+    "productionDataAllowed": false,
+    "sanitizedDataOnly": true,
+    "stopOnError": true,
+    "rollbackOnFailure": true,
+    "abortAfterWindow": true,
+    "destroyTargetAtEnd": true,
+    "productionFreezeRequired": false
+  },
+  "requiredCredentialProperties": {
+    "delivery": "secure_runtime_environment",
+    "persisted": false,
+    "logged": false,
+    "masked": true,
+    "leastPrivilege": true,
+    "rotationAfterReplay": true,
+    "productionCredential": false
+  },
+  "requiredApprovalProperties": {
+    "humanApproved": true,
+    "stagingExecutionApproved": true,
+    "productionApproved": false,
+    "metaApproved": false,
+    "buildApproved": false
+  },
+  "packetRules": {
+    "exactSourceFingerprints": true,
+    "exactReplayStageOrder": true,
+    "separateExecutionApprovalRequired": true,
+    "approvalCannotBeInferredFromPhase39": true,
+    "approvalMustBindContractWindowAndAttestation": true,
+    "approvalMustCoverEntireWindow": true,
+    "windowMustBeAuthorizedAndBound": true,
+    "credentialsMustRemainOutsideArtifacts": true,
+    "credentialValuesForbidden": true,
+    "productionCredentialsForbidden": true,
+    "sensitiveEvidenceRejected": true,
+    "dataRowsRejected": true,
+    "packetDoesNotExecuteReplay": true,
+    "oneTimeImmediateConfirmationRequired": true,
+    "oneTimeNonceRequired": true,
+    "targetDestructionMandatory": true
+  },
+  "requiredBlockedState": {
+    "oneTimeExecutionConfirmationReceived": false,
+    "oneTimeExecutionNonceConsumed": false,
+    "replayExecuted": false,
+    "replayExecutionAllowed": false,
+    "stagingMigrationAllowed": false,
+    "productionMigrationAllowed": false,
+    "productionCompatibilityApproved": false,
+    "metaDeliveryAllowed": false,
+    "buildAllowed": false
+  },
+  "prohibitedActions": {
+    "databaseAccess": true,
+    "dockerExecution": true,
+    "remoteDatabaseAccess": true,
+    "linkedProjectAccess": true,
+    "stagingMutation": true,
+    "productionMutation": true,
+    "supabaseDbPush": true,
+    "supabaseDbResetLinked": true,
+    "credentialCollection": true,
+    "credentialPersistence": true,
+    "permitIssuance": true,
+    "permitConsumption": true,
+    "realMetaEventDelivery": true,
+    "testMetaEventDelivery": true,
+    "campaignMutation": true,
+    "deployment": true,
+    "buildExecution": true
+  }
+}

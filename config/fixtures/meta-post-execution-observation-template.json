@@ -1,0 +1,25 @@
+{
+  "schema": "atlas.meta-post-execution-observation.v1",
+  "status": "ready_for_human_interpretation",
+  "receiptReference": null,
+  "observation": {
+    "metric": null,
+    "baselineValue": null,
+    "observedValue": null,
+    "windowStart": null,
+    "windowEnd": null,
+    "sourceReference": null,
+    "isCausalClaim": false
+  },
+  "execution": {
+    "atlasExecuted": false,
+    "externalChangesRequested": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true,
+    "automaticOptimization": true
+  }
+}

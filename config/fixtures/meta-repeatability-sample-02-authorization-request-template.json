@@ -1,0 +1,42 @@
+{
+  "format": "atlas_meta_repeatability_authorization_request_v1",
+  "phase": 24,
+  "environment": "staging_clone",
+  "requestReference": null,
+  "requestedAt": null,
+  "expiresAt": null,
+  "slot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2
+  },
+  "event": {
+    "eventName": null,
+    "classification": null,
+    "eventIdFingerprint": null,
+    "syntheticRecordFingerprint": null
+  },
+  "humanAuthorizations": {
+    "director": { "approved": false, "reference": null },
+    "security": { "approved": false, "reference": null },
+    "operator": { "approved": false, "reference": null },
+    "reviewer": { "approved": false, "reference": null },
+    "baselineReferencesNotReused": false
+  },
+  "controls": {
+    "syntheticRecordConfirmed": false,
+    "realCustomerDataIncluded": false,
+    "singleDeliveryMaximum": false,
+    "temporaryCodeRemainsInOfficialSurface": false,
+    "stopWithoutRetry": false,
+    "campaignUnchanged": false,
+    "budgetUnchanged": false,
+    "audienceUnchanged": false,
+    "noPerformanceClaim": false,
+    "requiresFreshJustInTimeConfirmation": false
+  },
+  "execution": {
+    "executed": false,
+    "eventDelivered": false,
+    "authorizationActivated": false
+  }
+}

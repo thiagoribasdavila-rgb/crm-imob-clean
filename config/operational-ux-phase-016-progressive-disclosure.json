@@ -1,0 +1,21 @@
+{
+  "phase": 16,
+  "name": "progressive-disclosure",
+  "objective": "Mostrar primeiro decisão e ação; oferecer contexto e diagnóstico detalhado somente quando a pessoa solicitar.",
+  "informationLayers": {
+    "glance": "Título, estado, decisão e próxima ação permanecem visíveis.",
+    "context": "Explicação complementar da visão abre sob demanda.",
+    "analysis": "Diagnóstico recuperável e análise secundária ficam recolhidos por padrão."
+  },
+  "rules": [
+    "A divulgação progressiva reutiliza details e summary nativos.",
+    "Nenhuma ação, alerta crítico ou decisão obrigatória pode ficar escondida.",
+    "O controle é navegável por teclado e possui foco visível.",
+    "O conteúdo recolhido continua no DOM e disponível para tecnologia assistiva.",
+    "A fase não altera conteúdo, rotas, APIs, persistência ou permissões."
+  ],
+  "protectedVisibleContent": ["decision", "operational-state", "primary-action", "recovery-action"],
+  "collapsedByDefault": ["page-context", "recoverable-diagnostic", "secondary-analysis"],
+  "infrastructureMutation": false,
+  "releaseMutation": false
+}

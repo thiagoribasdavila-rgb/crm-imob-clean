@@ -1,0 +1,46 @@
+{
+  "schema_version": "atlas.homologation_decision_dossier_evidence.v1",
+  "phase": 17,
+  "status": "dossier_not_generated",
+  "assessment": {
+    "gates_passed": 8,
+    "gates_total": 64,
+    "mutants_rejected": 23,
+    "mutants_total": 23
+  },
+  "inputs": {
+    "phase_016_execution_result_available": false,
+    "phase_015_manifest_available": false,
+    "recovery_drill_evidence_available": false,
+    "homologation_target_descriptor_available": false,
+    "homologation_preflight_approval_available": false
+  },
+  "decision": {
+    "all_gates_passed": false,
+    "dossier_generated": false,
+    "homologation_preflight_authorized": false,
+    "remote_apply_authorized": false,
+    "production_authorized": false,
+    "real_data_copy_authorized": false
+  },
+  "privacy": {
+    "contains_secrets": false,
+    "contains_personal_data": false,
+    "contains_database_url": false,
+    "contains_raw_project_ref": false,
+    "contains_raw_cli_output": false
+  },
+  "safety": {
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "branch_created": false,
+    "branch_merged": false,
+    "migration_applied": false,
+    "live_homologation_touched": false,
+    "production_touched": false,
+    "business_data_read": false,
+    "auth_user_data_read": false,
+    "build_executed": false,
+    "release_package_created": false
+  }
+}

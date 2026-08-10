@@ -1,0 +1,19 @@
+{
+  "schema": "atlas.controlled-proof-execution-recurring-cycle-memory.v1",
+  "policyHash": "9bc292a6ead4a7250a88a01837a2de0f40bf6e2c1a01ee67c4c55dc10f05d546",
+  "entries": [],
+  "summary": {
+    "recordedEntries": 0,
+    "completedCycles": 0,
+    "stageCounts": {"authorization-consumption": 0, "continuation": 0, "observation": 0, "review": 0, "authorization": 0},
+    "nextStage": "authorization-consumption",
+    "latestEntryHash": null,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "246a021d6ff8006135836c4d26307f8334d6a65b4ad39abe9c9afd140b2bc9de"
+}

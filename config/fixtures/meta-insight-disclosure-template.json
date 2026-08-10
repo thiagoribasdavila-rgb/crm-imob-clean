@@ -1,0 +1,26 @@
+{
+  "schema": "atlas.meta-insight-disclosure.v1",
+  "status": "not_prepared",
+  "memoryReference": null,
+  "display": {
+    "insightClass": null,
+    "confidenceBand": null,
+    "evidenceStatus": null,
+    "validityStatus": null,
+    "humanReviewRequired": true,
+    "actionMode": "view_only"
+  },
+  "execution": {
+    "actionExecuted": false,
+    "campaignChanged": false,
+    "productionTouched": false
+  },
+  "forbidden": {
+    "hiddenConfidence": true,
+    "hiddenEvidenceStatus": true,
+    "automaticAction": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "phase": 34,
+  "program": "meta-andromeda-automation",
+  "sourcePhase": 33,
+  "environment": "local_readiness_assessment",
+  "schemaVersion": "phase34.migration-readiness.v1",
+  "maximumInputBytes": 1048576,
+  "sourceReceipt": {
+    "schemaVersion": "phase33.cross-major-reconciliation.v1",
+    "phase": 33,
+    "sourcePhase": 32,
+    "status": "approved",
+    "crossMajorApproved": true,
+    "productionCompatibilityApproved": false
+  },
+  "runtimes": {
+    "pg15": {
+      "postgresImage": "supabase/postgres:15.14.1.149",
+      "postgresMajor": 15
+    },
+    "pg17": {
+      "postgresImage": "supabase/postgres:17.6.1.149",
+      "postgresMajor": 17
+    }
+  },
+  "verifiedFromPhase33": [
+    "source_chain_integrity",
+    "cross_major_artifact_equivalence",
+    "security_equivalence",
+    "rollback_equivalence",
+    "extension_compatibility"
+  ],
+  "requiredBeforeProduction": [
+    "immutable_backup_verified",
+    "restore_drill_verified",
+    "isolated_staging_replay_verified",
+    "data_integrity_verified",
+    "performance_baseline_verified",
+    "observability_ready",
+    "security_advisor_verified",
+    "performance_advisor_verified",
+    "production_rollback_runbook_verified",
+    "human_change_approval_verified"
+  ],
+  "evidenceCoverage": {
+    "verifiedControls": 5,
+    "requiredControls": 15,
+    "percent": 33
+  },
+  "requiredBlockedState": {
+    "stagingMigrationAllowed": false,
+    "productionMigrationAllowed": false,
+    "metaDeliveryAllowed": false,
+    "buildAllowed": false
+  },
+  "prohibitedActions": {
+    "localDatabaseAccess": true,
+    "remoteDatabaseAccess": true,
+    "productionMutation": true,
+    "supabaseDbPush": true,
+    "permitReservation": true,
+    "permitIssuance": true,
+    "permitConsumption": true,
+    "realMetaEventDelivery": true,
+    "testMetaEventDelivery": true,
+    "campaignMutation": true,
+    "buildExecution": true
+  }
+}

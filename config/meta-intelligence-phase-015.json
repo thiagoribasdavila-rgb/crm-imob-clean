@@ -1,0 +1,90 @@
+{
+  "phase": 15,
+  "program": "meta-andromeda-automation",
+  "mode": "ephemeral_empty_clone_auth_jwt_rls_rehearsal",
+  "status": "isolated_rehearsal_automation_ready",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-014.json",
+  "evidenceTemplate": "config/fixtures/meta-auth-isolated-rehearsal-evidence-template.json",
+  "rehearsalRunner": "scripts/run-meta-auth-isolated-rehearsal.mjs",
+  "evidencePreflight": "scripts/preflight-meta-auth-isolated-rehearsal.mjs",
+  "staticAudit": "scripts/audit-meta-auth-isolated-rehearsal.mjs",
+  "documentation": "docs/META_AUTH_ISOLATED_REHEARSAL.md",
+  "currentDocumentation": {
+    "branching": "https://supabase.com/docs/guides/deployment/branching",
+    "seeding": "https://supabase.com/docs/guides/local-development/seeding-your-database",
+    "localDevelopment": "https://supabase.com/docs/guides/local-development",
+    "cliWorkflow": "https://supabase.com/docs/guides/local-development/cli-workflows",
+    "adminDeleteUser": "https://supabase.com/docs/reference/javascript/auth-admin-deleteuser",
+    "databaseTesting": "https://supabase.com/docs/guides/database/testing",
+    "breakingChanges": "https://supabase.com/changelog?tags=breaking-change"
+  },
+  "environmentAudit": {
+    "isolatedCredentialsDetected": false,
+    "supabaseCliDetected": false,
+    "containerRuntimeDetected": false,
+    "remoteCallsExecuted": false,
+    "reason": "Nenhum clone Supabase ou stack local isolada foi disponibilizado nesta pasta. O executor foi preparado, mas nao acionado."
+  },
+  "safetyGates": {
+    "stagingCloneOnly": true,
+    "expectedProjectReferenceRequired": true,
+    "productionUrlDenied": true,
+    "explicitMutationApprovalRequired": true,
+    "emptyCloneRequired": true,
+    "emptyAuthRequired": true,
+    "emptyOrganizationsProfilesLeadsRequired": true,
+    "secretKeyServerOnly": true
+  },
+  "ephemeralFixtures": {
+    "organizations": 2,
+    "authUsers": 9,
+    "profiles": 9,
+    "leads": 4,
+    "hierarchies": 2,
+    "credentialsPersisted": false,
+    "personalDataUsed": false,
+    "cleanupAlwaysAttempted": true,
+    "zeroResidualRequired": true
+  },
+  "runtimeCoverage": {
+    "realPasswordSignIn": true,
+    "signedJwtVerification": true,
+    "refreshRotationAndRevocation": true,
+    "brokerOwnPortfolio": true,
+    "managerDirectTeam": true,
+    "directorOrganization": true,
+    "otherTeamDenied": true,
+    "crossTenantReadWriteDenied": true,
+    "anonymousDenied": true,
+    "serviceRoleServerBoundary": true,
+    "editableUserMetadataEscalationDenied": true,
+    "reversibleMutationProbe": true
+  },
+  "releaseGate": {
+    "phase14HarnessReady": true,
+    "phase15StaticAuditPassed": true,
+    "isolatedCloneExecuted": false,
+    "zeroResidualVerifiedRemotely": false,
+    "realSignedJwtPassed": false,
+    "dataApiRlsPassed": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "databaseMutation": false,
+    "migrationApplication": false,
+    "productionAccess": false,
+    "tokenPersistence": false,
+    "secretPersistence": false,
+    "realMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 16,
+    "objective": "Executar o ciclo efemero em um branch Supabase vazio, arquivar somente a evidencia sanitizada e reconciliar divergencias antes de qualquer gate de producao."
+  }
+}

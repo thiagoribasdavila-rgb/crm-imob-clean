@@ -1,0 +1,53 @@
+{
+  "phase": 177,
+  "name": "Conversion Core Local Supabase Migration Gate",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Validar o ciclo completo de migrations somente em Supabase local descartável, recusando qualquer comando remoto e sem tocar na operação real.",
+  "evidenceLevel": "local_migration_gate_ready_runtime_blocked",
+  "runtimeHomologated": false,
+  "migrationEvidence": {
+    "migrationFiles": 131,
+    "duplicateVersions": 3,
+    "deprecatedAuthRoleCalls": 0,
+    "rlsStatementsDetected": 144,
+    "grantStatementsDetected": 211,
+    "remoteCommandsAllowed": false,
+    "operationalEnvironmentTouched": false
+  },
+  "runtimeBlockers": [
+    {
+      "id": "duplicate-migration-versions",
+      "reason": "Três timestamps são compartilhados por pares de migrations; renomear sem reconciliar o histórico remoto seria inseguro."
+    },
+    {
+      "id": "docker-runtime-unavailable",
+      "reason": "Docker não está instalado/disponível neste host para iniciar a pilha Supabase local."
+    },
+    {
+      "id": "source-traceability-missing",
+      "reason": "O diretório canônico atual não contém metadados Git; release permanece sem proveniência comprovável."
+    }
+  ],
+  "safety": {
+    "productionCredentialsUsed": false,
+    "productionDatabaseTouched": false,
+    "linkedCommandsAllowed": false,
+    "dbUrlCommandsAllowed": false,
+    "migrationRepairAllowed": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "contractsPassed": true,
+    "localMigrationRuntimePassed": false,
+    "migrationHistoryReconciled": false,
+    "sourceTraceabilityPassed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Reconciliar de forma não destrutiva os três timestamps duplicados com o histórico remoto e disponibilizar Docker para executar o ensaio local descartável."
+}
+

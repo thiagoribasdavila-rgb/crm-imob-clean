@@ -1,0 +1,24 @@
+{
+  "schema": "atlas.meta-learning-memory-proposal.v1",
+  "status": "proposed_for_human_review",
+  "interpretationReference": null,
+  "proposal": {
+    "learningType": null,
+    "evidenceLevel": null,
+    "summary": null,
+    "scope": null,
+    "proposedByReference": null,
+    "expiresAt": null
+  },
+  "publication": {
+    "published": false,
+    "availableToCopilot": false,
+    "availableToAutomation": false
+  },
+  "forbidden": {
+    "automaticPublication": true,
+    "customerData": true,
+    "providerPayload": true,
+    "secrets": true
+  }
+}

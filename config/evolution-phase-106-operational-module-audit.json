@@ -1,0 +1,91 @@
+{
+  "phase": 106,
+  "name": "Operational module audit",
+  "status": "implemented",
+  "roadmapVersion": "V4",
+  "priority": "P0-operational-blocker",
+  "objective": "Auditar os módulos reais do ATLAS V3/V4 para identificar desconexões entre telas, APIs e banco antes de evoluir Kanban, layout e IA.",
+  "businessOutcome": [
+    "corrige a raiz dos módulos indisponíveis antes de criar novas telas",
+    "protege a base real de leads, tarefas, clientes e projetos",
+    "prioriza o que ajuda o time comercial a trabalhar sem erro",
+    "transforma o Kanban em prioridade operacional das próximas fases"
+  ],
+  "sourceOfTruth": {
+    "pipeline": "app/api/v1/pipeline/route.ts + lib/atlas/core-v2/live-repositories.ts",
+    "leads": "public.leads via LIVE_LEAD_SELECT/mapLegacyLead",
+    "tasks": "public.tasks via due_date -> due_at adapter",
+    "customers": "public.leads + profiles + crm_projects via readCompatibleCustomers",
+    "projects": "public.crm_projects via readCompatibleDevelopments",
+    "profiles": "public.profiles via LIVE_PROFILE_SELECT/mapLegacyProfile"
+  },
+  "criticalFindings": [
+    {
+      "id": "direct-schema-bypass",
+      "severity": "high",
+      "finding": "Algumas telas e APIs ainda consultam campos ou tabelas diretamente, fora da camada compatível.",
+      "impact": "Pode gerar mensagens de módulo indisponível mesmo quando a operação real tem dados."
+    },
+    {
+      "id": "legacy-column-drift",
+      "severity": "high",
+      "finding": "Existem referências a profiles.full_name, tasks.due_at, leads.score, developments e opportunities em módulos legados.",
+      "impact": "Essas diferenças explicam os erros visuais já observados em homologação."
+    },
+    {
+      "id": "kanban-density",
+      "severity": "medium",
+      "finding": "O Kanban atual tem recursos importantes, mas excesso de informação reduz velocidade de decisão.",
+      "impact": "Corretores perdem tempo interpretando a tela em vez de executar a próxima ação."
+    },
+    {
+      "id": "module-error-contract",
+      "severity": "medium",
+      "finding": "Nem todos os módulos usam o mesmo padrão de recuperação quando a base está incompleta.",
+      "impact": "A experiência fica inconsistente entre Command Center, Leads, Agenda, Projetos e Relatórios."
+    }
+  ],
+  "nextFixPhases": [
+    {
+      "phase": 107,
+      "name": "API consistency shield",
+      "goal": "Impedir que telas críticas ignorem a camada de compatibilidade."
+    },
+    {
+      "phase": 108,
+      "name": "Profile compatibility hardening",
+      "goal": "Eliminar erros de full_name/name em usuários, busca e distribuição."
+    },
+    {
+      "phase": 109,
+      "name": "Tasks and agenda due date shield",
+      "goal": "Uniformizar due_date/due_at em tarefas, agenda, notificações e lembretes."
+    },
+    {
+      "phase": 110,
+      "name": "Projects launch OS recovery",
+      "goal": "Blindar projetos para crm_projects, materiais e estoque sem depender de developments."
+    },
+    {
+      "phase": 111,
+      "name": "Kanban decision-first redesign",
+      "goal": "Transformar o Kanban em uma tela limpa, rápida e orientada à próxima ação."
+    }
+  ],
+  "changedAreas": [
+    "config/evolution-program-3000.json",
+    "config/evolution-phase-106-operational-module-audit.json",
+    "docs/EVOLUTION_PHASE_106_OPERATIONAL_MODULE_AUDIT.md",
+    "scripts/check-evolution-phase-106.mjs",
+    "package.json"
+  ],
+  "validation": {
+    "phaseCheck": "npm run evolution:phase-106:check",
+    "typecheck": "not required: no app TypeScript changed",
+    "build": "release-gated"
+  },
+  "releasePolicy": {
+    "zipGenerated": false,
+    "reason": "A fase é auditoria fundacional. ZIP segue reservado para fechamento de versão após correções operacionais."
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "schema_version": "atlas.local_supabase_bootstrap.v1",
+  "scope": "pre-f12-local-configuration",
+  "status": "local_supabase_bootstrap_complete",
+  "checked_at": "2026-07-23T08:00:38.675Z",
+  "project_fingerprint": "aa170f86423cb6cdeb23001a3a6a16b0635138a4adde87e32e570840466b3770",
+  "tooling": {
+    "cli_version": "2.109.1",
+    "isolated_home": true,
+    "telemetry_disabled": true
+  },
+  "authorization": {
+    "receipt_present": true,
+    "receipt_valid": true,
+    "not_expired": true,
+    "fingerprint_matches": true,
+    "forbids_remote": true,
+    "approval_created_by_assessor": false
+  },
+  "local_config": {
+    "exists": true,
+    "sha256": "af57a3a022d411fdeb185416d11476c59cece9e9b6a59c0e6db4a7cf75cc1594",
+    "project_id": "Aplas_v_3",
+    "postgres_major": 17,
+    "contains_literal_secret": false,
+    "valid": true
+  },
+  "execution": {
+    "command": "supabase init",
+    "exact_args": true,
+    "raw_cli_output_persisted": false,
+    "environment_values_persisted": false,
+    "postcondition_verified": true,
+    "mode": "verified_existing_postcondition",
+    "command_replayed": false,
+    "exit_zero": null,
+    "cli_exit_status_available": false
+  },
+  "safety": {
+    "init_executed": true,
+    "force_used": false,
+    "linked_project_accessed": false,
+    "remote_accessed": false,
+    "database_started": false,
+    "migration_applied": false,
+    "data_accessed": false,
+    "credentials_read": false,
+    "build_executed": false,
+    "release_package_created": false
+  },
+  "next_action": "Reexecutar F12 e F22; disponibilizar runtime de containers e psql antes de solicitar a autorização JIT do ensaio descartável."
+}

@@ -1,0 +1,22 @@
+{
+  "phase": 11,
+  "objective": "Reduzir o JavaScript inicial carregando superfícies globais pesadas somente no primeiro acionamento, sem perder o primeiro comando.",
+  "lazySurfaces": ["commandPalette", "notifications", "quickCreate", "feedback", "copilot"],
+  "eagerOperationalServices": ["systemPulse", "workspaceMemory", "commercialPresence"],
+  "requirements": {
+    "clientSideDynamicImports": true,
+    "firstInteractionReplayed": true,
+    "keyboardShortcutsPreserved": true,
+    "lightweightLaunchersPreserved": true,
+    "operationalMonitorsRemainEager": true,
+    "identityPermissionsPreserved": true
+  },
+  "infrastructureMutation": {
+    "schema": false,
+    "data": false,
+    "rls": false,
+    "authentication": false,
+    "integrations": false,
+    "release": false
+  }
+}

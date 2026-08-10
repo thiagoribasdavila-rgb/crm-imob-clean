@@ -1,11 +1,10 @@
 import type { NextRequest } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
-import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, liveStorageRole, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
+import { descendantsFromLiveProfiles, liveStorageRole, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
 import { mapLegacyProfile, type CompatRow } from "@/lib/compat/legacy-v2";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { recordAuditLog, clientIp, userAgentOf } from "@/lib/api/authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +12,12 @@ type CommercialRole = "director" | "superintendent" | "manager" | "broker";
 type TeamPayload = { email?: string; fullName?: string; commercialRole?: CommercialRole; reportsTo?: string | null };
 type UpdatePayload = { profileId?: string; commercialRole?: CommercialRole; reportsTo?: string | null; active?: boolean };
 const roles = new Set<CommercialRole>(["director", "superintendent", "manager", "broker"]);
+const hierarchyProfileSelect = "id,name,email,role,active,organization_id,team,max_active_leads,availability_status,commercial_role,reports_to";
+const expectedSupervisor: Partial<Record<CommercialRole, CommercialRole>> = {
+  superintendent: "director",
+  manager: "superintendent",
+  broker: "manager",
+};
 
 function resolvedRole(profile: { role: string; commercialRole: CommercialRole | null }): CommercialRole | null {
   if (profile.commercialRole) return profile.commercialRole;
@@ -36,25 +41,43 @@ function publicProfile(profile: Record<string, unknown>) {
   };
 }
 
-
-/**
- * Confere se o responsável direto escolhido está dentro da linha hierárquica de
- * quem faz a alteração — lendo pelo cliente do USUÁRIO, não pelo admin, para que
- * a RLS limite o que ele enxerga. A regra também existe no banco
- * (`supervisor_outside_actor_hierarchy`); aqui ela vira uma recusa explicada,
- * em vez de uma exceção genérica vinda do Postgres.
- */
-async function validateSupervisor(db: SupabaseClient, organizationId: string, actorId: string, reportsTo: string | null) {
-  if (!reportsTo) return { ok: true as const };
-  const { data, error } = await db.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).eq("active", true).limit(1000);
-  if (error) return { ok: false as const, message: "Não foi possível validar a hierarquia comercial agora." };
-  const hierarchy = resolveLiveHierarchy((data ?? []) as unknown as CompatRow[]);
-  const supervisor = hierarchy.find((profile) => String(profile.id) === reportsTo);
-  if (!supervisor) return { ok: false as const, message: "Responsável direto fora do seu escopo de visão." };
-  const linhaDoAtor = descendantsFromLiveProfiles(hierarchy, actorId);
-  if (String(supervisor.id) !== actorId && !linhaDoAtor.has(String(supervisor.id))) {
-    return { ok: false as const, message: "O responsável direto precisa estar na sua linha hierárquica — estrutura paralela não é permitida." };
+async function validateSupervisor(
+  db: SupabaseClient,
+  organizationId: string,
+  actorId: string,
+  actorRole: CommercialRole | null,
+  memberRole: CommercialRole,
+  reportsTo: string | null | undefined,
+) {
+  const expectedRole = expectedSupervisor[memberRole];
+  if (!expectedRole || !reportsTo) {
+    return { ok: false as const, message: "Selecione um responsável direto compatível com a função." };
   }
+
+  const { data, error } = await db
+    .from("profiles")
+    .select(hierarchyProfileSelect)
+    .eq("organization_id", organizationId)
+    .eq("active", true)
+    .limit(1000);
+  if (error) return { ok: false as const, message: "Não foi possível validar a hierarquia comercial." };
+
+  const profiles = (data ?? []).map((profile) => mapLegacyProfile(profile as CompatRow));
+  const supervisor = profiles.find((profile) => String(profile.id) === reportsTo);
+  if (!supervisor || supervisor.commercial_role !== expectedRole) {
+    return { ok: false as const, message: "O responsável escolhido não pertence ao nível hierárquico exigido." };
+  }
+
+  if (actorRole === "manager" && reportsTo !== actorId) {
+    return { ok: false as const, message: "O gerente pode administrar somente o próprio time." };
+  }
+  if (actorRole === "superintendent") {
+    const actorScope = descendantsFromLiveProfiles(profiles, actorId);
+    if (reportsTo !== actorId && !actorScope.has(reportsTo)) {
+      return { ok: false as const, message: "O responsável escolhido está fora da sua estrutura comercial." };
+    }
+  }
+
   return { ok: true as const };
 }
 
@@ -66,7 +89,7 @@ export async function GET(request: NextRequest) {
   const actorRole = resolvedRole(identity.access.profile);
   if (!actorRole || actorRole === "broker") return apiError("FORBIDDEN", "Gestão de equipe disponível somente para a liderança.", identity.meta, { status: 403 });
 
-  const { data, error } = await identity.supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", identity.access.organization.id).order("name").limit(1000);
+  const { data, error } = await identity.supabase.from("profiles").select(hierarchyProfileSelect).eq("organization_id", identity.access.organization.id).order("name").limit(1000);
   if (error) return apiError("TEAM_LOOKUP_FAILED", "Não foi possível carregar a equipe.", identity.meta, { status: 500 });
   const hierarchy = resolveLiveHierarchy(data ?? []);
   const visible = actorRole === "director" ? hierarchy : hierarchy.filter((profile) => descendantsFromLiveProfiles(hierarchy, identity.access.profile.id).has(String(profile.id)));
@@ -86,6 +109,8 @@ export async function POST(request: NextRequest) {
   if (!email || !/^\S+@\S+\.\S+$/.test(email) || !fullName || fullName.length > 120 || !commercialRole || !roles.has(commercialRole)) return apiError("INVALID_TEAM_MEMBER", "Revise nome, e-mail e função comercial.", identity.meta, { status: 400 });
   if (!allowedNewRoles(actorRole).includes(commercialRole)) return apiError("FORBIDDEN", "Você não pode criar este nível hierárquico.", identity.meta, { status: 403 });
   if (actorRole === "manager" && body?.reportsTo !== identity.access.profile.id) return apiError("FORBIDDEN", "O gerente pode adicionar apenas corretores ao próprio time.", identity.meta, { status: 403 });
+  const supervisorValidation = await validateSupervisor(identity.supabase, identity.access.organization.id, identity.access.profile.id, actorRole, commercialRole, body.reportsTo);
+  if (!supervisorValidation.ok) return apiError("INVALID_SUPERVISOR", supervisorValidation.message, identity.meta, { status: 403 });
   const admin = getSupabaseAdmin();
   const baseUrl = (process.env.ATLAS_BASE_URL || process.env.NEXT_PUBLIC_APP_URL)?.replace(/\/$/, "");
   const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, { data: { name: fullName }, ...(baseUrl ? { redirectTo: `${baseUrl}/auth/callback?next=/settings/profile` } : {}) });
@@ -93,10 +118,31 @@ export async function POST(request: NextRequest) {
 
   const userId = invited.user.id;
   const { error: metadataError } = await admin.auth.admin.updateUserById(userId, { app_metadata: { organization_id: identity.access.organization.id, commercial_role: commercialRole } });
-  const { error: profileError } = await admin.from("profiles").upsert({ id: userId, organization_id: identity.access.organization.id, name: fullName, email, role: liveStorageRole(commercialRole), active: true, team: null }, { onConflict: "id" });
+  const { error: profileError } = await admin.from("profiles").upsert({
+    id: userId,
+    organization_id: identity.access.organization.id,
+    name: fullName,
+    email,
+    role: liveStorageRole(commercialRole),
+    commercial_role: commercialRole,
+    reports_to: body.reportsTo,
+    active: true,
+    team: null,
+  }, { onConflict: "id" });
   if (metadataError || profileError) { await admin.auth.admin.deleteUser(userId); return apiError("PROFILE_CREATE_FAILED", "O convite foi revertido porque a hierarquia não pôde ser criada.", identity.meta, { status: 409 }); }
+  const { error: hierarchyError } = await getSupabaseAdmin().rpc("manage_commercial_profile", {
+    p_actor_id: identity.access.profile.id,
+    p_organization_id: identity.access.organization.id,
+    p_profile_id: userId,
+    p_commercial_role: commercialRole,
+    p_reports_to: body.reportsTo,
+    p_active: true,
+  });
+  if (hierarchyError) {
+    await admin.auth.admin.deleteUser(userId);
+    return apiError("PROFILE_CREATE_FAILED", "O convite foi revertido porque a hierarquia não pôde ser auditada.", identity.meta, { status: 409 });
+  }
   structuredApiLog("info", "team.member_invited", request, identity.meta, { actorId: identity.access.profile.id, profileId: userId, commercialRole, emailDomain: email.split("@")[1] });
-  await recordAuditLog({ organizationId: identity.access.organization.id, actorId: identity.access.profile.id, action: "users.create", module: "users", resourceType: "profile", resourceId: userId, ip: clientIp(request), userAgent: userAgentOf(request), metadata: { commercialRole, emailDomain: email.split("@")[1] } });
   return apiSuccess({ id: userId, status: "invited", message: "Convite enviado. O acesso só será ativado após a confirmação do e-mail." }, identity.meta, { status: 201, headers: rate.headers });
 }
 
@@ -111,42 +157,23 @@ export async function PATCH(request: NextRequest) {
   if (!allowedNewRoles(actorRole).includes(body.commercialRole)) return apiError("FORBIDDEN", "Você não pode administrar este nível hierárquico.", identity.meta, { status: 403 });
   if (actorRole === "manager" && body.reportsTo !== identity.access.profile.id) return apiError("FORBIDDEN", "O gerente administra apenas seu próprio time.", identity.meta, { status: 403 });
   if (body.profileId === identity.access.profile.id && !body.active) return apiError("SELF_DEACTIVATION", "Você não pode desativar o próprio acesso.", identity.meta, { status: 400 });
-  const admin = getSupabaseAdmin();
-  const { data: target } = await admin.from("profiles").select(LIVE_PROFILE_SELECT).eq("id", body.profileId).eq("organization_id", identity.access.organization.id).maybeSingle();
+  const supervisorValidation = await validateSupervisor(identity.supabase, identity.access.organization.id, identity.access.profile.id, actorRole, body.commercialRole, body.reportsTo);
+  if (!supervisorValidation.ok) return apiError("INVALID_SUPERVISOR", supervisorValidation.message, identity.meta, { status: 403 });
+  const { data: target } = await identity.supabase.from("profiles").select(hierarchyProfileSelect).eq("id", body.profileId).eq("organization_id", identity.access.organization.id).maybeSingle();
   if (!target) return apiError("PROFILE_NOT_FOUND", "Usuário não encontrado nesta organização.", identity.meta, { status: 404 });
   if (String(target.role).toUpperCase() === "ADMIN") return apiError("PROTECTED_ADMIN", "O administrador principal é protegido.", identity.meta, { status: 403 });
-  // Escrita governada primeiro: manage_commercial_profile valida a hierarquia
-  // no banco (a regra `supervisor_outside_actor_hierarchy` já existe lá) e
-  // registra o evento em profile_hierarchy_events na mesma transação. O update
-  // direto abaixo não faz nenhuma das duas coisas — aceita qualquer supervisor
-  // e não deixa rastro da mudança de hierarquia.
-  const supervisorCheck = await validateSupervisor(identity.supabase, identity.access.organization.id, identity.access.profile.id, typeof body.reportsTo === "string" ? body.reportsTo : null);
-  if (!supervisorCheck.ok) return apiError("INVALID_SUPERVISOR", supervisorCheck.message, identity.meta, { status: 403, headers: rate.headers });
-
-  const governed = await getSupabaseAdmin().rpc("manage_commercial_profile", {
+  const { data, error } = await getSupabaseAdmin().rpc("manage_commercial_profile", {
     p_actor_id: identity.access.profile.id,
     p_organization_id: identity.access.organization.id,
     p_profile_id: body.profileId,
     p_commercial_role: body.commercialRole,
-    p_reports_to: typeof body.reportsTo === "string" && /^[0-9a-f-]{36}$/i.test(body.reportsTo) ? body.reportsTo : null,
+    p_reports_to: body.reportsTo,
     p_active: body.active,
   });
-  if (!governed.error) {
-    const refreshed = await admin.from("profiles").select(LIVE_PROFILE_SELECT).eq("id", body.profileId).eq("organization_id", identity.access.organization.id).maybeSingle();
-    if (refreshed.data) {
-      await recordAuditLog({ organizationId: identity.access.organization.id, actorId: identity.access.profile.id, action: body.active ? "users.edit" : "users.deactivate", module: "users", resourceType: "profile", resourceId: body.profileId, ip: clientIp(request), userAgent: userAgentOf(request), metadata: { commercialRole: body.commercialRole, active: body.active, governed: true } });
-      return apiSuccess({ profile: mapLegacyProfile(refreshed.data as CompatRow), governed: true }, identity.meta, { headers: rate.headers });
-    }
-  } else if (governed.error.code !== "42883" && governed.error.code !== "PGRST202") {
-    // Recusa da regra de hierarquia (ex.: supervisor fora da linha do ator).
-    // É resposta legítima do banco — não se contorna com update direto.
-    return apiError("INVALID_SUPERVISOR", "A hierarquia comercial recusou esta alteração: confira o responsável direto escolhido.", identity.meta, { status: 403, headers: rate.headers });
-  }
-
-  // Banco sem a migration da hierarquia governada: caminho direto de sempre.
-  const { data, error } = await admin.from("profiles").update({ role: liveStorageRole(body.commercialRole), active: body.active }).eq("id", body.profileId).eq("organization_id", identity.access.organization.id).select(LIVE_PROFILE_SELECT).single();
   if (error) return apiError("TEAM_UPDATE_REJECTED", "A alteração foi recusada pelas regras da hierarquia.", identity.meta, { status: 403 });
+  await getSupabaseAdmin().auth.admin.updateUserById(body.profileId, {
+    app_metadata: { organization_id: identity.access.organization.id, commercial_role: body.commercialRole },
+  });
   structuredApiLog("info", "team.member_updated", request, identity.meta, { actorId: identity.access.profile.id, profileId: body.profileId, commercialRole: body.commercialRole, active: body.active });
-  await recordAuditLog({ organizationId: identity.access.organization.id, actorId: identity.access.profile.id, action: body.active ? "users.edit" : "users.deactivate", module: "users", resourceType: "profile", resourceId: body.profileId, ip: clientIp(request), userAgent: userAgentOf(request), metadata: { commercialRole: body.commercialRole, active: body.active } });
   return apiSuccess({ profile: data }, identity.meta, { headers: rate.headers });
 }

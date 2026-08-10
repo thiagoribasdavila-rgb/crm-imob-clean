@@ -1,0 +1,453 @@
+{
+  "schema_version": "atlas.upstream_technical_readiness.f02-f16.v1",
+  "checked_at": "2026-07-23T16:55:50.936Z",
+  "status": "upstream_technical_chain_blocked",
+  "ready": false,
+  "tracks": {
+    "recovery": {
+      "status": "recovery_track_blocked",
+      "ready": false,
+      "phases_ready": 0,
+      "phases_total": 1,
+      "first_blocking_phase": 2,
+      "first_blocking_status": "recovery_blocked",
+      "phases": [
+        {
+          "phase": 2,
+          "title": "Restauração isolada e rollback V3",
+          "status": "recovery_blocked",
+          "ready": false,
+          "readiness_key": "recovery_ready_for_human_decision_and_contract_accepted",
+          "gates": {
+            "passed": 0,
+            "total": 7,
+            "percentage": 0,
+            "blockers": [
+              "database_restore",
+              "storage_restore",
+              "immutable_artifact",
+              "previous_v3_release",
+              "authenticated_smoke",
+              "recovery_metrics",
+              "director_approval"
+            ]
+          }
+        }
+      ]
+    },
+    "local_migration": {
+      "status": "local_migration_track_blocked",
+      "ready": false,
+      "phases_ready": 0,
+      "phases_total": 5,
+      "first_blocking_phase": 12,
+      "first_blocking_status": "isolated_baseline_capture_preflight_ready_runtime_blocked",
+      "phases": [
+        {
+          "phase": 12,
+          "title": "Captura estrutural sanitizada",
+          "status": "isolated_baseline_capture_preflight_ready_runtime_blocked",
+          "ready": false,
+          "readiness_key": "captureAccepted",
+          "gates": {
+            "passed": 15,
+            "total": 28,
+            "percentage": 54,
+            "blockers": [
+              "container_runtime_available",
+              "container_runtime_responding",
+              "psql_available",
+              "approval_receipt_valid",
+              "approval_not_expired",
+              "approved_target_is_loopback",
+              "target_fingerprint_matches",
+              "target_connection_verified",
+              "schema_dump_executed",
+              "schema_dump_exit_zero",
+              "schema_dump_contains_public",
+              "schema_inventory_created",
+              "checksum_created"
+            ]
+          }
+        },
+        {
+          "phase": 13,
+          "title": "Inventário de RLS, GRANTs e ACL",
+          "status": "access_surface_contract_ready_capture_blocked",
+          "ready": false,
+          "readiness_key": "security_approved",
+          "gates": {
+            "passed": 4,
+            "total": 32,
+            "percentage": 13,
+            "blockers": [
+              "phase_012_capture_accepted",
+              "canonical_sql_exists",
+              "phase_012_checksum_exists",
+              "phase_012_checksum_matches",
+              "catalog_snapshot_exists",
+              "catalog_snapshot_parses",
+              "snapshot_source_is_approved_loopback",
+              "snapshot_fingerprint_matches",
+              "snapshot_transaction_is_read_only",
+              "table_rows_not_read",
+              "required_collections_present",
+              "canonical_entities_inventoried",
+              "rls_inventory_complete",
+              "grant_inventory_complete",
+              "default_privilege_inventory_complete",
+              "view_inventory_complete",
+              "security_definer_inventory_complete",
+              "function_execute_inventory_complete",
+              "policy_inventory_complete",
+              "exposed_tables_have_rls",
+              "views_are_safe_or_not_exposed",
+              "security_definer_execute_is_minimal",
+              "security_definer_search_path_is_safe",
+              "update_policies_are_complete",
+              "policies_do_not_use_user_metadata",
+              "policies_do_not_use_auth_role",
+              "anonymous_business_access_is_denied",
+              "default_privileges_are_safe"
+            ]
+          }
+        },
+        {
+          "phase": 14,
+          "title": "Backlog determinístico de segurança",
+          "status": "security_remediation_contract_ready_inventory_blocked",
+          "ready": false,
+          "readiness_key": "backlog_ready_for_review",
+          "gates": {
+            "passed": 6,
+            "total": 21,
+            "percentage": 29,
+            "blockers": [
+              "phase_013_snapshot_exists",
+              "phase_013_snapshot_parses",
+              "snapshot_schema_version_matches",
+              "snapshot_source_is_approved_loopback",
+              "snapshot_postgres_major_matches",
+              "snapshot_fingerprint_is_attested",
+              "snapshot_transaction_is_read_only",
+              "table_rows_not_read",
+              "required_collections_present",
+              "canonical_entities_inventoried",
+              "inventory_structure_complete",
+              "findings_are_deterministic",
+              "findings_have_severity",
+              "findings_have_dependency_order",
+              "findings_are_unapproved"
+            ]
+          }
+        },
+        {
+          "phase": 15,
+          "title": "Pacote local aprovado de migration",
+          "status": "isolated_migration_contract_ready_approval_blocked",
+          "ready": false,
+          "readiness_key": "ready_for_cli_scaffold_review",
+          "gates": {
+            "passed": 13,
+            "total": 40,
+            "percentage": 33,
+            "blockers": [
+              "phase_014_backlog_exists",
+              "phase_014_backlog_parses",
+              "backlog_schema_version_matches",
+              "backlog_is_canonical",
+              "phase_013_snapshot_exists",
+              "phase_013_snapshot_parses",
+              "snapshot_schema_version_matches",
+              "snapshot_source_is_approved_loopback",
+              "snapshot_postgres_major_matches",
+              "approval_receipt_exists",
+              "approval_receipt_parses",
+              "approval_schema_version_matches",
+              "approval_status_matches",
+              "approval_scope_is_local_only",
+              "approval_identity_is_opaque",
+              "approval_timestamp_is_valid",
+              "change_ticket_is_present",
+              "rollback_review_is_present",
+              "backlog_hash_matches",
+              "snapshot_hash_matches",
+              "approved_ids_are_known_and_unique",
+              "selected_findings_are_migratable",
+              "p0_precedes_p1",
+              "dependency_closure_is_complete",
+              "exact_object_allowlist_is_derived",
+              "reversibility_is_classified",
+              "rollback_does_not_reopen_exposure"
+            ]
+          }
+        },
+        {
+          "phase": 16,
+          "title": "Ensaio local descartável",
+          "status": "local_rehearsal_contract_ready_inputs_blocked",
+          "ready": false,
+          "readiness_key": "ready_for_single_local_rehearsal",
+          "gates": {
+            "passed": 10,
+            "total": 49,
+            "percentage": 20,
+            "blockers": [
+              "phase_015_manifest_exists",
+              "phase_015_manifest_parses",
+              "manifest_schema_version_matches",
+              "phase_015_evidence_accepts_package",
+              "manifest_scope_is_local_pg17",
+              "manifest_contains_exactly_one_selected_batch",
+              "permit_exists",
+              "permit_parses",
+              "permit_schema_version_matches",
+              "permit_status_matches",
+              "permit_scope_is_local_only",
+              "permit_is_one_shot",
+              "permit_identity_is_opaque",
+              "permit_change_ticket_is_present",
+              "permit_window_is_valid",
+              "permit_postgres_major_matches",
+              "permit_cli_version_matches",
+              "permit_manifest_hash_matches",
+              "permit_batch_matches_manifest",
+              "migration_path_is_safe",
+              "migration_exists",
+              "migration_hash_matches",
+              "dynamic_test_path_is_safe",
+              "dynamic_test_exists",
+              "dynamic_test_hash_matches",
+              "review_path_is_safe",
+              "review_exists",
+              "review_parses",
+              "review_hash_matches",
+              "review_schema_version_matches",
+              "review_status_is_approved",
+              "review_manifest_hash_matches",
+              "review_migration_hash_matches",
+              "review_test_hash_matches",
+              "review_object_allowlist_matches",
+              "review_finding_mapping_is_complete",
+              "review_security_invariants_pass",
+              "migration_static_safety_passes",
+              "dynamic_test_static_safety_passes"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "recovery_contract": {
+    "accepted": false,
+    "passed": 0,
+    "total": 10,
+    "blockers": [
+      "recovery_schema_matches",
+      "recovery_status_is_approved",
+      "recovery_is_isolated",
+      "database_restore_passed",
+      "storage_restore_passed",
+      "previous_v3_artifact_is_immutable",
+      "authenticated_smoke_passed",
+      "recovery_metrics_are_present",
+      "director_approval_is_present",
+      "legacy_v2_is_not_rollback"
+    ]
+  },
+  "artifacts": [
+    {
+      "phase": 2,
+      "kind": "execution_and_human_decision",
+      "path": "artifacts/runtime/phase-002/execution/recovery-drill-evidence.json",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "phase": 12,
+      "kind": "local_project_config",
+      "path": "supabase/config.toml",
+      "exists": true,
+      "sha256": "af57a3a022d411fdeb185416d11476c59cece9e9b6a59c0e6db4a7cf75cc1594"
+    },
+    {
+      "phase": 12,
+      "kind": "local_bootstrap_evidence",
+      "path": "artifacts/runtime/phase-012/local-supabase-bootstrap-evidence.json",
+      "exists": true,
+      "sha256": "fc48b1937e5297a39eaf2d96effa1cec1c042c264e3102897889c4f3c0174c49"
+    },
+    {
+      "phase": 12,
+      "kind": "local_bootstrap_manual_approval",
+      "path": "artifacts/runtime/phase-012/manual/local-supabase-bootstrap-approval.json",
+      "exists": true,
+      "sha256": "13a1709f671ccb5f6a4fa96f26ceef9cacc11120a6a9fa56877ab4d2bb7db6ec"
+    },
+    {
+      "phase": 12,
+      "kind": "manual_approval",
+      "path": "artifacts/runtime/phase-012/manual-capture-approval-receipt.json",
+      "exists": true,
+      "sha256": "70bf65463706c92ee0671a0ba9550f59e024c19cf76e43ee6c7e8bf4110f7e57"
+    },
+    {
+      "phase": 12,
+      "kind": "schema_only_capture",
+      "path": "artifacts/runtime/phase-012/execution/canonical_baseline.public.sql",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "phase": 12,
+      "kind": "sanitized_inventory",
+      "path": "artifacts/runtime/phase-012/execution/schema_inventory.json",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "phase": 12,
+      "kind": "integrity",
+      "path": "artifacts/runtime/phase-012/execution/checksums.sha256",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "phase": 12,
+      "kind": "evidence",
+      "path": "artifacts/runtime/phase-012/isolated-baseline-capture-evidence.json",
+      "exists": true,
+      "sha256": "78cae8956e7c9dde496cd243cf885eec4f3f2cf625453eadd3ebfb4bbe33d5cf"
+    },
+    {
+      "phase": 13,
+      "kind": "read_only_snapshot",
+      "path": "artifacts/runtime/phase-013/execution/access-surface-snapshot.json",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "phase": 13,
+      "kind": "evidence",
+      "path": "artifacts/runtime/phase-013/access-surface-inventory-evidence.json",
+      "exists": true,
+      "sha256": "cc54c32e68ef25249c0cc86c4cf7b7b1f439f37f9e3afbbf97ae50abade10e53"
+    },
+    {
+      "phase": 14,
+      "kind": "unapproved_backlog",
+      "path": "artifacts/runtime/phase-014/execution/security-remediation-backlog.json",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "phase": 14,
+      "kind": "evidence",
+      "path": "artifacts/runtime/phase-014/security-remediation-backlog-evidence.json",
+      "exists": true,
+      "sha256": "a7e365aaa8af823026a733bbdb2fe2e8f3c65200f4bab264925aadda3e17b928"
+    },
+    {
+      "phase": 15,
+      "kind": "manual_approval",
+      "path": "artifacts/runtime/phase-015/manual/isolated-rehearsal-approval.json",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "phase": 15,
+      "kind": "local_manifest",
+      "path": "artifacts/runtime/phase-015/execution/isolated-migration-package.json",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "phase": 15,
+      "kind": "evidence",
+      "path": "artifacts/runtime/phase-015/isolated-migration-package-evidence.json",
+      "exists": true,
+      "sha256": "8f49cbf6bfe99ffc91935b7485fcaf28c7e52959dba654e7b814ca6f17ea9ba7"
+    },
+    {
+      "phase": 16,
+      "kind": "one_shot_manual_permit",
+      "path": "artifacts/runtime/phase-016/manual/local-migration-rehearsal-permit.json",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "phase": 16,
+      "kind": "manual_review",
+      "path": "artifacts/runtime/phase-016/manual/local-migration-review.json",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "phase": 16,
+      "kind": "local_rehearsal_result",
+      "path": "artifacts/runtime/phase-016/execution/local-migration-rehearsal-result.json",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "phase": 16,
+      "kind": "evidence",
+      "path": "artifacts/runtime/phase-016/local-migration-rehearsal-evidence.json",
+      "exists": true,
+      "sha256": "e308c93bfa99a888890fa0fce9e6b81b9cf98bc43d42ca2a820ab40666ba4e95"
+    }
+  ],
+  "next_actions": {
+    "recovery": {
+      "owner": "operador_autorizado_e_diretoria",
+      "action": "Executar um ensaio isolado de restauração do banco e do Storage, validar a versão V3 anterior com login autenticado, registrar RTO/RPO e concluir a aprovação humana.",
+      "forbidden_shortcut": "O V2 legado e a simples existência de backup não contam como restauração comprovada."
+    },
+    "local_migration": {
+      "owner": "equipe_tecnica_e_operador_autorizado",
+      "action": "Disponibilizar runtime de containers e psql; depois emitir uma aprovação curta vinculada a um PostgreSQL 17 em loopback para capturar apenas o schema.",
+      "local_bootstrap": {
+        "evidence_present": true,
+        "evidence_parses": true,
+        "status": "local_supabase_bootstrap_complete",
+        "ready_to_execute": false,
+        "approval_present": true
+      },
+      "tooling_missing": {
+        "project_config": false,
+        "container_runtime": true,
+        "psql": true
+      }
+    }
+  },
+  "ordered_safe_flow": [
+    "f02_isolated_recovery_drill",
+    "f12_local_pg17_schema_only_capture",
+    "f13_read_only_access_surface_inventory",
+    "f14_deterministic_unapproved_security_backlog",
+    "f15_human_approved_local_migration_manifest",
+    "f16_single_disposable_local_rehearsal",
+    "f17_f21_human_decision_chain",
+    "f22_disposable_environment_preflight"
+  ],
+  "governance": {
+    "human_approval_required": true,
+    "manual_approvals_created": false,
+    "missing_evidence_never_counts_as_approval": true,
+    "historical_migrations_are_not_runtime_proof": true,
+    "rls_and_data_api_grants_verified_separately": true,
+    "remote_apply_requires_new_explicit_authorization": true
+  },
+  "safety": {
+    "remote_read_executed": false,
+    "remote_write_executed": false,
+    "linked_project_accessed": false,
+    "local_database_started": false,
+    "migration_generated": false,
+    "migration_applied": false,
+    "production_touched": false,
+    "business_or_auth_data_read": false,
+    "build_executed": false,
+    "release_package_created": false
+  }
+}

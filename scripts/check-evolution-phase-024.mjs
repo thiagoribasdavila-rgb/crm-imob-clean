@@ -58,10 +58,9 @@ const checks = [
   ["Destinos canônicos existem", canonicalPagesExist],
   ["Aliases encaminham sem interface duplicada", aliasPagesAreCompatible],
   ["Compatibilidade usa redirecionamento temporário", config.redirectMode === "temporary-307" && config.permanentRedirectUsed === false],
-  ["Rotas CRM compatíveis saíram da quarentena", !legacyRoutes.includes('"app/(crm)/analytics"') && !legacyRoutes.includes('"app/(crm)/kanban"') && legacyRoutes.includes('"app/analytics"')],
-  ["Referências ativas usam destinos canônicos", sidebar.includes('href: "/marketing/creatives"') && atlasV2.includes('["Criativos", "/marketing/creatives"') && realRoutes.includes('"/atlas-v3/agents"')],
-  // O redesign CC-6 (hub governado, data-integrations-layout="cc6-governed-hub") passou a renderizar a entrada de diagnóstico via prop action do PageHeader ({ href: "/integrations/health" }) em vez de um anchor JSX cru. A entrada contextual para /integrations/health continua existindo; guard re-apontado à nova forma.
-  ["Diagnóstico de integração ganhou acesso contextual", integrations.includes('href: "/integrations/health"') && config.criticalJourneyImprovement.directContextualEntryAdded === true],
+  ["Aliases experimentais estão isolados da release", legacyRoutes.includes('"app/(crm)/analytics"') && legacyRoutes.includes('"app/(crm)/kanban"') && legacyRoutes.includes('"app/(crm)/creatives"')],
+  ["Referências preservadas apontam para destinos canônicos", atlasV2.includes('["Criativos", "/marketing/creatives"') && !sidebar.includes('href: "/atlas-v3"') && !realRoutes.includes('"/atlas-v3/agents"')],
+  ["Diagnóstico de integração ganhou acesso contextual", integrations.includes('href="/integrations/health"') && config.criticalJourneyImprovement.directContextualEntryAdded === true],
   ["Nenhuma rota ou dado foi apagado", config.routesDeleted === false && config.safetyPolicy.databaseRead === false && config.safetyPolicy.personalDataCaptured === false],
   ["Métrica comportamental não foi inventada", config.behavioralTelemetry.status === "awaiting-runtime-telemetry" && config.behavioralTelemetry.inventedMetricPublished === false],
   ["Relatório documenta compatibilidade e limite", report.includes("HTTP 307") && report.includes("Nenhuma rota foi apagada") && report.includes("Fase 025")],

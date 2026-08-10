@@ -1,0 +1,41 @@
+{
+  "phase": 184,
+  "name": "Conversion Core Supabase Named Remote Capture Procedure",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Preparar um procedimento operacional único, explicitamente autorizado e somente leitura para capturar version e name do histórico remoto, sem executar contato remoto nesta fase.",
+  "evidenceLevel": "local_procedure_tested_remote_capture_not_performed",
+  "runtimeHomologated": false,
+  "currentState": {
+    "collisionVersions": 3,
+    "collidingFiles": 6,
+    "supabaseCliMigrationListReturnsVersionOnly": true,
+    "remoteMigrationHistoryNameColumnConfirmedFromCliSource": true,
+    "singleUseReadOnlyProcedurePrepared": true,
+    "currentNamedRemoteEvidenceCollected": false
+  },
+  "safety": {
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationPushExecuted": false,
+    "migrationHistoryRepaired": false,
+    "migrationFileRenamed": false,
+    "databaseReset": false,
+    "secretsPersisted": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "procedureExecuted": false,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "directPushAllowed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Na fase 185, criar o gate local de autorização e revisão humana da captura; qualquer contato remoto continuará dependendo de autorização explícita separada."
+}

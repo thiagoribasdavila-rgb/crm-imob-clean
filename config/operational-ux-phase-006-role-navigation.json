@@ -1,0 +1,23 @@
+{
+  "phase": 6,
+  "objective": "Priorizar a rotina relevante para cada papel sem remover capacidades existentes.",
+  "roles": ["director", "superintendent", "manager", "broker"],
+  "fallbackRole": "broker",
+  "desktopRoutineSize": 5,
+  "mobileRoutineSize": 4,
+  "preservedAccess": {
+    "canonicalRoutes": true,
+    "sidebarSearch": true,
+    "favorites": true,
+    "rbac": true,
+    "contextualActions": true
+  },
+  "infrastructureMutation": {
+    "schema": false,
+    "data": false,
+    "rls": false,
+    "authentication": false,
+    "integrations": false,
+    "release": false
+  }
+}

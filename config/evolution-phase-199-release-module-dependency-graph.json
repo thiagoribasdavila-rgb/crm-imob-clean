@@ -1,0 +1,39 @@
+{
+  "phase": 199,
+  "name": "Release Module Dependency Graph",
+  "status": "implemented",
+  "objective": "Explicitar dependências entre os módulos registrados sem compor ZIP ou inferir prontidão de runtime.",
+  "currentState": {
+    "registeredModules": 2,
+    "dependencyEdges": 1,
+    "resolvedEdges": 1,
+    "structuralIssues": 0,
+    "cycles": 0,
+    "releaseReady": 0,
+    "blocked": 2,
+    "configurationHash": "1d9cd3be85a461c105974e0e29cffae5baa9a3cccd2103ab10a47bbee3a14f4d",
+    "graphHash": "badbc8cabb2dabc83a7c6861287bcfa1ef3c6962c18c3482d0b56402194e6928"
+  },
+  "dependencyRules": {
+    "exactModuleRevisionAndHashRequired": true,
+    "missingDependencyRejected": true,
+    "hashMismatchRejected": true,
+    "cyclesRejected": true,
+    "unconfiguredModulesRejected": true,
+    "dependencySatisfactionDoesNotOpenReleaseGates": true
+  },
+  "safety": {
+    "remoteAccess": false,
+    "databaseMutation": false,
+    "migrationApplied": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 200,
+    "name": "Release composition eligibility",
+    "objective": "Calcular elegibilidade de composição pela clausura das dependências e pelos gates reais, ainda sem gerar pacote."
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "phase": 25,
+  "program": "meta-andromeda-automation",
+  "mode": "sample_02_just_in_time_reconfirmation_receipt",
+  "status": "jit_confirmation_ready_activation_gate_closed",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-024.json",
+  "confirmationGate": "config/meta-repeatability-sample-02-jit-confirmation-gate.json",
+  "requestTemplate": "config/fixtures/meta-repeatability-sample-02-jit-confirmation-request-template.json",
+  "receiptTemplate": "config/fixtures/meta-repeatability-sample-02-jit-confirmation-receipt-template.json",
+  "confirmationRunner": "scripts/run-meta-repeatability-sample-02-jit-confirmation.mjs",
+  "confirmationPreflight": "scripts/preflight-meta-repeatability-sample-02-jit-confirmation.mjs",
+  "staticAudit": "scripts/audit-meta-repeatability-sample-02-jit-confirmation.mjs",
+  "documentation": "docs/META_REPEATABILITY_SAMPLE_02_JIT_CONFIRMATION.md",
+  "environmentAudit": {
+    "officialPhase24DraftDetected": false,
+    "officialReconfirmationRequestDetected": false,
+    "officialReceiptGenerated": false,
+    "authorizationActivated": false,
+    "remoteCallsExecuted": false,
+    "databaseMutationExecuted": false,
+    "reason": "O gate e os validadores estao prontos, mas rascunho e reconfirmacoes oficiais nao foram fornecidos. Autotestes usam somente fixtures sinteticas em memoria."
+  },
+  "releaseGate": {
+    "localReceiptContractPassed": true,
+    "syntheticReceiptSelfTestPassed": true,
+    "officialReceiptGenerated": false,
+    "authorizationActivationAllowed": false,
+    "manualObservationAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "maximumValidityMinutes": 5,
+    "mustExpireBeforeSourceDraft": true,
+    "singleUse": true,
+    "fourFreshIndependentRoles": true,
+    "draftReferenceReuseBlocked": true,
+    "rawRoleReferencesPersisted": false,
+    "temporaryCodePersisted": false,
+    "payloadPersisted": false,
+    "rawResponsePersisted": false,
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false,
+    "databaseMutation": false,
+    "productionAccess": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 26,
+    "objective": "Preparar o contrato de permissao manual efemera e consumivel para a segunda amostra, sem executar ou transmitir o evento."
+  }
+}

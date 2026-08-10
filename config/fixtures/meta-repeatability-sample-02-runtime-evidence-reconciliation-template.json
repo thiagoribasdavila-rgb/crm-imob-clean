@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "phase31.runtime-reconciliation.v1",
+  "phase": 31,
+  "sourcePhase": 30,
+  "status": "not_received",
+  "checkedAt": null,
+  "evidenceFingerprint": null,
+  "eventSequenceFingerprint": null,
+  "artifactFingerprintsMatched": false,
+  "runtimeApproved": false,
+  "remoteDatabaseTouched": false,
+  "metaTouched": false,
+  "buildExecuted": false
+}

@@ -2,7 +2,7 @@
 
 ## Resultado
 
-A Onda 002 começou com um mapa verificável da navegação do Atlas V3. Foram identificadas **141 rotas CRM rastreadas**, sem consultar dados comerciais, variáveis secretas ou usuários.
+A Onda 002 começou com um mapa verificável da navegação do Atlas. O inventário atualizado contém **144 rotas CRM no código-fonte**, sem consultar dados comerciais, variáveis secretas ou usuários. Superfícies internas ou experimentais podem permanecer no repositório e ser isoladas do pacote operacional.
 
 Esta fase não redesenha, remove ou redireciona rotas. Ela cria a base para reduzir ambiguidade com segurança nas próximas etapas.
 
@@ -25,7 +25,7 @@ Após a consolidação da Fase 93, os 25 destinos canônicos são formados por 1
 - `AppShell` preserva sidebar, topbar, dock e centros globais; o conteúdo da página reinicia quando o caminho muda.
 - Não há layouts aninhados dentro do grupo CRM. Loading e recuperação de erro são compartilhados no nível do grupo.
 
-Essa leitura evita o erro de colocar todas as 141 páginas na sidebar. Rotas de detalhe e de fluxo continuam contextuais; somente destinos recorrentes pertencem à navegação principal.
+Essa leitura evita o erro de colocar todas as 144 páginas na sidebar. Rotas de detalhe e de fluxo continuam contextuais; somente destinos recorrentes pertencem à navegação principal.
 
 ## Superfícies de topo fora do catálogo
 
@@ -43,7 +43,7 @@ Antes de qualquer redirecionamento, a Fase 022 deverá provar qual tarefa comerc
 
 1. Quinze páginas de topo existem fora da navegação governada; uma delas é a superfície interna `/atlas-v3`, e as demais ainda exigem descoberta contextual consistente.
 2. Três grupos apresentam sobreposição semântica clara: automação, pipeline/kanban e criativos.
-3. Um único limite de erro e carregamento atende 141 rotas; o isolamento por domínio deverá depender de evidência real de falha.
+3. Um único limite de erro e carregamento atende 144 rotas-fonte; o isolamento por domínio deverá depender de evidência real de falha.
 4. Oito superfícies globais persistem no shell; novos overlays só devem entrar após auditoria de foco, teclado e camadas.
 
 ## Proteções mantidas

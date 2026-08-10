@@ -1,0 +1,25 @@
+{
+  "schema": "atlas.meta-external-test-observation.v1",
+  "status": "not_observed",
+  "permitReference": null,
+  "eventReference": null,
+  "execution": {
+    "attemptCount": 0,
+    "permitConsumed": false,
+    "externalCallObserved": false,
+    "productionTouched": false,
+    "retryTriggered": false
+  },
+  "outcome": {
+    "resultClass": null,
+    "observedAt": null,
+    "followUp": "none"
+  },
+  "forbidden": {
+    "providerPayload": true,
+    "providerResponseBody": true,
+    "customerData": true,
+    "automaticRetry": true,
+    "automaticPromotion": true
+  }
+}

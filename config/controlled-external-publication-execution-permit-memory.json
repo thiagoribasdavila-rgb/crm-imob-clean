@@ -1,0 +1,18 @@
+{
+  "schema": "atlas.controlled-external-publication-execution-permit-memory.v1",
+  "policyHash": "a804274407a8f3f1410739a118e9c21b52217f551a035cbca4f0ea5f3f8046f7",
+  "entries": [],
+  "summary": {
+    "recordedPermits": 0,
+    "activeUnconsumedPermits": 0,
+    "consumedPermits": 0,
+    "distinctAcceptances": 0,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "e478edb4c980c7310331a5c688e85adc288e06d78dd2373cbdbbf4b9cf8098bd"
+}

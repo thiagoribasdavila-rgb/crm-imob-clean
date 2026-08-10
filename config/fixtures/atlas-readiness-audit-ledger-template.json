@@ -1,0 +1,17 @@
+{
+  "schema": "atlas.readiness-audit-ledger.v1",
+  "status": "empty",
+  "entries": [],
+  "execution": {
+    "buildAllowed": false,
+    "packageAllowed": false,
+    "deploymentAllowed": false
+  },
+  "forbidden": {
+    "secrets": true,
+    "rawSessions": true,
+    "authorizationClaims": true,
+    "customerRecords": true,
+    "personalData": true
+  }
+}

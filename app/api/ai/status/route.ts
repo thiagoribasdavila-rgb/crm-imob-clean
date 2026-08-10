@@ -15,11 +15,38 @@ export async function GET(request: NextRequest) {
   const models = aiModelProfiles();
   const gatewayConfigured = providers.openai || providers.deepseek || providers.qwen || providers.kimi || providers.glm;
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const [{ data: usageRows }, memoryResult, knowledgeResult, learningResult] = await Promise.all([access.supabase
-    .from("ai_usage_events")
-    .select("provider,model,total_tokens,latency_ms,estimated_cost_usd,created_at")
-    .gte("created_at", since)
-    .limit(5_000), access.supabase.from("lead_commercial_memory_states").select("id", { count: "exact", head: true }), access.supabase.from("project_materials").select("id", { count: "exact", head: true }).eq("is_current", true).eq("review_status", "verified"), access.supabase.from("ai_orchestration_decisions").select("id", { count: "exact", head: true }).gte("created_at", since)]);
+  const organizationId = access.access.organization.id;
+  const [{ data: usageRows }, memoryResult, knowledgeResult, learningResult, latestDecisionResult] = await Promise.all([
+    access.supabase
+      .from("ai_usage_events")
+      .select("provider,model,total_tokens,latency_ms,estimated_cost_usd,created_at")
+      .eq("organization_id", organizationId)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(5_000),
+    access.supabase
+      .from("lead_commercial_memory_states")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId),
+    access.supabase
+      .from("project_materials")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("is_current", true)
+      .eq("review_status", "verified"),
+    access.supabase
+      .from("ai_orchestration_decisions")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .gte("created_at", since),
+    access.supabase
+      .from("ai_orchestration_decisions")
+      .select("created_at,completed_at")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
   const usage = (usageRows ?? []).reduce(
     (total, row) => ({
       calls: total.calls + 1,
@@ -57,6 +84,13 @@ export async function GET(request: NextRequest) {
   const memoryOperational = (memoryResult.count ?? 0) > 0;
   const operatingSystem = resolveAtlasAIOS({ generativeConfigured: gatewayConfigured, generativeOperational, researchOperational, marketingConnected: Boolean(process.env.META_ADS_ACCESS_TOKEN) && Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), memoryRecords: memoryResult.count ?? 0, knowledgeDocuments: knowledgeResult.count ?? 0, learningEvents: learningResult.count ?? 0 });
   const agents = operatingSystem.agents.map(({ id, name, status, capabilities }) => ({ id, name, status, functions: capabilities }));
+  const calibrationVerifiedAt = [
+    usageRows?.[0]?.created_at,
+    latestDecisionResult.data?.completed_at || latestDecisionResult.data?.created_at,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1) ?? null;
   return NextResponse.json({
     status: generativeOperational ? "ready" : "degraded",
     gatewayConfigured,
@@ -77,7 +111,7 @@ export async function GET(request: NextRequest) {
       periodDays: 30,
     },
     domain: "mercado-imobiliario-brasileiro",
-    calibrationVerifiedAt: "2026-07-17",
+    calibrationVerifiedAt,
     marketSources: REAL_ESTATE_MARKET_SOURCES.map(
       ({ id, title, publisher, url, verifiedAt }) => ({
         id,

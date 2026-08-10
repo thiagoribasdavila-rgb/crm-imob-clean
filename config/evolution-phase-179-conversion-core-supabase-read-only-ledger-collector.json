@@ -1,0 +1,47 @@
+{
+  "phase": 179,
+  "name": "Conversion Core Supabase Read-only Migration Ledger Collector",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Preparar uma coleta atual e sanitizada do histórico remoto de migrations, com autorização dupla e sem permitir escrita, reparo, reset ou exposição de segredos.",
+  "evidenceLevel": "local_contract_tested_remote_collection_not_executed",
+  "runtimeHomologated": false,
+  "legacySnapshot": {
+    "path": "artifacts/runtime/phase-010/remote-migration-ledger-summary.json",
+    "capturedAt": "2026-07-23",
+    "classification": "historical_unverified_for_current_state",
+    "acceptedAsCurrentEvidence": false
+  },
+  "collector": {
+    "command": "supabase migration list --linked",
+    "explicitArgument": "--collect",
+    "explicitAuthorizationEnvironment": "ATLAS_ALLOW_READ_ONLY_REMOTE_MIGRATION_HISTORY=1",
+    "linkedProjectMustMatchAllowlistHash": true,
+    "rawOutputPersisted": false,
+    "credentialsPersisted": false,
+    "remoteCollectionExecutedInThisPhase": false
+  },
+  "safety": {
+    "remoteWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationHistoryRepaired": false,
+    "databaseReset": false,
+    "projectLinkedByAutomation": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "contractsPassed": true,
+    "defaultPreflightPassed": true,
+    "remoteHistoryEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "directPushAllowed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Em sessão operacional explicitamente autorizada, vincular manualmente o projeto correto sem compartilhar segredos e executar apenas o coletor read-only; revisar a evidência antes de qualquer DDL."
+}
+

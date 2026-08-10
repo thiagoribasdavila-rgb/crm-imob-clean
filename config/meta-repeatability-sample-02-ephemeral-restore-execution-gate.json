@@ -1,0 +1,101 @@
+{
+  "phase": 36,
+  "program": "meta-andromeda-automation",
+  "sourcePhase": 35,
+  "environment": "local_ephemeral_restore",
+  "schemaVersion": "phase36.local-restore-execution.v1",
+  "approval": {
+    "required": true,
+    "exactValue": "EXECUTE_PHASE36_LOCAL_EPHEMERAL_RESTORE_ONLY"
+  },
+  "sourceContract": {
+    "schemaVersion": "phase35.restore-rehearsal-contract.v1",
+    "phase": 35,
+    "sourcePhase": 34,
+    "status": "contract_prepared_execution_blocked",
+    "backupEvidenceAccepted": true,
+    "restoreExecuted": false,
+    "restoreExecutionAllowed": false,
+    "stagingMigrationAllowed": false,
+    "productionMigrationAllowed": false,
+    "productionCompatibilityApproved": false
+  },
+  "backup": {
+    "manifestSchemaVersion": "phase35.backup-manifest.v1",
+    "supportedType": "logical",
+    "maximumSizeBytes": 21474836480,
+    "contentHashRequired": true,
+    "exactSizeRequired": true,
+    "validationExpectationsRequired": true
+  },
+  "runtime": {
+    "engine": "docker_compose",
+    "composeFile": "infra/meta-phase36/compose.yaml",
+    "composeProject": "atlas-meta-phase36",
+    "postgresImage": "supabase/postgres:17.6.1.149",
+    "postgresMajor": 17,
+    "database": "atlas_phase36_restore",
+    "user": "postgres",
+    "networkMode": "none",
+    "publishedPorts": false,
+    "linkedProject": false,
+    "remoteTarget": false,
+    "productionTarget": false,
+    "singleTransaction": true,
+    "stopOnError": true,
+    "disableTriggersDuringDataRestore": true,
+    "destroyVolumesAfterRun": true,
+    "maximumRestoreDurationMs": 1800000
+  },
+  "requiredValidationExpectations": [
+    "catalogFingerprint",
+    "userSchemaCount",
+    "tableCount",
+    "rlsEnabledTableCount",
+    "publicTablesWithoutRls",
+    "invalidConstraintCount",
+    "authUserCount",
+    "storageBucketCount",
+    "storageObjectMetadataCount",
+    "migrationCount"
+  ],
+  "requiredPostRestoreChecks": {
+    "postgresMajorMatches": true,
+    "catalogFingerprintMatches": true,
+    "catalogCountsMatch": true,
+    "publicTablesWithoutRlsEqualsZero": true,
+    "invalidConstraintCountEqualsZero": true,
+    "authCountsMatch": true,
+    "storageMetadataCountsMatch": true,
+    "migrationCountMatches": true,
+    "restoreDurationWithinLimit": true,
+    "targetDestructionVerified": true
+  },
+  "prohibitedLogicalBackupPatterns": [
+    "psql_shell_escape",
+    "psql_setenv",
+    "copy_from_program",
+    "foreign_server",
+    "user_mapping",
+    "dblink_connect",
+    "network_http_call",
+    "cron_schedule"
+  ],
+  "prohibitedActions": {
+    "remoteDatabaseAccess": true,
+    "linkedProjectAccess": true,
+    "productionMutation": true,
+    "stagingMutation": true,
+    "supabaseDbPush": true,
+    "supabaseDbResetLinked": true,
+    "physicalBackupRestore": true,
+    "permitReservation": true,
+    "permitIssuance": true,
+    "permitConsumption": true,
+    "realMetaEventDelivery": true,
+    "testMetaEventDelivery": true,
+    "campaignMutation": true,
+    "deployment": true,
+    "buildExecution": true
+  }
+}

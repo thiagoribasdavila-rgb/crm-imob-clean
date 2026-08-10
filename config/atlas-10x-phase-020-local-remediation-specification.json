@@ -1,0 +1,306 @@
+{
+  "schema_version": "atlas.10x.phase-020.v1",
+  "phase": 20,
+  "total_phases": 24,
+  "name": "Especificação local de remediação Supabase",
+  "objective": "Converter somente workstreams sanitizados, ativos e explicitamente aprovados por uma pessoa em especificações locais determinísticas de mudança, rollback e testes de isolamento, sem nomes de objetos, SQL, migration, comando remoto, dados reais, build ou ZIP.",
+  "status": "local_specification_contract_ready_phase_019_plan_and_human_approval_required",
+  "build_policy": "build_only_on_release_package",
+  "input_contract": {
+    "approval_path": "artifacts/runtime/phase-020/manual/remediation-workstream-approval.json",
+    "required_plan_schema_version": "atlas.sanitized_remediation_plan.v1",
+    "required_plan_status": "sanitized_remediation_plan_ready_for_local_design",
+    "required_approval_schema_version": "atlas.remediation_workstream_approval.v1",
+    "required_approval_status": "approved_for_local_specification_only",
+    "required_approval_scope": "sanitized_active_workstreams_only",
+    "approval_ttl_minutes": 60
+  },
+  "approval_contract": {
+    "required_fields": [
+      "schema_version",
+      "status",
+      "scope",
+      "one_shot",
+      "consumed",
+      "issued_at",
+      "expires_at",
+      "reviewed_by",
+      "change_ticket",
+      "plan_sha256",
+      "approved_workstream_ids",
+      "deferred_workstream_ids",
+      "authorizations"
+    ],
+    "required_authorization_fields": [
+      "local_specification",
+      "sql_authoring",
+      "migration_generation",
+      "remote_read",
+      "remote_write",
+      "migration_apply",
+      "db_push",
+      "migration_repair",
+      "branch_mutation",
+      "production",
+      "business_rows_read",
+      "auth_rows_read",
+      "storage_objects_read",
+      "build",
+      "release_package"
+    ],
+    "requires_non_empty_approval": true,
+    "requires_exact_active_partition": true,
+    "requires_human_reviewer": true,
+    "requires_change_ticket": true,
+    "object_names_forbidden": true,
+    "raw_sql_forbidden": true,
+    "credentials_forbidden": true,
+    "personal_data_forbidden": true,
+    "business_data_forbidden": true,
+    "auth_user_data_forbidden": true
+  },
+  "specification_contract": {
+    "schema_version": "atlas.local_remediation_specification.v1",
+    "ready_status": "local_specifications_ready_for_human_authoring",
+    "required_root_fields": [
+      "schema_version",
+      "status",
+      "source",
+      "summary",
+      "items",
+      "privacy",
+      "authorizations"
+    ],
+    "required_source_fields": [
+      "plan_sha256",
+      "approval_sha256",
+      "observation_sha256",
+      "catalog_sha256"
+    ],
+    "required_summary_fields": [
+      "approved_workstreams",
+      "deferred_workstreams",
+      "approved_findings",
+      "migration_files_created"
+    ],
+    "required_item_fields": [
+      "workstream_id",
+      "finding_class",
+      "finding_count",
+      "priority",
+      "owner_class",
+      "design_class",
+      "design_requirements",
+      "verification_cases",
+      "rollback_required",
+      "human_sql_authoring_required",
+      "migration_file_created",
+      "raw_sql_included",
+      "remote_execution_allowed",
+      "status"
+    ],
+    "item_status": "approved_for_local_specification_only",
+    "required_privacy_fields": [
+      "contains_credentials",
+      "contains_personal_data",
+      "contains_business_data",
+      "contains_auth_user_data",
+      "contains_object_names",
+      "contains_raw_sql",
+      "contains_raw_cli_output"
+    ],
+    "required_authorization_fields": [
+      "sql_authoring",
+      "migration_generation",
+      "remote_read",
+      "remote_write",
+      "migration_apply",
+      "db_push",
+      "migration_repair",
+      "branch_mutation",
+      "production",
+      "business_rows_read",
+      "auth_rows_read",
+      "storage_objects_read",
+      "build",
+      "release_package"
+    ],
+    "human_sql_authoring_required": true,
+    "rollback_required": true,
+    "migration_files_created": 0,
+    "raw_sql_forbidden": true,
+    "object_names_forbidden": true
+  },
+  "design_catalog": [
+    {
+      "workstream_id": "WS-RLS-001",
+      "design_class": "row_level_security_boundary",
+      "design_requirements": [
+        "explicit_rls_enablement",
+        "tenant_predicate_review",
+        "least_privilege_role_scope"
+      ],
+      "verification_cases": [
+        "anonymous_access_denied",
+        "cross_tenant_access_denied",
+        "authorized_tenant_access_allowed"
+      ]
+    },
+    {
+      "workstream_id": "WS-GRANT-002",
+      "design_class": "data_api_grant_boundary",
+      "design_requirements": [
+        "explicit_object_grants",
+        "minimum_required_privileges",
+        "rls_and_grants_reviewed_together"
+      ],
+      "verification_cases": [
+        "ungranted_role_access_denied",
+        "granted_role_respects_rls",
+        "service_secret_not_required_in_client"
+      ]
+    },
+    {
+      "workstream_id": "WS-UPDATE-003",
+      "design_class": "update_policy_boundary",
+      "design_requirements": [
+        "select_policy_pairing",
+        "using_predicate_required",
+        "with_check_predicate_required"
+      ],
+      "verification_cases": [
+        "owned_row_update_allowed",
+        "cross_tenant_update_denied",
+        "ownership_reassignment_denied"
+      ]
+    },
+    {
+      "workstream_id": "WS-VIEW-004",
+      "design_class": "view_security_boundary",
+      "design_requirements": [
+        "security_invoker_preferred",
+        "unexposed_schema_or_revoke_fallback",
+        "underlying_rls_review"
+      ],
+      "verification_cases": [
+        "view_respects_caller_rls",
+        "anonymous_view_access_denied",
+        "cross_tenant_view_rows_denied"
+      ]
+    },
+    {
+      "workstream_id": "WS-DEFINER-005",
+      "design_class": "privileged_function_boundary",
+      "design_requirements": [
+        "security_invoker_preferred",
+        "fixed_search_path_if_definer_required",
+        "explicit_execute_grants"
+      ],
+      "verification_cases": [
+        "public_execute_denied",
+        "caller_identity_verified",
+        "cross_tenant_function_access_denied"
+      ]
+    },
+    {
+      "workstream_id": "WS-SECADV-006",
+      "design_class": "security_advisor_resolution",
+      "design_requirements": [
+        "finding_specific_remediation",
+        "least_privilege_revalidation",
+        "security_advisor_rerun_required"
+      ],
+      "verification_cases": [
+        "security_advisor_finding_resolved",
+        "tenant_isolation_regression_passes",
+        "authorization_regression_passes"
+      ]
+    },
+    {
+      "workstream_id": "WS-PERFADV-007",
+      "design_class": "performance_advisor_resolution",
+      "design_requirements": [
+        "performance_change_requires_evidence",
+        "security_semantics_preserved",
+        "rollback_threshold_defined"
+      ],
+      "verification_cases": [
+        "performance_advisor_finding_reviewed",
+        "query_regression_within_threshold",
+        "tenant_isolation_regression_passes"
+      ]
+    }
+  ],
+  "required_gates": [
+    "phase_019_assessment_is_available",
+    "phase_019_plan_is_ready",
+    "phase_019_plan_schema_matches",
+    "phase_019_plan_is_sanitized",
+    "phase_019_plan_authorizes_no_action",
+    "phase_019_plan_hash_is_sha256",
+    "approval_exists",
+    "approval_parses",
+    "approval_schema_matches",
+    "approval_status_matches",
+    "approval_scope_matches",
+    "approval_is_one_shot_and_unused",
+    "approval_window_is_valid",
+    "approval_reviewer_is_present",
+    "approval_change_ticket_is_present",
+    "approval_plan_hash_matches",
+    "approval_ids_are_unique",
+    "approval_has_active_workstream",
+    "approval_contains_only_active_workstreams",
+    "approval_partitions_active_workstreams",
+    "approval_authorizes_local_specification_only",
+    "approval_contains_no_object_names_or_sql",
+    "design_catalog_is_exact",
+    "design_catalog_ids_are_unique",
+    "design_requirements_are_controlled",
+    "verification_cases_are_controlled",
+    "specification_is_generated_in_memory",
+    "specification_schema_matches",
+    "specification_status_matches",
+    "specification_source_shape_is_exact",
+    "specification_source_hashes_match",
+    "specification_summary_shape_is_exact",
+    "specification_summary_matches_approval",
+    "specification_item_count_matches_approval",
+    "specification_item_shapes_are_exact",
+    "specification_contains_only_approved_workstreams",
+    "specification_counts_match_plan",
+    "specification_designs_match_catalog",
+    "specification_requires_rollback",
+    "specification_requires_human_sql_authoring",
+    "specification_contains_no_migration_file",
+    "specification_contains_no_sql_or_object_names",
+    "specification_contains_no_credentials_or_rows",
+    "specification_authorizes_no_remote_action",
+    "remote_command_not_executed",
+    "migration_not_generated_or_applied",
+    "production_not_touched",
+    "business_or_auth_data_not_read",
+    "build_not_executed",
+    "package_not_created"
+  ],
+  "execution_policy": {
+    "this_evaluator_executes_remote_commands": false,
+    "this_evaluator_writes_files": false,
+    "allows_local_specification_in_memory": true,
+    "allows_sql_authoring": false,
+    "allows_migration_generation": false,
+    "allows_remote_read": false,
+    "allows_remote_write": false,
+    "allows_migration_apply": false,
+    "allows_db_push": false,
+    "allows_migration_repair": false,
+    "allows_branch_mutation": false,
+    "allows_production": false,
+    "allows_business_data_read": false,
+    "allows_auth_user_read": false,
+    "allows_storage_object_read": false,
+    "allows_build": false,
+    "allows_release_package": false
+  },
+  "next_phase": "Fase 21/24: autorizar e criar migrations locais nomeadas pelo Supabase CLI somente para especificações aprovadas, acompanhadas de testes negativos de isolamento, ainda sem aplicação remota."
+}

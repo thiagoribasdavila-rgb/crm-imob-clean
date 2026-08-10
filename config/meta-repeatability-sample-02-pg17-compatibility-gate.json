@@ -1,0 +1,78 @@
+{
+  "phase": 32,
+  "program": "meta-andromeda-automation",
+  "sourcePhase": 31,
+  "environment": "local_ephemeral_pg17",
+  "approval": {
+    "required": true,
+    "exactValue": "EXECUTE_PHASE32_PG17_LOCAL_EPHEMERAL_ONLY"
+  },
+  "sourceEvidence": {
+    "phase30RuntimeEvidenceRequired": true,
+    "phase31ReconciliationRequired": true,
+    "sharedArtifactFingerprintsMustMatch": true
+  },
+  "runtime": {
+    "engine": "docker_compose",
+    "composeFile": "infra/meta-phase32/compose.pg17.yaml",
+    "postgresImage": "supabase/postgres:17.6.1.149",
+    "postgresMajor": 17,
+    "host": "127.0.0.1",
+    "port": 55433,
+    "database": "atlas_phase32",
+    "user": "postgres",
+    "volume": "phase32-pg17-postgres-data",
+    "reusesPg15Volume": false,
+    "linkedProject": false,
+    "remoteTarget": false,
+    "productionTarget": false,
+    "destroyVolumesAfterRun": true
+  },
+  "extensionCompatibility": {
+    "allowedRequiredExtensions": ["pgcrypto"],
+    "blockedOnPg17": ["timescaledb", "plv8", "plcoffee", "plls"]
+  },
+  "requiredEventSequence": [
+    "source_evidence_verified",
+    "runtime_started",
+    "baseline_applied",
+    "migration_applied",
+    "pg17_compatibility_verified",
+    "security_verified",
+    "rollback_started",
+    "rollback_verified",
+    "runtime_destroyed"
+  ],
+  "requiredArtifacts": {
+    "compose": "infra/meta-phase32/compose.pg17.yaml",
+    "baseline": "supabase/tests/fixtures/phase_030_meta_permit_ledger_baseline.sql",
+    "migration": "supabase/migrations/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
+    "pg17Verification": "supabase/tests/database/phase_032_meta_permit_ledger_pg17_verify.sql",
+    "securityVerification": "supabase/tests/database/phase_030_meta_permit_ledger_verify.sql",
+    "rollback": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.rollback.sql",
+    "cleanupVerification": "supabase/tests/database/phase_030_meta_permit_ledger_cleanup_verify.sql"
+  },
+  "allowedMutation": {
+    "freshPg17EphemeralDatabaseOnly": true,
+    "applyBaselineContract": true,
+    "applyOfficialMigration": true,
+    "verifyCompatibilityAndSecurity": true,
+    "rollbackLedgerObjects": true,
+    "destroyLocalRuntime": true,
+    "persistPermitReservation": false
+  },
+  "prohibitedActions": {
+    "reusePg15DataDirectory": true,
+    "remoteDatabaseAccess": true,
+    "linkedProjectAccess": true,
+    "productionMutation": true,
+    "permitReservation": true,
+    "permitIssuance": true,
+    "permitConsumption": true,
+    "realMetaEventDelivery": true,
+    "testMetaEventDelivery": true,
+    "campaignMutation": true,
+    "deployment": true,
+    "build": true
+  }
+}

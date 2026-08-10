@@ -1,0 +1,49 @@
+{
+  "format": "atlas_meta_repeatability_manual_permit_contract_request_v1",
+  "phase": 26,
+  "environment": "staging_clone",
+  "contractReference": null,
+  "requestedAt": null,
+  "sourceReceiptFingerprint": null,
+  "requestedValiditySeconds": null,
+  "slot": {
+    "slotId": "repeatability_02",
+    "sampleOrdinal": 2
+  },
+  "event": {
+    "eventName": null,
+    "classification": null,
+    "eventIdFingerprint": null,
+    "syntheticRecordFingerprint": null
+  },
+  "operatorBinding": {
+    "role": "operator",
+    "reference": null
+  },
+  "antiReplay": {
+    "nonce": { "reference": null },
+    "idempotencyKey": { "reference": null },
+    "uniqueAndUnusedAttested": false
+  },
+  "controls": {
+    "sourceReceiptReviewed": false,
+    "canonicalEventReviewed": false,
+    "syntheticRecordReviewed": false,
+    "atomicConsumeBeforeAction": false,
+    "singleUseOnly": false,
+    "realCustomerDataIncluded": false,
+    "temporaryCodeRemainsInOfficialSurface": false,
+    "stopWithoutRetry": false,
+    "campaignUnchanged": false,
+    "budgetUnchanged": false,
+    "audienceUnchanged": false,
+    "noPerformanceClaim": false
+  },
+  "issuance": {
+    "issued": false,
+    "usable": false,
+    "consumed": false,
+    "executed": false,
+    "eventDelivered": false
+  }
+}

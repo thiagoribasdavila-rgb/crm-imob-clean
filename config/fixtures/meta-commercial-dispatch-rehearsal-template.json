@@ -1,0 +1,21 @@
+{
+  "schema": "atlas.meta-commercial-dispatch-rehearsal.v1",
+  "status": "not_requested",
+  "environment": "staging",
+  "outboxReference": null,
+  "authorizationReference": null,
+  "testEventOnly": true,
+  "maxEvents": 0,
+  "dispatch": {
+    "enabled": false,
+    "provider": null,
+    "productionAllowed": false
+  },
+  "forbidden": {
+    "secrets": true,
+    "rawCustomerData": true,
+    "productionEvents": true,
+    "automaticRetry": true,
+    "automaticOptimization": true
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "phase": 60,
+  "experienceVersion": "atlas-v30-phase-59",
+  "canonicalGateStore": "feature_flags",
+  "featureFlagKey": "operational_ux_v30",
+  "directorApprovalRequired": true,
+  "minimumUtilityRating": 4,
+  "comparableEvidenceRequired": true,
+  "rollbackAlwaysAvailable": true,
+  "rollbackTarget": "atlas-v3-operational-safe",
+  "causalClaimAllowed": false,
+  "organizationIsolationPreserved": true,
+  "migrationCreated": false,
+  "remoteDataChangedDuringPhase": false,
+  "buildExecuted": false,
+  "zipGenerated": false,
+  "deploymentExecuted": false
+}

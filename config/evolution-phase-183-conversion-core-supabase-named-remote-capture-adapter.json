@@ -1,0 +1,41 @@
+{
+  "phase": 183,
+  "name": "Conversion Core Supabase Named Remote Capture Adapter",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Converter deterministicamente uma futura captura nominal, atual, autorizada e somente leitura para o contrato de evidência da fase 182, sem executar a captura nem permitir mutações.",
+  "evidenceLevel": "local_adapter_tested_remote_capture_not_performed",
+  "runtimeHomologated": false,
+  "currentState": {
+    "collisionVersions": 3,
+    "collidingFiles": 6,
+    "adapterImplemented": true,
+    "safeEmptyTemplateImplemented": true,
+    "currentNamedRemoteEvidenceCollected": false,
+    "remoteCollectorImplemented": false
+  },
+  "safety": {
+    "remoteContacted": false,
+    "remoteWriteExecuted": false,
+    "migrationApplied": false,
+    "migrationHistoryRepaired": false,
+    "migrationFileRenamed": false,
+    "databaseReset": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "releaseGate": {
+    "adapterImplemented": true,
+    "adapterTestsPassed": true,
+    "currentNamedRemoteEvidenceCollected": false,
+    "migrationHistoryReconciled": false,
+    "collisionNamesResolved": false,
+    "directPushAllowed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Em fase separada, preparar um procedimento operacional somente leitura e de uso único; executá-lo apenas após autorização explícita e revisar humanamente a evidência antes de propor reconciliação."
+}
+

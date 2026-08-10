@@ -1,0 +1,39 @@
+{
+  "format": "atlas_meta_auth_isolated_rehearsal_evidence_v1",
+  "phase": 15,
+  "environment": "staging_clone",
+  "passed": false,
+  "sanitized": true,
+  "containsSecrets": false,
+  "containsPersonalData": false,
+  "projectIdentifiersPersisted": false,
+  "productionProject": false,
+  "emptyCloneGate": {
+    "required": true,
+    "passed": false,
+    "initialCounts": null
+  },
+  "fixtureLifecycle": {
+    "provisioned": false,
+    "organizationsCreated": 0,
+    "authUsersCreated": 0,
+    "profilesCreated": 0,
+    "leadsCreated": 0,
+    "credentialsPersisted": false,
+    "cleanup": {
+      "complete": false,
+      "zeroResidual": false,
+      "residual": null,
+      "errorCodes": []
+    }
+  },
+  "authJwtDataApi": null,
+  "errorCode": null,
+  "prohibitedActions": {
+    "productionMutation": false,
+    "realMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false
+  }
+}

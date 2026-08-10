@@ -1,0 +1,58 @@
+{
+  "phase": 176,
+  "name": "Conversion Core Local Role Provisioning",
+  "status": "implemented",
+  "moduleId": "conversion-core",
+  "objective": "Provisionar ADMIN, DIRETOR, GERENTE e CORRETOR de forma idempotente apenas no Supabase local descartável e executar a jornada autenticada sem entregar a chave administrativa ao navegador.",
+  "evidenceLevel": "local_role_provisioning_contract_ready_runtime_blocked",
+  "runtimeHomologated": false,
+  "provisioningContract": {
+    "localLoopbackOnly": true,
+    "operationalProjectForbidden": true,
+    "authUsersIdempotentByNormalizedEmail": true,
+    "profilesAuthoritativeForAuthorization": true,
+    "appMetadataMirrorOnly": true,
+    "officialFourRoleHierarchy": true,
+    "serviceRolePassedToBrowser": false,
+    "seedModified": false,
+    "secretsReturned": false
+  },
+  "runtimeEvidence": {
+    "contractTestsPassed": true,
+    "dockerAvailable": false,
+    "localSupabaseAvailable": false,
+    "authenticatedJourneyExecuted": false,
+    "reason": "O provisionador e o isolamento de credenciais estão aprovados por contratos, mas a prova real permanece bloqueada pela ausência de Docker e Supabase local neste host."
+  },
+  "safety": {
+    "productionCredentialsUsed": false,
+    "productionDatabaseTouched": false,
+    "externalIntegrationsCalled": false,
+    "buildExecuted": false,
+    "zipGenerated": false,
+    "deployExecuted": false
+  },
+  "runtimeBlockers": [
+    {
+      "id": "docker-runtime-unavailable",
+      "reason": "A CLI Supabase local depende de containers e Docker não está disponível."
+    },
+    {
+      "id": "local-supabase-unavailable",
+      "reason": "A pilha Supabase local descartável não está em execução."
+    },
+    {
+      "id": "source-traceability-missing",
+      "reason": "O diretório canônico atual não contém metadados Git; release permanece sem proveniência comprovável."
+    }
+  ],
+  "releaseGate": {
+    "contractsPassed": true,
+    "authenticatedIsolatedRuntimePassed": false,
+    "sourceTraceabilityPassed": false,
+    "buildAllowed": false,
+    "zipAllowed": false,
+    "deployAllowed": false
+  },
+  "nextAction": "Disponibilizar Docker/Supabase local e preencher apenas as variáveis ATLAS_E2E_ISOLATED_* e ATLAS_E2E_LOCAL_PROVISIONER_SERVICE_ROLE_KEY para executar a prova descartável."
+}

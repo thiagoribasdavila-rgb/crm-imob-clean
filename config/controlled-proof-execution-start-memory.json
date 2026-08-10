@@ -1,0 +1,20 @@
+{
+  "schema": "atlas.controlled-proof-execution-start-memory.v1",
+  "policyHash": "d7a209ef92a0f0f0088722ca1253641273e53471ea023cab54d2b00f99c06efa",
+  "entries": [],
+  "summary": {
+    "recordedExecutionStarts": 0,
+    "consumedStartAuthorizations": 0,
+    "distinctExecutionStarts": 0,
+    "latestEntryHash": null,
+    "controlledProofExecutionStarted": false,
+    "controlledProofExecutionObserved": false,
+    "publicationExecuted": false,
+    "externalPublicationExecuted": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "648788366a7e1e0a11470a0f81fcc3c26eb03cdc674f10c1baa079fe2d5e8db0"
+}

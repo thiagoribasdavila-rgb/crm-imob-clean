@@ -1,0 +1,151 @@
+{
+  "schema_version": "atlas.10x.phase-014.v1",
+  "phase": 14,
+  "total_phases": 24,
+  "name": "Backlog seguro de correções da superfície de acesso",
+  "objective": "Transformar o inventário canônico da Fase 13 em um backlog determinístico de correções com severidade, dependências e propostas SQL somente comentadas, sem aplicar alterações no banco.",
+  "status": "security_remediation_contract_ready_inventory_blocked",
+  "build_policy": "build_only_on_release_package",
+  "input_contract": {
+    "phase_013_config_path": "config/atlas-10x-phase-013-access-surface-inventory.json",
+    "phase_013_evidence_path": "artifacts/runtime/phase-013/access-surface-inventory-evidence.json",
+    "phase_013_snapshot_path": "artifacts/runtime/phase-013/execution/access-surface-snapshot.json",
+    "required_snapshot_schema_version": "atlas.access_surface_snapshot.v1",
+    "required_source_kind": "isolated_loopback_pg17",
+    "expected_postgres_major": 17,
+    "requires_phase_013_security_approval": false,
+    "requires_canonical_inventory_integrity": true
+  },
+  "backlog_contract": {
+    "schema_version": "atlas.security_remediation_backlog.v1",
+    "review_status": "unapproved",
+    "evidence_path": "artifacts/runtime/phase-014/security-remediation-backlog-evidence.json",
+    "review_template_path": "scripts/sql/phase-014-security-remediation-review-template.sql",
+    "executable_sql_allowed": false,
+    "automatic_migration_allowed": false,
+    "automatic_remediation_allowed": false,
+    "human_approval_required": true,
+    "advisors_required_after_rehearsal": true,
+    "dynamic_rls_tests_required_after_rehearsal": true
+  },
+  "risk_taxonomy": {
+    "P0": [
+      "EXPOSED_TABLE_WITHOUT_RLS",
+      "ANON_BUSINESS_GRANT",
+      "UNSAFE_API_VIEW",
+      "SECURITY_DEFINER_PUBLIC_EXECUTE",
+      "POLICY_TRUSTS_USER_METADATA",
+      "BROAD_DEFAULT_PRIVILEGE"
+    ],
+    "P1": [
+      "UPDATE_POLICY_INCOMPLETE",
+      "POLICY_USES_AUTH_ROLE",
+      "SECURITY_DEFINER_UNSAFE_SEARCH_PATH",
+      "SECURITY_DEFINER_AUTHENTICATED_EXECUTE_UNAPPROVED",
+      "CANONICAL_ENTITY_MISSING",
+      "INVENTORY_INCOMPLETE"
+    ]
+  },
+  "remediation_order": [
+    {
+      "order": 1,
+      "id": "CONTAIN_EXPOSURE",
+      "objective": "Conter exposição ampla antes de qualquer nova concessão."
+    },
+    {
+      "order": 2,
+      "id": "REPAIR_RLS_POLICIES",
+      "objective": "Corrigir RLS, SELECT, USING e WITH CHECK com predicados de tenant revisados."
+    },
+    {
+      "order": 3,
+      "id": "RESTORE_MINIMAL_GRANTS",
+      "objective": "Restaurar somente grants explícitos e mínimos após as políticas."
+    },
+    {
+      "order": 4,
+      "id": "HARDEN_VIEWS",
+      "objective": "Aplicar security_invoker quando compatível ou remover exposição pela API."
+    },
+    {
+      "order": 5,
+      "id": "HARDEN_PRIVILEGED_FUNCTIONS",
+      "objective": "Restringir EXECUTE, fixar search_path e revisar SECURITY DEFINER."
+    },
+    {
+      "order": 6,
+      "id": "HARDEN_DEFAULT_PRIVILEGES",
+      "objective": "Declarar privilégios padrão mínimos e explícitos."
+    },
+    {
+      "order": 7,
+      "id": "REHEARSE_AND_APPROVE",
+      "objective": "Ensaiar em clone, executar testes RLS e advisors, revisar e aprovar manualmente."
+    }
+  ],
+  "security_contract": {
+    "api_roles": [
+      "anon",
+      "authenticated"
+    ],
+    "trusted_execute_grantees": [
+      "postgres",
+      "service_role",
+      "supabase_admin"
+    ],
+    "security_definer_authenticated_allowlist": [],
+    "canonical_business_tables": [
+      "organizations",
+      "profiles",
+      "leads",
+      "developments",
+      "tasks",
+      "activities",
+      "ai_insights",
+      "atlas_events"
+    ],
+    "supabase_2026_explicit_grants_required": true,
+    "rls_does_not_replace_grants": true,
+    "updates_require_select_using_and_with_check": true,
+    "views_require_security_invoker_or_no_api_exposure": true,
+    "security_definer_requires_fixed_search_path_and_minimal_execute": true
+  },
+  "required_runtime_gates": [
+    "phase_013_snapshot_exists",
+    "phase_013_snapshot_parses",
+    "snapshot_schema_version_matches",
+    "snapshot_source_is_approved_loopback",
+    "snapshot_postgres_major_matches",
+    "snapshot_fingerprint_is_attested",
+    "snapshot_transaction_is_read_only",
+    "table_rows_not_read",
+    "required_collections_present",
+    "canonical_entities_inventoried",
+    "inventory_structure_complete",
+    "findings_are_deterministic",
+    "findings_have_severity",
+    "findings_have_dependency_order",
+    "findings_are_unapproved",
+    "review_template_is_comment_only",
+    "historical_migrations_not_used_as_runtime_proof",
+    "live_homologation_not_touched",
+    "remote_write_not_executed",
+    "build_not_executed",
+    "package_not_created"
+  ],
+  "execution_policy": {
+    "allows_local_snapshot_read": true,
+    "allows_historical_migration_reference": true,
+    "allows_remote_metadata_read": false,
+    "allows_remote_schema_read": false,
+    "allows_remote_ddl": false,
+    "allows_remote_dml": false,
+    "allows_linked_project": false,
+    "allows_migration_apply": false,
+    "allows_auth_user_read": false,
+    "allows_business_data_read": false,
+    "allows_build": false,
+    "allows_release_package": false
+  },
+  "next_phase": "Fase 15/24: preparar migrations isoladas, idempotentes e reversíveis a partir de itens aprovados do backlog, ainda sem tocar na homologação."
+}

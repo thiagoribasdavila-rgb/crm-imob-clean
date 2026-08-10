@@ -1,0 +1,20 @@
+{
+  "phase": 118,
+  "name": "Kanban Lens Queue",
+  "status": "implemented",
+  "objective": "Criar uma fila única de execução acima do Kanban, recalculada pela lente ativa, para mostrar as cinco próximas ações mais importantes sem exigir que o usuário percorra todas as colunas.",
+  "businessOutcome": "Reduz ruído visual, acelera tomada de decisão e aumenta a chance de contato rápido com oportunidades que impactam conversão, gargalos e receita.",
+  "scope": [
+    "Fila top 5 respeitando filtros, busca, ordenação e lente comercial ativa",
+    "Ranking global usando peso de lente por corretor, gerente ou diretor",
+    "Cards compactos com etapa, próxima ação recomendada e motivo de prioridade",
+    "Estado vazio claro quando não houver oportunidades no recorte",
+    "Visual responsivo para desktop e mobile"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-118:check",
+    "requiresTypecheck": true,
+    "requiresLint": true,
+    "buildPolicy": "defer-to-release-close"
+  }
+}

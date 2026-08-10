@@ -1,0 +1,30 @@
+{
+  "phase": 33,
+  "scope": "secondary_analysis_panel",
+  "canonicalWorkspace": "pipeline-kanban",
+  "analysisGroup": "pipeline-secondary-analysis",
+  "accordionBehavior": "single_open_panel",
+  "secondarySurfaces": [
+    "pipeline-diagnostics",
+    "expanded-kanban-briefing",
+    "kanban-analysis-shortcuts",
+    "pipeline-health",
+    "stage-summary",
+    "lens-and-bottleneck-radar",
+    "predictive-maps-and-safe-batch-actions"
+  ],
+  "preservedCapabilities": [
+    "briefing",
+    "diagnostics",
+    "health-indicators",
+    "stage-summary",
+    "role-lenses",
+    "bottleneck-radar",
+    "predictive-maps",
+    "safe-batch-actions"
+  ],
+  "databaseMutation": false,
+  "migrationCreated": false,
+  "externalDelivery": false,
+  "buildExecuted": false
+}

@@ -1,0 +1,55 @@
+{
+  "phase": 214,
+  "name": "Authorized Release Package Assembly",
+  "status": "implemented",
+  "objective": "Montar e provar um pacote ZIP rastreável somente sob autorização válida e de uso único, sem executar build, publicar, fazer deploy ou promover automaticamente.",
+  "currentState": {
+    "compositionId": "conversion-core-candidate",
+    "approvalPolicyHash": "808518cd61008b5da6eb94a9d506a4544bdf0723c6d60acbf5d7ce8f731610eb",
+    "memoryPolicyHash": "37af76ac19a603949ccb56c1fe127919bc9e595770822df11b4a7e61a54e497a",
+    "memoryHash": "04de684a4dacf1080468bf849fc929f9c7ac007621ce942f59c70bb4046abf76",
+    "packageAuthorizationPolicyHash": "e3608e6505c0fb02b7f9bf2e9fe80a18b3c41247d16eccc842350bd97c3c3d00",
+    "packageAssemblyPolicyHash": "3bac555b2ffc20ef3b3b10a099f047cc2241d23d62a11bb9b991a4921b157f96",
+    "packageAssemblyMemoryHash": "50c76a3b36e9d376bf618169223040fdb7cbe614d3079816427ad86a2dec1d14",
+    "trustedPackageAuthorizersConfigured": 0,
+    "committedApprovals": 0,
+    "authorizationAvailable": false,
+    "authorizationConsumed": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "assemblyRules": {
+    "exactAuthorizationBindingRequired": true,
+    "sameActorAsAuthorizerRequired": true,
+    "authorizationSingleUseRequired": true,
+    "authorizationUnexpiredRequired": true,
+    "deterministicInventoryRequired": true,
+    "zipArchiveRequired": true,
+    "sha256Required": true,
+    "sensitiveFilesForbidden": true,
+    "appendOnlyConsumptionMemoryRequired": true,
+    "maxPackageBytes": 67108864,
+    "maxUncompressedBytes": 268435456,
+    "maxFileCount": 12000
+  },
+  "safety": {
+    "databaseChanged": false,
+    "authChanged": false,
+    "rlsChanged": false,
+    "externalCallExecuted": false,
+    "releaseMemoryUpdated": false,
+    "packageAuthorizationConsumed": false,
+    "packageGenerated": false,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "runtimeHomologated": false,
+  "nextPhase": {
+    "phase": 215,
+    "name": "Authorized Package Evidence Commitment",
+    "objective": "Fixar a evidência de um pacote autorizado em um registro verificável antes de qualquer decisão de publicação ou deploy."
+  }
+}

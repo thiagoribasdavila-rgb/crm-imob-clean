@@ -18,9 +18,9 @@ export const evolutionPhases: EvolutionPhase[] = [
     progress: 92,
     weight: 8,
     status: "avançada",
-    evidence: ["Node 20.9+ validado", "Doctor aprovado", "Build, lint e typecheck aprovados", "366 controles de IA, CRM, Meta e governança e 12 cenários calibrados"],
+    evidence: ["Node 22+ validado (Node 24 recomendado)", "Doctor aprovado", "Build, lint e typecheck aprovados", "Contratos automatizados de IA, CRM, Meta e governança executáveis"],
     next: "Executar rotas reais, recuperação por e-mail e testes responsivos com credenciais de homologação.",
-    href: "/atlas-v3/audit",
+    href: "/activity",
   },
   {
     id: 2,
@@ -31,7 +31,7 @@ export const evolutionPhases: EvolutionPhase[] = [
     status: "avançada",
     evidence: ["Guard autenticado", "RLS versionada", "Hierarquia diretor → corretor", "Auditoria, rate limit e escopo por organização"],
     next: "Comprovar isolamento usando duas organizações reais.",
-    href: "/atlas-v3/governance",
+    href: "/settings",
   },
   {
     id: 3,
@@ -73,7 +73,7 @@ export const evolutionPhases: EvolutionPhase[] = [
     progress: 91,
     weight: 9,
     status: "avançada",
-    evidence: ["Copilot persistente e tenant-safe", "366 controles calibrados", "Score e matching explicáveis", "Roteamento por custo e complexidade", "Fallback local determinístico", "OpenAI + Perplexity", "Aprovação humana"],
+    evidence: ["Copilot persistente e tenant-safe", "Calibração baseada em evidência operacional, sem alegação automática de precisão", "Score e matching explicáveis", "Roteamento por custo e complexidade", "Fallback local determinístico", "OpenAI + Perplexity", "Aprovação humana"],
     next: "Validar Gateway com credencial de homologação e medir qualidade em conversas reais.",
     href: "/settings/ai",
   },
@@ -97,7 +97,7 @@ export const evolutionPhases: EvolutionPhase[] = [
     status: "parcial",
     evidence: ["Release check aprovado", "Smoke automatizado", "Plano de homologação", "Rollback preservado"],
     next: "Criar release/v3-homolog e publicar preview isolado com variáveis reais.",
-    href: "/atlas-v3/audit",
+    href: "/activity",
   },
   {
     id: 9,
@@ -108,7 +108,7 @@ export const evolutionPhases: EvolutionPhase[] = [
     status: "bloqueada",
     evidence: ["Roteiro funcional documentado"],
     next: "Executar piloto de 5 a 10 dias com admin, gestor e corretor.",
-    href: "/atlas-v3/homologation",
+    href: "/developments/homologation",
   },
   {
     id: 10,

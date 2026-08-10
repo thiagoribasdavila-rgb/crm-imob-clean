@@ -1,0 +1,47 @@
+{
+  "phase": 353,
+  "cycle": "350-354",
+  "objective": "Provar com corretor autenticado e lead designada a persistência atômica da primeira ação",
+  "status": "evidence_harness_ready_runtime_blocked",
+  "primaryMetric": "median-lead-to-first-action-minutes",
+  "harness": {
+    "command": "npm run verify:phase-353:first-action",
+    "safeByDefault": true,
+    "arbitraryLeadSelection": false,
+    "explicitMutationConfirmation": "phase-353-first-action",
+    "stableIdempotencyPerLead": true,
+    "privilegedCredentialRequiredByClient": false
+  },
+  "requiredRuntimeConfiguration": [
+    "ATLAS_BASE_URL",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "ATLAS_TEST_EMAIL",
+    "ATLAS_TEST_PASSWORD",
+    "ATLAS_RUNTIME_TEST_LEAD_ID",
+    "ATLAS_RUNTIME_NEXT_ACTION_AT",
+    "ATLAS_RUNTIME_MUTATION_CONFIRM=phase-353-first-action"
+  ],
+  "requiredProof": [
+    "sessão real de corretor",
+    "lead designada visível por RLS e na mesma organização",
+    "atividade persistida",
+    "tarefa futura persistida",
+    "lead atualizada",
+    "evento auditável persistido",
+    "segunda chamada reproduzida sem duplicação"
+  ],
+  "localEvidence": {
+    "contract": "22/22 targeted contracts passed",
+    "typecheck": "passed",
+    "changedFilesLint": "passed with zero warnings",
+    "valueCycleContract": "passed: 10 cycles, 50 phases, continuous 350-399",
+    "secretScan": "passed: 4355 files, zero credentials detected",
+    "runtimePreflight": "passed safety gate: blocked_without_mutation, exit 2 expected",
+    "remoteMutation": false
+  },
+  "blocker": "As variáveis locais de sessão, Supabase e lead designada estão vazias; a migration da fase 352 também ainda não possui evidência de aplicação remota.",
+  "officialPhaseMarker": 349,
+  "programAdvanceAuthorized": false,
+  "buildZipDeployPerformed": false
+}

@@ -1,5 +1,19 @@
-create index if not exists idx_activities_customer_id on public.activities(customer_id);
-create index if not exists idx_activities_opportunity_id on public.activities(opportunity_id);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'activities' and column_name = 'customer_id'
+  ) then
+    create index if not exists idx_activities_customer_id on public.activities(customer_id);
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'activities' and column_name = 'opportunity_id'
+  ) then
+    create index if not exists idx_activities_opportunity_id on public.activities(opportunity_id);
+  end if;
+end
+$$;
 create index if not exists idx_activities_organization_id on public.activities(organization_id);
 create index if not exists idx_activities_user_id on public.activities(user_id);
 create index if not exists idx_ai_insights_organization_id on public.ai_insights(organization_id);
@@ -13,16 +27,52 @@ create index if not exists idx_dead_letter_events_resolved_by on public.dead_let
 create index if not exists idx_developments_organization_id on public.developments(organization_id);
 create index if not exists idx_leads_campaign_id on public.leads(campaign_id);
 create index if not exists idx_opportunities_assigned_to on public.opportunities(assigned_to);
-create index if not exists idx_opportunities_customer_id on public.opportunities(customer_id);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'opportunities' and column_name = 'customer_id'
+  ) then
+    create index if not exists idx_opportunities_customer_id on public.opportunities(customer_id);
+  end if;
+end
+$$;
 create index if not exists idx_opportunities_lead_id on public.opportunities(lead_id);
 create index if not exists idx_opportunities_organization_id on public.opportunities(organization_id);
 create index if not exists idx_opportunities_property_id on public.opportunities(property_id);
-create index if not exists idx_opportunities_unit_id on public.opportunities(unit_id);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'opportunities' and column_name = 'unit_id'
+  ) then
+    create index if not exists idx_opportunities_unit_id on public.opportunities(unit_id);
+  end if;
+end
+$$;
 create index if not exists idx_pipeline_organization_id on public.pipeline(organization_id);
 create index if not exists idx_profiles_organization_id on public.profiles(organization_id);
 create index if not exists idx_properties_organization_id on public.properties(organization_id);
-create index if not exists idx_tasks_assigned_to on public.tasks(assigned_to);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'tasks' and column_name = 'assigned_to'
+  ) then
+    create index if not exists idx_tasks_assigned_to on public.tasks(assigned_to);
+  end if;
+end
+$$;
 create index if not exists idx_tasks_lead_id on public.tasks(lead_id);
-create index if not exists idx_tasks_opportunity_id on public.tasks(opportunity_id);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'tasks' and column_name = 'opportunity_id'
+  ) then
+    create index if not exists idx_tasks_opportunity_id on public.tasks(opportunity_id);
+  end if;
+end
+$$;
 create index if not exists idx_tasks_organization_id on public.tasks(organization_id);
 create index if not exists idx_units_organization_id on public.units(organization_id);

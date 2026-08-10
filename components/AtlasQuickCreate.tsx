@@ -52,15 +52,17 @@ export default function AtlasQuickCreate() {
     router.push(href);
   }
 
-  // O botão flutuante saiu. Ele era um "+" de 56px no canto inferior direito
-  // que duplicava o "Novo lead" da barra superior e cobria a última linha de
-  // toda tabela — em /leads, justamente a lead mais antiga da fila.
-  //
-  // O PAINEL continua inteiro e continua contextual: Alt+A, o ⌘K e o evento
-  // atlas:open-quick-create abrem do mesmo jeito. Tirar o botão redundante não
-  // tirou nenhum caminho; tirou a sobreposição.
   return (
     <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-2xl border border-sky-300/20 bg-gradient-to-br from-sky-400 to-blue-600 text-2xl font-light text-white shadow-[0_18px_60px_rgba(14,165,233,.35)] transition hover:-translate-y-1 hover:shadow-[0_24px_80px_rgba(14,165,233,.5)]"
+        aria-label="Abrir criação rápida"
+      >
+        +
+      </button>
+
       {open ? (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-md sm:items-center" role="dialog" aria-modal="true" aria-label="Criação rápida">
           <button className="absolute inset-0" onClick={() => setOpen(false)} aria-label="Fechar criação rápida" />
@@ -72,7 +74,7 @@ export default function AtlasQuickCreate() {
                 <p className="mt-1 text-sm text-slate-400">Atalhos adaptados à tela para reduzir cliques e manter o ritmo comercial.</p>
               </div>
               <div className="flex items-center gap-3">
-                <kbd className="hidden rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-micro text-slate-500 sm:block">Alt A</kbd>
+                <kbd className="hidden rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-slate-500 sm:block">Alt A</kbd>
                 <button onClick={() => setOpen(false)} className="atlas-icon-button" aria-label="Fechar">×</button>
               </div>
             </header>
@@ -90,7 +92,7 @@ export default function AtlasQuickCreate() {
                     <span className="mt-1 block text-xs leading-5 text-slate-400">{action.description}</span>
                   </span>
                   <span className="ml-auto mt-1 text-slate-600 transition group-hover:translate-x-1 group-hover:text-sky-300">→</span>
-                  <kbd className="rounded-md border border-white/10 px-1.5 py-0.5 text-micro text-slate-600">{index + 1}</kbd>
+                  <kbd className="rounded-md border border-white/10 px-1.5 py-0.5 text-[9px] text-slate-600">{index + 1}</kbd>
                 </button>
               ))}
             </div>

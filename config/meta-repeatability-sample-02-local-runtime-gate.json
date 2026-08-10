@@ -1,0 +1,46 @@
+{
+  "phase": 30,
+  "program": "meta-andromeda-automation",
+  "environment": "local_ephemeral",
+  "approval": {
+    "required": true,
+    "exactValue": "EXECUTE_PHASE30_LOCAL_EPHEMERAL_ONLY"
+  },
+  "runtime": {
+    "engine": "docker_compose",
+    "composeFile": "infra/meta-phase30/compose.yaml",
+    "postgresImage": "supabase/postgres:15.14.1.149",
+    "host": "127.0.0.1",
+    "port": 55432,
+    "database": "atlas_phase30",
+    "user": "postgres",
+    "linkedProject": false,
+    "remoteTarget": false,
+    "productionTarget": false,
+    "destroyVolumesAfterRun": true
+  },
+  "allowedMutation": {
+    "localEphemeralDatabaseOnly": true,
+    "createBaselineContract": true,
+    "applyOfficialMigration": true,
+    "verifyLedgerObjects": true,
+    "rollbackLedgerObjects": true,
+    "destroyLocalRuntime": true,
+    "persistPermitReservation": false
+  },
+  "prohibitedActions": {
+    "remoteDatabaseAccess": true,
+    "linkedProjectAccess": true,
+    "productionMutation": true,
+    "permitReservation": true,
+    "permitIssuance": true,
+    "permitConsumption": true,
+    "realMetaEventDelivery": true,
+    "testMetaEventDelivery": true,
+    "campaignMutation": true,
+    "budgetMutation": true,
+    "audienceMutation": true,
+    "deployment": true,
+    "build": true
+  }
+}

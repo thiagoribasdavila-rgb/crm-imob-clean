@@ -1,0 +1,62 @@
+{
+  "phase": 21,
+  "program": "meta-andromeda-automation",
+  "mode": "sanitized_test_events_observation_receipt",
+  "status": "observation_receipt_ready_execution_gate_closed",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-020.json",
+  "observationGate": "config/meta-test-events-observation-gate.json",
+  "observationInputTemplate": "config/fixtures/meta-test-events-observation-input-template.json",
+  "receiptTemplate": "config/fixtures/meta-test-events-observation-receipt-template.json",
+  "receiptRunner": "scripts/run-meta-test-events-observation-receipt.mjs",
+  "receiptPreflight": "scripts/preflight-meta-test-events-observation.mjs",
+  "staticAudit": "scripts/audit-meta-test-events-observation.mjs",
+  "documentation": "docs/META_TEST_EVENTS_OBSERVATION_RECEIPT.md",
+  "officialReferences": {
+    "metaConversionsApi": "https://www.facebook.com/business/help/AboutConversionsAPI",
+    "metaConversionsApiDeveloperGuide": "https://developers.facebook.com/docs/marketing-api/conversions-api/using-the-api/",
+    "supabaseApiSecurity": "https://supabase.com/docs/guides/api/securing-your-api",
+    "supabaseDataApiChange": "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically"
+  },
+  "environmentAudit": {
+    "phase20ApprovedEvidenceDetected": false,
+    "operatorAttestationDetected": false,
+    "reviewerAttestationDetected": false,
+    "officialManualExecutionPerformed": false,
+    "officialEventObserved": false,
+    "officialReceiptGenerated": false,
+    "remoteCallsExecuted": false,
+    "databaseMutationExecuted": false,
+    "reason": "O contrato e os validadores do recibo estao prontos, mas nenhuma evidencia real ou execucao oficial foi fornecida. Autotestes usam somente fixtures sinteticas em memoria."
+  },
+  "releaseGate": {
+    "phase20EvidenceApproved": false,
+    "humanObservationApproved": false,
+    "syntheticReceiptSelfTestPassed": true,
+    "officialTestObservationApproved": false,
+    "automaticRetryAllowed": false,
+    "automaticDeliveryAllowed": false,
+    "productionReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "temporaryCodePersisted": false,
+    "payloadPersisted": false,
+    "rawResponsePersisted": false,
+    "screenshotPersisted": false,
+    "eventMatchQualityEstimated": false,
+    "optimizationImpactClaimed": false,
+    "databaseMutation": false,
+    "productionAccess": false,
+    "realMetaEventDelivery": false,
+    "testMetaEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "nextPhase": {
+    "phase": 22,
+    "objective": "Reconciliar o recibo sanitizado observado com os contratos locais das Fases 19 e 20, sem liberar repeticao automatica ou producao."
+  }
+}

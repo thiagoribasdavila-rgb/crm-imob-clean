@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "phase33.cross-major-reconciliation.v1",
+  "phase": 33,
+  "sourcePhase": 32,
+  "status": "not_received",
+  "checkedAt": null,
+  "sourceFingerprints": {
+    "phase30Evidence": null,
+    "phase31Receipt": null,
+    "phase32Evidence": null
+  },
+  "comparison": {
+    "pg15": {
+      "major": 15,
+      "imageReference": "supabase/postgres:15.14.1.149",
+      "runtimeApproved": false,
+      "securityApproved": false,
+      "rollbackApproved": false
+    },
+    "pg17": {
+      "major": 17,
+      "imageReference": "supabase/postgres:17.6.1.149",
+      "runtimeApproved": false,
+      "compatibilityApproved": false,
+      "securityApproved": false,
+      "rollbackApproved": false
+    },
+    "targetsDistinct": false,
+    "sharedArtifactsMatched": false,
+    "extensionCompatibilityApproved": false,
+    "securityEquivalent": false,
+    "rollbackEquivalent": false
+  },
+  "crossMajorApproved": false,
+  "productionCompatibilityApproved": false,
+  "remoteDatabaseTouched": false,
+  "metaTouched": false,
+  "buildExecuted": false
+}

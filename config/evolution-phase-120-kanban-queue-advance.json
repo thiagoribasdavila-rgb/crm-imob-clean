@@ -1,0 +1,20 @@
+{
+  "phase": 120,
+  "name": "Kanban Queue Safe Advance",
+  "status": "implemented",
+  "objective": "Permitir que a fila inteligente do Kanban avance uma oportunidade para a próxima etapa sem exigir arrastar card, preservando o fluxo oficial de salvamento, histórico e desfazer.",
+  "businessOutcome": "Acelera a execução comercial diária, reduz fricção no Kanban e ajuda corretores e gestores a transformar prioridade em movimento real de pipeline.",
+  "scope": [
+    "Botão contextual de avanço para a próxima etapa em cada item da fila inteligente",
+    "Uso do fluxo existente moveLead para preservar validações, salvamento e rollback",
+    "Estado de carregamento por lead durante a movimentação",
+    "Bloqueio automático quando não há próxima etapa disponível",
+    "Estilo compacto alinhado ao visual premium do Kanban"
+  ],
+  "validation": {
+    "script": "npm run evolution:phase-120:check",
+    "requiresTypecheck": true,
+    "requiresLint": true,
+    "buildPolicy": "defer-to-release-close"
+  }
+}

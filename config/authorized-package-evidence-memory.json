@@ -1,0 +1,14 @@
+{
+  "schema": "atlas.authorized-package-evidence-memory.v1",
+  "policyHash": "323de29546dc45655e749f45174a1ffb385ce1823b74e15fbee9cf98fedfe9ae",
+  "entries": [],
+  "summary": {
+    "committedPackages": 0,
+    "committedReceipts": 0,
+    "latestEntryHash": null,
+    "buildExecuted": false,
+    "deployExecuted": false,
+    "releasePromoted": false
+  },
+  "memoryHash": "a8c8b87a16c92c1374fa6e509b4aaa64edc8ddcab51a9c77c1498b89b5209434"
+}

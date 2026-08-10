@@ -1,0 +1,27 @@
+{
+  "phase": 4,
+  "name": "Dicionário único de estados, cores e severidades",
+  "canonicalStates": [
+    { "state": "neutral", "color": "neutral", "decision": "observe" },
+    { "state": "action", "color": "blue", "decision": "act" },
+    { "state": "healthy", "color": "green", "decision": "observe" },
+    { "state": "attention", "color": "amber", "decision": "review" },
+    { "state": "critical", "color": "rose", "decision": "act_now" },
+    { "state": "blocked", "color": "rose", "decision": "unblock" },
+    { "state": "insufficient", "color": "violet", "decision": "validate" },
+    { "state": "loading", "color": "neutral", "decision": "wait" }
+  ],
+  "rules": [
+    "color_never_acts_as_the_only_signal",
+    "unknown_state_never_becomes_healthy",
+    "insufficient_evidence_is_not_an_alert",
+    "blocked_and_critical_require_distinct_labels_and_symbols",
+    "decorative_color_has_no_operational_meaning"
+  ],
+  "scope": {
+    "schemaChanged": false,
+    "rlsChanged": false,
+    "recordsChanged": false,
+    "visualContractOnly": true
+  }
+}

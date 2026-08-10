@@ -1,0 +1,54 @@
+{
+  "schema_version": "atlas.local_supabase_bootstrap.v1",
+  "scope": "pre-f12-local-configuration",
+  "objective": "Criar somente o contrato local supabase/config.toml com a CLI fixada, em HOME isolado e sem qualquer vínculo ou acesso remoto.",
+  "status": "awaiting_explicit_local_bootstrap_authorization",
+  "cli": {
+    "path": "node_modules/.bin/supabase",
+    "expected_version": "2.109.1",
+    "command": "init",
+    "allowed_args": [],
+    "forbidden_args": [
+      "--force",
+      "--interactive",
+      "--workdir",
+      "--project-ref",
+      "--linked"
+    ]
+  },
+  "project": {
+    "config_path": "supabase/config.toml",
+    "migrations_directory": "supabase/migrations",
+    "linked_project_marker": "supabase/.temp/project-ref",
+    "expected_postgres_major": 17,
+    "requires_existing_migrations": true,
+    "requires_config_absent_before_execution": true,
+    "requires_link_marker_absent": true
+  },
+  "authorization": {
+    "schema_version": "atlas.local_supabase_bootstrap_approval.v1",
+    "receipt_path": "artifacts/runtime/phase-012/manual/local-supabase-bootstrap-approval.json",
+    "approver_role": "authorized_operator",
+    "target_kind": "local_configuration_only",
+    "expected_command": "supabase init",
+    "project_fingerprint_required": true,
+    "expiry_required": true,
+    "remote_access_allowed": false
+  },
+  "evidence": {
+    "path": "artifacts/runtime/phase-012/local-supabase-bootstrap-evidence.json",
+    "raw_cli_output_allowed": false,
+    "environment_values_allowed": false,
+    "credentials_allowed": false
+  },
+  "safety": {
+    "supabase_link_allowed": false,
+    "remote_project_access_allowed": false,
+    "database_start_allowed": false,
+    "migration_allowed": false,
+    "data_access_allowed": false,
+    "build_allowed": false,
+    "release_package_allowed": false
+  },
+  "next_action_after_success": "Reexecutar F12 e F22; disponibilizar runtime de containers e psql antes de solicitar a autorização JIT do ensaio descartável."
+}
