@@ -17,7 +17,10 @@ import {
   ProjectBrokerRoster,
   type ProjectBrokerRosterItem,
 } from "@/components/distribution/ProjectBrokerRoster";
-import { MetaSourceRoster } from "@/components/distribution/MetaSourceRoster";
+import {
+  MetaSourceRoster,
+  type MetaRosterMember,
+} from "@/components/distribution/MetaSourceRoster";
 import { supabase } from "@/lib/supabase";
 
 type Profile = {
@@ -356,7 +359,7 @@ export default function DistributionPage() {
     }
   }
 
-  async function configureMetaRecipients(profileIds: string[]) {
+  async function configureMetaRecipients(members: MetaRosterMember[]) {
     setWorking(true);
     setError("");
     setNotice("");
@@ -370,10 +373,10 @@ export default function DistributionPage() {
         body: JSON.stringify({
           action: "configure_source_members",
           sourceKey: "meta",
-          members: profileIds.map((profileId) => ({
-            profileId,
+          members: members.map((member) => ({
+            profileId: member.profileId,
             enabled: true,
-            weight: 1,
+            weight: member.weight,
           })),
           reason: "Roleta exclusiva aprovada pela diretoria para leads originados da Meta.",
         }),
@@ -384,7 +387,7 @@ export default function DistributionPage() {
         return false;
       }
       const names = teamBrokers
-        .filter((broker) => profileIds.includes(broker.id))
+        .filter((broker) => members.some((member) => member.profileId === broker.id))
         .map((broker) => broker.full_name || "Corretor")
         .join(" e ");
       setNotice(`Leads novos da Meta serão enviados somente para ${names || "os corretores selecionados"}. Leads já atribuídos não foram alterados.`);
@@ -608,9 +611,12 @@ export default function DistributionPage() {
       lastAssignedAt: state?.last_assigned_at || null,
     };
   });
-  const metaConfiguredRecipientIds = (data?.metaRecipients ?? [])
+  const metaConfiguredRecipients = (data?.metaRecipients ?? [])
     .filter((recipient) => recipient.enabled)
-    .map((recipient) => recipient.profile_id);
+    .map((recipient) => ({
+      profileId: recipient.profile_id,
+      weight: recipient.weight,
+    }));
   const metaSuggestedRecipientIds = teamBrokers
     .filter((broker) => /\b(diego|luciano)\b/i.test(broker.full_name || ""))
     .map((broker) => broker.id);
@@ -1245,7 +1251,7 @@ export default function DistributionPage() {
               availability: presence?.availability || "offline",
             };
           })}
-          configuredRecipientIds={metaConfiguredRecipientIds}
+          configuredRecipients={metaConfiguredRecipients}
           suggestedRecipientIds={metaSuggestedRecipientIds}
           working={working}
           onSave={configureMetaRecipients}

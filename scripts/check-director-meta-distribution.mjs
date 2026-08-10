@@ -46,7 +46,14 @@ for (const fragment of ["developerFilter", "1. Incorporadora", "visibleProjects"
   assert.ok(roster.includes(fragment), `Project roster must contain: ${fragment}`);
 }
 
-for (const fragment of ["Roleta exclusiva de leads da Meta", "Salvar roleta Meta"]) {
+for (const fragment of [
+  "Roleta exclusiva de leads da Meta",
+  "Salvar roleta Meta",
+  "Alterações salvas",
+  "MetaRosterMember",
+  "Peso de",
+  "!dirty",
+]) {
   assert.ok(metaRoster.includes(fragment), `Meta roster must contain: ${fragment}`);
 }
 

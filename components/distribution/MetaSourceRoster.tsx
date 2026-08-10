@@ -10,40 +10,62 @@ type Broker = {
   availability?: string;
 };
 
+export type MetaRosterMember = {
+  profileId: string;
+  weight: number;
+};
+
+function normalizeMembers(members: MetaRosterMember[]) {
+  return [...members]
+    .map((member) => ({ ...member, weight: Math.min(10, Math.max(1, member.weight)) }))
+    .sort((left, right) => left.profileId.localeCompare(right.profileId));
+}
+
 export function MetaSourceRoster({
   brokers,
-  configuredRecipientIds,
+  configuredRecipients,
   suggestedRecipientIds,
   working,
   onSave,
 }: {
   brokers: Broker[];
-  configuredRecipientIds: string[];
+  configuredRecipients: MetaRosterMember[];
   suggestedRecipientIds: string[];
   working: boolean;
-  onSave: (profileIds: string[]) => Promise<boolean>;
+  onSave: (members: MetaRosterMember[]) => Promise<boolean>;
 }) {
-  const initialIds = useMemo(
-    () => configuredRecipientIds.length > 0 ? configuredRecipientIds : suggestedRecipientIds,
-    [configuredRecipientIds, suggestedRecipientIds],
+  const initialMembers = useMemo(
+    () => normalizeMembers(
+      configuredRecipients.length > 0
+        ? configuredRecipients
+        : suggestedRecipientIds.map((profileId) => ({ profileId, weight: 1 })),
+    ),
+    [configuredRecipients, suggestedRecipientIds],
   );
-  const [selectedIds, setSelectedIds] = useState<string[]>(initialIds);
+  const [members, setMembers] = useState<MetaRosterMember[]>(initialMembers);
 
-  useEffect(() => setSelectedIds(initialIds), [initialIds]);
+  useEffect(() => setMembers(initialMembers), [initialMembers]);
 
-  const selected = new Set(selectedIds);
-  const configured = configuredRecipientIds.length > 0;
+  const selected = new Set(members.map((member) => member.profileId));
+  const configured = configuredRecipients.length > 0;
+  const dirty = JSON.stringify(normalizeMembers(members)) !== JSON.stringify(normalizeMembers(configuredRecipients));
   const selectedNames = brokers
     .filter((broker) => selected.has(broker.id))
     .map((broker) => broker.name)
     .join(" e ");
 
   function toggle(profileId: string) {
-    setSelectedIds((current) =>
-      current.includes(profileId)
-        ? current.filter((id) => id !== profileId)
-        : [...current, profileId],
+    setMembers((current) =>
+      current.some((member) => member.profileId === profileId)
+        ? current.filter((member) => member.profileId !== profileId)
+        : [...current, { profileId, weight: 1 }],
     );
+  }
+
+  function setWeight(profileId: string, weight: number) {
+    setMembers((current) => current.map((member) =>
+      member.profileId === profileId ? { ...member, weight } : member,
+    ));
   }
 
   return (
@@ -72,15 +94,16 @@ export function MetaSourceRoster({
         {brokers.map((broker) => {
           const isSelected = selected.has(broker.id);
           return (
-            <label
+            <div
               key={broker.id}
-              className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition ${isSelected ? "border-sky-300/35 bg-sky-300/[.08]" : "border-white/[.08] bg-slate-950/30 hover:border-white/20"}`}
+              className={`flex items-center gap-3 rounded-2xl border p-4 transition ${isSelected ? "border-sky-300/35 bg-sky-300/[.08]" : "border-white/[.08] bg-slate-950/30 hover:border-white/20"}`}
             >
               <input
                 type="checkbox"
                 checked={isSelected}
                 onChange={() => toggle(broker.id)}
-                className="h-5 w-5 rounded border-white/20 bg-slate-950 accent-sky-400"
+                aria-label={`Incluir ${broker.name} na roleta Meta`}
+                className="h-5 w-5 cursor-pointer rounded border-white/20 bg-slate-950 accent-sky-400"
               />
               <span className="min-w-0 flex-1">
                 <strong className="block truncate text-sm text-white">{broker.name}</strong>
@@ -89,24 +112,39 @@ export function MetaSourceRoster({
                   {broker.managerName ? ` · ${broker.managerName}` : ""}
                 </span>
               </span>
-            </label>
+              {isSelected ? (
+                <span className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[.12em] text-slate-500">Peso</span>
+                  <select
+                    aria-label={`Peso de ${broker.name} na roleta Meta`}
+                    value={members.find((member) => member.profileId === broker.id)?.weight ?? 1}
+                    onChange={(event) => setWeight(broker.id, Number(event.target.value))}
+                    className="rounded-xl border border-white/10 bg-slate-950 px-2 py-1.5 text-sm font-semibold text-white"
+                  >
+                    {Array.from({ length: 10 }, (_, index) => index + 1).map((weight) => (
+                      <option key={weight} value={weight}>{weight}</option>
+                    ))}
+                  </select>
+                </span>
+              ) : null}
+            </div>
           );
         })}
       </div>
 
       <div className="mt-5 flex flex-col gap-3 border-t border-white/[.08] pt-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-slate-300">
-          {selectedIds.length > 0
-            ? `Recebem leads Meta: ${selectedNames || `${selectedIds.length} corretores`}.`
+          {members.length > 0
+            ? `Recebem leads Meta: ${selectedNames || `${members.length} corretores`}. Pesos maiores aumentam a participação relativa, respeitando presença e capacidade.`
             : "Selecione ao menos um corretor para proteger a captação da Meta."}
         </p>
         <button
           type="button"
-          disabled={working || selectedIds.length === 0}
-          onClick={() => void onSave(selectedIds)}
+          disabled={working || members.length === 0 || !dirty}
+          onClick={() => void onSave(normalizeMembers(members))}
           className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Salvar roleta Meta
+          {working ? "Salvando…" : dirty ? "Salvar roleta Meta" : "Alterações salvas"}
         </button>
       </div>
     </section>
