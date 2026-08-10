@@ -8,7 +8,7 @@
   "rehearsalGate": "config/meta-repeatability-sample-02-migration-rehearsal-gate.json",
   "evidenceTemplate": "config/fixtures/meta-repeatability-sample-02-migration-rehearsal-template.json",
   "sourceDraft": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.sql",
-  "officialMigration": "supabase/migrations/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
+  "officialMigration": "supabase/migration-rehearsals/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
   "rollbackDraft": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.rollback.sql",
   "preflight": "scripts/preflight-meta-repeatability-sample-02-migration-rehearsal.mjs",
   "runner": "scripts/run-meta-repeatability-sample-02-migration-rehearsal.mjs",

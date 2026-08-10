@@ -40,6 +40,8 @@ yarn-error.log*
 # env files reais nunca entram no repositório; apenas modelos sem credenciais
 .env*
 /.private-backups/
+/supabase/.temp/
+/supabase/.branches/
 !.env.example
 !.env.homologation.example
 hostinger.env

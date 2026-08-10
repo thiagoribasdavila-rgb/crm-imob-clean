@@ -24,7 +24,7 @@ const LOCAL_MIGRATION_GUARDS = ["app.atlas_meta_ledger_environment"];
 const LOCAL_START_EXCLUSIONS = ["analytics", "vector"];
 const GUARDED_MIGRATION_PATCHES = [
   {
-    file: "20260719092358_phase_029_meta_permit_atomic_ledger.sql",
+    file: "../migration-rehearsals/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
     anchor: "begin;\n",
     statement: "set local app.atlas_meta_ledger_environment = 'staging_clone';",
   },

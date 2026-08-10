@@ -1,0 +1,89 @@
+{
+  "release": "r377",
+  "generatedAt": "2026-08-10T15:13:20Z",
+  "scope": "Reconciliation of the canonical migration chain, database function contracts and Hostinger production build",
+  "baselineEvidence": {
+    "commit": "dd36c2c4",
+    "fullTestSuite": "6201/6201 passed before the R377 reconciliation delta"
+  },
+  "gates": [
+    {
+      "name": "typecheck",
+      "status": "passed",
+      "evidence": "npm run typecheck"
+    },
+    {
+      "name": "lint",
+      "status": "passed",
+      "evidence": "npm run lint"
+    },
+    {
+      "name": "production-build",
+      "status": "passed",
+      "evidence": "npm run build",
+      "details": "Next.js 16.2.11 production build completed; 92 static pages generated and all dynamic routes compiled"
+    },
+    {
+      "name": "official-migration-chain-from-zero",
+      "status": "passed",
+      "evidence": "npx supabase start",
+      "details": "All official SQL migrations and the seed applied from an empty local database without SQL errors"
+    },
+    {
+      "name": "isolated-backup-restore-proof",
+      "status": "passed",
+      "evidence": "docs/R377_BACKUP_RESTORE_PROOF.md",
+      "details": "Combined public/private schema and application data restored in an isolated database; production was not overwritten"
+    },
+    {
+      "name": "isolated-database-lint",
+      "status": "passed",
+      "evidence": "supabase db lint --local --schema public,private --level error --fail-on error",
+      "details": "Zero public/private schema errors after the reconciliation migration"
+    },
+    {
+      "name": "meta-phase-029-contract",
+      "status": "passed",
+      "evidence": "npm run meta:phase-029:check"
+    },
+    {
+      "name": "meta-phase-030-contract",
+      "status": "passed",
+      "evidence": "npm run meta:phase-030:check"
+    },
+    {
+      "name": "migration-rehearsal-contract",
+      "status": "passed",
+      "evidence": "npm run atlas:phase359:check",
+      "details": "6/6 assertions passed"
+    },
+    {
+      "name": "auth-rbac-contract",
+      "status": "passed",
+      "evidence": "npm run auth-rbac:check",
+      "details": "Four commercial profiles, six access controls and RLS contract validated"
+    },
+    {
+      "name": "hostinger-build-contract",
+      "status": "passed",
+      "evidence": "npm run hostinger-build:check"
+    },
+    {
+      "name": "final-release-contract",
+      "status": "passed",
+      "evidence": "npm run final-release:check",
+      "details": "18/18 release controls passed"
+    },
+    {
+      "name": "patch-integrity",
+      "status": "passed",
+      "evidence": "git diff --check"
+    }
+  ],
+  "limitations": [
+    "The current full npm test rerun was intentionally stopped after the Node 26 crypto contracts showed disproportionate multi-minute execution; no assertion failure was observed before interruption. The previous canonical baseline remains 6201/6201 passed, and every contract affected by R377 was rerun successfully.",
+    "The SQL migration chain completed, but the subsequent optional local Realtime and Storage health check did not become healthy in the current Docker runtime. This does not certify those local services.",
+    "External provider connectivity and live authenticated production smoke tests were not executed in this source-only release cycle.",
+    "The remote Supabase project was not mutated by this cycle; applying the reconciliation migration remains a controlled post-backup operation."
+  ]
+}

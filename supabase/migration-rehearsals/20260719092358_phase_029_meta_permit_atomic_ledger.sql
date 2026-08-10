@@ -1,5 +1,5 @@
 -- ATLAS AI OS - Fase 29/100
--- Migration oficial promovida pela Supabase CLI para ensaio exclusivo em clone isolado.
+-- Migration de ensaio preservada fora da cadeia oficial para clone isolado.
 -- A trava staging_clone impede aplicacao acidental fora do ensaio governado.
 
 begin;

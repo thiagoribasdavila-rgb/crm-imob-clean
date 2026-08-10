@@ -4,7 +4,7 @@
 
 A migration do ledger durável foi promovida com a Supabase CLI oficial `2.109.1` para:
 
-`supabase/migrations/20260719092358_phase_029_meta_permit_atomic_ledger.sql`
+`supabase/migration-rehearsals/20260719092358_phase_029_meta_permit_atomic_ledger.sql`
 
 A promoção cria histórico local e revisável. Ela **não executa** a migration, não conecta banco e não libera persistência.
 

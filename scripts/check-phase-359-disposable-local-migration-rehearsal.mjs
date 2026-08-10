@@ -68,8 +68,9 @@ try {
   );
   const guardedMigration = join(
     migrations,
-    "20260719092358_phase_029_meta_permit_atomic_ledger.sql",
+    "../migration-rehearsals/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
   );
+  mkdirSync(join(fixture, "supabase", "migration-rehearsals"), { recursive: true });
   writeFileSync(guardedMigration, "begin;\nselect 1;\n");
   const injections = injectDisposableMigrationGuards(fixture);
   const guardedSource = readFileSync(guardedMigration, "utf8");

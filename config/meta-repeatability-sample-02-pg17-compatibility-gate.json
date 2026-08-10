@@ -46,7 +46,7 @@
   "requiredArtifacts": {
     "compose": "infra/meta-phase32/compose.pg17.yaml",
     "baseline": "supabase/tests/fixtures/phase_030_meta_permit_ledger_baseline.sql",
-    "migration": "supabase/migrations/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
+    "migration": "supabase/migration-rehearsals/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
     "pg17Verification": "supabase/tests/database/phase_032_meta_permit_ledger_pg17_verify.sql",
     "securityVerification": "supabase/tests/database/phase_030_meta_permit_ledger_verify.sql",
     "rollback": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.rollback.sql",

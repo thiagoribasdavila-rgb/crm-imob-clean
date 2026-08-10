@@ -11,7 +11,7 @@
   "baselineSql": "supabase/tests/fixtures/phase_030_meta_permit_ledger_baseline.sql",
   "verificationSql": "supabase/tests/database/phase_030_meta_permit_ledger_verify.sql",
   "cleanupVerificationSql": "supabase/tests/database/phase_030_meta_permit_ledger_cleanup_verify.sql",
-  "officialMigration": "supabase/migrations/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
+  "officialMigration": "supabase/migration-rehearsals/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
   "sourceDraft": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.sql",
   "rollbackDraft": "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.rollback.sql",
   "preflight": "scripts/preflight-meta-repeatability-sample-02-local-runtime.mjs",

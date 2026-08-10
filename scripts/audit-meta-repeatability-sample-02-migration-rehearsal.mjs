@@ -17,7 +17,7 @@ const normalizeSql = (value) => value
   .replace(/\s+/g, " ")
   .trim();
 
-expect(/^supabase\/migrations\/\d{14}_phase_029_meta_permit_atomic_ledger\.sql$/.test(config.officialMigration), "nome oficial da migration invalido");
+expect(/^supabase\/migration-rehearsals\/\d{14}_phase_029_meta_permit_atomic_ledger\.sql$/.test(config.officialMigration), "nome do ensaio governado invalido");
 expect(normalizeSql(migration) === normalizeSql(draft), "migration promovida divergiu estruturalmente do rascunho aprovado");
 expect(migration.includes("atlas_meta_ledger_staging_clone_only") && migration.includes("atlas_meta_ledger_base_contract_missing"), "travas de ambiente ausentes");
 expect(migration.includes("force row level security") && migration.includes("security invoker") && !/security definer/i.test(migration), "RLS ou invoker invalidos");

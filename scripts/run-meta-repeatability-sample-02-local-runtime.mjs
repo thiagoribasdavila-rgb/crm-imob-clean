@@ -19,7 +19,7 @@ const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 const artifactFiles = {
   compose: gate.runtime.composeFile,
   baseline: "supabase/tests/fixtures/phase_030_meta_permit_ledger_baseline.sql",
-  migration: "supabase/migrations/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
+  migration: "supabase/migration-rehearsals/20260719092358_phase_029_meta_permit_atomic_ledger.sql",
   verification: "supabase/tests/database/phase_030_meta_permit_ledger_verify.sql",
   rollback: "supabase/migration-drafts/phase_028_meta_permit_atomic_ledger.rollback.sql",
   cleanupVerification: "supabase/tests/database/phase_030_meta_permit_ledger_cleanup_verify.sql"
@@ -130,7 +130,7 @@ try {
   executeSql(read("supabase/tests/fixtures/phase_030_meta_permit_ledger_baseline.sql"), "phase30_baseline_failed");
   evidence.rehearsal.baselineApplied = true;
   recordEvent("baseline_applied");
-  executeSql(read("supabase/migrations/20260719092358_phase_029_meta_permit_atomic_ledger.sql"), "phase30_migration_failed");
+  executeSql(read("supabase/migration-rehearsals/20260719092358_phase_029_meta_permit_atomic_ledger.sql"), "phase30_migration_failed");
   evidence.rehearsal.migrationApplied = true;
   recordEvent("migration_applied");
   executeSql(read("supabase/tests/database/phase_030_meta_permit_ledger_verify.sql"), "phase30_verification_failed");

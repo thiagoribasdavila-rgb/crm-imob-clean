@@ -29,7 +29,7 @@ expect(config.releaseGate.officialMigrationPromoted === true && config.releaseGa
 expect(config.releaseGate.isolatedRuntimeAvailable === false && config.releaseGate.isolatedRehearsalExecuted === false && config.releaseGate.ledgerPersistenceAllowed === false, "runtime ou persistencia liberados indevidamente");
 expect(config.governance.stagingCloneOnly === true && config.governance.linkedProjectForbidden === true && config.governance.productionIdentityComparisonRequired === true, "governanca do alvo incompleta");
 expect(config.governance.databaseMutation === false && config.governance.productionAccess === false && config.governance.realMetaEventDelivery === false && config.governance.buildExecuted === false, "banco, producao, Meta ou build alegados");
-expect(/^supabase\/migrations\/\d{14}_phase_029_meta_permit_atomic_ledger\.sql$/.test(config.officialMigration), "migration oficial fora do historico Supabase");
+expect(/^supabase\/migration-rehearsals\/\d{14}_phase_029_meta_permit_atomic_ledger\.sql$/.test(config.officialMigration), "ensaio fora do diretorio governado");
 expect(migration.includes("atlas_meta_ledger_staging_clone_only") && migration.includes("force row level security") && migration.includes("security invoker"), "migration sem travas de ambiente, RLS ou invoker");
 expect(migration.includes("on conflict do nothing") && migration.includes("meta_ledger_identity_collision") && !/security definer/i.test(migration), "atomicidade ou privilegio da migration invalido");
 expect(rollback.includes("rollback_refuses_non_empty_ledger") && !/drop schema/i.test(rollback), "rollback inseguro");
@@ -65,4 +65,4 @@ if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
-console.log("META INTELLIGENCE Fase 29: aprovada — migration oficial promovida e ensaio isolado preparado; banco, ledger persistente, permissao, entrega Meta, producao e build continuam bloqueados.");
+console.log("META INTELLIGENCE Fase 29: aprovada — migration de ensaio isolada fora da cadeia oficial; banco, ledger persistente, permissao, entrega Meta, producao e build continuam bloqueados.");
