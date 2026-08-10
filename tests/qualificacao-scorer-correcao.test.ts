@@ -68,8 +68,9 @@ describe("scorer conversacional — inversões e divergências corrigidas", () =
     for (const d of r.dimensions) {
       assert.ok(d.score <= d.maximum, `dimensão ${d.key} reporta ${d.score} acima do maximum ${d.maximum}`);
     }
-    // E o profile de fato usa o teto real: uma lead completíssima chega a 38.
+    // E o profile de fato usa o teto real: uma lead completíssima com recursos
+    // próprios chega a 40 (a forma à vista vale +5).
     const profile = r.dimensions.find((d) => d.key === "profile");
-    assert.equal(profile?.maximum, 38, "o teto declarado do profile é o real (38), não o aspiracional 35");
+    assert.equal(profile?.maximum, 40, "o teto declarado do profile é o real (40), não o aspiracional 35");
   });
 });

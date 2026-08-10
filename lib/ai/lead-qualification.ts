@@ -81,12 +81,21 @@ export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, p
   if (lead.preferred_regions?.length) { profile += 6; strengths.push("Região de interesse definida"); } else missingData.push("Região de interesse");
   if (lead.bedrooms) profile += 4; else missingData.push("Tipologia desejada");
   if (lead.purpose) profile += 4; else missingData.push("Objetivo da compra");
-  if (answers.financing) { profile += 3; strengths.push("Forma de pagamento conhecida"); } else missingData.push("Forma de pagamento");
-  // maximum é o teto REAL da soma (7+4+10+6+4+4+3=38), não um 35 aspiracional:
+  // Recursos próprios (à vista) é o comprador mais forte — o calculateLeadScore do
+  // cadastro já distingue (a_vista 15 > financiamento 8). Aqui a forma valia +3
+  // CHAPADO: o comprador à vista empatava com o financiado na mesma dimensão,
+  // uma divergência entre os dois scorers da mesma lead. Piso +3 preservado
+  // (aditivo); recursos próprios sobe a +5.
+  if (answers.financing) {
+    const aVista = answers.financing === "recursos_proprios";
+    profile += aVista ? 5 : 3;
+    strengths.push(aVista ? "Compra com recursos próprios" : "Forma de pagamento conhecida");
+  } else missingData.push("Forma de pagamento");
+  // maximum é o teto REAL da soma (7+4+10+6+4+4+5=40), não um 35 aspiracional:
   // a dimensão reportava score acima do próprio maximum para leads completas.
-  // Não clampamos a soma a 35 de propósito — clampar tiraria 3 pontos das leads
+  // Não clampamos a soma a 40 de propósito — clampar tiraria pontos das leads
   // mais qualificadas, e o score só pode subir (aditividade). Corrige-se o rótulo.
-  dimensions.push({ key: "profile", label: "Perfil e capacidade", score: profile, maximum: 38, reasons: strengths.slice() });
+  dimensions.push({ key: "profile", label: "Perfil e capacidade", score: profile, maximum: 40, reasons: strengths.slice() });
 
   const interactionDays = daysSince(lead.last_interaction_at, now);
   let engagement = 0;
