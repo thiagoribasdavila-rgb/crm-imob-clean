@@ -15,7 +15,9 @@
  * duplicar a tabela de códigos. Import de valor entre libs por caminho relativo.
  */
 
-import { classifyGraphError } from "./marketing/graph-client";
+// Extensão .ts explícita: sem ela o módulo não carrega em `node --test` (a mesma
+// razão de lib/atlas/scoring.ts) e a classificação ficaria sem cobertura executável.
+import { classifyGraphError } from "./marketing/graph-client.ts";
 
 export type OutboxFailureCause = "token_unhealthy" | "rate_limited" | "data";
 
@@ -48,6 +50,19 @@ export function classifyOutboxFailure(input: {
   subcode?: number | null;
 }): OutboxFailureCause {
   const message = input.message ?? "";
+
+  // ── CREDENCIAL AUSENTE É DA MESMA FAMÍLIA DO TOKEN EXPIRADO ────────────────
+  //
+  // "META_CONVERSIONS_ACCESS_TOKEN não configurado" não traz código Graph (é um
+  // erro LOCAL, lançado antes de falar com a Meta), então caía em "data": queimava
+  // as 5 tentativas e ia a dead_letter — e definir a variável depois NÃO
+  // reprocessava nada. Medido na fila viva: 12 conversões mortas exatamente assim.
+  // Config ausente é retryable como o token expirado: não é culpa do evento e some
+  // sozinha quando a variável é definida. `token_unhealthy` já reverte a tentativa,
+  // reentrega com backoff e nunca enterra — e o breaker de credencial para o lote
+  // (sem token, TODAS falham igual; não faz sentido varrer a fila inteira).
+  if (/ACCESS_TOKEN\s+n[ãa]o\s+configurad/i.test(message)) return "token_unhealthy";
+
   let code = input.code ?? null;
   let subcode = input.subcode ?? null;
 
