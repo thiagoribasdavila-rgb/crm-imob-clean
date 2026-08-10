@@ -51,6 +51,13 @@ const REGRAS = [
   // incluso (a etapa terminal pontuava 0 e caía abaixo de 'contrato'). O contrato
   // score-nas-tres-portas trava esta paridade motor↔script.
   ["funnel", 20, (l) => ["visita", "proposta", "contrato", "ganho"].includes(String(l.status ?? ""))],
+  // Espelha CREDITO_POR_PRAZO_DE_COMPRA de lib/atlas/scoring.ts (vocabulário da
+  // Ficha). Só uma entrada casa por lead, então a soma é o crédito graduado.
+  // Paridade travada no contrato score-nas-tres-portas.
+  ["prazo_imediato", 5, (l) => String(l.purchase_timeline ?? "") === "imediato"],
+  ["prazo_curto", 4, (l) => String(l.purchase_timeline ?? "") === "curto"],
+  ["prazo_medio", 3, (l) => String(l.purchase_timeline ?? "") === "medio"],
+  ["prazo_longo", 2, (l) => String(l.purchase_timeline ?? "") === "longo"],
 ];
 
 const pontuar = (lead) =>
@@ -58,7 +65,7 @@ const pontuar = (lead) =>
 
 const { data: leads, error } = await admin
   .from("leads")
-  .select("id,email,phone,budget_max,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,status,score,import_batch_id")
+  .select("id,email,phone,budget_max,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,status,purchase_timeline,score,import_batch_id")
   .or("score.is.null,score.eq.0")
   .limit(2000);
 if (error) throw new Error(error.message);

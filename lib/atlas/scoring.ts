@@ -28,7 +28,17 @@ export interface LeadScoreResult {
 type LeadScoreInput = Partial<AtlasLead> & {
   paymentMethod?: string | null;
   declaredBudgetRange?: string | null;
+  /** Prazo de compra declarado na Ficha (vocabulário PRAZOS_DE_COMPRA). */
+  purchaseTimeline?: string | null;
 };
+
+// Crédito por prazo de compra, graduado: quanto mais próximo, mais forte a
+// intenção. É o vocabulário da FICHA (imediato/curto/medio/longo/pesquisando),
+// distinto do scorer conversacional (ate_3_meses/…). "Só pesquisando" não
+// pontua — é a resposta honesta de quem ainda não é comprador. Espelhado no
+// script scripts/recalcula-score-das-importadas.mjs (paridade no contrato
+// score-nas-tres-portas).
+const CREDITO_POR_PRAZO_DE_COMPRA: Record<string, number> = { imediato: 5, curto: 4, medio: 3, longo: 2 };
 
 export function calculateLeadScore(lead: LeadScoreInput): LeadScoreResult {
   let score = 0;
@@ -48,6 +58,12 @@ export function calculateLeadScore(lead: LeadScoreInput): LeadScoreResult {
   if (lead.paymentMethod) {
     if (lead.paymentMethod === "a_vista") { score += 15; reasons.push("Compra à vista"); }
     else { score += 8; reasons.push("Forma de pagamento declarada"); }
+  }
+  // Prazo de compra declarado (Ficha): próximo pesa mais, mas qualquer prazo
+  // declarado supera o silêncio. Aditivo — só soma quando presente.
+  if (lead.purchaseTimeline) {
+    const creditoPrazo = CREDITO_POR_PRAZO_DE_COMPRA[lead.purchaseTimeline] ?? 0;
+    if (creditoPrazo > 0) { score += creditoPrazo; reasons.push("Prazo de compra declarado"); }
   }
   if (lead.preferredRegions?.length) { score += 10; reasons.push("Região de interesse definida"); }
   if (lead.bedrooms) { score += 5; reasons.push("Tipologia definida"); }

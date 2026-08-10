@@ -139,6 +139,13 @@ export function liveLeadUpdatePayload(
     ? (typeof body.payment_method === "string" && body.payment_method.trim() ? body.payment_method.trim() : null)
     : textoAtual(currentLead.payment_method);
 
+  // Prazo de compra: mesmo padrão do pagamento — consolidado uma vez, alimenta o
+  // score (calculateLeadScore gradua imediato/curto/medio/longo) E a coluna no
+  // retorno. Sem isto, o prazo declarado na Ficha ficaria gravado sem nunca contar.
+  const purchaseTimeline = sent("purchase_timeline")
+    ? (typeof body.purchase_timeline === "string" && body.purchase_timeline.trim() ? body.purchase_timeline.trim() : null)
+    : textoAtual(currentLead.purchase_timeline);
+
   // Mapeamento snake→camel explícito: calculateLeadScore lê AtlasLead. Passar a
   // linha do banco direto produziria score sobre objeto vazio.
   // lastInteractionAt/nextActionAt ficam de fora de propósito — a criação também
@@ -153,7 +160,7 @@ export function liveLeadUpdatePayload(
     purpose: purpose || null,
     status,
   };
-  const derived = calculateLeadScore({ ...scoringInput, paymentMethod });
+  const derived = calculateLeadScore({ ...scoringInput, paymentMethod, purchaseTimeline });
   const declaredScore = readDeclaredScore(body.score);
   const storedScore = readDeclaredScore(currentLead.score_ia);
   const scoreIa = declaredScore !== null && declaredScore !== storedScore ? declaredScore : derived.score;
@@ -212,9 +219,7 @@ export function liveLeadUpdatePayload(
       : textoAtual(currentLead.purpose),
     // Mesmo valor consolidado que alimentou o score acima — uma fonte só.
     payment_method: paymentMethod,
-    purchase_timeline: sent("purchase_timeline")
-      ? (typeof body.purchase_timeline === "string" && body.purchase_timeline.trim() ? body.purchase_timeline.trim() : null)
-      : textoAtual(currentLead.purchase_timeline),
+    purchase_timeline: purchaseTimeline,
     /**
      * `financing_required` é BOOLEAN no banco vivo — conferido em
      * `information_schema` depois de a prova derrubar o PATCH inteiro com um

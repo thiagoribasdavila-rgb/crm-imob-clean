@@ -100,6 +100,20 @@ test("a etapa avançada do funil não divergiu entre motor e script — inclui '
   assert.match(script, funil, "o script de recálculo precisa espelhar as mesmas quatro etapas");
 });
 
+test("o crédito de prazo de compra não divergiu entre motor e script", () => {
+  // Prazo de compra (vocabulário da Ficha) pontua GRADUADO: imediato>curto>medio>
+  // longo, pesquisando=0. Motor e script têm de usar os MESMOS pesos, ou a lead
+  // recomputada pelo backfill diverge da criada pela régua — a classe que este
+  // arquivo policia.
+  const motor = ler("lib", "atlas", "scoring.ts");
+  const script = ler("scripts", "recalcula-score-das-importadas.mjs");
+  const pesos = { imediato: 5, curto: 4, medio: 3, longo: 2 };
+  for (const [prazo, peso] of Object.entries(pesos)) {
+    assert.match(motor, new RegExp(`${prazo}:\\s*${peso}\\b`), `motor: prazo ${prazo} vale ${peso}`);
+    assert.match(script, new RegExp(`"prazo_${prazo}",\\s*${peso}\\b`), `script: prazo ${prazo} vale ${peso}`);
+  }
+});
+
 test("o recálculo nunca rebaixa quem já tem score", () => {
   // Sobrescrever um score ajustado à mão apaga trabalho humano sem avisar.
   const script = ler("scripts", "recalcula-score-das-importadas.mjs");
