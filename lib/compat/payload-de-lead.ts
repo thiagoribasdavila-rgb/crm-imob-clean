@@ -126,6 +126,19 @@ export function liveLeadUpdatePayload(
     ? body.status.trim().toLowerCase()
     : String(currentStatus || "novo").toLowerCase();
 
+  // ── FORMA DE PAGAMENTO ALIMENTA O SCORE, NÃO SÓ A COLUNA ────────────────────
+  //
+  // Consolidada UMA vez (enviado vence, ausente preserva o gravado) e usada nos
+  // DOIS lugares: o score logo abaixo e a coluna no retorno. Antes, o scoringInput
+  // não a passava, então o recompute do PATCH derrubava o +15 que a ingestão da
+  // Meta dá a um comprador à vista: no PRIMEIRO salvamento da Ficha, sem reenviar
+  // o campo, o crédito sumia calado (HTTP 200, ficha normal). `calculateLeadScore`
+  // já pontua a_vista/demais — faltava só entregar o valor aqui. Segue a regra da
+  // casa: AUSENTE preserva o gravado, VAZIO limpa de propósito.
+  const paymentMethod = sent("payment_method")
+    ? (typeof body.payment_method === "string" && body.payment_method.trim() ? body.payment_method.trim() : null)
+    : textoAtual(currentLead.payment_method);
+
   // Mapeamento snake→camel explícito: calculateLeadScore lê AtlasLead. Passar a
   // linha do banco direto produziria score sobre objeto vazio.
   // lastInteractionAt/nextActionAt ficam de fora de propósito — a criação também
@@ -140,7 +153,7 @@ export function liveLeadUpdatePayload(
     purpose: purpose || null,
     status,
   };
-  const derived = calculateLeadScore(scoringInput);
+  const derived = calculateLeadScore({ ...scoringInput, paymentMethod });
   const declaredScore = readDeclaredScore(body.score);
   const storedScore = readDeclaredScore(currentLead.score_ia);
   const scoreIa = declaredScore !== null && declaredScore !== storedScore ? declaredScore : derived.score;
@@ -197,9 +210,8 @@ export function liveLeadUpdatePayload(
     purpose: sent("purpose")
       ? (typeof body.purpose === "string" && body.purpose.trim() ? body.purpose.trim() : null)
       : textoAtual(currentLead.purpose),
-    payment_method: sent("payment_method")
-      ? (typeof body.payment_method === "string" && body.payment_method.trim() ? body.payment_method.trim() : null)
-      : textoAtual(currentLead.payment_method),
+    // Mesmo valor consolidado que alimentou o score acima — uma fonte só.
+    payment_method: paymentMethod,
     purchase_timeline: sent("purchase_timeline")
       ? (typeof body.purchase_timeline === "string" && body.purchase_timeline.trim() ? body.purchase_timeline.trim() : null)
       : textoAtual(currentLead.purchase_timeline),
