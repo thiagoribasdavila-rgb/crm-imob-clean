@@ -31,3 +31,19 @@ test("pacote auditado incorpora e valida o relatório sem segredos", () => {
   );
   assert.doesNotMatch(read("scripts/release-audited.mjs"), /process\.env\[name\]\s*[,}]/);
 });
+
+test("empacotador sanitiza artefatos proibidos também no modo git archive", () => {
+  const packager = read("scripts/package-hostinger.mjs");
+  const archiveIndex = packager.indexOf('execFileSync("git", ["archive"');
+  const sanitizerIndex = packager.indexOf("const stagedCandidates = execFileSync");
+  const fingerprintIndex = packager.indexOf("const fingerprintFiles = execFileSync");
+
+  assert.ok(archiveIndex >= 0, "modo git archive precisa existir");
+  assert.ok(sanitizerIndex > archiveIndex, "sanitização precisa ocorrer após a extração");
+  assert.ok(
+    sanitizerIndex < fingerprintIndex,
+    "sanitização precisa ocorrer antes do fingerprint e inventário",
+  );
+  assert.match(packager, /forbiddenPath\(relativePath\).*rmSync\(join\(stage, relativePath\)/s);
+  assert.match(packager, /xlsx\?\|csv\|pdf\|pem\|key\|mov\|mp4\|zip/);
+});

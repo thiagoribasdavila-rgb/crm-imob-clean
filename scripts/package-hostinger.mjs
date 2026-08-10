@@ -49,6 +49,11 @@ const isRealEnvironmentFile = (entry) => {
   const basename = entry.split("/").at(-1) || "";
   return (basename === ".env" || basename.startsWith(".env.")) && !basename.endsWith(".example");
 };
+const forbiddenPath = (relativePath) =>
+  isRealEnvironmentFile(relativePath) ||
+  /(^|\/)(?:hostinger\.env|node_modules|\.next|tmp|outputs|dist|\.git|logs)(?:\/|$)/.test(
+    relativePath,
+  ) || /\.(?:xlsx?|csv|pdf|pem|key|mov|mp4|zip)$/i.test(relativePath);
 const gitWorkspace = (() => {
   try {
     return execFileSync("git", ["rev-parse", "--is-inside-work-tree"], {
@@ -121,11 +126,6 @@ if (gitWorkspace) {
     "types",
     "utils",
   ];
-  const forbiddenPath = (relativePath) =>
-    isRealEnvironmentFile(relativePath) ||
-    /(^|\/)(?:hostinger\.env|node_modules|\.next|tmp|outputs|dist|\.git|logs)(?:\/|$)/.test(
-      relativePath,
-    ) || /\.(?:xlsx?|csv|pdf|pem|key|mov|mp4|zip)$/i.test(relativePath);
   const copyAllowed = (relativePath) => {
     const source = join(root, relativePath);
     if (!existsSync(source) || forbiddenPath(relativePath)) return;
@@ -139,6 +139,19 @@ if (gitWorkspace) {
   };
   for (const file of rootFiles) copyAllowed(file);
   for (const directory of rootDirectories) copyAllowed(directory);
+}
+
+// `git archive` preserves every tracked artifact, so sanitize the staging tree
+// regardless of the source mode before calculating fingerprints or checksums.
+const stagedCandidates = execFileSync("find", [".", "-type", "f"], {
+  cwd: stage,
+  encoding: "utf8",
+})
+  .split(/\r?\n/)
+  .filter(Boolean);
+for (const entry of stagedCandidates) {
+  const relativePath = entry.replace(/^\.\//, "").replaceAll("\\", "/");
+  if (forbiddenPath(relativePath)) rmSync(join(stage, relativePath), { force: true });
 }
 
 for (const relativePath of legacyRoutePaths)
