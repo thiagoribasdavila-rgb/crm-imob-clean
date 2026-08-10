@@ -9,11 +9,18 @@
   },
   "variablePatterns": [
     {
-      "pattern": "^ATLAS_PHASE[0-9]+_[A-Z0-9_]+$",
+      "pattern": "^ATLAS_PHASE_?[0-9]+_[A-Z0-9_]+$",
       "scope": "server",
       "requirement": "temporary",
       "secret": true,
-      "purpose": "Permissões, recibos e evidências temporárias dos ensaios de migração; classificação conservadora exclusiva do servidor."
+      "purpose": "Permissões, recibos e evidências temporárias dos ensaios de migração e homologação; aceita a convenção histórica com ou sem separador e permanece exclusiva do servidor."
+    },
+    {
+      "pattern": "^ATLAS_RUNTIME_[A-Z0-9_]+$",
+      "scope": "server",
+      "requirement": "temporary",
+      "secret": true,
+      "purpose": "Identificadores, confirmações e parâmetros temporários de verificadores destrutivos supervisionados; nunca expostos ao cliente nem incluídos no pacote."
     },
     {
       "pattern": "^ATLAS_AUTH_TEST_[A-Z0-9_]+$",
