@@ -1,4 +1,7 @@
-import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
+// Import RELATIVO com extensão .ts, mesma razão de `lib/atlas/scoring.ts`:
+// `temperatura-do-lead.ts` é módulo puro e este scorer precisa continuar
+// carregável por `node --test`, que não conhece os `paths` do tsconfig.
+import { HOT_SCORE_THRESHOLD } from "../atlas/temperatura-do-lead.ts";
 
 type QualificationLead = {
   email?: string | null;
@@ -97,7 +100,21 @@ export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, p
   let intent = stageScores[normalizedStatus] ?? 4;
   const intentReasons = [`Etapa atual: ${normalizedStatus}`];
   if (opportunityCount > 0) { intent = Math.min(25, intent + 4); intentReasons.push(`${opportunityCount} oportunidade(s) vinculada(s)`); }
-  if (["ate_3_meses", "3_a_6_meses"].includes(answers.timeline)) { intent = Math.min(25, intent + 4); intentReasons.push("Prazo de compra próximo"); }
+  // ── PRAZO DECLARADO É SINAL, NÃO AUSÊNCIA ────────────────────────────────
+  //
+  // Antes, só `ate_3_meses` e `3_a_6_meses` pontuavam (+4 cravado), e
+  // `6_a_12_meses` valia ZERO — exatamente o mesmo que `sem_prazo` ou não ter
+  // respondido. Mas quem declara "6 a 12 meses" DECLAROU um prazo de compra; é
+  // mais qualificado que o silêncio, e empatava com ele. A régua agora é
+  // graduada e estritamente aditiva: quanto mais próximo, mais forte, e nenhum
+  // prazo já pontuado perde valor. `sem_prazo` ("só pesquisando") segue em zero
+  // — é a resposta honesta de quem ainda não é comprador.
+  const creditoPorPrazo: Record<string, number> = { ate_3_meses: 5, "3_a_6_meses": 4, "6_a_12_meses": 2 };
+  const creditoPrazo = creditoPorPrazo[answers.timeline] ?? 0;
+  if (creditoPrazo > 0) {
+    intent = Math.min(25, intent + creditoPrazo);
+    intentReasons.push(creditoPrazo >= 4 ? "Prazo de compra próximo" : "Prazo de compra declarado");
+  }
   dimensions.push({ key: "intent", label: "Intenção e avanço", score: intent, maximum: 25, reasons: intentReasons });
 
   let fit = 0;
