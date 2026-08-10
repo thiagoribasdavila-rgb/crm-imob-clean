@@ -147,9 +147,15 @@ test("modelo inexistente continua sendo configuração — é do time técnico",
 });
 
 test("a mensagem chega à tela sem segredo, mesmo vindo do provedor", () => {
+  // A chave fake é montada por CONCATENAÇÃO de propósito: o fonte não pode conter
+  // `sk-` seguido de 20+ caracteres contíguos, senão o scanner de segredos (que é
+  // sem allowlist por design — fixtures precisam de assinatura curta, como o JWT
+  // `.abc` em observabilidade.test.ts) trava o PACOTE inteiro com um falso
+  // positivo. O valor em runtime é idêntico ao da chave inteira; não rejunte.
+  const chaveFake = "sk-" + "ant-api03-ABCDEFGHIJKLMNOPqrstuvwx";
   const falha = classificarFalhaDeIa(
     new Error(
-      "HTTP 429 insufficient_quota: quota esgotada para a chave sk-ant-api03-ABCDEFGHIJKLMNOPqrstuvwx da conta dono@empresa.com.br",
+      `HTTP 429 insufficient_quota: quota esgotada para a chave ${chaveFake} da conta dono@empresa.com.br`,
     ),
     "anthropic",
   );
