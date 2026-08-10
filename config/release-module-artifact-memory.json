@@ -17,10 +17,10 @@
       "revision": 1,
       "completionEntryHash": "5d76302e95051f129bc2d191c0c44548790361f2882c4276c93a9140b50a9577",
       "artifactCount": 46,
-      "totalBytes": 161632,
-      "artifactSetHash": "b53101a39dd1fcb48839f9142941e6d8fbe49b8b60f96e79dbd246accb9a1beb",
-      "snapshotHash": "2a69efaf91766197264907ca072547528cfbcc432540a1ddafbd0995603db652"
+      "totalBytes": 161380,
+      "artifactSetHash": "c670f8b844e02e1b191ed5767c56099bf5381a288cdd915a55ec8335803226f9",
+      "snapshotHash": "79e507f4289bcc2ff949839ea3e27eb9977ff97bf6f022537104a36c8e242209"
     }
   ],
-  "memoryHash": "1ef911f99bf207801eebf5b27dbbb29d9a609411c1ce0488050d90d33f510ccd"
+  "memoryHash": "7ad120788607d99c6d33a82c0d7c9a417745215f251678faa7b989de86b9b555"
 }

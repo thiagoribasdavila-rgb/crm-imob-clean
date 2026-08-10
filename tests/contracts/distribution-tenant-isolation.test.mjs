@@ -46,7 +46,11 @@ test("heartbeat é pessoal, mas distribuir fica atrás da barreira de diretoria"
 });
 
 test("o RPC recebe ator, organização e projeto resolvidos no servidor", () => {
-  assert.match(route, /admin\.rpc\("distribute_project_leads_v4",\s*\{/);
+  assert.match(route, /admin\.rpc\("distribute_project_leads_v6",\s*\{/);
+  assert.match(
+    route,
+    /isMissingSchema\(distributionResult\.error\)[\s\S]{0,240}distribute_project_leads_v4/,
+  );
   assert.match(route, /p_actor_id: actorId/);
   assert.match(route, /p_organization_id: organizationId/);
   assert.match(route, /p_development_id: developmentId/);
@@ -59,6 +63,7 @@ test("as consultas centrais e administrativas permanecem isoladas por organizaç
     "leads",
     "commercial_presence",
     "project_distribution_members",
+    "distribution_roster",
     "broker_capacity_limits",
     "lead_distribution_priority_rules",
     "lead_source_distribution_members",
@@ -72,6 +77,15 @@ test("as consultas centrais e administrativas permanecem isoladas por organizaç
       `${table} usa o tenant autenticado`,
     );
   }
+});
+
+test("a configuração canônica recebe somente o tenant autenticado", () => {
+  assert.match(route, /configure_project_distribution_roster_v1/);
+  assert.match(route, /configure_project_distribution_member_v1/);
+  assert.match(route, /p_actor_id: actorId/);
+  assert.match(route, /p_organization_id: organizationId/);
+  assert.match(route, /p_development_id: developmentId/);
+  assert.match(route, /EMPTY_DISTRIBUTION_ROSTER/);
 });
 
 test("a migration V4 exige diretor ativo da mesma organização", () => {

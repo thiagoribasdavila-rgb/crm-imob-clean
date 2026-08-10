@@ -31,7 +31,7 @@ test("vincula os 46 artefatos físicos ao módulo e à revisão exatos", () => {
   const inspection = inspectModuleArtifactSnapshot({ rootDir: process.cwd(), entry, snapshot });
   assert.equal(inspection.ok, true);
   assert.equal(inspection.artifactCount, 46);
-  assert.equal(inspection.totalBytes, 161632);
+  assert.equal(inspection.totalBytes, 161380);
 });
 
 test("não mistura evidência remota ou fases de governança posteriores", () => {

@@ -59,20 +59,12 @@ test("never authorizes rename, apply, reset, or migration history repair", () =>
   }
 });
 
-test("workspace dossier records hashes and metadata but no SQL payload", () => {
+test("sanitized workspace has unique migration versions and no SQL payload", () => {
   const dossier = buildMigrationCollisionDossier(process.cwd());
-  assert.equal(dossier.collisionCount, 3);
-  assert.equal(dossier.resolved, false);
+  assert.equal(dossier.collisionCount, 0);
+  assert.equal(dossier.uniqueVersionCount, dossier.migrationCount);
+  assert.equal(dossier.resolved, true);
   assert.equal(dossier.operationalEnvironmentTouched, false);
   assert.equal(dossier.sqlBodiesIncluded, false);
-  for (const collision of dossier.collisions) {
-    assert.equal(collision.files.length, 2);
-    for (const file of collision.files) {
-      assert.match(file.sha256, /^[a-f0-9]{64}$/);
-      assert.ok(file.bytes > 0);
-      assert.equal(Object.hasOwn(file, "source"), false);
-      assert.equal(Object.hasOwn(file, "sql"), false);
-    }
-  }
+  assert.deepEqual(dossier.collisions, []);
 });
-

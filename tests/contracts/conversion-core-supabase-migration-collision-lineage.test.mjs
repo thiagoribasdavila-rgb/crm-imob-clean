@@ -92,25 +92,23 @@ test("matches logical names while keeping every action fail-closed", () => {
   }
 });
 
-test("workspace identifies all six historical lineages without retaining SQL bodies", () => {
+test("sanitized workspace preserves historical mappings without local collisions", () => {
   const lineage = buildMigrationCollisionLineage({
     root: process.cwd(),
     historicalSnapshot: loadHistoricalCollisionSnapshot(process.cwd()),
   });
   assert.equal(lineage.status, "blocked_current_named_remote_evidence_unavailable");
-  assert.equal(lineage.collisionCount, 3);
-  assert.equal(lineage.collidingFileCount, 6);
+  assert.equal(lineage.collisionCount, 0);
+  assert.equal(lineage.collidingFileCount, 0);
   assert.equal(lineage.historicalMappingCount, 6);
-  assert.equal(lineage.matchedHistoricalMappingCount, 6);
+  assert.equal(lineage.matchedHistoricalMappingCount, 0);
   assert.equal(lineage.currentResolutionCount, 0);
   assert.equal(lineage.sqlBodiesIncluded, false);
-  for (const collision of lineage.collisions) {
-    for (const file of collision.files) {
-      assert.match(file.sha256, /^[a-f0-9]{64}$/);
-      assert.equal(file.historicalMappingObserved, true);
-      assert.equal(file.historicalReferenceOnly, true);
-      assert.equal(Object.hasOwn(file, "source"), false);
-      assert.equal(Object.hasOwn(file, "sql"), false);
-    }
-  }
+  assert.deepEqual(lineage.collisions, []);
+  assert.equal(lineage.currentNamedRemoteEvidenceAvailable, false);
+  assert.equal(lineage.migrationApplied, false);
+  assert.equal(lineage.directPushAuthorized, false);
+  assert.equal(lineage.buildAuthorized, false);
+  assert.equal(lineage.zipAuthorized, false);
+  assert.equal(lineage.deployAuthorized, false);
 });

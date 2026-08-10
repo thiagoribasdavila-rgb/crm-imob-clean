@@ -20,8 +20,10 @@ for (const fragment of [
 }
 
 for (const fragment of [
-  'const managerRoles = new Set(["director"])',
+  'if (role !== "director")',
   "const admin = getSupabaseAdmin()",
+  'admin.rpc("distribute_project_leads_v6"',
+  "isMissingSchema(distributionResult.error)",
   'admin.rpc("distribute_project_leads_v4"',
 ]) {
   assert.ok(route.includes(fragment), `Distribution route must contain: ${fragment}`);
@@ -31,6 +33,11 @@ assert.equal(
   route.includes('supabase.rpc("distribute_project_leads_v5"'),
   false,
   "The browser-scoped Supabase client must not execute the v5 distribution RPC.",
+);
+assert.equal(
+  route.includes('supabase.rpc("distribute_project_leads_v6"'),
+  false,
+  "The browser-scoped Supabase client must not execute the v6 distribution RPC.",
 );
 
 console.log("Phase 355 distribution RPC hardening contract passed.");

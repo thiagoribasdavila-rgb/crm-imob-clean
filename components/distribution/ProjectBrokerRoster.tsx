@@ -137,6 +137,7 @@ export function ProjectBrokerRoster({
   }
 
   async function save() {
+    if (selectedCount < 1) return;
     const saved = await onSave(
       draftedBrokers.map((broker) => ({
         profileId: broker.id,
@@ -390,7 +391,7 @@ export function ProjectBrokerRoster({
                           }}
                           className="ml-2 rounded-lg border border-white/10 bg-slate-950 px-2 py-2 text-xs text-white"
                         >
-                          {[1, 2, 3, 4, 5].map((weight) => (
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((weight) => (
                             <option key={weight} value={weight}>
                               {weight}
                             </option>
@@ -538,14 +539,16 @@ export function ProjectBrokerRoster({
               <button
                 type="button"
                 onClick={() => void save()}
-                disabled={!dirty || working || !projectId}
+                disabled={!dirty || working || !projectId || selectedCount < 1}
                 className="atlas-button-primary flex-1 disabled:opacity-40"
               >
                 {working ? "Salvando…" : "Salvar roleta"}
               </button>
             </div>
             <p className="mt-3 text-[10px] leading-4 text-slate-600">
-              {dirty
+              {selectedCount < 1
+                ? "Selecione ao menos um corretor. Uma roleta vazia não pode ser salva porque abriria a distribuição para toda a equipe."
+                : dirty
                 ? "Há alterações pendentes. Salve ou desfaça antes de trocar de projeto."
                 : "A configuração dos outros projetos permanece intacta."}
             </p>

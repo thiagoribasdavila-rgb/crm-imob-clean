@@ -149,9 +149,11 @@ test("a interface não permite ocultar o projeto com alterações pendentes", ()
   assert.match(component, /Salve ou desfaça as alterações antes de trocar de incorporadora/);
   assert.match(component, /data-distribution-decision="explainable"/);
   assert.match(component, /Prioridade ordena a lead; capacidade \+ peso escolhem o corretor/);
+  assert.match(component, /selectedCount < 1/);
+  assert.match(component, /Uma roleta vazia não pode ser salva/);
 });
 
-test("a API salva a equipe do projeto em lote com limite e hierarquia", () => {
+test("a API salva a equipe canônica do projeto em lote com limite e hierarquia", () => {
   const route = readFileSync(
     new URL("../../app/api/v1/crm/distribution/route.ts", import.meta.url),
     "utf8",
@@ -159,11 +161,53 @@ test("a API salva a equipe do projeto em lote com limite e hierarquia", () => {
 
   assert.match(route, /action === "configure_members"/);
   assert.match(route, /members\.length > 100/);
+  assert.match(route, /distribution_roster/);
   assert.match(route, /project_distribution_members/);
+  assert.match(route, /configure_project_distribution_roster_v1/);
+  assert.match(route, /EMPTY_DISTRIBUTION_ROSTER/);
   assert.match(route, /BROKER_OUT_OF_SCOPE/);
   assert.doesNotMatch(route, /descendantsFromLiveProfiles/);
   assert.match(route, /new Set\(hierarchy\.map\(\(profile\) => text\(profile\.id\)\)\)/);
   assert.match(route, /allowed\.has\(text\(profile\.id\)\)/);
+});
+
+test("a API usa v6 e limita o v4 à compatibilidade de schema", () => {
+  const route = readFileSync(
+    new URL("../../app/api/v1/crm/distribution/route.ts", import.meta.url),
+    "utf8",
+  );
+
+  const v6 = route.indexOf('admin.rpc("distribute_project_leads_v6"');
+  const fallback = route.indexOf("isMissingSchema(distributionResult.error)");
+  const v4 = route.indexOf('admin.rpc("distribute_project_leads_v4"');
+
+  assert.ok(v6 >= 0 && fallback > v6 && v4 > fallback);
+  assert.match(route, /distributionVersion = "v4-compatibility"/);
+  assert.match(route, /sla_campaign_project_roster_reservation_v6/);
+  assert.doesNotMatch(route, /supabase\.rpc\("distribute_project_leads_v6"/);
+});
+
+test("a migration reconcilia a roleta v6 sem expor RPCs ao cliente", () => {
+  const migration = readFileSync(
+    new URL(
+      "../../supabase/migrations/20260810170000_distribution_roster_contract_reconciliation.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ).toLowerCase();
+
+  for (const marker of [
+    "configure_project_distribution_roster_v1",
+    "configure_project_distribution_member_v1",
+    "empty_distribution_roster",
+    "distribution_roster_director_write",
+    "project_distribution_members",
+    "distribute_project_leads_v6",
+    "from public, anon, authenticated",
+    "to service_role",
+  ]) {
+    assert.ok(migration.includes(marker), `migration sem ${marker}`);
+  }
 });
 
 test("somente a diretoria abre e altera a fila; presença continua sendo individual", () => {

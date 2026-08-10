@@ -199,6 +199,7 @@ export async function GET(request: NextRequest) {
   const [
     presenceResult,
     queueResult,
+    canonicalRosterResult,
     capacityResult,
     priorityResult,
     sourceMembersResult,
@@ -215,6 +216,13 @@ export async function GET(request: NextRequest) {
         "profile_id,development_id,enabled,weight,assignments_count,last_assigned_at,updated_at",
       )
       .eq("organization_id", organizationId),
+    admin
+      .from("distribution_roster")
+      .select(
+        "profile_id,escopo,escopo_id,ativo,posicao,created_at,updated_at",
+      )
+      .eq("organization_id", organizationId)
+      .eq("escopo", "projeto"),
     admin
       .from("broker_capacity_limits")
       .select(
@@ -248,6 +256,7 @@ export async function GET(request: NextRequest) {
   const advancedErrors = [
     presenceResult.error,
     queueResult.error,
+    canonicalRosterResult.error,
     capacityResult.error,
     priorityResult.error,
     sourceMembersResult.error,
@@ -295,19 +304,42 @@ export async function GET(request: NextRequest) {
       )
       .map((item) => [`${item.profile_id}:${item.development_id}`, item]),
   );
+  const canonicalRosterAvailable = !canonicalRosterResult.error;
+  const canonicalConfiguredProjects = new Set(
+    (canonicalRosterResult.data ?? [])
+      .filter((item) => projectIds.has(text(item.escopo_id)))
+      .map((item) => text(item.escopo_id)),
+  );
+  const canonicalRoster = new Map(
+    (canonicalRosterResult.data ?? [])
+      .filter(
+        (item) =>
+          profileIds.has(text(item.profile_id)) &&
+          projectIds.has(text(item.escopo_id)),
+      )
+      .map((item) => [`${item.profile_id}:${item.escopo_id}`, item]),
+  );
   const queue = profiles
     .filter((profile) => profile.commercial_role === "broker")
     .flatMap((profile) =>
       projects.map((project) => {
         const configured = configuredQueue.get(`${profile.id}:${project.id}`);
+        const canonical = canonicalRoster.get(`${profile.id}:${project.id}`);
+        const canonicalProjectConfigured = canonicalConfiguredProjects.has(
+          text(project.id),
+        );
         return {
           profile_id: profile.id,
           development_id: project.id,
-          enabled: configured?.enabled ?? true,
+          enabled: canonicalProjectConfigured
+            ? Boolean(canonical?.ativo)
+            : configured?.enabled ?? true,
           weight: configured?.weight ?? 1,
+          position: canonical?.posicao ?? null,
           assignments_count: configured?.assignments_count ?? 0,
           last_assigned_at: configured?.last_assigned_at ?? null,
-          configured: Boolean(configured),
+          configured: canonicalProjectConfigured || Boolean(configured),
+          roster_source: canonicalProjectConfigured ? "canonical" : "legacy",
         };
       }),
     );
@@ -403,9 +435,12 @@ export async function GET(request: NextRequest) {
         projects: projectCompatibility,
         advancedDistribution:
           advancedErrors.length === 0 ? "operational" : "ddl-required",
+        roster: canonicalRosterAvailable ? "canonical-v6" : "legacy-v4",
       },
       rules: {
-        algorithm: "sla_source_priority_reservation_v4",
+        algorithm: canonicalRosterAvailable
+          ? "sla_campaign_project_roster_reservation_v6"
+          : "sla_source_priority_reservation_v4",
         presenceWindowSeconds: 90,
         acceptanceMinutes: 5,
         onlineOnly: true,
@@ -565,13 +600,24 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const distributionResult = await admin.rpc("distribute_project_leads_v4", {
+    let distributionResult = await admin.rpc("distribute_project_leads_v6", {
       p_actor_id: actorId,
       p_organization_id: organizationId,
       p_development_id: developmentId,
       p_limit: limit,
       p_acceptance_minutes: 5,
     });
+    let distributionVersion = "v6";
+    if (distributionResult.error && isMissingSchema(distributionResult.error)) {
+      distributionVersion = "v4-compatibility";
+      distributionResult = await admin.rpc("distribute_project_leads_v4", {
+        p_actor_id: actorId,
+        p_organization_id: organizationId,
+        p_development_id: developmentId,
+        p_limit: limit,
+        p_acceptance_minutes: 5,
+      });
+    }
     if (distributionResult.error) {
       structuredApiLog(
         "warn",
@@ -583,6 +629,7 @@ export async function POST(request: NextRequest) {
           organizationId,
           developmentId,
           limit,
+          distributionVersion,
           error: distributionResult.error.message,
         },
       );
@@ -603,6 +650,7 @@ export async function POST(request: NextRequest) {
         organizationId,
         developmentId,
         limit,
+        distributionVersion,
         distributed: distributionResult.data?.distributed,
       },
     );
@@ -742,6 +790,15 @@ export async function POST(request: NextRequest) {
         { status: 403 },
       );
     }
+    const enabledCount = scopedTargets.filter((member) => member.enabled).length;
+    if (enabledCount < 1) {
+      return apiError(
+        "EMPTY_DISTRIBUTION_ROSTER",
+        "Selecione ao menos um corretor para receber leads deste projeto.",
+        identity.meta,
+        { status: 400 },
+      );
+    }
     const development = await admin
       .from("developments")
       .select("id")
@@ -756,23 +813,19 @@ export async function POST(request: NextRequest) {
         { status: 404 },
       );
     }
-    const updatedAt = new Date().toISOString();
-    const rosterResult = await admin
-      .from("project_distribution_members")
-      .upsert(
-        scopedTargets.map(({ profile, enabled, weight }) => ({
-          organization_id: organizationId,
-          development_id: developmentId,
+    const rosterResult = await admin.rpc(
+      "configure_project_distribution_roster_v1",
+      {
+        p_actor_id: actorId,
+        p_organization_id: organizationId,
+        p_development_id: developmentId,
+        p_members: scopedTargets.map(({ profile, enabled, weight }) => ({
           profile_id: profile!.id,
           enabled,
           weight,
-          updated_at: updatedAt,
         })),
-        { onConflict: "development_id,profile_id" },
-      )
-      .select(
-        "profile_id,development_id,enabled,weight,assignments_count,last_assigned_at,updated_at",
-      );
+      },
+    );
     if (rosterResult.error) {
       structuredApiLog(
         "warn",
@@ -802,11 +855,16 @@ export async function POST(request: NextRequest) {
         actorId,
         developmentId,
         memberCount: scopedTargets.length,
-        enabledCount: scopedTargets.filter((member) => member.enabled).length,
+        enabledCount,
       },
     );
     return apiSuccess(
-      { members: rosterResult.data, configured: scopedTargets.length },
+      {
+        members: rosterResult.data,
+        configured: scopedTargets.length,
+        enabled: enabledCount,
+        source: "canonical-v6",
+      },
       identity.meta,
       { headers: limited.headers },
     );
@@ -855,23 +913,17 @@ export async function POST(request: NextRequest) {
         { status: 404 },
       );
     }
-    const memberResult = await admin
-      .from("project_distribution_members")
-      .upsert(
-        {
-          organization_id: organizationId,
-          development_id: developmentId,
-          profile_id: target.id,
-          enabled: body.enabled,
-          weight,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "development_id,profile_id" },
-      )
-      .select(
-        "profile_id,development_id,enabled,weight,assignments_count,last_assigned_at,updated_at",
-      )
-      .single();
+    const memberResult = await admin.rpc(
+      "configure_project_distribution_member_v1",
+      {
+        p_actor_id: actorId,
+        p_organization_id: organizationId,
+        p_development_id: developmentId,
+        p_profile_id: target.id,
+        p_enabled: body.enabled,
+        p_weight: weight,
+      },
+    );
     if (memberResult.error) {
       structuredApiLog(
         "warn",
