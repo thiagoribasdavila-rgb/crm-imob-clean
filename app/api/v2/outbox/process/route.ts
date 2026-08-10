@@ -13,6 +13,7 @@ import { resolveLeadOwner, recordDistribution } from "@/lib/distribution/hierarc
 import { metaGraphVersion, describeMetaGraphFailure } from "@/lib/meta/graph";
 import { classifyOutboxFailure } from "@/lib/meta/outbox-failure";
 import { closeOutboxEvent, recoverExpiredLeases } from "@/lib/integrations/outbox-lease";
+import { ehContatoJaEhLeadUnica } from "@/lib/integrations/contato-duplicado";
 import { AUTO_REGISTERED_CAMPAIGN_STATUS, autoRegisteredCampaignName } from "@/lib/marketing/campaign-provenance";
 import { fecharPrimeiroContatoPorWhatsapp } from "@/lib/crm/whatsapp-first-contact";
 import { linhaDeAtividade } from "@/lib/crm/registro-de-atividade";
@@ -933,6 +934,31 @@ export async function POST(request: Request) {
           const { data: lead, error: leadError } = leadInsert;
           if (leadError || !lead) {
             await discardOrphanCampaign(admin, campaignLink, metaEvent.organization_id);
+            // ── DUPLICATA É IDEMPOTÊNCIA, NÃO FALHA DE ENTREGA ──────────────
+            //
+            // O trigger de telefone único recusa a segunda entrada do MESMO
+            // contato (P0001, "já pertence a uma lead única"): a pessoa preencheu
+            // outro formulário e a lead original JÁ EXISTE — nada se perde.
+            // Antes isto virava `throw` → 5 retentativas → dead_letter; medido
+            // 03-04/08, 41 eventos morreram assim, todos duplicata. Reconhecemos,
+            // vinculamos o evento à lead que já existe (best-effort, por telefone)
+            // e encerramos como ENTREGUE — sem retry, sem dead_letter. `imported`
+            // também fecha o guard de reprocesso (status !== 'imported', acima).
+            if (ehContatoJaEhLeadUnica(leadError)) {
+              const jaExiste = phone
+                ? await admin.from("leads").select("id").eq("organization_id", metaEvent.organization_id).eq("phone", phone).maybeSingle()
+                : { data: null };
+              await gravar("meta_lead_events.duplicata", admin.from("meta_lead_events").update({
+                status: "imported",
+                lead_id: jaExiste.data?.id ?? null,
+                processed_at: now,
+                last_error: "Contato já é uma lead única no CRM — evento reconhecido como duplicata (idempotente).",
+              }).eq("id", metaEvent.id));
+              await closeOutboxEvent(admin, event.id, { status: "delivered", delivered_at: now, locked_at: null, locked_by: null, last_error: null, cause: "duplicata" });
+              delivered += 1;
+              logger.info("meta.lead.fetch.duplicata_reconhecida", { organizationId: metaEvent.organization_id, metaLeadEventId: metaEvent.id, vinculadaA: jaExiste.data?.id ?? null });
+              continue;
+            }
             throw leadError ?? new Error("Falha ao criar lead Meta.");
           }
           if (ownership?.ownerId) await recordDistribution(admin, { organizationId: metaEvent.organization_id, leadId: lead.id, ownerId: ownership.ownerId, reason: ownership.reason });
