@@ -47,7 +47,10 @@ const REGRAS = [
   ["purpose", 10, (l) => Boolean(l.purpose)],
   ["interaction", 15, (l) => Boolean(l.last_interaction_at)],
   ["nextAction", 5, (l) => Boolean(l.next_action_at)],
-  ["funnel", 20, (l) => ["visita", "proposta", "contrato"].includes(String(l.status ?? ""))],
+  // Espelha lib/atlas/scoring.ts: as quatro etapas comerciais canônicas, 'ganho'
+  // incluso (a etapa terminal pontuava 0 e caía abaixo de 'contrato'). O contrato
+  // score-nas-tres-portas trava esta paridade motor↔script.
+  ["funnel", 20, (l) => ["visita", "proposta", "contrato", "ganho"].includes(String(l.status ?? ""))],
 ];
 
 const pontuar = (lead) =>

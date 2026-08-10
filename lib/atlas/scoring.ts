@@ -54,7 +54,14 @@ export function calculateLeadScore(lead: LeadScoreInput): LeadScoreResult {
   if (lead.purpose) { score += 10; reasons.push("Objetivo de compra definido"); }
   if (lead.lastInteractionAt) { score += 15; reasons.push("Já houve interação"); }
   if (lead.nextActionAt) { score += 5; reasons.push("Próxima ação agendada"); }
-  if (["visita", "proposta", "contrato"].includes(String(lead.status))) {
+  // Etapa avançada = as MESMAS quatro etapas comerciais canônicas
+  // (CAMPAIGN_QUALITY_COMMERCIAL_STAGES: visita/proposta/contrato/ganho). 'ganho'
+  // faltava: um lead GANHO — a etapa TERMINAL — pontuava 0 de funil e caía ABAIXO
+  // de um em 'contrato'. Afeta a importação de planilha com negócio fechado e o
+  // recompute do PATCH de um lead já ganho. O literal é espelhado no script
+  // paralelo scripts/recalcula-score-das-importadas.mjs; o contrato
+  // score-nas-tres-portas policia a paridade motor↔script (inclusive 'ganho').
+  if (["visita", "proposta", "contrato", "ganho"].includes(String(lead.status))) {
     score += 20;
     reasons.push("Lead avançado no funil");
   }

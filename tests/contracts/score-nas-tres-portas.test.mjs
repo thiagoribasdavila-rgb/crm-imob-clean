@@ -87,6 +87,19 @@ test("a régua do script de recálculo não divergiu da do produto", () => {
   }
 });
 
+test("a etapa avançada do funil não divergiu entre motor e script — inclui 'ganho'", () => {
+  // A etapa TERMINAL 'ganho' faltava no crédito de funil: um lead ganho pontuava
+  // 0 aqui e caía ABAIXO de um em 'contrato'. Corrigido no motor E no script; esta
+  // trava impede que um lado ganhe uma etapa e o outro não — a classe "réguas
+  // paralelas divergem" que este arquivo existe para policiar. As quatro são as
+  // etapas comerciais canônicas (CAMPAIGN_QUALITY_COMMERCIAL_STAGES).
+  const motor = ler("lib", "atlas", "scoring.ts");
+  const script = ler("scripts", "recalcula-score-das-importadas.mjs");
+  const funil = /\[\s*"visita",\s*"proposta",\s*"contrato",\s*"ganho"\s*\]/;
+  assert.match(motor, funil, "o motor precisa creditar as quatro etapas avançadas, 'ganho' inclusa");
+  assert.match(script, funil, "o script de recálculo precisa espelhar as mesmas quatro etapas");
+});
+
 test("o recálculo nunca rebaixa quem já tem score", () => {
   // Sobrescrever um score ajustado à mão apaga trabalho humano sem avisar.
   const script = ler("scripts", "recalcula-score-das-importadas.mjs");
