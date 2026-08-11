@@ -9,17 +9,17 @@
     "requestBoundary": "proxy.ts"
   },
   "summary": {
-    "routeFiles": 449,
-    "pages": 275,
+    "routeFiles": 448,
+    "pages": 274,
     "apiRoutes": 174,
     "activeRouteFiles": 268,
-    "quarantinedRouteFiles": 181,
+    "quarantinedRouteFiles": 180,
     "nonRoutableFiles": 0,
     "activePages": 95,
     "activePageUrls": 95,
     "activeApis": 173,
     "activeCollisions": 0,
-    "allSourceCollisions": 17,
+    "allSourceCollisions": 16,
     "directRedirectPages": 8,
     "activeRedirectPages": 2,
     "canonicalNavigationDestinations": 19,
@@ -29,7 +29,7 @@
     "aliasesWithActiveSourceAndTarget": 0,
     "aliasesWithInactiveTarget": 0,
     "disposition": {
-      "hide": 181,
+      "hide": 180,
       "keep": 266,
       "redirect": 2
     }
@@ -87,11 +87,6 @@
       ],
       "active": true,
       "pages": [
-        {
-          "file": "app/(ai)/ai-dashboard/page.tsx",
-          "active": false,
-          "disposition": "hide"
-        },
         {
           "file": "app/(crm)/ai-dashboard/page.tsx",
           "active": true,
@@ -778,13 +773,6 @@
         ]
       },
       {
-        "url": "/ai-dashboard",
-        "files": [
-          "app/(ai)/ai-dashboard/page.tsx",
-          "app/(crm)/ai-dashboard/page.tsx"
-        ]
-      },
-      {
         "url": "/analytics",
         "files": [
           "app/(crm)/analytics/page.tsx",
@@ -1034,26 +1022,6 @@
       "redirect": null,
       "methods": [],
       "lines": 11,
-      "disposition": "hide",
-      "reason": "legacy-quarantine"
-    },
-    {
-      "file": "app/(ai)/ai-dashboard/page.tsx",
-      "url": "/ai-dashboard",
-      "type": "page",
-      "active": false,
-      "quarantined": true,
-      "routable": true,
-      "intercepted": false,
-      "navigation": [
-        {
-          "surface": "canonical",
-          "label": "Copilot"
-        }
-      ],
-      "redirect": null,
-      "methods": [],
-      "lines": 2,
       "disposition": "hide",
       "reason": "legacy-quarantine"
     },

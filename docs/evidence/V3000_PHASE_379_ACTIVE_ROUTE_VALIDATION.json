@@ -1,0 +1,2945 @@
+{
+  "schemaVersion": 1,
+  "phase": 379,
+  "consolidationGate": 6,
+  "scope": "active-next16-pages-apis-and-canonical-redirects",
+  "sourceOfTruth": {
+    "routeFiles": "git ls-files app",
+    "quarantine": "scripts/legacy-route-paths.mjs",
+    "redirects": "config/atlas-route-aliases.json",
+    "buildManifests": {
+      "appPaths": ".next/server/app-paths-manifest.json",
+      "appRoutes": ".next/app-path-routes-manifest.json",
+      "routes": ".next/routes-manifest.json"
+    }
+  },
+  "summary": {
+    "activeRouteFiles": 268,
+    "activePages": 95,
+    "activeApis": 173,
+    "quarantinedRouteFiles": 180,
+    "sourceIssues": 0,
+    "canonicalRedirects": 4,
+    "sourceOk": true,
+    "buildOk": true,
+    "ok": true
+  },
+  "findings": {
+    "emptyRoutes": [],
+    "pagesWithoutDefaultExport": [],
+    "apisWithoutMethod": [],
+    "collisions": [],
+    "invalidAliases": [],
+    "aliasChains": []
+  },
+  "redirects": [
+    {
+      "concept": "analytics-relatorios",
+      "source": "/analytics",
+      "destination": "/reports",
+      "permanent": true
+    },
+    {
+      "concept": "conversas",
+      "source": "/chat",
+      "destination": "/conversations",
+      "permanent": true
+    },
+    {
+      "concept": "inteligencia-de-criativos",
+      "source": "/creatives",
+      "destination": "/marketing/creatives",
+      "permanent": true
+    },
+    {
+      "concept": "pipeline-kanban",
+      "source": "/kanban",
+      "destination": "/pipeline",
+      "permanent": true
+    }
+  ],
+  "build": {
+    "required": true,
+    "available": true,
+    "ok": true,
+    "manifestRouteCount": 270,
+    "activeRoutesPresent": 268,
+    "activeRoutesMissing": [],
+    "publicPathMismatches": [],
+    "quarantinedRoutesPresent": [],
+    "unexpectedManifestRoutes": [],
+    "internalNextRoutes": [
+      "/_global-error/page",
+      "/_not-found/page"
+    ],
+    "configuredRedirects": 4,
+    "redirectsPresent": 4,
+    "redirectsMissing": [],
+    "manifestDigest": "53a8926ca9d3bcef00d8d56ad754a94c4ca0a818d0e58bfd7d79a538736b5a2f"
+  },
+  "routes": [
+    {
+      "file": "app/(auth)/forgot-password/page.tsx",
+      "url": "/forgot-password",
+      "manifestKey": "/(auth)/forgot-password/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(auth)/login/page.tsx",
+      "url": "/login",
+      "manifestKey": "/(auth)/login/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(auth)/reset-password/page.tsx",
+      "url": "/reset-password",
+      "manifestKey": "/(auth)/reset-password/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(auth)/setup/page.tsx",
+      "url": "/setup",
+      "manifestKey": "/(auth)/setup/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/activity/page.tsx",
+      "url": "/activity",
+      "manifestKey": "/(crm)/activity/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/ai-dashboard/page.tsx",
+      "url": "/ai-dashboard",
+      "manifestKey": "/(crm)/ai-dashboard/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/brokers/page.tsx",
+      "url": "/brokers",
+      "manifestKey": "/(crm)/brokers/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/calendar/page.tsx",
+      "url": "/calendar",
+      "manifestKey": "/(crm)/calendar/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/conversations/page.tsx",
+      "url": "/conversations",
+      "manifestKey": "/(crm)/conversations/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/customers/page.tsx",
+      "url": "/customers",
+      "manifestKey": "/(crm)/customers/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/dashboard/page.tsx",
+      "url": "/dashboard",
+      "manifestKey": "/(crm)/dashboard/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/decision-center/page.tsx",
+      "url": "/decision-center",
+      "manifestKey": "/(crm)/decision-center/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/[id]/catalog/page.tsx",
+      "url": "/developments/[id]/catalog",
+      "manifestKey": "/(crm)/developments/[id]/catalog/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/[id]/commercial-versions/page.tsx",
+      "url": "/developments/[id]/commercial-versions",
+      "manifestKey": "/(crm)/developments/[id]/commercial-versions/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/[id]/dossier/page.tsx",
+      "url": "/developments/[id]/dossier",
+      "manifestKey": "/(crm)/developments/[id]/dossier/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/[id]/inventory/import/page.tsx",
+      "url": "/developments/[id]/inventory/import",
+      "manifestKey": "/(crm)/developments/[id]/inventory/import/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/[id]/inventory/page.tsx",
+      "url": "/developments/[id]/inventory",
+      "manifestKey": "/(crm)/developments/[id]/inventory/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/[id]/materials/page.tsx",
+      "url": "/developments/[id]/materials",
+      "manifestKey": "/(crm)/developments/[id]/materials/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/[id]/page.tsx",
+      "url": "/developments/[id]",
+      "manifestKey": "/(crm)/developments/[id]/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/[id]/region-study/page.tsx",
+      "url": "/developments/[id]/region-study",
+      "manifestKey": "/(crm)/developments/[id]/region-study/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/developers/page.tsx",
+      "url": "/developments/developers",
+      "manifestKey": "/(crm)/developments/developers/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/homologation/page.tsx",
+      "url": "/developments/homologation",
+      "manifestKey": "/(crm)/developments/homologation/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/materials/page.tsx",
+      "url": "/developments/materials",
+      "manifestKey": "/(crm)/developments/materials/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/page.tsx",
+      "url": "/developments",
+      "manifestKey": "/(crm)/developments/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/payment-rules/page.tsx",
+      "url": "/developments/payment-rules",
+      "manifestKey": "/(crm)/developments/payment-rules/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/developments/registry/page.tsx",
+      "url": "/developments/registry",
+      "manifestKey": "/(crm)/developments/registry/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/distribution/page.tsx",
+      "url": "/distribution",
+      "manifestKey": "/(crm)/distribution/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/external-sales/page.tsx",
+      "url": "/external-sales",
+      "manifestKey": "/(crm)/external-sales/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/integrations/google/page.tsx",
+      "url": "/integrations/google",
+      "manifestKey": "/(crm)/integrations/google/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/integrations/health/page.tsx",
+      "url": "/integrations/health",
+      "manifestKey": "/(crm)/integrations/health/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/integrations/hostinger/page.tsx",
+      "url": "/integrations/hostinger",
+      "manifestKey": "/(crm)/integrations/hostinger/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/integrations/meta/andromeda/page.tsx",
+      "url": "/integrations/meta/andromeda",
+      "manifestKey": "/(crm)/integrations/meta/andromeda/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/integrations/meta/page.tsx",
+      "url": "/integrations/meta",
+      "manifestKey": "/(crm)/integrations/meta/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/integrations/page.tsx",
+      "url": "/integrations",
+      "manifestKey": "/(crm)/integrations/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/integrations/webhooks/page.tsx",
+      "url": "/integrations/webhooks",
+      "manifestKey": "/(crm)/integrations/webhooks/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/integrations/whatsapp/page.tsx",
+      "url": "/integrations/whatsapp",
+      "manifestKey": "/(crm)/integrations/whatsapp/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/attribution/page.tsx",
+      "url": "/leads/[id]/attribution",
+      "manifestKey": "/(crm)/leads/[id]/attribution/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/behavior/page.tsx",
+      "url": "/leads/[id]/behavior",
+      "manifestKey": "/(crm)/leads/[id]/behavior/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/calls/page.tsx",
+      "url": "/leads/[id]/calls",
+      "manifestKey": "/(crm)/leads/[id]/calls/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/contact-preferences/page.tsx",
+      "url": "/leads/[id]/contact-preferences",
+      "manifestKey": "/(crm)/leads/[id]/contact-preferences/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/emails/page.tsx",
+      "url": "/leads/[id]/emails",
+      "manifestKey": "/(crm)/leads/[id]/emails/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/memory/page.tsx",
+      "url": "/leads/[id]/memory",
+      "manifestKey": "/(crm)/leads/[id]/memory/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/messages/page.tsx",
+      "url": "/leads/[id]/messages",
+      "manifestKey": "/(crm)/leads/[id]/messages/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/notes/page.tsx",
+      "url": "/leads/[id]/notes",
+      "manifestKey": "/(crm)/leads/[id]/notes/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/page.tsx",
+      "url": "/leads/[id]",
+      "manifestKey": "/(crm)/leads/[id]/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/prediction/page.tsx",
+      "url": "/leads/[id]/prediction",
+      "manifestKey": "/(crm)/leads/[id]/prediction/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/qualification/page.tsx",
+      "url": "/leads/[id]/qualification",
+      "manifestKey": "/(crm)/leads/[id]/qualification/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/schedule/page.tsx",
+      "url": "/leads/[id]/schedule",
+      "manifestKey": "/(crm)/leads/[id]/schedule/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/simulation/page.tsx",
+      "url": "/leads/[id]/simulation",
+      "manifestKey": "/(crm)/leads/[id]/simulation/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/tasks/page.tsx",
+      "url": "/leads/[id]/tasks",
+      "manifestKey": "/(crm)/leads/[id]/tasks/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/timeline/page.tsx",
+      "url": "/leads/[id]/timeline",
+      "manifestKey": "/(crm)/leads/[id]/timeline/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/transfer/page.tsx",
+      "url": "/leads/[id]/transfer",
+      "manifestKey": "/(crm)/leads/[id]/transfer/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/[id]/visit-assistant/page.tsx",
+      "url": "/leads/[id]/visit-assistant",
+      "manifestKey": "/(crm)/leads/[id]/visit-assistant/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/actions/page.tsx",
+      "url": "/leads/actions",
+      "manifestKey": "/(crm)/leads/actions/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/ai-qualify/page.tsx",
+      "url": "/leads/ai-qualify",
+      "manifestKey": "/(crm)/leads/ai-qualify/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/data-quality/page.tsx",
+      "url": "/leads/data-quality",
+      "manifestKey": "/(crm)/leads/data-quality/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/deduplication/page.tsx",
+      "url": "/leads/deduplication",
+      "manifestKey": "/(crm)/leads/deduplication/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/export/page.tsx",
+      "url": "/leads/export",
+      "manifestKey": "/(crm)/leads/export/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/filters/page.tsx",
+      "url": "/leads/filters",
+      "manifestKey": "/(crm)/leads/filters/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/import/page.tsx",
+      "url": "/leads/import",
+      "manifestKey": "/(crm)/leads/import/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/new/page.tsx",
+      "url": "/leads/new",
+      "manifestKey": "/(crm)/leads/new/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/nightly-handoffs/page.tsx",
+      "url": "/leads/nightly-handoffs",
+      "manifestKey": "/(crm)/leads/nightly-handoffs/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/page.tsx",
+      "url": "/leads",
+      "manifestKey": "/(crm)/leads/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/leads/reactivation-governance/page.tsx",
+      "url": "/leads/reactivation-governance",
+      "manifestKey": "/(crm)/leads/reactivation-governance/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/marketing/ads/page.tsx",
+      "url": "/marketing/ads",
+      "manifestKey": "/(crm)/marketing/ads/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/marketing/budget/page.tsx",
+      "url": "/marketing/budget",
+      "manifestKey": "/(crm)/marketing/budget/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/marketing/campaign-intelligence/page.tsx",
+      "url": "/marketing/campaign-intelligence",
+      "manifestKey": "/(crm)/marketing/campaign-intelligence/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/marketing/campaigns/page.tsx",
+      "url": "/marketing/campaigns",
+      "manifestKey": "/(crm)/marketing/campaigns/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/marketing/creatives/page.tsx",
+      "url": "/marketing/creatives",
+      "manifestKey": "/(crm)/marketing/creatives/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/marketing/experiments/page.tsx",
+      "url": "/marketing/experiments",
+      "manifestKey": "/(crm)/marketing/experiments/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/marketing/page.tsx",
+      "url": "/marketing",
+      "manifestKey": "/(crm)/marketing/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/notifications/page.tsx",
+      "url": "/notifications",
+      "manifestKey": "/(crm)/notifications/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/pipeline/page.tsx",
+      "url": "/pipeline",
+      "manifestKey": "/(crm)/pipeline/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/pipeline/settings/page.tsx",
+      "url": "/pipeline/settings",
+      "manifestKey": "/(crm)/pipeline/settings/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/properties/[id]/page.tsx",
+      "url": "/properties/[id]",
+      "manifestKey": "/(crm)/properties/[id]/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/properties/edit/[id]/page.tsx",
+      "url": "/properties/edit/[id]",
+      "manifestKey": "/(crm)/properties/edit/[id]/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/properties/matching/page.tsx",
+      "url": "/properties/matching",
+      "manifestKey": "/(crm)/properties/matching/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/properties/new/page.tsx",
+      "url": "/properties/new",
+      "manifestKey": "/(crm)/properties/new/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/properties/page.tsx",
+      "url": "/properties",
+      "manifestKey": "/(crm)/properties/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/reports/marketing/page.tsx",
+      "url": "/reports/marketing",
+      "manifestKey": "/(crm)/reports/marketing/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/reports/page.tsx",
+      "url": "/reports",
+      "manifestKey": "/(crm)/reports/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/revenue-engine/page.tsx",
+      "url": "/revenue-engine",
+      "manifestKey": "/(crm)/revenue-engine/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/sales/page.tsx",
+      "url": "/sales",
+      "manifestKey": "/(crm)/sales/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/search/page.tsx",
+      "url": "/search",
+      "manifestKey": "/(crm)/search/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/settings/ai-context/page.tsx",
+      "url": "/settings/ai-context",
+      "manifestKey": "/(crm)/settings/ai-context/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/settings/ai-guardrails/page.tsx",
+      "url": "/settings/ai-guardrails",
+      "manifestKey": "/(crm)/settings/ai-guardrails/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/settings/ai-orchestration/page.tsx",
+      "url": "/settings/ai-orchestration",
+      "manifestKey": "/(crm)/settings/ai-orchestration/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/settings/ai-playbooks/page.tsx",
+      "url": "/settings/ai-playbooks",
+      "manifestKey": "/(crm)/settings/ai-playbooks/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/settings/ai/page.tsx",
+      "url": "/settings/ai",
+      "manifestKey": "/(crm)/settings/ai/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/settings/page.tsx",
+      "url": "/settings",
+      "manifestKey": "/(crm)/settings/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/settings/profile/page.tsx",
+      "url": "/settings/profile",
+      "manifestKey": "/(crm)/settings/profile/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/settings/team/page.tsx",
+      "url": "/settings/team",
+      "manifestKey": "/(crm)/settings/team/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/tasks/page.tsx",
+      "url": "/tasks",
+      "manifestKey": "/(crm)/tasks/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/(crm)/users/page.tsx",
+      "url": "/users",
+      "manifestKey": "/(crm)/users/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    },
+    {
+      "file": "app/api/ai/briefing/route.ts",
+      "url": "/api/ai/briefing",
+      "manifestKey": "/api/ai/briefing/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/ai/copilot/route.ts",
+      "url": "/api/ai/copilot",
+      "manifestKey": "/api/ai/copilot/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/ai/cost-routing-test/route.ts",
+      "url": "/api/ai/cost-routing-test",
+      "manifestKey": "/api/ai/cost-routing-test/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/ai/daily-queue/route.ts",
+      "url": "/api/ai/daily-queue",
+      "manifestKey": "/api/ai/daily-queue/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/ai/openai-test/route.ts",
+      "url": "/api/ai/openai-test",
+      "manifestKey": "/api/ai/openai-test/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/ai/perplexity-test/route.ts",
+      "url": "/api/ai/perplexity-test",
+      "manifestKey": "/api/ai/perplexity-test/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/ai/provider-test/route.ts",
+      "url": "/api/ai/provider-test",
+      "manifestKey": "/api/ai/provider-test/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/ai/status/route.ts",
+      "url": "/api/ai/status",
+      "manifestKey": "/api/ai/status/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/atlas2030/data-products/publish/route.ts",
+      "url": "/api/atlas2030/data-products/publish",
+      "manifestKey": "/api/atlas2030/data-products/publish/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/atlas2030/graph/upsert/route.ts",
+      "url": "/api/atlas2030/graph/upsert",
+      "manifestKey": "/api/atlas2030/graph/upsert/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/atlas2030/inventory/reserve/route.ts",
+      "url": "/api/atlas2030/inventory/reserve",
+      "manifestKey": "/api/atlas2030/inventory/reserve/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/atlas2030/memory/write/route.ts",
+      "url": "/api/atlas2030/memory/write",
+      "manifestKey": "/api/atlas2030/memory/write/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/atlas2030/recommendations/generate/route.ts",
+      "url": "/api/atlas2030/recommendations/generate",
+      "manifestKey": "/api/atlas2030/recommendations/generate/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/atlas2030/simulations/run/route.ts",
+      "url": "/api/atlas2030/simulations/run",
+      "manifestKey": "/api/atlas2030/simulations/run/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/auth/password-recovery/route.ts",
+      "url": "/api/auth/password-recovery",
+      "manifestKey": "/api/auth/password-recovery/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/auth/password-reset/route.ts",
+      "url": "/api/auth/password-reset",
+      "manifestKey": "/api/auth/password-reset/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/auth/sessions/route.ts",
+      "url": "/api/auth/sessions",
+      "manifestKey": "/api/auth/sessions/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/bootstrap/admin/route.ts",
+      "url": "/api/bootstrap/admin",
+      "manifestKey": "/api/bootstrap/admin/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/health/route.ts",
+      "url": "/api/health",
+      "manifestKey": "/api/health/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/ready/route.ts",
+      "url": "/api/ready",
+      "manifestKey": "/api/ready/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1-v2/status/route.ts",
+      "url": "/api/v1-v2/status",
+      "manifestKey": "/api/v1-v2/status/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/activity/route.ts",
+      "url": "/api/v1/activity",
+      "manifestKey": "/api/v1/activity/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/admin/users/route.ts",
+      "url": "/api/v1/admin/users",
+      "manifestKey": "/api/v1/admin/users/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/ai/context-governance/route.ts",
+      "url": "/api/v1/ai/context-governance",
+      "manifestKey": "/api/v1/ai/context-governance/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/ai/guardrails/route.ts",
+      "url": "/api/v1/ai/guardrails",
+      "manifestKey": "/api/v1/ai/guardrails/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/ai/nightly-handoffs/route.ts",
+      "url": "/api/v1/ai/nightly-handoffs",
+      "manifestKey": "/api/v1/ai/nightly-handoffs/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/ai/orchestration/route.ts",
+      "url": "/api/v1/ai/orchestration",
+      "manifestKey": "/api/v1/ai/orchestration/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/ai/playbooks/route.ts",
+      "url": "/api/v1/ai/playbooks",
+      "manifestKey": "/api/v1/ai/playbooks/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/assisted-interaction/route.ts",
+      "url": "/api/v1/analytics/assisted-interaction",
+      "manifestKey": "/api/v1/analytics/assisted-interaction/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/broker-daily/route.ts",
+      "url": "/api/v1/analytics/broker-daily",
+      "manifestKey": "/api/v1/analytics/broker-daily/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/conversion-calibration/route.ts",
+      "url": "/api/v1/analytics/conversion-calibration",
+      "manifestKey": "/api/v1/analytics/conversion-calibration/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/conversion-dataset/route.ts",
+      "url": "/api/v1/analytics/conversion-dataset",
+      "manifestKey": "/api/v1/analytics/conversion-dataset/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/dashboard/route.ts",
+      "url": "/api/v1/analytics/dashboard",
+      "manifestKey": "/api/v1/analytics/dashboard/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/director-daily/route.ts",
+      "url": "/api/v1/analytics/director-daily",
+      "manifestKey": "/api/v1/analytics/director-daily/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/executive-marketing/route.ts",
+      "url": "/api/v1/analytics/executive-marketing",
+      "manifestKey": "/api/v1/analytics/executive-marketing/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/forecast/route.ts",
+      "url": "/api/v1/analytics/forecast",
+      "manifestKey": "/api/v1/analytics/forecast/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/forecast/snapshots/route.ts",
+      "url": "/api/v1/analytics/forecast/snapshots",
+      "manifestKey": "/api/v1/analytics/forecast/snapshots/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/funnel-velocity/route.ts",
+      "url": "/api/v1/analytics/funnel-velocity",
+      "manifestKey": "/api/v1/analytics/funnel-velocity/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/lead-intake/route.ts",
+      "url": "/api/v1/analytics/lead-intake",
+      "manifestKey": "/api/v1/analytics/lead-intake/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/manager-daily/route.ts",
+      "url": "/api/v1/analytics/manager-daily",
+      "manifestKey": "/api/v1/analytics/manager-daily/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/model-release-gate/route.ts",
+      "url": "/api/v1/analytics/model-release-gate",
+      "manifestKey": "/api/v1/analytics/model-release-gate/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/operational-ux-release-gate/route.ts",
+      "url": "/api/v1/analytics/operational-ux-release-gate",
+      "manifestKey": "/api/v1/analytics/operational-ux-release-gate/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/operational-ux/route.ts",
+      "url": "/api/v1/analytics/operational-ux",
+      "manifestKey": "/api/v1/analytics/operational-ux/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/pipeline-aging/route.ts",
+      "url": "/api/v1/analytics/pipeline-aging",
+      "manifestKey": "/api/v1/analytics/pipeline-aging/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/prediction-drift/route.ts",
+      "url": "/api/v1/analytics/prediction-drift",
+      "manifestKey": "/api/v1/analytics/prediction-drift/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/team-sla/route.ts",
+      "url": "/api/v1/analytics/team-sla",
+      "manifestKey": "/api/v1/analytics/team-sla/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/analytics/weekly-acquisition/route.ts",
+      "url": "/api/v1/analytics/weekly-acquisition",
+      "manifestKey": "/api/v1/analytics/weekly-acquisition/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/atlas-2030/metrics/route.ts",
+      "url": "/api/v1/atlas-2030/metrics",
+      "manifestKey": "/api/v1/atlas-2030/metrics/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/auth/me/route.ts",
+      "url": "/api/v1/auth/me",
+      "manifestKey": "/api/v1/auth/me/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/calendar/route.ts",
+      "url": "/api/v1/calendar",
+      "manifestKey": "/api/v1/calendar/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/campaign-intelligence/route.ts",
+      "url": "/api/v1/campaign-intelligence",
+      "manifestKey": "/api/v1/campaign-intelligence/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/core-v2/developments/write-preflight/route.ts",
+      "url": "/api/v1/core-v2/developments/write-preflight",
+      "manifestKey": "/api/v1/core-v2/developments/write-preflight/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/core-v2/module-health/route.ts",
+      "url": "/api/v1/core-v2/module-health",
+      "manifestKey": "/api/v1/core-v2/module-health/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/crm/distribution/route.ts",
+      "url": "/api/v1/crm/distribution",
+      "manifestKey": "/api/v1/crm/distribution/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/crm/external-sales/route.ts",
+      "url": "/api/v1/crm/external-sales",
+      "manifestKey": "/api/v1/crm/external-sales/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/crm/leads/bulk-transfer/route.ts",
+      "url": "/api/v1/crm/leads/bulk-transfer",
+      "manifestKey": "/api/v1/crm/leads/bulk-transfer/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/crm/leads/export/route.ts",
+      "url": "/api/v1/crm/leads/export",
+      "manifestKey": "/api/v1/crm/leads/export/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/crm/leads/route.ts",
+      "url": "/api/v1/crm/leads",
+      "manifestKey": "/api/v1/crm/leads/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/crm/reactivation/governance/route.ts",
+      "url": "/api/v1/crm/reactivation/governance",
+      "manifestKey": "/api/v1/crm/reactivation/governance/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/crm/reactivation/route.ts",
+      "url": "/api/v1/crm/reactivation",
+      "manifestKey": "/api/v1/crm/reactivation/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/crm/team/conversion/route.ts",
+      "url": "/api/v1/crm/team/conversion",
+      "manifestKey": "/api/v1/crm/team/conversion/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/customers/route.ts",
+      "url": "/api/v1/customers",
+      "manifestKey": "/api/v1/customers/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/decisions/ledger/route.ts",
+      "url": "/api/v1/decisions/ledger",
+      "manifestKey": "/api/v1/decisions/ledger/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/developers/payment-rules/route.ts",
+      "url": "/api/v1/developers/payment-rules",
+      "manifestKey": "/api/v1/developers/payment-rules/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/developers/route.ts",
+      "url": "/api/v1/developers",
+      "manifestKey": "/api/v1/developers/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/developments/[id]/catalog/route.ts",
+      "url": "/api/v1/developments/[id]/catalog",
+      "manifestKey": "/api/v1/developments/[id]/catalog/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/developments/[id]/commercial-releases/route.ts",
+      "url": "/api/v1/developments/[id]/commercial-releases",
+      "manifestKey": "/api/v1/developments/[id]/commercial-releases/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/developments/[id]/dossier/route.ts",
+      "url": "/api/v1/developments/[id]/dossier",
+      "manifestKey": "/api/v1/developments/[id]/dossier/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/developments/[id]/inventory/import/route.ts",
+      "url": "/api/v1/developments/[id]/inventory/import",
+      "manifestKey": "/api/v1/developments/[id]/inventory/import/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/developments/[id]/inventory/route.ts",
+      "url": "/api/v1/developments/[id]/inventory",
+      "manifestKey": "/api/v1/developments/[id]/inventory/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/developments/[id]/materials/route.ts",
+      "url": "/api/v1/developments/[id]/materials",
+      "manifestKey": "/api/v1/developments/[id]/materials/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/developments/[id]/region-study/route.ts",
+      "url": "/api/v1/developments/[id]/region-study",
+      "manifestKey": "/api/v1/developments/[id]/region-study/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/developments/[id]/route.ts",
+      "url": "/api/v1/developments/[id]",
+      "manifestKey": "/api/v1/developments/[id]/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    {
+      "file": "app/api/v1/developments/homologation/route.ts",
+      "url": "/api/v1/developments/homologation",
+      "manifestKey": "/api/v1/developments/homologation/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/developments/materials/route.ts",
+      "url": "/api/v1/developments/materials",
+      "manifestKey": "/api/v1/developments/materials/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/developments/route.ts",
+      "url": "/api/v1/developments",
+      "manifestKey": "/api/v1/developments/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/governance/backups/route.ts",
+      "url": "/api/v1/governance/backups",
+      "manifestKey": "/api/v1/governance/backups/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/governance/command-center/route.ts",
+      "url": "/api/v1/governance/command-center",
+      "manifestKey": "/api/v1/governance/command-center/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/governance/executive-acceptance/route.ts",
+      "url": "/api/v1/governance/executive-acceptance",
+      "manifestKey": "/api/v1/governance/executive-acceptance/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/governance/hostinger-health/route.ts",
+      "url": "/api/v1/governance/hostinger-health",
+      "manifestKey": "/api/v1/governance/hostinger-health/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/governance/integration-health/route.ts",
+      "url": "/api/v1/governance/integration-health",
+      "manifestKey": "/api/v1/governance/integration-health/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/governance/material-storage-migration/route.ts",
+      "url": "/api/v1/governance/material-storage-migration",
+      "manifestKey": "/api/v1/governance/material-storage-migration/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/governance/reliability-gate/route.ts",
+      "url": "/api/v1/governance/reliability-gate",
+      "manifestKey": "/api/v1/governance/reliability-gate/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/governance/rollback/route.ts",
+      "url": "/api/v1/governance/rollback",
+      "manifestKey": "/api/v1/governance/rollback/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/governance/secrets/route.ts",
+      "url": "/api/v1/governance/secrets",
+      "manifestKey": "/api/v1/governance/secrets/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/governance/system-health/route.ts",
+      "url": "/api/v1/governance/system-health",
+      "manifestKey": "/api/v1/governance/system-health/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/health/route.ts",
+      "url": "/api/v1/health",
+      "manifestKey": "/api/v1/health/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/homologation/route.ts",
+      "url": "/api/v1/homologation",
+      "manifestKey": "/api/v1/homologation/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/calendar/route.ts",
+      "url": "/api/v1/integrations/calendar",
+      "manifestKey": "/api/v1/integrations/calendar/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/andromeda-loop/route.ts",
+      "url": "/api/v1/integrations/meta/andromeda-loop",
+      "manifestKey": "/api/v1/integrations/meta/andromeda-loop/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/conversion-test/route.ts",
+      "url": "/api/v1/integrations/meta/conversion-test",
+      "manifestKey": "/api/v1/integrations/meta/conversion-test/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/daily-report-test/route.ts",
+      "url": "/api/v1/integrations/meta/daily-report-test",
+      "manifestKey": "/api/v1/integrations/meta/daily-report-test/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/insights-test/route.ts",
+      "url": "/api/v1/integrations/meta/insights-test",
+      "manifestKey": "/api/v1/integrations/meta/insights-test/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/route.ts",
+      "url": "/api/v1/integrations/meta",
+      "manifestKey": "/api/v1/integrations/meta/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/test-approvals/route.ts",
+      "url": "/api/v1/integrations/meta/test-approvals",
+      "manifestKey": "/api/v1/integrations/meta/test-approvals/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/test-candidates/route.ts",
+      "url": "/api/v1/integrations/meta/test-candidates",
+      "manifestKey": "/api/v1/integrations/meta/test-candidates/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/test-deliveries/route.ts",
+      "url": "/api/v1/integrations/meta/test-deliveries",
+      "manifestKey": "/api/v1/integrations/meta/test-deliveries/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/test-delivery-observability/route.ts",
+      "url": "/api/v1/integrations/meta/test-delivery-observability",
+      "manifestKey": "/api/v1/integrations/meta/test-delivery-observability/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/test-execution-gates/route.ts",
+      "url": "/api/v1/integrations/meta/test-execution-gates",
+      "manifestKey": "/api/v1/integrations/meta/test-execution-gates/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/test-payloads/route.ts",
+      "url": "/api/v1/integrations/meta/test-payloads",
+      "manifestKey": "/api/v1/integrations/meta/test-payloads/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/test-readiness/route.ts",
+      "url": "/api/v1/integrations/meta/test-readiness",
+      "manifestKey": "/api/v1/integrations/meta/test-readiness/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/meta/webhook-test/route.ts",
+      "url": "/api/v1/integrations/meta/webhook-test",
+      "manifestKey": "/api/v1/integrations/meta/webhook-test/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/route.ts",
+      "url": "/api/v1/integrations",
+      "manifestKey": "/api/v1/integrations/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/whatsapp/commercial-context-readiness/route.ts",
+      "url": "/api/v1/integrations/whatsapp/commercial-context-readiness",
+      "manifestKey": "/api/v1/integrations/whatsapp/commercial-context-readiness/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/whatsapp/continuity/route.ts",
+      "url": "/api/v1/integrations/whatsapp/continuity",
+      "manifestKey": "/api/v1/integrations/whatsapp/continuity/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/whatsapp/learning-capture-quality/route.ts",
+      "url": "/api/v1/integrations/whatsapp/learning-capture-quality",
+      "manifestKey": "/api/v1/integrations/whatsapp/learning-capture-quality/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/whatsapp/memory-baseline/route.ts",
+      "url": "/api/v1/integrations/whatsapp/memory-baseline",
+      "manifestKey": "/api/v1/integrations/whatsapp/memory-baseline/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/whatsapp/memory-director-decision/route.ts",
+      "url": "/api/v1/integrations/whatsapp/memory-director-decision",
+      "manifestKey": "/api/v1/integrations/whatsapp/memory-director-decision/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/whatsapp/pending-lines/route.ts",
+      "url": "/api/v1/integrations/whatsapp/pending-lines",
+      "manifestKey": "/api/v1/integrations/whatsapp/pending-lines/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/integrations/whatsapp/route.ts",
+      "url": "/api/v1/integrations/whatsapp",
+      "manifestKey": "/api/v1/integrations/whatsapp/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/launch-os/route.ts",
+      "url": "/api/v1/launch-os",
+      "manifestKey": "/api/v1/launch-os/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/assisted-interaction/route.ts",
+      "url": "/api/v1/leads/[id]/assisted-interaction",
+      "manifestKey": "/api/v1/leads/[id]/assisted-interaction/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/attribution/route.ts",
+      "url": "/api/v1/leads/[id]/attribution",
+      "manifestKey": "/api/v1/leads/[id]/attribution/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/behavior/route.ts",
+      "url": "/api/v1/leads/[id]/behavior",
+      "manifestKey": "/api/v1/leads/[id]/behavior/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/commercial-memory/route.ts",
+      "url": "/api/v1/leads/[id]/commercial-memory",
+      "manifestKey": "/api/v1/leads/[id]/commercial-memory/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "DELETE"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/commercial-simulation/route.ts",
+      "url": "/api/v1/leads/[id]/commercial-simulation",
+      "manifestKey": "/api/v1/leads/[id]/commercial-simulation/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/contact-preferences/route.ts",
+      "url": "/api/v1/leads/[id]/contact-preferences",
+      "manifestKey": "/api/v1/leads/[id]/contact-preferences/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/conversational-qualification/route.ts",
+      "url": "/api/v1/leads/[id]/conversational-qualification",
+      "manifestKey": "/api/v1/leads/[id]/conversational-qualification/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/first-action/route.ts",
+      "url": "/api/v1/leads/[id]/first-action",
+      "manifestKey": "/api/v1/leads/[id]/first-action/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/message-draft/route.ts",
+      "url": "/api/v1/leads/[id]/message-draft",
+      "manifestKey": "/api/v1/leads/[id]/message-draft/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/prediction-explanation/route.ts",
+      "url": "/api/v1/leads/[id]/prediction-explanation",
+      "manifestKey": "/api/v1/leads/[id]/prediction-explanation/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/presentation-draft/route.ts",
+      "url": "/api/v1/leads/[id]/presentation-draft",
+      "manifestKey": "/api/v1/leads/[id]/presentation-draft/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/qualify/route.ts",
+      "url": "/api/v1/leads/[id]/qualify",
+      "manifestKey": "/api/v1/leads/[id]/qualify/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/route.ts",
+      "url": "/api/v1/leads/[id]",
+      "manifestKey": "/api/v1/leads/[id]/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/timeline/route.ts",
+      "url": "/api/v1/leads/[id]/timeline",
+      "manifestKey": "/api/v1/leads/[id]/timeline/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/transfer/route.ts",
+      "url": "/api/v1/leads/[id]/transfer",
+      "manifestKey": "/api/v1/leads/[id]/transfer/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/visit-assistant/route.ts",
+      "url": "/api/v1/leads/[id]/visit-assistant",
+      "manifestKey": "/api/v1/leads/[id]/visit-assistant/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/[id]/visits/route.ts",
+      "url": "/api/v1/leads/[id]/visits",
+      "manifestKey": "/api/v1/leads/[id]/visits/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/data-quality/route.ts",
+      "url": "/api/v1/leads/data-quality",
+      "manifestKey": "/api/v1/leads/data-quality/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/deduplication/route.ts",
+      "url": "/api/v1/leads/deduplication",
+      "manifestKey": "/api/v1/leads/deduplication/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/leads/route.ts",
+      "url": "/api/v1/leads",
+      "manifestKey": "/api/v1/leads/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/marketing/budget-plans/route.ts",
+      "url": "/api/v1/marketing/budget-plans",
+      "manifestKey": "/api/v1/marketing/budget-plans/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/marketing/campaigns/[id]/assets/route.ts",
+      "url": "/api/v1/marketing/campaigns/[id]/assets",
+      "manifestKey": "/api/v1/marketing/campaigns/[id]/assets/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/marketing/campaigns/[id]/route.ts",
+      "url": "/api/v1/marketing/campaigns/[id]",
+      "manifestKey": "/api/v1/marketing/campaigns/[id]/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    {
+      "file": "app/api/v1/marketing/campaigns/route.ts",
+      "url": "/api/v1/marketing/campaigns",
+      "manifestKey": "/api/v1/marketing/campaigns/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/marketing/creatives/route.ts",
+      "url": "/api/v1/marketing/creatives",
+      "manifestKey": "/api/v1/marketing/creatives/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/marketing/experiments/route.ts",
+      "url": "/api/v1/marketing/experiments",
+      "manifestKey": "/api/v1/marketing/experiments/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v1/openapi/route.ts",
+      "url": "/api/v1/openapi",
+      "manifestKey": "/api/v1/openapi/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/pipeline/route.ts",
+      "url": "/api/v1/pipeline",
+      "manifestKey": "/api/v1/pipeline/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/pipeline/stages/route.ts",
+      "url": "/api/v1/pipeline/stages",
+      "manifestKey": "/api/v1/pipeline/stages/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "file": "app/api/v1/productivity/daily/route.ts",
+      "url": "/api/v1/productivity/daily",
+      "manifestKey": "/api/v1/productivity/daily/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/productivity/weekly/route.ts",
+      "url": "/api/v1/productivity/weekly",
+      "manifestKey": "/api/v1/productivity/weekly/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/properties/route.ts",
+      "url": "/api/v1/properties",
+      "manifestKey": "/api/v1/properties/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/ready/route.ts",
+      "url": "/api/v1/ready",
+      "manifestKey": "/api/v1/ready/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/revenue-engine/route.ts",
+      "url": "/api/v1/revenue-engine",
+      "manifestKey": "/api/v1/revenue-engine/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/route.ts",
+      "url": "/api/v1",
+      "manifestKey": "/api/v1/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS"
+      ]
+    },
+    {
+      "file": "app/api/v1/sales/[id]/commission/route.ts",
+      "url": "/api/v1/sales/[id]/commission",
+      "manifestKey": "/api/v1/sales/[id]/commission/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/search/route.ts",
+      "url": "/api/v1/search",
+      "manifestKey": "/api/v1/search/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v1/settings/organization/route.ts",
+      "url": "/api/v1/settings/organization",
+      "manifestKey": "/api/v1/settings/organization/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/settings/profile/route.ts",
+      "url": "/api/v1/settings/profile",
+      "manifestKey": "/api/v1/settings/profile/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/task-reminders/route.ts",
+      "url": "/api/v1/task-reminders",
+      "manifestKey": "/api/v1/task-reminders/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/tasks/route.ts",
+      "url": "/api/v1/tasks",
+      "manifestKey": "/api/v1/tasks/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v1/team/route.ts",
+      "url": "/api/v1/team",
+      "manifestKey": "/api/v1/team/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "file": "app/api/v2/ai/nightly-handoff/route.ts",
+      "url": "/api/v2/ai/nightly-handoff",
+      "manifestKey": "/api/v2/ai/nightly-handoff/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v2/ai/nightly-sales/route.ts",
+      "url": "/api/v2/ai/nightly-sales",
+      "manifestKey": "/api/v2/ai/nightly-sales/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v2/approvals/[id]/route.ts",
+      "url": "/api/v2/approvals/[id]",
+      "manifestKey": "/api/v2/approvals/[id]/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v2/approvals/route.ts",
+      "url": "/api/v2/approvals",
+      "manifestKey": "/api/v2/approvals/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v2/distribution/reservations/process/route.ts",
+      "url": "/api/v2/distribution/reservations/process",
+      "manifestKey": "/api/v2/distribution/reservations/process/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v2/messages/send/route.ts",
+      "url": "/api/v2/messages/send",
+      "manifestKey": "/api/v2/messages/send/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v2/meta/daily-report/route.ts",
+      "url": "/api/v2/meta/daily-report",
+      "manifestKey": "/api/v2/meta/daily-report/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v2/outbox/process/route.ts",
+      "url": "/api/v2/outbox/process",
+      "manifestKey": "/api/v2/outbox/process/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v2/tasks/recurrences/process/route.ts",
+      "url": "/api/v2/tasks/recurrences/process",
+      "manifestKey": "/api/v2/tasks/recurrences/process/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v2/tasks/reminders/process/route.ts",
+      "url": "/api/v2/tasks/reminders/process",
+      "manifestKey": "/api/v2/tasks/reminders/process/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v3/agents/process/route.ts",
+      "url": "/api/v3/agents/process",
+      "manifestKey": "/api/v3/agents/process/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v3/decisions/[id]/route.ts",
+      "url": "/api/v3/decisions/[id]",
+      "manifestKey": "/api/v3/decisions/[id]/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v3/decisions/generate/route.ts",
+      "url": "/api/v3/decisions/generate",
+      "manifestKey": "/api/v3/decisions/generate/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v3/dlq/retry/route.ts",
+      "url": "/api/v3/dlq/retry",
+      "manifestKey": "/api/v3/dlq/retry/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v3/events/ingest/route.ts",
+      "url": "/api/v3/events/ingest",
+      "manifestKey": "/api/v3/events/ingest/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/v3/status/route.ts",
+      "url": "/api/v3/status",
+      "manifestKey": "/api/v3/status/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/api/v3/twins/rebuild/route.ts",
+      "url": "/api/v3/twins/rebuild",
+      "manifestKey": "/api/v3/twins/rebuild/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/webhooks/meta/route.ts",
+      "url": "/api/webhooks/meta",
+      "manifestKey": "/api/webhooks/meta/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/api/webhooks/whatsapp/route.ts",
+      "url": "/api/webhooks/whatsapp",
+      "manifestKey": "/api/webhooks/whatsapp/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "file": "app/auth/callback/route.ts",
+      "url": "/auth/callback",
+      "manifestKey": "/auth/callback/route",
+      "type": "api",
+      "nonEmpty": true,
+      "hasDefaultExport": null,
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "file": "app/page.tsx",
+      "url": "/",
+      "manifestKey": "/page",
+      "type": "page",
+      "nonEmpty": true,
+      "hasDefaultExport": true,
+      "methods": []
+    }
+  ],
+  "sourceDigest": "f1915fac8577c0cf560f1ff3ffa3111f6c15e72317b8a4d2141df6e483be8864",
+  "privacy": {
+    "readsApplicationData": false,
+    "readsEnvironmentSecrets": false,
+    "capturesPersonalData": false
+  }
+}

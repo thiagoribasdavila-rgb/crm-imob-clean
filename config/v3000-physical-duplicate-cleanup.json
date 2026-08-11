@@ -2,6 +2,15 @@
   "phase": 378,
   "consolidationGate": 5,
   "baselineEvidence": "docs/evidence/V3000_PHASE_02_ROUTE_INVENTORY.json",
+  "baselineRouteInventory": {
+    "routeFiles": 449,
+    "activeRouteFiles": 268,
+    "quarantinedRouteFiles": 181,
+    "activePages": 95,
+    "activeApis": 173,
+    "activeCollisions": 0,
+    "allSourceCollisions": 17
+  },
   "removedEmptyStubs": [
     {
       "path": "app/(ai)/ai-dashboard/page.tsx",

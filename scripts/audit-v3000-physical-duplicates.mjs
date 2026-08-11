@@ -7,9 +7,7 @@ const root = process.cwd();
 const policy = JSON.parse(
   readFileSync(path.join(root, "config/v3000-physical-duplicate-cleanup.json"), "utf8"),
 );
-const baseline = JSON.parse(
-  readFileSync(path.join(root, policy.baselineEvidence), "utf8"),
-);
+const baseline = policy.baselineRouteInventory;
 const tracked = new Set(
   execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" })
     .split("\n")
@@ -54,9 +52,9 @@ for (const [key, expected] of Object.entries(policy.expectedRouteInventory)) {
 
 const preserved = ["activeRouteFiles", "activePages", "activeApis", "activeCollisions"];
 for (const key of preserved) {
-  if (routeInventory.summary[key] !== baseline.summary[key]) {
+  if (routeInventory.summary[key] !== baseline[key]) {
     failures.push(
-      `Superfície ativa mudou em ${key}: ${baseline.summary[key]} → ${routeInventory.summary[key]}.`,
+      `Superfície ativa mudou em ${key}: ${baseline[key]} → ${routeInventory.summary[key]}.`,
     );
   }
 }
@@ -71,12 +69,12 @@ const result = {
   phase: policy.phase,
   removedEmptyStubs: policy.removedEmptyStubs.length,
   activeSurfacePreserved: preserved.every(
-    (key) => routeInventory.summary[key] === baseline.summary[key],
+    (key) => routeInventory.summary[key] === baseline[key],
   ),
   before: {
-    routeFiles: baseline.summary.routeFiles,
-    quarantinedRouteFiles: baseline.summary.quarantinedRouteFiles,
-    allSourceCollisions: baseline.summary.allSourceCollisions,
+    routeFiles: baseline.routeFiles,
+    quarantinedRouteFiles: baseline.quarantinedRouteFiles,
+    allSourceCollisions: baseline.allSourceCollisions,
   },
   after: {
     routeFiles: routeInventory.summary.routeFiles,
