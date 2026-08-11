@@ -1,6 +1,6 @@
 # V3000 limpo — Fase 1/16: congelamento do baseline
 
-Data da captura: `2026-08-11T15:45:52-03:00`  
+Data da captura: `2026-08-11T15:45:52-03:00`<br>
 Finalidade: fixar uma única origem verificável antes de inventariar e eliminar
 rotas duplicadas.
 
