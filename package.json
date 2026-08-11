@@ -680,6 +680,8 @@
     "inventory:v3": "node scripts/inventory-v3.mjs",
     "audit:v3000:routes": "node scripts/audit-v3000-route-inventory.mjs --write",
     "test:v3000:clean:phase2": "npm run audit:v3000:routes && node --test tests/contracts/v3000-clean-consolidation-phase-02-route-inventory.test.mjs",
+    "audit:v3000:navigation": "node scripts/audit-v3000-navigation-contract.mjs --write",
+    "test:v3000:clean:phase3": "npm run audit:v3000:navigation && node --test tests/contracts/v3000-clean-consolidation-phase-03-navigation-consolidation.test.mjs",
     "architecture:canonical": "node scripts/check-canonical-entities.mjs",
     "contracts:data": "node scripts/check-data-contracts.mjs",
     "architecture:modules": "node scripts/check-module-boundaries.mjs",

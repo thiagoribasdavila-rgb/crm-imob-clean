@@ -80,10 +80,13 @@ function navigationSurfaces() {
 }
 
 function navigationAliases() {
-  const source = readFileSync(resolve(root, "lib/atlas/navigation-aliases.ts"), "utf8");
-  return [...source.matchAll(
-    /\{\s*concept:\s*"([^"]+)",\s*alias:\s*"([^"]+)",\s*canonical:\s*"([^"]+)"\s*\}/g,
-  )].map((match) => ({ concept: match[1], alias: match[2], canonical: match[3] }));
+  return JSON.parse(
+    readFileSync(resolve(root, "config/atlas-route-aliases.json"), "utf8"),
+  ).map(({ concept, source, destination }) => ({
+    concept,
+    alias: source,
+    canonical: destination,
+  }));
 }
 
 function directRedirect(source, aliasesBySource) {
@@ -227,7 +230,7 @@ const evidence = {
   sourceOfTruth: {
     routes: "git ls-files app",
     navigation: "lib/atlas/navigation.ts",
-    aliases: "lib/atlas/navigation-aliases.ts",
+    aliases: "config/atlas-route-aliases.json",
     quarantine: "scripts/legacy-route-paths.mjs",
     requestBoundary: "proxy.ts",
   },

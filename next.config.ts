@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import atlasRouteAliases from "./config/atlas-route-aliases.json";
 
 const securityHeaders = [
   {
@@ -47,6 +48,13 @@ const nextConfig: NextConfig = {
     // Next.js recommends this low-risk mode for reducing Webpack peak memory.
     webpackMemoryOptimizations: true,
     serverSourceMaps: false,
+  },
+  async redirects() {
+    return atlasRouteAliases.map(({ source, destination, permanent }) => ({
+      source,
+      destination,
+      permanent,
+    }));
   },
   async headers() {
     return [

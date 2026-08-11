@@ -4,7 +4,7 @@
   "sourceOfTruth": {
     "routes": "git ls-files app",
     "navigation": "lib/atlas/navigation.ts",
-    "aliases": "lib/atlas/navigation-aliases.ts",
+    "aliases": "config/atlas-route-aliases.json",
     "quarantine": "scripts/legacy-route-paths.mjs",
     "requestBoundary": "proxy.ts"
   },
@@ -20,14 +20,14 @@
     "activeApis": 173,
     "activeCollisions": 0,
     "allSourceCollisions": 17,
-    "directRedirectPages": 11,
+    "directRedirectPages": 8,
     "activeRedirectPages": 2,
     "canonicalNavigationDestinations": 19,
     "navigationDestinations": 29,
     "inactiveNavigationDestinations": 0,
-    "aliases": 7,
+    "aliases": 4,
     "aliasesWithActiveSourceAndTarget": 0,
-    "aliasesWithInactiveTarget": 3,
+    "aliasesWithInactiveTarget": 0,
     "disposition": {
       "hide": 181,
       "keep": 266,
@@ -45,7 +45,7 @@
     ],
     "hasProxyRedirect": true,
     "setupExcludedFromMatcher": true,
-    "nextConfigHasRedirects": false,
+    "nextConfigHasRedirects": true,
     "nextConfigHasRewrites": false,
     "clientNavigationFiles": [
       "app/(crm)/leads/[id]/transfer/page.tsx",
@@ -683,105 +683,6 @@
   ],
   "aliases": [
     {
-      "concept": "automacoes",
-      "alias": "/automation",
-      "canonical": "/automations",
-      "source": [
-        {
-          "file": "app/(crm)/automation/page.tsx",
-          "active": false
-        }
-      ],
-      "target": [
-        {
-          "file": "app/(crm)/automations/page.tsx",
-          "active": false
-        }
-      ],
-      "sourceActive": false,
-      "targetActive": false
-    },
-    {
-      "concept": "pipeline-kanban",
-      "alias": "/kanban",
-      "canonical": "/pipeline",
-      "source": [
-        {
-          "file": "app/(crm)/kanban/page.tsx",
-          "active": false
-        }
-      ],
-      "target": [
-        {
-          "file": "app/(crm)/pipeline/page.tsx",
-          "active": true
-        }
-      ],
-      "sourceActive": false,
-      "targetActive": true
-    },
-    {
-      "concept": "inteligencia-de-criativos",
-      "alias": "/creatives",
-      "canonical": "/marketing/creatives",
-      "source": [
-        {
-          "file": "app/(andromeda)/creatives/page.tsx",
-          "active": false
-        },
-        {
-          "file": "app/(crm)/creatives/page.tsx",
-          "active": false
-        }
-      ],
-      "target": [
-        {
-          "file": "app/(crm)/marketing/creatives/page.tsx",
-          "active": true
-        }
-      ],
-      "sourceActive": false,
-      "targetActive": true
-    },
-    {
-      "concept": "agentes-especializados",
-      "alias": "/agents",
-      "canonical": "/atlas-v3/agents",
-      "source": [
-        {
-          "file": "app/(crm)/agents/page.tsx",
-          "active": false
-        }
-      ],
-      "target": [
-        {
-          "file": "app/(crm)/atlas-v3/agents/page.tsx",
-          "active": false
-        }
-      ],
-      "sourceActive": false,
-      "targetActive": false
-    },
-    {
-      "concept": "inteligencia-operacional",
-      "alias": "/ai-insights",
-      "canonical": "/intelligence",
-      "source": [
-        {
-          "file": "app/(crm)/ai-insights/page.tsx",
-          "active": false
-        }
-      ],
-      "target": [
-        {
-          "file": "app/(crm)/intelligence/page.tsx",
-          "active": false
-        }
-      ],
-      "sourceActive": false,
-      "targetActive": false
-    },
-    {
       "concept": "analytics-relatorios",
       "alias": "/analytics",
       "canonical": "/reports",
@@ -817,6 +718,48 @@
       "target": [
         {
           "file": "app/(crm)/conversations/page.tsx",
+          "active": true
+        }
+      ],
+      "sourceActive": false,
+      "targetActive": true
+    },
+    {
+      "concept": "inteligencia-de-criativos",
+      "alias": "/creatives",
+      "canonical": "/marketing/creatives",
+      "source": [
+        {
+          "file": "app/(andromeda)/creatives/page.tsx",
+          "active": false
+        },
+        {
+          "file": "app/(crm)/creatives/page.tsx",
+          "active": false
+        }
+      ],
+      "target": [
+        {
+          "file": "app/(crm)/marketing/creatives/page.tsx",
+          "active": true
+        }
+      ],
+      "sourceActive": false,
+      "targetActive": true
+    },
+    {
+      "concept": "pipeline-kanban",
+      "alias": "/kanban",
+      "canonical": "/pipeline",
+      "source": [
+        {
+          "file": "app/(crm)/kanban/page.tsx",
+          "active": false
+        }
+      ],
+      "target": [
+        {
+          "file": "app/(crm)/pipeline/page.tsx",
           "active": true
         }
       ],
@@ -1073,10 +1016,7 @@
       "routable": true,
       "intercepted": false,
       "navigation": [],
-      "redirect": {
-        "target": "/atlas-v3/agents",
-        "mechanism": "governed-alias"
-      },
+      "redirect": null,
       "methods": [],
       "lines": 7,
       "disposition": "hide",
@@ -1146,10 +1086,7 @@
       "routable": true,
       "intercepted": false,
       "navigation": [],
-      "redirect": {
-        "target": "/intelligence",
-        "mechanism": "governed-alias"
-      },
+      "redirect": null,
       "methods": [],
       "lines": 7,
       "disposition": "hide",
@@ -4915,10 +4852,7 @@
       "routable": true,
       "intercepted": false,
       "navigation": [],
-      "redirect": {
-        "target": "/automations",
-        "mechanism": "governed-alias"
-      },
+      "redirect": null,
       "methods": [],
       "lines": 7,
       "disposition": "hide",

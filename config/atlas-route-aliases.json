@@ -1,0 +1,26 @@
+[
+  {
+    "concept": "analytics-relatorios",
+    "source": "/analytics",
+    "destination": "/reports",
+    "permanent": true
+  },
+  {
+    "concept": "conversas",
+    "source": "/chat",
+    "destination": "/conversations",
+    "permanent": true
+  },
+  {
+    "concept": "inteligencia-de-criativos",
+    "source": "/creatives",
+    "destination": "/marketing/creatives",
+    "permanent": true
+  },
+  {
+    "concept": "pipeline-kanban",
+    "source": "/kanban",
+    "destination": "/pipeline",
+    "permanent": true
+  }
+]

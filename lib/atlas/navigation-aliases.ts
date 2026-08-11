@@ -1,12 +1,12 @@
-export const atlasNavigationAliases = [
-  { concept: "automacoes", alias: "/automation", canonical: "/automations" },
-  { concept: "pipeline-kanban", alias: "/kanban", canonical: "/pipeline" },
-  { concept: "inteligencia-de-criativos", alias: "/creatives", canonical: "/marketing/creatives" },
-  { concept: "agentes-especializados", alias: "/agents", canonical: "/atlas-v3/agents" },
-  { concept: "inteligencia-operacional", alias: "/ai-insights", canonical: "/intelligence" },
-  { concept: "analytics-relatorios", alias: "/analytics", canonical: "/reports" },
-  { concept: "conversas", alias: "/chat", canonical: "/conversations" },
-] as const;
+import atlasRouteAliases from "../../config/atlas-route-aliases.json";
+
+export const atlasNavigationAliases = atlasRouteAliases.map(
+  ({ concept, source, destination }) => ({
+    concept,
+    alias: source,
+    canonical: destination,
+  }),
+);
 
 export type AtlasNavigationAlias = (typeof atlasNavigationAliases)[number]["alias"];
 

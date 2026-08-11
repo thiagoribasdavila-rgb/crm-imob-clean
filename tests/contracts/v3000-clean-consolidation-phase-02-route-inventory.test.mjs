@@ -67,7 +67,7 @@ test("fronteira pública e bootstrap permanecem explicitamente protegidos", () =
   ]);
   assert.equal(evidence.requestBoundary.hasProxyRedirect, true);
   assert.equal(evidence.requestBoundary.setupExcludedFromMatcher, true);
-  assert.equal(evidence.requestBoundary.nextConfigHasRedirects, false);
+  assert.equal(evidence.requestBoundary.nextConfigHasRedirects, true);
   assert.equal(evidence.requestBoundary.nextConfigHasRewrites, false);
 });
 

@@ -1,0 +1,489 @@
+{
+  "schemaVersion": 1,
+  "scope": "v3000-canonical-navigation-and-static-compatibility-redirects",
+  "sourceOfTruth": {
+    "navigation": "lib/atlas/navigation.ts",
+    "redirects": "config/atlas-route-aliases.json",
+    "nextConfig": "next.config.ts",
+    "sessionBoundary": "proxy.ts",
+    "activeTypecheck": "tsconfig.active.json",
+    "quarantine": "scripts/legacy-route-paths.mjs"
+  },
+  "summary": {
+    "activePageRoutes": 95,
+    "canonicalMenuDestinations": 19,
+    "governedDestinations": 29,
+    "inactiveGovernedDestinations": 0,
+    "compatibilityRedirects": 4,
+    "invalidRedirects": 0,
+    "duplicateSources": 0,
+    "duplicateDestinations": 0,
+    "redirectChains": 0,
+    "redirectCycles": 0,
+    "activeLegacyReferences": 0,
+    "proxyAliasReferences": 0,
+    "removedInactiveAliases": 3,
+    "removedAliasesStillGoverned": 0
+  },
+  "contract": {
+    "nextConfigImportsRedirectContract": true,
+    "nextConfigExposesRedirects": true,
+    "proxyReservedForConditionalAccess": true,
+    "activeTypecheckExcludesGeneratedQuarantineRegistry": true
+  },
+  "navigation": [
+    {
+      "path": "/activity",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Atividades"
+        }
+      ]
+    },
+    {
+      "path": "/ai-dashboard",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Copilot"
+        }
+      ]
+    },
+    {
+      "path": "/brokers",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Corretores"
+        },
+        {
+          "surface": "task-context",
+          "label": "Distribuir leads"
+        }
+      ]
+    },
+    {
+      "path": "/calendar",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Agenda"
+        },
+        {
+          "surface": "task-destination",
+          "label": "Abrir agenda"
+        },
+        {
+          "surface": "task-context",
+          "label": "Ver tarefas"
+        }
+      ]
+    },
+    {
+      "path": "/conversations",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "contextual",
+          "label": "Conversas"
+        }
+      ]
+    },
+    {
+      "path": "/customers",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Clientes 360"
+        },
+        {
+          "surface": "task-context",
+          "label": "Abrir leads"
+        }
+      ]
+    },
+    {
+      "path": "/dashboard",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Command Center"
+        }
+      ]
+    },
+    {
+      "path": "/decision-center",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "contextual",
+          "label": "Centro de Decisão"
+        },
+        {
+          "surface": "task-destination",
+          "label": "Centro de decisão"
+        }
+      ]
+    },
+    {
+      "path": "/developments",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Projetos"
+        },
+        {
+          "surface": "task-context",
+          "label": "Buscar materiais"
+        }
+      ]
+    },
+    {
+      "path": "/developments/materials",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "task-destination",
+          "label": "Buscar materiais"
+        }
+      ]
+    },
+    {
+      "path": "/distribution",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Distribuição"
+        },
+        {
+          "surface": "task-destination",
+          "label": "Distribuir leads"
+        }
+      ]
+    },
+    {
+      "path": "/external-sales",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Vendas externas"
+        },
+        {
+          "surface": "task-context",
+          "label": "Abrir relatórios"
+        }
+      ]
+    },
+    {
+      "path": "/integrations",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Integrações"
+        },
+        {
+          "surface": "task-context",
+          "label": "Ver saúde"
+        }
+      ]
+    },
+    {
+      "path": "/integrations/health",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "task-destination",
+          "label": "Ver saúde"
+        }
+      ]
+    },
+    {
+      "path": "/leads",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Leads"
+        },
+        {
+          "surface": "task-destination",
+          "label": "Ver leads"
+        },
+        {
+          "surface": "task-destination",
+          "label": "Abrir leads"
+        }
+      ]
+    },
+    {
+      "path": "/leads/deduplication",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "task-destination",
+          "label": "Revisar duplicidades"
+        }
+      ]
+    },
+    {
+      "path": "/leads/import",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Reativação"
+        },
+        {
+          "surface": "task-context",
+          "label": "Revisar duplicidades"
+        }
+      ]
+    },
+    {
+      "path": "/leads/new",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "contextual",
+          "label": "Novo lead"
+        },
+        {
+          "surface": "task-context",
+          "label": "Ver leads"
+        }
+      ]
+    },
+    {
+      "path": "/marketing",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "contextual",
+          "label": "Marketing AI"
+        },
+        {
+          "surface": "task-destination",
+          "label": "Marketing AI"
+        }
+      ]
+    },
+    {
+      "path": "/pipeline",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Pipeline"
+        }
+      ]
+    },
+    {
+      "path": "/properties",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "contextual",
+          "label": "Imóveis"
+        }
+      ]
+    },
+    {
+      "path": "/reports",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Relatórios"
+        },
+        {
+          "surface": "task-destination",
+          "label": "Abrir relatórios"
+        },
+        {
+          "surface": "task-context",
+          "label": "Centro de decisão"
+        },
+        {
+          "surface": "task-destination",
+          "label": "Abrir relatórios"
+        }
+      ]
+    },
+    {
+      "path": "/revenue-engine",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Revenue Engine"
+        },
+        {
+          "surface": "task-context",
+          "label": "Marketing AI"
+        }
+      ]
+    },
+    {
+      "path": "/sales",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Vendas"
+        },
+        {
+          "surface": "task-context",
+          "label": "Abrir relatórios"
+        }
+      ]
+    },
+    {
+      "path": "/settings",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Configurações"
+        },
+        {
+          "surface": "task-context",
+          "label": "Saúde da IA"
+        }
+      ]
+    },
+    {
+      "path": "/settings/ai",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "task-destination",
+          "label": "Saúde da IA"
+        }
+      ]
+    },
+    {
+      "path": "/settings/team",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "task-destination",
+          "label": "Configurar equipe"
+        }
+      ]
+    },
+    {
+      "path": "/tasks",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Tarefas"
+        },
+        {
+          "surface": "task-context",
+          "label": "Abrir agenda"
+        },
+        {
+          "surface": "task-destination",
+          "label": "Ver tarefas"
+        }
+      ]
+    },
+    {
+      "path": "/users",
+      "active": true,
+      "surfaces": [
+        {
+          "surface": "canonical",
+          "label": "Usuários e acessos"
+        },
+        {
+          "surface": "task-context",
+          "label": "Configurar equipe"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "concept": "analytics-relatorios",
+      "source": "/analytics",
+      "destination": "/reports",
+      "permanent": true,
+      "sourceIsActivePage": false,
+      "destinationIsActivePage": true
+    },
+    {
+      "concept": "conversas",
+      "source": "/chat",
+      "destination": "/conversations",
+      "permanent": true,
+      "sourceIsActivePage": false,
+      "destinationIsActivePage": true
+    },
+    {
+      "concept": "inteligencia-de-criativos",
+      "source": "/creatives",
+      "destination": "/marketing/creatives",
+      "permanent": true,
+      "sourceIsActivePage": false,
+      "destinationIsActivePage": true
+    },
+    {
+      "concept": "pipeline-kanban",
+      "source": "/kanban",
+      "destination": "/pipeline",
+      "permanent": true,
+      "sourceIsActivePage": false,
+      "destinationIsActivePage": true
+    }
+  ],
+  "removedAliases": [
+    {
+      "concept": "agentes-especializados",
+      "source": "/agents",
+      "formerDestination": "/atlas-v3/agents",
+      "reason": "source-and-destination-quarantined"
+    },
+    {
+      "concept": "inteligencia-operacional",
+      "source": "/ai-insights",
+      "formerDestination": "/intelligence",
+      "reason": "source-and-destination-quarantined"
+    },
+    {
+      "concept": "automacoes",
+      "source": "/automation",
+      "formerDestination": "/automations",
+      "reason": "source-and-destination-quarantined"
+    }
+  ],
+  "findings": {
+    "inactiveNavigation": [],
+    "invalidAliases": [],
+    "duplicateSources": [],
+    "duplicateDestinations": [],
+    "chains": [],
+    "cycles": [],
+    "activeLegacyReferences": [],
+    "proxyAliasReferences": [],
+    "generatedRouteTypeIncludes": [],
+    "removedAliasSourcesStillGoverned": []
+  },
+  "privacy": {
+    "readsApplicationData": false,
+    "readsEnvironmentSecrets": false,
+    "capturesPersonalData": false
+  }
+}
