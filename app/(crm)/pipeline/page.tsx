@@ -6255,15 +6255,9 @@ export default function PipelinePage() {
                               className={`atlas-pipeline-lead atlas-pipeline-lead-v30 group ${savingId === lead.id ? "opacity-60" : ""} ${draggedId === lead.id ? "is-dragging" : ""}`}
                               data-risk={risk}
                               data-adaptive-density="role-and-device"
-                              data-adaptive-density-contract={
-                                ATLAS_ADAPTIVE_DENSITY_CONTRACT
-                              }
-                              data-decision-contract={
-                                ATLAS_DECISION_CARD_CONTRACT
-                              }
-                              data-progressive-contract={
-                                ATLAS_PROGRESSIVE_DECISION_CONTRACT
-                              }
+                              data-adaptive-density-contract={ATLAS_ADAPTIVE_DENSITY_CONTRACT}
+                              data-decision-contract={ATLAS_DECISION_CARD_CONTRACT}
+                              data-progressive-contract={ATLAS_PROGRESSIVE_DECISION_CONTRACT}
                               data-progressive-reading="decision-context-history"
                               data-decision-preserved="project validation next-action movement-audit"
                               data-v3000-accessibility="wcag-aa keyboard-movement live-status reduced-motion"
