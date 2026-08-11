@@ -1,0 +1,1082 @@
+{
+  "schemaVersion": 1,
+  "phase": 380,
+  "consolidationGate": 7,
+  "generatedAt": "2026-08-11T22:39:57.355Z",
+  "scope": "canonical-navigation-functional-contracts",
+  "classification": {
+    "FUNCTIONAL_CONTRACT_PROVEN": "Página, API, persistência, autenticação, tenant, permissão, estados de UI e testemunha de teste possuem contrato estático rastreável.",
+    "CONNECT_REQUIRED": "Base interna comprovada; operação externa permanece explicitamente pendente até credencial e teste real no gate 9.",
+    "PARTIAL_OR_BROKEN": "Uma ou mais provas obrigatórias estão ausentes; o módulo não pode ser promovido como funcional.",
+    "caveat": "Esta fase não alega prova de runtime remoto. Sessão, organização, dados reais e integrações serão exercitados nos gates 8 e 9."
+  },
+  "sourceOfTruth": {
+    "configuration": "config/v3000-functional-parity.json",
+    "navigation": "lib/atlas/navigation.ts"
+  },
+  "summary": {
+    "canonicalModules": 19,
+    "navigationEntries": 19,
+    "navigationExact": true,
+    "functionalContractProven": 18,
+    "connectRequired": 1,
+    "partialOrBroken": 0,
+    "invalidModules": 0,
+    "readyForRuntimeGate": true
+  },
+  "navigation": {
+    "duplicateIds": [],
+    "duplicateRoutes": [],
+    "expectedIds": [
+      "activity",
+      "brokers",
+      "calendar",
+      "command-center",
+      "copilot",
+      "customers-360",
+      "developments",
+      "distribution",
+      "external-sales",
+      "integrations",
+      "leads",
+      "pipeline",
+      "reactivation",
+      "reports",
+      "revenue-engine",
+      "sales",
+      "settings",
+      "tasks",
+      "users"
+    ],
+    "actualIds": [
+      "activity",
+      "brokers",
+      "calendar",
+      "command-center",
+      "copilot",
+      "customers-360",
+      "developments",
+      "distribution",
+      "external-sales",
+      "integrations",
+      "leads",
+      "pipeline",
+      "reactivation",
+      "reports",
+      "revenue-engine",
+      "sales",
+      "settings",
+      "tasks",
+      "users"
+    ]
+  },
+  "modules": [
+    {
+      "id": "command-center",
+      "route": "/dashboard",
+      "frontend": {
+        "file": "app/(crm)/dashboard/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 16,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/analytics/dashboard/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET"
+        ],
+        "exportedMethods": [
+          "GET"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 9,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/lead-intake-analytics.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "leads",
+      "route": "/leads",
+      "frontend": {
+        "file": "app/(crm)/leads/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 14,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/crm/leads/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET"
+        ],
+        "exportedMethods": [
+          "GET"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 8,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/leads-quality-filters.test.mjs",
+          "exists": true
+        },
+        {
+          "file": "tests/contracts/lead-first-action-flow.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "pipeline",
+      "route": "/pipeline",
+      "frontend": {
+        "file": "app/(crm)/pipeline/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 19,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/pipeline/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET",
+          "PATCH"
+        ],
+        "exportedMethods": [
+          "GET",
+          "PATCH"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 14,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/v3000-phase-53-decision-kanban.test.mjs",
+          "exists": true
+        },
+        {
+          "file": "tests/contracts/kanban-safe-stage-movement.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "tasks",
+      "route": "/tasks",
+      "frontend": {
+        "file": "app/(crm)/tasks/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 8,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/tasks/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET",
+          "POST",
+          "PATCH"
+        ],
+        "exportedMethods": [
+          "GET",
+          "POST",
+          "PATCH"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 15,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/tasks-calendar-focus.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "calendar",
+      "route": "/calendar",
+      "frontend": {
+        "file": "app/(crm)/calendar/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 8,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/calendar/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET"
+        ],
+        "exportedMethods": [
+          "GET"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 10,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/tasks-calendar-focus.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "activity",
+      "route": "/activity",
+      "frontend": {
+        "file": "app/(crm)/activity/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 7,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/activity/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET"
+        ],
+        "exportedMethods": [
+          "GET"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 10,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/lead-operational-timeline.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "customers-360",
+      "route": "/customers",
+      "frontend": {
+        "file": "app/(crm)/customers/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 7,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/customers/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET"
+        ],
+        "exportedMethods": [
+          "GET"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 10,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/lead360-operational-snapshot.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "developments",
+      "route": "/developments",
+      "frontend": {
+        "file": "app/(crm)/developments/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 6,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/launch-os/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET"
+        ],
+        "exportedMethods": [
+          "GET"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 10,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/compact-project-library.test.mjs",
+          "exists": true
+        },
+        {
+          "file": "tests/contracts/v3000-phase-46-project-compatibility.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "reactivation",
+      "route": "/leads/import",
+      "frontend": {
+        "file": "app/(crm)/leads/import/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 6,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/crm/reactivation/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET",
+          "POST"
+        ],
+        "exportedMethods": [
+          "GET",
+          "POST"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 9,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/lead-intake-analytics.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "copilot",
+      "route": "/ai-dashboard",
+      "frontend": {
+        "file": "app/(crm)/ai-dashboard/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 4,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/ai/briefing/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET"
+        ],
+        "exportedMethods": [
+          "GET"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 26,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/ai-commercial-context-readiness.test.mjs",
+          "exists": true
+        },
+        {
+          "file": "tests/contracts/explainable-supervised-ai-recommendation.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "brokers",
+      "route": "/brokers",
+      "frontend": {
+        "file": "app/(crm)/brokers/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 11,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/crm/team/conversion/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET"
+        ],
+        "exportedMethods": [
+          "GET"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 9,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/role-metric-hierarchy.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "distribution",
+      "route": "/distribution",
+      "frontend": {
+        "file": "app/(crm)/distribution/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 9,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/crm/distribution/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET",
+          "POST"
+        ],
+        "exportedMethods": [
+          "GET",
+          "POST"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 10,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/distribution-evidence.test.mjs",
+          "exists": true
+        },
+        {
+          "file": "tests/contracts/distribution-roster.test.mjs",
+          "exists": true
+        },
+        {
+          "file": "tests/contracts/distribution-tenant-isolation.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "sales",
+      "route": "/sales",
+      "frontend": {
+        "file": "app/(crm)/sales/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 10,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/sales/[id]/commission/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "PATCH"
+        ],
+        "exportedMethods": [
+          "PATCH"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 7,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/reports-data-integrity.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "reports",
+      "route": "/reports",
+      "frontend": {
+        "file": "app/(crm)/reports/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 5,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/analytics/weekly-acquisition/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET"
+        ],
+        "exportedMethods": [
+          "GET"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 11,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/reports-data-integrity.test.mjs",
+          "exists": true
+        },
+        {
+          "file": "tests/contracts/reports-payload-validation.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "revenue-engine",
+      "route": "/revenue-engine",
+      "frontend": {
+        "file": "app/(crm)/revenue-engine/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 6,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/revenue-engine/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET"
+        ],
+        "exportedMethods": [
+          "GET"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 8,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/meta-capi-failure-queue.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "users",
+      "route": "/users",
+      "frontend": {
+        "file": "app/(crm)/users/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 1,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/admin/users/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET",
+          "PATCH"
+        ],
+        "exportedMethods": [
+          "GET",
+          "PATCH"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 7,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/conversion-core-local-role-provisioning.test.mjs",
+          "exists": true
+        },
+        {
+          "file": "tests/contracts/role-navigation-priority.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "external-sales",
+      "route": "/external-sales",
+      "frontend": {
+        "file": "app/(crm)/external-sales/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 6,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/crm/external-sales/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET",
+          "POST",
+          "PATCH"
+        ],
+        "exportedMethods": [
+          "GET",
+          "POST",
+          "PATCH"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 8,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/role-navigation-priority.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    },
+    {
+      "id": "integrations",
+      "route": "/integrations",
+      "frontend": {
+        "file": "app/(crm)/integrations/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 6,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/integrations/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET",
+          "POST"
+        ],
+        "exportedMethods": [
+          "GET",
+          "POST"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 9,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/whatsapp-broker-line-routing.test.mjs",
+          "exists": true
+        },
+        {
+          "file": "tests/contracts/meta-capi-failure-queue.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": true,
+      "externalTruthful": true,
+      "status": "CONNECT_REQUIRED",
+      "issues": []
+    },
+    {
+      "id": "settings",
+      "route": "/settings",
+      "frontend": {
+        "file": "app/(crm)/settings/page.tsx",
+        "exists": true,
+        "nonTrivial": true,
+        "defaultExport": true,
+        "dependencyFiles": 6,
+        "ui": {
+          "loading": true,
+          "error": true,
+          "empty": true
+        },
+        "placeholderFree": true
+      },
+      "api": {
+        "file": "app/api/v1/settings/organization/route.ts",
+        "exists": true,
+        "requiredMethods": [
+          "GET",
+          "PATCH"
+        ],
+        "exportedMethods": [
+          "GET",
+          "PATCH"
+        ],
+        "missingMethods": [],
+        "dependencyFiles": 7,
+        "authentication": true,
+        "tenant": true,
+        "persistence": true,
+        "permissions": true
+      },
+      "permissions": {
+        "navigation": true,
+        "authenticated": true,
+        "tenantScoped": true,
+        "roleAware": true
+      },
+      "persistence": true,
+      "witnesses": [
+        {
+          "file": "tests/contracts/role-navigation-priority.test.mjs",
+          "exists": true
+        }
+      ],
+      "externalDependency": false,
+      "externalTruthful": true,
+      "status": "FUNCTIONAL_CONTRACT_PROVEN",
+      "issues": []
+    }
+  ],
+  "digest": "7a2a703a61894d5f4c5404865101fa460c32258a5c1d99913df87ad6c6a9915f"
+}

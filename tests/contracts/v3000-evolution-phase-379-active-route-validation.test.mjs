@@ -58,20 +58,17 @@ test("quatro aliases permanentes chegam diretamente às páginas canônicas", ()
 });
 
 test("governança avança para a fase 379 e gate 6", () => {
-  assert.equal(progress.program.verifiedHistoricalPhases, 379);
-  assert.equal(progress.program.phaseContractsFound, 59);
-  assert.equal(progress.program.lastVerifiedPhase, 379);
-  assert.equal(progress.consolidation.currentPhase, 6);
-  assert.deepEqual(
-    progress.consolidation.phases
-      .filter((phase) => phase.status === "complete")
-      .map((phase) => phase.id),
-    [1, 2, 3, 4, 5, 6],
+  assert.ok(progress.program.verifiedHistoricalPhases >= 379);
+  assert.ok(progress.program.phaseContractsFound >= 59);
+  assert.ok(progress.program.lastVerifiedPhase >= 379);
+  assert.ok(progress.consolidation.currentPhase >= 6);
+  assert.equal(
+    progress.consolidation.phases.find((phase) => phase.id === 6)?.status,
+    "complete",
   );
-  assert.deepEqual(
-    progress.consolidation.phases
-      .filter((phase) => phase.status === "next")
-      .map((phase) => phase.id),
-    [7],
+  assert.ok(
+    ["next", "complete"].includes(
+      progress.consolidation.phases.find((phase) => phase.id === 7)?.status,
+    ),
   );
 });
