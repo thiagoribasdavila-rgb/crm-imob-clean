@@ -1,0 +1,48 @@
+{
+  "phase": 17,
+  "origin": "https://atlasaios.com.br",
+  "requiredStatus": "approved",
+  "requiredChecks": [
+    "humanExpansionDecisionApproved",
+    "capacityPlanReviewed",
+    "roleAccessPlanReviewed",
+    "tenantIsolationPlanReviewed",
+    "monitoringCoverageConfirmed",
+    "supportCoverageConfirmed",
+    "rollbackStillReady",
+    "noCriticalIncident",
+    "noUnresolvedHighSeverityIncident",
+    "privacyAndDataGovernanceReviewed",
+    "expansionWindowApproved"
+  ],
+  "requiredStringFields": [
+    "releaseIdentifier",
+    "decisionOwner",
+    "rolloutOwner",
+    "rollbackOwner",
+    "reviewedBy",
+    "sanitizedDecisionReference",
+    "expansionWindowStart",
+    "reviewedAt"
+  ],
+  "requiredRoles": [
+    "DIRETOR",
+    "GERENTE",
+    "CORRETOR"
+  ],
+  "minimumAuthorizedTotalUsers": 6,
+  "maximumAuthorizedTotalUsers": 10,
+  "maximumCriticalIncidents": 0,
+  "maximumUnresolvedHighSeverityIncidents": 0,
+  "requiredDatabaseMigrationsByGate": 0,
+  "requiredBootstrapExecutionsByGate": 0,
+  "requiredBusinessDataMutationsByGate": 0,
+  "requiredUsersProvisionedByGate": 0,
+  "requiredSecretValuesRecorded": false,
+  "requiredPersonalDataInEvidence": false,
+  "deploymentPerformedByGate": false,
+  "databaseMutationAllowedByGate": false,
+  "automaticUserProvisioningAllowed": false,
+  "automaticExpansionAllowed": false,
+  "automaticRollbackAllowed": false
+}

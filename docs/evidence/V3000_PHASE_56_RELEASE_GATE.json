@@ -1,0 +1,70 @@
+{
+  "phase": 56,
+  "generatedAt": "2026-08-11T00:00:00-03:00",
+  "status": "pending-human",
+  "releaseAllowed": false,
+  "openP0": 0,
+  "openP1": 0,
+  "automatedGates": [
+    { "id": "contracts", "status": "passed" },
+    { "id": "typecheck", "status": "passed" },
+    { "id": "lint", "status": "passed" },
+    { "id": "build", "status": "passed" },
+    {
+      "id": "smoke",
+      "status": "passed",
+      "evidence": "Health 200, login 200 e guards 307 no servidor compilado; readiness 503 esperado sem ambiente Supabase configurado."
+    },
+    { "id": "rbac", "status": "passed" },
+    {
+      "id": "tenant-isolation",
+      "status": "passed",
+      "evidence": "rls:check, atlas:rls-matrix:check (22/22) e atlas:tenant-provisioning:check (20 controles)."
+    },
+    {
+      "id": "desktop",
+      "status": "pending",
+      "reason": "Credenciais E2E por papel não estão presentes no ambiente local."
+    },
+    {
+      "id": "mobile",
+      "status": "pending",
+      "reason": "Credenciais E2E por papel não estão presentes no ambiente local."
+    },
+    {
+      "id": "package-verification",
+      "status": "passed",
+      "evidence": "ZIP verificado, extraído em diretório temporário, instalado com npm ci e recompilado integralmente sem incluir segredos."
+    }
+  ],
+  "humanApprovals": [
+    { "role": "director", "status": "pending" },
+    { "role": "manager", "status": "pending" },
+    { "role": "broker", "status": "pending" }
+  ],
+  "livePublicValidation": {
+    "baseUrl": "https://atlasaios.com.br",
+    "validatedAt": "2026-08-11T12:57:08-03:00",
+    "health": { "status": 200, "application": "ok" },
+    "readiness": {
+      "status": 200,
+      "database": "ok",
+      "latencyMs": 78
+    },
+    "publicPages": {
+      "/": 200,
+      "/login": 200
+    },
+    "protectedRoutes": {
+      "/reports": "/login?next=%2Freports",
+      "/dashboard": "/login?next=%2Fdashboard",
+      "/pipeline": "/login?next=%2Fpipeline"
+    }
+  },
+  "notes": [
+    "O gate nunca promove uma release apenas porque o build foi concluído.",
+    "Segredos e credenciais não são incluídos nesta evidência nem no ZIP.",
+    "Desktop e mobile autenticados permanecem pendentes porque as contas E2E por papel não estão configuradas localmente.",
+    "O ambiente publicado respondeu health e readiness com sucesso e manteve as rotas comerciais protegidas para acesso anônimo."
+  ]
+}

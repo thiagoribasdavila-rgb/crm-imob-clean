@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { AtlasEmpty, type AtlasEmptyReason } from "@/components/ui/AtlasUI";
+import type { AtlasEmptyReason } from "@/components/ui/AtlasUI";
+import { ReliableState } from "./reliable-state";
 
 type EmptyStateProps = {
   title: string;
@@ -9,6 +10,22 @@ type EmptyStateProps = {
   eyebrow?: string;
 };
 
-export function EmptyState({ title, description, action, reason, eyebrow }: EmptyStateProps) {
-  return <AtlasEmpty title={title} description={description} action={action} reason={reason} eyebrow={eyebrow} />;
+export function EmptyState({
+  title,
+  description,
+  action,
+  reason,
+  eyebrow,
+}: EmptyStateProps) {
+  return (
+    <ReliableState
+      kind="empty"
+      title={title}
+      description={description}
+      action={action}
+      zeroMeaning="verified-empty"
+      emptyReason={reason}
+      eyebrow={eyebrow}
+    />
+  );
 }

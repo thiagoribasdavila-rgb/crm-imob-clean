@@ -1,0 +1,41 @@
+{
+  "phase": 15,
+  "origin": "https://atlasaios.com.br",
+  "requiredStatus": "approved",
+  "requiredChecks": [
+    "pilotScopeApproved",
+    "accessProfilesValidated",
+    "tenantIsolationPreserved",
+    "operationalOwnerReady",
+    "supportChannelReady",
+    "monitoringContinues",
+    "rollbackStillReady",
+    "noCriticalIncident",
+    "humanExpansionApproved"
+  ],
+  "requiredStringFields": [
+    "releaseIdentifier",
+    "rolloutOwner",
+    "rollbackOwner",
+    "reviewedBy",
+    "pilotStartedAt",
+    "reviewedAt"
+  ],
+  "requiredRoles": [
+    "DIRETOR",
+    "GERENTE",
+    "CORRETOR"
+  ],
+  "minimumPilotUsers": 3,
+  "maximumPilotUsers": 5,
+  "maximumCriticalIncidents": 0,
+  "requiredBusinessDataMutations": 0,
+  "requiredDatabaseMigrations": 0,
+  "requiredBootstrapExecutions": 0,
+  "requiredSecretValuesRecorded": false,
+  "deploymentPerformedByGate": false,
+  "databaseMutationAllowedByGate": false,
+  "automaticUserProvisioningAllowed": false,
+  "automaticExpansionAllowed": false,
+  "automaticRollbackAllowed": false
+}

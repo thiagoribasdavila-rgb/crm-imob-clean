@@ -1,0 +1,101 @@
+{
+  "phase": 39,
+  "title": "Hierarquia de informação progressiva",
+  "status": "hierarchy-adopted",
+  "businessRuntimeMutationAllowed": false,
+  "presentationContractMutationAllowed": true,
+  "databaseMutationAllowed": false,
+  "previousPhaseRegistry": "config/v3000-phase-38-decision-card-contract.json",
+  "canonicalPrimitive": {
+    "file": "components/ui/AtlasCard.tsx",
+    "requiredExports": [
+      "ATLAS_PROGRESSIVE_DECISION_LAYERS",
+      "ATLAS_PROGRESSIVE_DECISION_CONTRACT",
+      "AtlasDecisionCard",
+      "AtlasDecisionCardProps"
+    ],
+    "requiredMarkers": [
+      "data-progressive-contract={ATLAS_PROGRESSIVE_DECISION_CONTRACT}",
+      "data-progressive-layer=\"decision-in-3s\"",
+      "data-progressive-layer=\"context-on-demand\"",
+      "data-progressive-layer=\"history-in-lead-360\"",
+      "data-visible-signal-count={visibleSignalCount}",
+      "<details",
+      "<summary"
+    ],
+    "forbiddenTokens": [
+      "\"use client\"",
+      "'use client'",
+      "useState(",
+      "useEffect(",
+      "onClick=",
+      "window.",
+      "document."
+    ]
+  },
+  "readingLayers": [
+    "decision-in-3s",
+    "context-on-demand",
+    "history-in-lead-360"
+  ],
+  "quickDecision": {
+    "maximumMainMessages": 1,
+    "maximumSignals": 3,
+    "maximumPrimaryActions": 1,
+    "signalComposition": [
+      "relevance",
+      "urgency",
+      "primary-evidence"
+    ],
+    "detailsMovedBehindDisclosure": [
+      "identity-description",
+      "additional-evidence",
+      "explanation",
+      "updated-at"
+    ]
+  },
+  "adoptionSurfaces": [
+    {
+      "id": "command-center",
+      "route": "/dashboard",
+      "source": "app/(crm)/dashboard/page.tsx",
+      "requiredMarkers": [
+        "ATLAS_PROGRESSIVE_DECISION_CONTRACT",
+        "data-progressive-contract={ATLAS_PROGRESSIVE_DECISION_CONTRACT}",
+        "data-progressive-reading=\"decision-context-history\""
+      ]
+    },
+    {
+      "id": "leads",
+      "route": "/leads",
+      "source": "app/(crm)/leads/page.tsx",
+      "requiredMarkers": [
+        "ATLAS_PROGRESSIVE_DECISION_CONTRACT",
+        "data-progressive-contract={ATLAS_PROGRESSIVE_DECISION_CONTRACT}",
+        "data-progressive-reading=\"decision-context-history\""
+      ]
+    },
+    {
+      "id": "pipeline",
+      "route": "/pipeline",
+      "source": "app/(crm)/pipeline/page.tsx",
+      "requiredMarkers": [
+        "ATLAS_PROGRESSIVE_DECISION_CONTRACT",
+        "data-progressive-contract={ATLAS_PROGRESSIVE_DECISION_CONTRACT}",
+        "data-progressive-reading=\"decision-context-history\""
+      ]
+    }
+  ],
+  "acceptanceCriteria": [
+    "Antes de expandir existe uma única mensagem principal.",
+    "Antes de expandir existem no máximo três sinais de decisão.",
+    "Antes de expandir existe uma única ação primária.",
+    "A ação primária aparece antes do controle de contexto.",
+    "Descrição, evidências extras, explicação e atualização ficam sob demanda.",
+    "O histórico completo pode ser encaminhado ao Lead 360 sem duplicação.",
+    "Sala de Comando, Leads e Pipeline declaram a mesma hierarquia.",
+    "A expansão usa disclosure HTML nativo e preserva Server Components.",
+    "Nenhuma consulta, API, regra comercial ou persistência foi alterada.",
+    "Nenhuma alteração de banco é autorizada pela Fase 39."
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "phase": 11,
+  "ok": true,
+  "artifact": "atlas-one-v3000-phase-10-proven.zip",
+  "bytes": 7424217,
+  "files": 3564,
+  "sha256": "80170576910f3681b50a5a5a43bd24ce0cc29153b9a8d7b22235d9f701336715",
+  "sourceFingerprint": "sha256:8cff80d9cde28c4bf0cf078a4b5e47a8acd4d3a35961fdde162db7c349450aa6",
+  "artifactVerified": true,
+  "productionStatus": "pending-authorized-deployment",
+  "eligibleForTemplatePromotion": false,
+  "route": "/notifications",
+  "contractTests": {
+    "passed": 30,
+    "failed": 0
+  },
+  "typecheck": "passed",
+  "lint": "passed",
+  "databaseMutations": 0,
+  "deploymentPerformed": false
+}

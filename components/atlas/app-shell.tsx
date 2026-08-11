@@ -11,7 +11,11 @@ import { Topbar } from "./topbar";
 import { MobileDock } from "./mobile-dock";
 import { NavigationPerformance } from "./navigation-performance";
 import { LazyGlobalSurfaces } from "./lazy-global-surfaces";
-import type { DesktopDensity, ShellIdentity } from "./shell-types";
+import {
+  resolveDecisionDensityProfile,
+  type DesktopDensity,
+  type ShellIdentity,
+} from "./shell-types";
 
 const DESKTOP_DENSITY_KEY = "atlas:desktop-density";
 const defaultIdentity: ShellIdentity = {
@@ -74,12 +78,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     setDesktopDensity(next);
     window.localStorage.setItem(DESKTOP_DENSITY_KEY, next);
   }, [desktopDensity]);
+  const decisionDensityProfile = resolveDecisionDensityProfile(identity);
 
   return (
     <div
       className="atlas-app-shell"
       data-sidebar-collapsed={collapsed ? "true" : "false"}
       data-desktop-density={desktopDensity}
+      data-adaptive-density="role-and-device"
+      data-decision-density-profile={decisionDensityProfile}
       data-desktop-layout="adaptive-wide-workspace"
       data-tablet-layout="adaptive-overlay-workspace"
       data-mobile-layout="thumb-first"

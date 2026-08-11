@@ -18,6 +18,13 @@ const root = process.cwd();
 const outputRoot = resolve(root, "dist/hostinger");
 const stage = join(outputRoot, "atlas-v3");
 const packageName = process.env.ATLAS_PACKAGE_NAME || "atlas-v3-hostinger-homologation.zip";
+const requestedPackageSource = (
+  process.env.ATLAS_PACKAGE_SOURCE || "commit"
+).toLowerCase();
+if (!["commit", "workspace"].includes(requestedPackageSource))
+  throw new Error(
+    "ATLAS_PACKAGE_SOURCE deve ser 'commit' ou 'workspace'.",
+  );
 if (
   !/^atlas-(?:v3|one)-[a-z0-9-]+\.zip$/.test(packageName) &&
   ![
@@ -65,7 +72,11 @@ const gitWorkspace = (() => {
     return false;
   }
 })();
-if (gitWorkspace) {
+const sourceMode =
+  gitWorkspace && requestedPackageSource === "commit"
+    ? "git-archive"
+    : "workspace-content-hash";
+if (sourceMode === "git-archive") {
   const trackedChanges = execFileSync(
     "git",
     ["status", "--porcelain", "--untracked-files=no"],
@@ -82,7 +93,7 @@ rmSync(stage, { recursive: true, force: true });
 rmSync(zipPath, { force: true });
 rmSync(checksumPath, { force: true });
 mkdirSync(stage, { recursive: true });
-if (gitWorkspace) {
+if (sourceMode === "git-archive") {
   const archive = execFileSync("git", ["archive", "--format=tar", "HEAD"], {
     cwd: root,
     maxBuffer: 50 * 1024 * 1024,
@@ -210,7 +221,7 @@ const snapshotEpochSeconds =
   Math.floor(Date.UTC(2020, 0, 1) / 1000) +
   (Number.parseInt(sourceFingerprint.slice(7, 15), 16) %
     (20 * 365 * 24 * 60 * 60));
-const sourceTimestamp = gitWorkspace
+const sourceTimestamp = sourceMode === "git-archive"
   ? execFileSync("git", ["show", "-s", "--format=%cI", "HEAD"], {
       cwd: root,
       encoding: "utf8",
@@ -225,7 +236,7 @@ writeFileSync(
     {
       application: "Atlas One",
       commit,
-      sourceMode: gitWorkspace ? "git-archive" : "workspace-content-hash",
+      sourceMode,
       sourceFingerprint,
       releaseVersion,
       sourceTimestamp,
@@ -327,6 +338,18 @@ for (const required of [
   "supabase/seed.sql",
   "tests/e2e/login.spec.mjs",
   "tests/e2e/authenticated-journeys.spec.mjs",
+  "app/(crm)/notifications/page.tsx",
+  "components/atlas/notifications-v3000-surface.tsx",
+  "components/atlas/v3000-page-template.tsx",
+  "docs/V3000_PHASE_05_NOTIFICATIONS_PILOT.md",
+  "docs/V3000_PHASE_06_ACCESSIBILITY_CONSOLIDATION.md",
+  "docs/V3000_PHASE_07_VISUAL_PROOF.md",
+  "docs/V3000_PHASE_08_AUTHENTICATED_RELEASE_GATE.md",
+  "docs/V3000_PHASE_09_CONTROLLED_RELEASE.md",
+  "docs/V3000_PHASE_10_ARTIFACT_PROOF.md",
+  "tests/contracts/v3000-page-template.test.mjs",
+  "tests/contracts/v3000-phase-09-controlled-release.test.mjs",
+  "tests/contracts/v3000-phase-10-artifact-proof.test.mjs",
 ]) {
   if (!entries.includes(required))
     throw new Error(`Arquivo obrigatório ausente no ZIP: ${required}`);

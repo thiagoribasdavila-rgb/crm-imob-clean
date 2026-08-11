@@ -14,7 +14,6 @@ export const legacyRoutePaths = [
   "app/(crm)/design-lab",
   "app/(crm)/intelligence",
   "app/(crm)/kanban",
-  "app/(crm)/notifications",
   "app/(crm)/properties/mtching",
   "app/(ai)",
   "app/(autonomous)",

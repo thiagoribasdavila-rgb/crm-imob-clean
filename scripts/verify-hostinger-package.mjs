@@ -57,6 +57,18 @@ for (const required of [
   "supabase/seed.sql",
   "tests/e2e/login.spec.mjs",
   "tests/e2e/authenticated-journeys.spec.mjs",
+  "app/(crm)/notifications/page.tsx",
+  "components/atlas/notifications-v3000-surface.tsx",
+  "components/atlas/v3000-page-template.tsx",
+  "docs/V3000_PHASE_05_NOTIFICATIONS_PILOT.md",
+  "docs/V3000_PHASE_06_ACCESSIBILITY_CONSOLIDATION.md",
+  "docs/V3000_PHASE_07_VISUAL_PROOF.md",
+  "docs/V3000_PHASE_08_AUTHENTICATED_RELEASE_GATE.md",
+  "docs/V3000_PHASE_09_CONTROLLED_RELEASE.md",
+  "docs/V3000_PHASE_10_ARTIFACT_PROOF.md",
+  "tests/contracts/v3000-page-template.test.mjs",
+  "tests/contracts/v3000-phase-09-controlled-release.test.mjs",
+  "tests/contracts/v3000-phase-10-artifact-proof.test.mjs",
 ])
   if (!entries.includes(required))
     throw new Error(`Obrigatório ausente: ${required}`);
@@ -90,15 +102,50 @@ if (auditedRelease) {
   if (!gates.length || gates.some((gate) => gate.status !== "passed"))
     throw new Error("Relatório interno contém gate sem aprovação.");
 }
+const validSourceMode = ["git-archive", "workspace-content-hash"].includes(
+  manifest.sourceMode,
+);
+const sourceProvenanceMatches =
+  manifest.sourceMode === "git-archive"
+    ? Boolean(head) && manifest.commit === head
+    : !head || !manifest.commit || manifest.commit === head;
 if (
-  (head
-    ? manifest.commit !== head || manifest.sourceMode !== "git-archive"
-    : manifest.sourceMode !== "workspace-content-hash") ||
+  !validSourceMode ||
+  !sourceProvenanceMatches ||
   !/^sha256:[a-f0-9]{64}$/.test(manifest.sourceFingerprint || "") ||
   manifest.privateDataIncluded !== false ||
   manifest.dependsOnV2 !== false
 )
-  throw new Error("Manifesto não corresponde ao commit seguro atual.");
+  throw new Error("Manifesto não corresponde à origem segura atual.");
+if (
+  packageName.includes("v3000-phase-10") &&
+  (manifest.evolutionPhase !== 10 ||
+    manifest.sourceMode !== "workspace-content-hash")
+)
+  throw new Error(
+    "Release V3000 Fase 10 exige snapshot do workspace e evolutionPhase 10.",
+  );
+const packagedPackageJson = JSON.parse(
+  execFileSync("unzip", ["-p", zip, "package.json"], { encoding: "utf8" }),
+);
+const packagedLock = JSON.parse(
+  execFileSync("unzip", ["-p", zip, "package-lock.json"], {
+    encoding: "utf8",
+  }),
+);
+for (const dependency of [
+  "next",
+  "react",
+  "react-dom",
+  "tailwindcss",
+  "@tailwindcss/postcss",
+  "typescript",
+]) {
+  if (!packagedPackageJson.dependencies?.[dependency])
+    throw new Error(`Dependência de build ausente em dependencies: ${dependency}`);
+  if (!packagedLock.packages?.[`node_modules/${dependency}`])
+    throw new Error(`Dependência ausente no lockfile: ${dependency}`);
+}
 const inventory = execFileSync("unzip", ["-p", zip, "RELEASE_FILES.sha256"], {
   encoding: "utf8",
 })
@@ -152,6 +199,9 @@ console.log(
     bytes: bytes.length,
     sha256: actual,
     commit: head,
+    sourceMode: manifest.sourceMode,
+    sourceFingerprint: manifest.sourceFingerprint,
+    evolutionPhase: manifest.evolutionPhase,
     inventoryEntries: inventory.length,
   }),
 );

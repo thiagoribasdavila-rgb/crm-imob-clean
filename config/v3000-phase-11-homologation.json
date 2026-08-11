@@ -1,0 +1,37 @@
+{
+  "phase": 11,
+  "candidate": {
+    "artifact": "atlas-one-v3000-phase-10-proven.zip",
+    "bytes": 7424217,
+    "files": 3564,
+    "sha256": "80170576910f3681b50a5a5a43bd24ce0cc29153b9a8d7b22235d9f701336715",
+    "sourceFingerprint": "sha256:8cff80d9cde28c4bf0cf078a4b5e47a8acd4d3a35961fdde162db7c349450aa6",
+    "commitReference": "6c2906a8c6c4caf99c874de5c01b915ccc787cdb",
+    "cleanBuild": true,
+    "secretsPackaged": false,
+    "databaseMutations": 0,
+    "deploymentPerformed": false
+  },
+  "productionGate": {
+    "origin": "https://atlasaios.com.br",
+    "route": "/notifications",
+    "requiredStatus": "approved",
+    "requiredHttpStatus": 200,
+    "requiredConsoleErrors": 0,
+    "requiredBusinessDataMutations": 0,
+    "requiredChecks": [
+      "authenticatedSession",
+      "desktopApproved",
+      "mobileApproved",
+      "keyboardApproved",
+      "loadingApproved",
+      "emptyApproved",
+      "errorApproved",
+      "realtimeApproved",
+      "safeTestRecordUsed",
+      "readActionApproved",
+      "dismissActionApproved",
+      "testRecordCleanupConfirmed"
+    ]
+  }
+}

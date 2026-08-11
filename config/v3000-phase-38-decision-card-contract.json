@@ -1,0 +1,84 @@
+{
+  "phase": 38,
+  "title": "Contrato único do card de decisão",
+  "status": "contract-adopted",
+  "businessRuntimeMutationAllowed": false,
+  "presentationContractMutationAllowed": true,
+  "databaseMutationAllowed": false,
+  "previousPhaseRegistry": "config/v3000-phase-37-card-inventory.json",
+  "canonicalPrimitive": {
+    "file": "components/ui/AtlasCard.tsx",
+    "requiredExports": [
+      "ATLAS_DECISION_CARD_LAYERS",
+      "ATLAS_DECISION_CARD_CONTRACT",
+      "AtlasDecisionCard",
+      "AtlasDecisionCardProps"
+    ],
+    "requiredMarkers": [
+      "data-v3000-component=\"atlas-decision-card\"",
+      "data-decision-contract={ATLAS_DECISION_CARD_CONTRACT}",
+      "data-decision-tone",
+      "data-urgency-level",
+      "data-update-state"
+    ],
+    "forbiddenTokens": [
+      "\"use client\"",
+      "'use client'",
+      "useState(",
+      "useEffect(",
+      "onClick=",
+      "window.",
+      "document."
+    ]
+  },
+  "layers": [
+    "identity",
+    "evidence",
+    "relevance",
+    "urgency",
+    "primary-action",
+    "explanation",
+    "updated-at"
+  ],
+  "adoptionSurfaces": [
+    {
+      "id": "command-center",
+      "route": "/dashboard",
+      "source": "app/(crm)/dashboard/page.tsx",
+      "requiredMarkers": [
+        "ATLAS_DECISION_CARD_CONTRACT",
+        "data-decision-contract={ATLAS_DECISION_CARD_CONTRACT}",
+        "atlas-command-detail atlas-command-decision-layer"
+      ]
+    },
+    {
+      "id": "leads",
+      "route": "/leads",
+      "source": "app/(crm)/leads/page.tsx",
+      "requiredMarkers": [
+        "ATLAS_DECISION_CARD_CONTRACT",
+        "data-decision-contract={ATLAS_DECISION_CARD_CONTRACT}",
+        "atlas-leads-action-list"
+      ]
+    },
+    {
+      "id": "pipeline",
+      "route": "/pipeline",
+      "source": "app/(crm)/pipeline/page.tsx",
+      "requiredMarkers": [
+        "ATLAS_DECISION_CARD_CONTRACT",
+        "data-decision-contract={ATLAS_DECISION_CARD_CONTRACT}",
+        "data-v30-card=\"phase-135-decision-card\""
+      ]
+    }
+  ],
+  "acceptanceCriteria": [
+    "Existe uma única primitiva canônica para cards de decisão.",
+    "As sete camadas do contrato são explícitas e verificáveis no HTML.",
+    "Sala de Comando, Leads e Pipeline declaram o mesmo contrato.",
+    "Ações continuam sob responsabilidade das superfícies operacionais.",
+    "Nenhuma consulta, API, regra comercial ou persistência foi alterada.",
+    "A primitiva permanece compatível com Server Components.",
+    "Nenhuma alteração de banco é autorizada pela Fase 38."
+  ]
+}

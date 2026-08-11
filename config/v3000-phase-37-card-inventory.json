@@ -1,0 +1,160 @@
+{
+  "phase": 37,
+  "title": "Inventário factual dos cards de conversão",
+  "status": "inventory-only",
+  "runtimeMutationAllowed": false,
+  "databaseMutationAllowed": false,
+  "canonicalPrimitives": [
+    {
+      "id": "atlas-card",
+      "file": "components/ui/AtlasCard.tsx",
+      "exports": ["AtlasCard", "AtlasCardHeader", "AtlasMetric"],
+      "requiredMarkers": [
+        "data-card-density",
+        "data-card-emphasis",
+        "data-card-purpose",
+        "data-relevance"
+      ],
+      "status": "canonical"
+    },
+    {
+      "id": "metric-card",
+      "file": "components/atlas/metric-card.tsx",
+      "exports": ["MetricCard"],
+      "requiredMarkers": ["AtlasMetric", "canonicalTone", "relevance"],
+      "status": "canonical-adapter"
+    }
+  ],
+  "criticalSurfaces": [
+    {
+      "id": "command-center",
+      "route": "/dashboard",
+      "source": "app/(crm)/dashboard/page.tsx",
+      "roles": ["CORRETOR", "GERENTE", "DIRETOR", "ADMIN"],
+      "dataSources": [
+        "/api/v1/analytics/lead-intake?days=14",
+        "/api/v1/analytics/director-daily",
+        "/api/v1/analytics/dashboard",
+        "/api/v1/analytics/manager-daily",
+        "/api/v1/analytics/team-sla",
+        "/api/v1/analytics/broker-daily"
+      ],
+      "requiredMarkers": [
+        "DecisionContractStrip",
+        "AtlasMetricDeck",
+        "/api/v1/analytics/lead-intake?days=14"
+      ],
+      "decisionPurpose": "Priorizar a operação e abrir uma ação comercial mensurável.",
+      "status": "operational"
+    },
+    {
+      "id": "leads",
+      "route": "/leads",
+      "source": "app/(crm)/leads/page.tsx",
+      "roles": ["CORRETOR", "GERENTE", "DIRETOR", "ADMIN"],
+      "dataSources": [
+        "/api/v1/auth/me",
+        "/api/v1/crm/leads",
+        "/api/v1/crm/leads/bulk-transfer",
+        "/api/v1/leads/[id]/first-action"
+      ],
+      "requiredMarkers": [
+        "MetricCard",
+        "AtlasDetailDisclosure",
+        "/api/v1/crm/leads"
+      ],
+      "decisionPurpose": "Encontrar rapidamente quem precisa de atendimento e executar a próxima ação.",
+      "status": "operational"
+    },
+    {
+      "id": "pipeline",
+      "route": "/pipeline",
+      "source": "app/(crm)/pipeline/page.tsx",
+      "roles": ["CORRETOR", "GERENTE", "DIRETOR", "ADMIN"],
+      "dataSources": ["/api/v1/pipeline"],
+      "requiredMarkers": [
+        "kanbanCardEssentials",
+        "kanbanV30CardSnapshot",
+        "projectLabel",
+        "Próxima ação"
+      ],
+      "decisionPurpose": "Mover oportunidades com contexto de projeto, SLA, risco e próxima ação.",
+      "status": "operational"
+    },
+    {
+      "id": "reports",
+      "route": "/reports",
+      "source": "app/(crm)/reports/page.tsx",
+      "roles": ["GERENTE", "DIRETOR", "ADMIN"],
+      "dataSources": [
+        "/api/ai/briefing",
+        "/api/v1/analytics/weekly-acquisition",
+        "/api/v1/productivity/weekly"
+      ],
+      "requiredMarkers": [
+        "WeeklyDeveloperPerformance",
+        "/api/v1/analytics/weekly-acquisition"
+      ],
+      "decisionPurpose": "Explicar aquisição, atendimento e avanço do funil por incorporador e corretor.",
+      "status": "operational"
+    }
+  ],
+  "legacyCandidates": [
+    {
+      "id": "duplicate-hardcoded-dashboard",
+      "file": "app/(atlas)/dashboard/page.tsx",
+      "classification": "duplicate-hardcoded-route",
+      "requiredMarkers": [
+        "Atlas Command Center",
+        "value=\"12.540\"",
+        "value=\"R$85M\""
+      ],
+      "referenceNeedles": [],
+      "expectedExternalReferences": 0
+    },
+    {
+      "id": "orphaned-crm-kanban-board",
+      "file": "components/crm/KanbanBoard.tsx",
+      "classification": "orphaned-component-chain",
+      "requiredMarkers": ["KanbanColumn"],
+      "referenceNeedles": [
+        "@/components/crm/KanbanBoard",
+        "components/crm/KanbanBoard"
+      ],
+      "expectedExternalReferences": 0
+    },
+    {
+      "id": "orphaned-lead-card",
+      "file": "components/crm/leads/LeadCard.tsx",
+      "classification": "orphaned-direct-supabase-card",
+      "requiredMarkers": [
+        "@/lib/supabase/client",
+        ".from(\"leads\")",
+        ".delete()"
+      ],
+      "referenceNeedles": [
+        "@/components/crm/leads/LeadCard",
+        "components/crm/leads/LeadCard"
+      ],
+      "expectedExternalReferences": 0
+    },
+    {
+      "id": "orphaned-pipeline-card",
+      "file": "components/pipeline/KanbanCard.tsx",
+      "classification": "orphaned-inline-style-card",
+      "requiredMarkers": ["border: \"1px solid", "{title}"],
+      "referenceNeedles": [
+        "@/components/pipeline/KanbanCard",
+        "components/pipeline/KanbanCard"
+      ],
+      "expectedExternalReferences": 0
+    }
+  ],
+  "acceptanceCriteria": [
+    "Toda superfície crítica aponta para arquivo operacional e fonte de dados real.",
+    "Toda primitiva canônica possui marcadores de propósito e hierarquia.",
+    "A rota duplicada com números fixos não é tratada como base canônica.",
+    "Componentes legados sem referência externa ficam identificados, sem remoção nesta fase.",
+    "Nenhuma alteração de runtime ou banco é autorizada pela Fase 37."
+  ]
+}

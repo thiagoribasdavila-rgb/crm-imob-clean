@@ -1,0 +1,56 @@
+{
+  "phase": 43,
+  "title": "Relógio comercial contextual",
+  "status": "commercial-clock-adopted",
+  "previousPhaseRegistry": "config/v3000-phase-42-commercial-identity.json",
+  "databaseMutationAllowed": false,
+  "apiDuplicationAllowed": false,
+  "businessRuleMutationAllowed": false,
+  "requiredDimensions": [
+    "deadline",
+    "cause",
+    "impact",
+    "action"
+  ],
+  "requiredStates": [
+    "closed",
+    "overdue",
+    "due_soon",
+    "scheduled",
+    "unplanned"
+  ],
+  "pipelineSurface": {
+    "file": "app/(crm)/pipeline/page.tsx",
+    "requiredMarkers": [
+      "function commercialClock(",
+      "data-clock-state={v30CommercialClock.state}",
+      "data-v3000-phase=\"43-commercial-clock\"",
+      "Relógio comercial",
+      "Causa",
+      "Impacto",
+      "Ação",
+      "firstContactSla(lead)",
+      "isNextActionOverdue(lead)",
+      "Oportunidade sem compromisso futuro"
+    ]
+  },
+  "presentation": {
+    "file": "app/globals.css",
+    "requiredMarkers": [
+      "V3000 Fase 043",
+      ".atlas-kanban-v30-commercial-clock",
+      "[data-tone=\"danger\"]",
+      "grid-template-columns: repeat(3, minmax(0, 1fr))"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Toda urgência visível informa causa, prazo, impacto e ação.",
+    "O primeiro contato vencido preserva o cálculo de SLA existente.",
+    "O primeiro contato dentro do prazo informa tempo restante.",
+    "A próxima ação vencida informa o compromisso não concluído.",
+    "A próxima ação futura confirma a cadência registrada.",
+    "A ausência de próxima ação é explicitada como risco operacional.",
+    "A semântica não depende apenas de cor.",
+    "Nenhuma tabela, policy, API ou regra comercial é alterada."
+  ]
+}

@@ -4,30 +4,61 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   DragEvent,
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import { AtlasBadge, AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import {
-  AtlasBadge,
-  AtlasEmpty,
-  AtlasProgress,
-  AtlasRecoverableError,
-  AtlasSkeleton,
-} from "@/components/ui/AtlasUI";
-import {
+  ATLAS_ADAPTIVE_DENSITY_CONTRACT,
+  ATLAS_DECISION_CARD_CONTRACT,
+  ATLAS_PROGRESSIVE_DECISION_CONTRACT,
   AtlasCard,
   AtlasCardHeader,
   AtlasMetric,
 } from "@/components/ui/AtlasCard";
 import { AtlasDetailDisclosure } from "@/components/atlas/information-primitives";
 import {
+  ATLAS_RELIABLE_STATE_CONTRACT,
+  ReliableState,
+} from "@/components/atlas/reliable-state";
+import {
   DEFAULT_PIPELINE_STAGES,
   type PipelineStageDefinition,
   type PipelineStageKey,
 } from "@/lib/atlas/pipeline-stages";
+import {
+  buildRecommendationEvidence,
+  type RecommendationEvidence,
+} from "@/lib/atlas/recommendation-confidence";
+import {
+  buildBehavioralSignals,
+  type BehavioralSignal,
+} from "@/lib/atlas/behavioral-signals";
+import {
+  buildOpportunityAttribution,
+  type OpportunityAttributionSnapshot,
+} from "@/lib/atlas/opportunity-attribution";
+import {
+  buildDecisiveObjection,
+  type DecisiveObjectionSnapshot,
+} from "@/lib/atlas/decisive-objection";
+import { buildRoleOrientedCard } from "@/lib/atlas/role-oriented-card";
+import {
+  buildKanbanStageDecisionHeader,
+  validLeadValue,
+} from "@/lib/atlas/kanban-decision-board";
+import { buildKanbanCardAccessibility } from "@/lib/atlas/kanban-accessibility";
+import {
+  buildDecisionPerformanceEvent,
+  groupRecordsByStage,
+  type DecisionPerformanceEvent,
+  type DecisionPerformancePayload,
+} from "@/lib/atlas/decision-performance";
 import {
   readAtlasAuthContext,
   type AtlasAuthContext,
@@ -55,12 +86,7 @@ type PendingPipelineMove = {
   to: StageKey;
 };
 type PipelineMovementMethod =
-  | "drag"
-  | "keyboard"
-  | "selector"
-  | "quick_action"
-  | "undo"
-  | "decision";
+  "drag" | "keyboard" | "selector" | "quick_action" | "undo" | "decision";
 type PipelineMovementFeedback = {
   from: StageKey;
   leadId: string;
@@ -93,6 +119,32 @@ type PipelineScope = {
   archivedMemoryExcluded: boolean;
   limit: number;
 };
+type ConversationContinuity = {
+  channel: string | null;
+  channel_confirmed: boolean;
+  conversation_status: string | null;
+  last_contact_at: string | null;
+  response_state: "customer_replied" | "waiting_customer" | "recorded";
+};
+type ProjectCompatibilitySignal = {
+  key: "budget" | "region" | "typology" | "timeline" | "purpose";
+  label: string;
+  state: "aligned" | "attention" | "known";
+  evidence: string;
+};
+type ProjectCompatibility = {
+  status: "evidence_available" | "needs_qualification" | "project_unavailable";
+  project_id: string | null;
+  project_name: string | null;
+  signals: ProjectCompatibilitySignal[];
+  evidence_count: number;
+  missing: {
+    key: ProjectCompatibilitySignal["key"] | "project";
+    label: string;
+    question: string;
+  } | null;
+  evaluated_without_ai: true;
+};
 type Lead = {
   id: string;
   name: string | null;
@@ -101,6 +153,7 @@ type Lead = {
   project: string | null;
   project_name?: string | null;
   development_name?: string | null;
+  development_id?: string | null;
   status: string | null;
   score: number | null;
   temperature: string | null;
@@ -121,6 +174,9 @@ type Lead = {
   created_at: string | null;
   updated_at: string | null;
   assigned_to: string | null;
+  assigned_name?: string | null;
+  conversation_continuity?: ConversationContinuity | null;
+  project_compatibility?: ProjectCompatibility | null;
   metadata: Record<string, unknown> | null;
 };
 type LeadSignalTone = "danger" | "warning" | "success" | "info";
@@ -182,7 +238,9 @@ type KanbanV30CardAction = {
   detail: string;
   external: boolean;
   href: string;
+  kind: "advance" | "contact" | "detail" | "material" | "record" | "schedule";
   label: string;
+  targetStage?: StageKey;
 };
 type KanbanV30QuickSignal = {
   label: string;
@@ -206,6 +264,7 @@ type KanbanV30MobileDecision = {
   external: boolean;
   lead?: Lead;
   stageLabel: string;
+  targetStage?: StageKey;
   title: string;
   tone: LeadSignalTone;
 };
@@ -225,15 +284,26 @@ type KanbanV30DetailPreview = {
   tone: LeadSignalTone;
 };
 type KanbanV30CardSnapshot = {
-  confidenceLabel: string;
+  behavioralSignals: BehavioralSignal[];
+  decisiveObjection: DecisiveObjectionSnapshot;
   decisionLabel: string;
   facts: Array<{ label: string; value: string }>;
   headline: string;
   nextStage?: PipelineStageDefinition;
+  opportunityAttribution: OpportunityAttributionSnapshot;
   primaryAction: KanbanV30CardAction;
   quickSignals: KanbanV30QuickSignal[];
+  recommendationEvidence: RecommendationEvidence;
   secondaryAction: KanbanV30CardAction;
   subline: string;
+  tone: LeadSignalTone;
+};
+type KanbanV30CommercialClock = {
+  action: string;
+  cause: string;
+  deadline: string;
+  impact: string;
+  state: "closed" | "overdue" | "due_soon" | "scheduled" | "unplanned";
   tone: LeadSignalTone;
 };
 type KanbanV30StageActionLead = {
@@ -243,6 +313,7 @@ type KanbanV30StageActionLead = {
   external: boolean;
   lead: Lead;
   scoreLabel: string;
+  targetStage?: StageKey;
   tone: LeadSignalTone;
   valueLabel: string;
 };
@@ -554,6 +625,64 @@ function dateLabel(value: string | null) {
   }).format(new Date(value));
 }
 
+function conversationChannelLabel(channel: string | null) {
+  const normalized = String(channel || "")
+    .trim()
+    .toLowerCase();
+  if (normalized === "whatsapp") return "WhatsApp comprovado";
+  if (["phone", "voice", "call"].includes(normalized))
+    return "Ligação registrada";
+  if (normalized === "email") return "E-mail comprovado";
+  if (normalized === "sms") return "SMS comprovado";
+  return normalized ? "Canal comprovado" : "Canal não comprovado";
+}
+
+function kanbanV30ConversationContinuity(lead: Lead) {
+  const continuity = lead.conversation_continuity;
+  const channelConfirmed = continuity?.channel_confirmed === true;
+  const lastContactAt =
+    continuity?.last_contact_at || lead.last_interaction_at || null;
+  const responseState = continuity?.response_state || "recorded";
+
+  if (!continuity && !lastContactAt) {
+    return {
+      channelConfirmed: false,
+      channelLabel: "Canal não comprovado",
+      lastContactLabel: "Sem contato registrado",
+      nextCommitmentLabel: dateLabel(lead.next_action_at),
+      state: "no_evidence",
+      statusLabel: "Sem conversa comprovada",
+      tone: "info" as const,
+    };
+  }
+
+  return {
+    channelConfirmed,
+    channelLabel: channelConfirmed
+      ? conversationChannelLabel(continuity?.channel || null)
+      : "Canal não comprovado",
+    lastContactLabel: lastContactAt
+      ? relativeTime(lastContactAt)
+      : "Sem contato registrado",
+    nextCommitmentLabel: dateLabel(lead.next_action_at),
+    state: continuity ? responseState : "history_only",
+    statusLabel:
+      responseState === "customer_replied"
+        ? "Cliente respondeu"
+        : responseState === "waiting_customer"
+          ? "Aguardando resposta"
+          : continuity
+            ? "Interação registrada"
+            : "Contato no histórico",
+    tone:
+      responseState === "customer_replied"
+        ? ("success" as const)
+        : responseState === "waiting_customer"
+          ? ("warning" as const)
+          : ("info" as const),
+  };
+}
+
 function pipelineStageLabel(
   key: StageKey,
   stages: PipelineStageDefinition[] = DEFAULT_PIPELINE_STAGES,
@@ -709,7 +838,7 @@ function brokerGuidance(lead: Lead) {
   if (sla?.overdue)
     return {
       action: "Fazer o primeiro contato agora",
-      reason: "O SLA venceu e a chance de resposta cai com o tempo.",
+      reason: "O SLA venceu e a janela de resposta se reduz com o tempo.",
       tone: "danger" as const,
     };
   if (isNextActionOverdue(lead))
@@ -906,7 +1035,7 @@ function stageActionMicrocopy(
   if (health.urgent > 0)
     return {
       cta: "Ligar agora",
-      detail: `Comece por ${leadName}. Resolver atraso aumenta chance de resposta.`,
+      detail: `Comece por ${leadName}. Resolver o atraso recupera a janela de resposta.`,
       title: "Ação imediata",
       tone: "danger",
     };
@@ -1038,7 +1167,8 @@ function phoneLinks(phone: string | null) {
 function leadProjectLabel(
   lead: Pick<Lead, "project" | "project_name" | "development_name">,
 ) {
-  const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidLike =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const project = [lead.project_name, lead.development_name, lead.project]
     .map((value) => value?.trim() || "")
     .find((value) => value && !uuidLike.test(value));
@@ -1202,6 +1332,77 @@ function kanbanActionPlaybook(lead: Lead): KanbanPlaybookStep[] {
   return [contactStep, qualificationStep, advanceStep];
 }
 
+function commercialClock(
+  lead: Lead,
+  guidance: ReturnType<typeof brokerGuidance>,
+): KanbanV30CommercialClock {
+  const sla = firstContactSla(lead);
+
+  if (!isOpenLead(lead)) {
+    return {
+      action: "Revisar o resultado registrado",
+      cause: "Ciclo comercial encerrado",
+      deadline: "Sem prazo operacional",
+      impact: "Histórico preservado para análise",
+      state: "closed",
+      tone: "success",
+    };
+  }
+
+  if (sla?.overdue) {
+    return {
+      action: guidance.action,
+      cause: "Primeiro contato ainda não registrado",
+      deadline: sla.label,
+      impact: "A janela de resposta se reduz com o tempo",
+      state: "overdue",
+      tone: "danger",
+    };
+  }
+
+  if (!lead.first_contacted_at && sla) {
+    return {
+      action: "Fazer o primeiro contato",
+      cause: "Lead aguardando atendimento inicial",
+      deadline: sla.label,
+      impact: "Responder no prazo protege a conversão",
+      state: "due_soon",
+      tone: sla.tone,
+    };
+  }
+
+  if (isNextActionOverdue(lead)) {
+    return {
+      action: guidance.action,
+      cause: "Compromisso comercial não concluído",
+      deadline: `Venceu em ${dateLabel(lead.next_action_at)}`,
+      impact: "O cliente ficou sem continuidade",
+      state: "overdue",
+      tone: "danger",
+    };
+  }
+
+  if (lead.next_action_at) {
+    return {
+      action: guidance.action,
+      cause: "Próximo compromisso registrado",
+      deadline: dateLabel(lead.next_action_at),
+      impact: "Cadência comercial protegida",
+      state: "scheduled",
+      tone: "success",
+    };
+  }
+
+  return {
+    action: guidance.action,
+    cause: "Oportunidade sem compromisso futuro",
+    deadline: "Definir agora",
+    impact: "Risco de esquecimento e perda de timing",
+    state: "unplanned",
+    tone: "warning",
+  };
+}
+
 function kanbanCardEssentials(
   lead: Lead,
   guidance: ReturnType<typeof brokerGuidance>,
@@ -1215,7 +1416,7 @@ function kanbanCardEssentials(
     urgencyLabel: hasOverdueAction
       ? "Atacar agora"
       : isHot
-        ? "Alta chance"
+        ? "Alta prioridade"
         : !lead.next_action_at
           ? "Definir ação"
           : "Acompanhar",
@@ -1236,66 +1437,174 @@ function kanbanCardEssentials(
   };
 }
 
+function kanbanV30PrimaryAction(
+  lead: Lead,
+  guidance: ReturnType<typeof brokerGuidance>,
+  nextStage?: PipelineStageDefinition,
+): KanbanV30CardAction {
+  const contact = phoneLinks(lead.phone);
+  const sla = firstContactSla(lead);
+  const nextActionOverdue = isNextActionOverdue(lead);
+  const score = Number(lead.score ?? 0);
+  const status = lead.status ?? "novo";
+
+  if (sla?.overdue && contact) {
+    return {
+      detail:
+        "O primeiro contato venceu; abra a conversa sem trocar de contexto.",
+      external: true,
+      href: contact.whatsapp,
+      kind: "contact",
+      label: "WhatsApp agora",
+    };
+  }
+
+  if (nextActionOverdue && contact) {
+    return {
+      detail:
+        "O follow-up está atrasado; retome a conversa antes que a intenção esfrie.",
+      external: true,
+      href: contact.whatsapp,
+      kind: "contact",
+      label: "Retomar agora",
+    };
+  }
+
+  if (!lead.next_action_at) {
+    return {
+      detail:
+        "Defina dono, horário e resultado esperado para manter a oportunidade previsível.",
+      external: false,
+      href: executionIntentUrl(lead, "task"),
+      kind: "record",
+      label: "Registrar próxima ação",
+    };
+  }
+
+  if (status === "proposta") {
+    return {
+      detail:
+        "Revise preço, fluxo de pagamento e objeções antes do próximo contato.",
+      external: false,
+      href: executionIntentUrl(lead, "proposal"),
+      kind: "material",
+      label: "Revisar proposta",
+    };
+  }
+
+  if (status === "visita") {
+    return {
+      detail: "Confirme horário, endereço, unidade e presença do cliente.",
+      external: false,
+      href: executionIntentUrl(lead, "calendar"),
+      kind: "schedule",
+      label: "Confirmar visita",
+    };
+  }
+
+  if ((lead.temperature === "quente" || score >= 70) && nextStage) {
+    return {
+      detail: `A oportunidade tem intenção suficiente para avançar até ${nextStage.label}.`,
+      external: false,
+      href: `/leads/${lead.id}`,
+      kind: "advance",
+      label: `Avançar para ${nextStage.label}`,
+      targetStage: nextStage.key,
+    };
+  }
+
+  if (contact) {
+    return {
+      detail: guidance.reason,
+      external: true,
+      href: contact.whatsapp,
+      kind: "contact",
+      label: "Falar com cliente",
+    };
+  }
+
+  return {
+    detail:
+      "A IA prepara uma abordagem contextual antes de registrar o contato.",
+    external: false,
+    href: copilotIntentUrl(lead, "follow_up"),
+    kind: "record",
+    label: "Preparar abordagem",
+  };
+}
+
 function kanbanV30CardSnapshot(
   lead: Lead,
   guidance: ReturnType<typeof brokerGuidance>,
   stage: PipelineStageDefinition,
-  stages: PipelineStageDefinition[],
+  nextStage: PipelineStageDefinition | undefined,
   lens: EffectiveKanbanLens,
 ): KanbanV30CardSnapshot {
-  const contact = phoneLinks(lead.phone);
   const score = Number(lead.score ?? 0);
-  const currentStageIndex = stages.findIndex(
-    (item) => item.key === (lead.status || "novo"),
-  );
-  const nextStage =
-    currentStageIndex >= 0 ? stages[currentStageIndex + 1] : undefined;
   const sla = firstContactSla(lead);
   const stall = stageStallSignal(lead);
   const nextActionOverdue = isNextActionOverdue(lead);
-  const primaryAction: KanbanV30CardAction =
-    contact &&
-    (guidance.tone === "danger" || guidance.tone === "warning" || score >= 70)
-      ? {
-          detail: "Contato direto sem sair do fluxo.",
-          external: true,
-          href: contact.whatsapp,
-          label: "WhatsApp agora",
-        }
-      : (lead.status ?? "novo") === "proposta"
-        ? {
-            detail: "Organizar preço, fluxo e objeções.",
-            external: false,
-            href: executionIntentUrl(lead, "proposal"),
-            label: "Preparar proposta",
-          }
-        : (lead.status ?? "novo") === "visita"
-          ? {
-              detail: "Confirmar horário, endereço e unidade.",
-              external: false,
-              href: executionIntentUrl(lead, "calendar"),
-              label: "Confirmar visita",
-            }
-          : {
-              detail: "A IA monta a abordagem contextual.",
-              external: false,
-              href: copilotIntentUrl(lead, "follow_up"),
-              label: "IA preparar contato",
-            };
+  const primaryAction = kanbanV30PrimaryAction(lead, guidance, nextStage);
   const secondaryAction: KanbanV30CardAction = {
     detail: "Ver histórico, preferências e pendências.",
     external: false,
     href: `/leads/${lead.id}`,
+    kind: "detail",
     label: "Abrir Lead 360",
   };
-  const confidenceLabel =
-    score >= 80
-      ? "Muito forte"
-      : score >= 65
-        ? "Boa chance"
-        : score >= 45
-          ? "Em análise"
-          : "Base";
+  const recommendationEvidence = buildRecommendationEvidence({
+    assignedTo: lead.assigned_to,
+    campaignId: lead.campaign_id,
+    evaluatedAt: lead.updated_at || lead.last_interaction_at || lead.created_at,
+    firstContactSlaMet: lead.first_contact_sla_met,
+    firstResponseMinutes: lead.first_response_minutes,
+    lastInteractionAt: lead.last_interaction_at,
+    nextActionAt: lead.next_action_at,
+    operationalPriorityLabel: guidance.action,
+    operationalPriorityReason: guidance.reason,
+    projectEvidenceCount: lead.project_compatibility?.evidence_count,
+    score: lead.score,
+    source: lead.source,
+    status: lead.status,
+    temperature: lead.temperature,
+  });
+  const behavioralSignals = buildBehavioralSignals({
+    conversationContinuity: lead.conversation_continuity
+      ? {
+          channel: lead.conversation_continuity.channel,
+          channelConfirmed: lead.conversation_continuity.channel_confirmed,
+          lastContactAt: lead.conversation_continuity.last_contact_at,
+          responseState: lead.conversation_continuity.response_state,
+        }
+      : null,
+    createdAt: lead.created_at,
+    evaluatedAt: new Date().toISOString(),
+    firstContactedAt: lead.first_contacted_at,
+    lastInteractionAt: lead.last_interaction_at,
+    metadata: lead.metadata,
+    status: lead.status,
+    updatedAt: lead.updated_at,
+  });
+  const decisiveObjection = buildDecisiveObjection({
+    behavioralSignals,
+    metadata: lead.metadata,
+    projectCompatibility: lead.project_compatibility,
+  });
+  const projectLabel = leadProjectLabel(lead);
+  const opportunityAttribution = buildOpportunityAttribution({
+    assignedName: lead.assigned_name,
+    assignedTo: lead.assigned_to,
+    campaignId: lead.campaign_id,
+    campaignName: metaCampaign(lead),
+    leadId: lead.id,
+    leadName: lead.name,
+    metadata: lead.metadata,
+    projectId: lead.development_id,
+    projectName: projectLabel === "Projeto não vinculado" ? null : projectLabel,
+    source: lead.source,
+    stageKey: stage.key,
+    stageLabel: stage.label,
+  });
   const decisionLabel =
     lens === "director"
       ? "Decisão de receita"
@@ -1318,8 +1627,10 @@ function kanbanV30CardSnapshot(
             ? "info"
             : "warning",
       value: lead.temperature
-        ? `${lead.temperature} · ${score || 0}`
-        : `${confidenceLabel} · ${score || 0}`,
+        ? `${lead.temperature} · Score ${lead.score ?? "não informado"}`
+        : typeof lead.score === "number"
+          ? `Score ${lead.score}`
+          : "Score não informado",
     },
     {
       label: sla ? "SLA" : nextActionOverdue ? "Follow-up" : "Agenda",
@@ -1346,7 +1657,8 @@ function kanbanV30CardSnapshot(
   ];
 
   return {
-    confidenceLabel,
+    behavioralSignals,
+    decisiveObjection,
     decisionLabel,
     facts: [
       { label: "Projeto", value: leadProjectLabel(lead) },
@@ -1358,8 +1670,10 @@ function kanbanV30CardSnapshot(
     ],
     headline: guidance.action,
     nextStage,
+    opportunityAttribution,
     primaryAction,
     quickSignals,
+    recommendationEvidence,
     secondaryAction,
     subline: `${stage.label} · ${guidance.reason}`,
     tone: guidance.tone,
@@ -1369,13 +1683,13 @@ function kanbanV30CardSnapshot(
 function kanbanV30StageActionLead(
   lead: Lead | undefined,
   stage: PipelineStageDefinition,
-  stages: PipelineStageDefinition[],
+  nextStage: PipelineStageDefinition | undefined,
   lens: EffectiveKanbanLens,
 ): KanbanV30StageActionLead | null {
   if (!lead) return null;
 
   const guidance = brokerGuidance(lead);
-  const card = kanbanV30CardSnapshot(lead, guidance, stage, stages, lens);
+  const card = kanbanV30CardSnapshot(lead, guidance, stage, nextStage, lens);
   const score = Number(lead.score ?? 0);
   const valueLabel = lead.budget_max
     ? brl.format(lead.budget_max)
@@ -1394,6 +1708,7 @@ function kanbanV30StageActionLead(
     external: card.primaryAction.external,
     lead,
     scoreLabel: score ? `${score} score` : "sem score",
+    targetStage: card.primaryAction.targetStage,
     tone: guidance.tone,
     valueLabel,
   };
@@ -1452,6 +1767,9 @@ export default function PipelinePage() {
   const [pendingMove, setPendingMove] = useState<PendingPipelineMove | null>(
     null,
   );
+  const pageEnteredAtRef = useRef(Date.now());
+  const decisionCycleStartedAtRef = useRef<number | null>(null);
+  const priorityTelemetrySentRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -1506,19 +1824,52 @@ export default function PipelinePage() {
     sort,
   ]);
 
-  async function authenticatedFetch(input: RequestInfo, init?: RequestInit) {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) throw new Error("Sessão expirada. Entre novamente.");
-    return fetch(input, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(init?.headers || {}),
-      },
-    });
-  }
+  const authenticatedFetch = useCallback(
+    async (input: RequestInfo, init?: RequestInit) => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Sessão expirada. Entre novamente.");
+      return fetch(input, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...(init?.headers || {}),
+        },
+      });
+    },
+    [],
+  );
+
+  const emitDecisionPerformance = useCallback(
+    (
+      event: DecisionPerformanceEvent,
+      payload: DecisionPerformancePayload & Record<string, unknown>,
+    ) => {
+      const body = buildDecisionPerformanceEvent(event, payload);
+      void authenticatedFetch("/api/v3/events/ingest", {
+        method: "POST",
+        body: JSON.stringify(body),
+        keepalive: true,
+      }).catch(() => {
+        // Telemetria nunca bloqueia a operação comercial.
+      });
+    },
+    [authenticatedFetch],
+  );
+
+  const openLeadPreview = useCallback(
+    (leadId: string, method: "card" | "queue" | "preview" = "card") => {
+      const cycleStartedAt = decisionCycleStartedAtRef.current;
+      emitDecisionPerformance("opportunityOpened", {
+        durationMs: cycleStartedAt ? Date.now() - cycleStartedAt : 0,
+        method,
+      });
+      decisionCycleStartedAtRef.current = Date.now();
+      setPreviewLeadId(leadId);
+    },
+    [emitDecisionPerformance],
+  );
 
   async function load() {
     setLoading(true);
@@ -1578,7 +1929,7 @@ export default function PipelinePage() {
       );
       return;
     }
-    const currentLead = leads.find((lead) => lead.id === id);
+    const currentLead = leadById.get(id);
     const previousStage = (currentLead?.status || "novo") as StageKey;
     if (previousStage === stage) {
       setDraggedId(null);
@@ -1614,6 +1965,15 @@ export default function PipelinePage() {
       method: movementMethod,
       to: stage,
     };
+    const actionStartedAt = Date.now();
+    emitDecisionPerformance("actionStarted", {
+      durationMs:
+        actionStartedAt -
+        (decisionCycleStartedAtRef.current || actionStartedAt),
+      fromStage: previousStage,
+      method: movementMethod,
+      toStage: stage,
+    });
     setSavingId(id);
     setMovementFeedback({ ...movement, state: "saving" });
     setError("");
@@ -1650,9 +2010,24 @@ export default function PipelinePage() {
           to: stage,
         });
       setMovementFeedback({ ...movement, state: "success" });
+      emitDecisionPerformance("resultRegistered", {
+        durationMs: Date.now() - actionStartedAt,
+        fromStage: previousStage,
+        method: movementMethod,
+        result: "success",
+        toStage: stage,
+      });
+      decisionCycleStartedAtRef.current = Date.now();
     } catch (moveError) {
       setLeads(previous);
       setMovementFeedback({ ...movement, state: "error" });
+      emitDecisionPerformance("resultRegistered", {
+        durationMs: Date.now() - actionStartedAt,
+        fromStage: previousStage,
+        method: movementMethod,
+        result: "error",
+        toStage: stage,
+      });
       setError(
         moveError instanceof Error ? moveError.message : "Falha ao mover lead.",
       );
@@ -1671,18 +2046,11 @@ export default function PipelinePage() {
   }
 
   function moveByKeyboard(lead: Lead, direction: -1 | 1) {
-    const current = stages.findIndex(
-      (stage) => stage.key === (lead.status || "novo"),
-    );
+    const current =
+      stageIndexByKey.get((lead.status || "novo") as StageKey) ?? -1;
     const destination = stages[current + direction];
     if (destination)
-      void moveLead(
-        lead.id,
-        destination.key,
-        undefined,
-        undefined,
-        "keyboard",
-      );
+      void moveLead(lead.id, destination.key, undefined, undefined, "keyboard");
   }
 
   async function undoLastMove() {
@@ -1696,6 +2064,18 @@ export default function PipelinePage() {
   const effectiveKanbanLens: EffectiveKanbanLens =
     kanbanLens === "auto" ? identityLens : kanbanLens;
   const lensIntent = kanbanLensIntent(effectiveKanbanLens);
+  const leadById = useMemo(
+    () => new Map(leads.map((lead) => [lead.id, lead])),
+    [leads],
+  );
+  const stageByKey = useMemo(
+    () => new Map(stages.map((stage) => [stage.key, stage])),
+    [stages],
+  );
+  const stageIndexByKey = useMemo(
+    () => new Map(stages.map((stage, index) => [stage.key, index])),
+    [stages],
+  );
 
   const visibleLeads = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -1743,6 +2123,34 @@ export default function PipelinePage() {
       return priorityWeight(b) - priorityWeight(a);
     });
   }, [focus, leads, query, sort]);
+  const visibleOpenLeadCount = useMemo(
+    () =>
+      visibleLeads.reduce((count, lead) => count + Number(isOpenLead(lead)), 0),
+    [visibleLeads],
+  );
+
+  useEffect(() => {
+    if (
+      loading ||
+      priorityTelemetrySentRef.current ||
+      !visibleLeads.some(isOpenLead)
+    )
+      return;
+
+    priorityTelemetrySentRef.current = true;
+    decisionCycleStartedAtRef.current = Date.now();
+    emitDecisionPerformance("priorityIdentified", {
+      durationMs: Date.now() - pageEnteredAtRef.current,
+      loadedLeadCount: leads.length,
+      visibleStageCount: stages.length,
+    });
+  }, [
+    emitDecisionPerformance,
+    leads.length,
+    loading,
+    stages.length,
+    visibleLeads,
+  ]);
 
   useEffect(() => {
     if (
@@ -1773,24 +2181,21 @@ export default function PipelinePage() {
     }));
   }, [stages]);
   const movingLead = useMemo(
-    () => (savingId ? leads.find((lead) => lead.id === savingId) : null),
-    [leads, savingId],
+    () => (savingId ? leadById.get(savingId) || null : null),
+    [leadById, savingId],
   );
   const draggedLead = useMemo(
-    () => (draggedId ? leads.find((lead) => lead.id === draggedId) : null),
-    [draggedId, leads],
+    () => (draggedId ? leadById.get(draggedId) || null : null),
+    [draggedId, leadById],
   );
   const movementIntentLead = useMemo(
     () =>
-      movementIntentLeadId
-        ? leads.find((lead) => lead.id === movementIntentLeadId)
-        : null,
-    [leads, movementIntentLeadId],
+      movementIntentLeadId ? leadById.get(movementIntentLeadId) || null : null,
+    [leadById, movementIntentLeadId],
   );
   const movementIntentStageIndex = movementIntentLead
-    ? stages.findIndex(
-        (stage) => stage.key === (movementIntentLead.status || "novo"),
-      )
+    ? (stageIndexByKey.get((movementIntentLead.status || "novo") as StageKey) ??
+      -1)
     : -1;
   const movementIntentPreviousStage =
     movementIntentStageIndex > 0 ? stages[movementIntentStageIndex - 1] : null;
@@ -1798,9 +2203,7 @@ export default function PipelinePage() {
     movementIntentStageIndex >= 0
       ? stages[movementIntentStageIndex + 1] || null
       : null;
-  const dragTargetStage = dragOverStage
-    ? stages.find((stage) => stage.key === dragOverStage)
-    : null;
+  const dragTargetStage = dragOverStage ? stageByKey.get(dragOverStage) : null;
 
   const metrics = useMemo(() => {
     const open = leads.filter(
@@ -1812,7 +2215,7 @@ export default function PipelinePage() {
       0,
     );
     const forecast = open.reduce((sum, lead) => {
-      const stage = stages.find((item) => item.key === (lead.status ?? "novo"));
+      const stage = stageByKey.get((lead.status ?? "novo") as StageKey);
       return (
         sum + Number(lead.budget_max ?? 0) * ((stage?.probability ?? 5) / 100)
       );
@@ -1840,7 +2243,7 @@ export default function PipelinePage() {
       buyerProfiles,
       firstContactOverdue,
     };
-  }, [leads, stages]);
+  }, [leads, stageByKey]);
 
   const pipelineQuality = useMemo(() => {
     const open = leads.filter(isOpenLead);
@@ -1898,26 +2301,24 @@ export default function PipelinePage() {
     };
   }, [leads]);
 
+  const leadsByStage = useMemo(
+    () => groupRecordsByStage(visibleLeads),
+    [visibleLeads],
+  );
   const stageData = useMemo(
     () =>
-      stages.map((stage) => {
-        const items = visibleLeads
-          .filter((lead) => (lead.status ?? "novo") === stage.key)
-          .sort((a, b) => {
-            const lensDelta =
-              kanbanLensPriorityWeight(
-                b,
-                effectiveKanbanLens,
-                stage.probability,
-              ) -
-              kanbanLensPriorityWeight(
-                a,
-                effectiveKanbanLens,
-                stage.probability,
-              );
-            if (lensDelta !== 0) return lensDelta;
-            return priorityWeight(b) - priorityWeight(a);
-          });
+      stages.map((stage, stageIndex) => {
+        const items = [...(leadsByStage.get(stage.key) ?? [])].sort((a, b) => {
+          const lensDelta =
+            kanbanLensPriorityWeight(
+              b,
+              effectiveKanbanLens,
+              stage.probability,
+            ) -
+            kanbanLensPriorityWeight(a, effectiveKanbanLens, stage.probability);
+          if (lensDelta !== 0) return lensDelta;
+          return priorityWeight(b) - priorityWeight(a);
+        });
         const health = stageEfficiency(items);
         const decision = stageDecision(health, items.length);
         const microcopy = stageActionMicrocopy(
@@ -1935,24 +2336,35 @@ export default function PipelinePage() {
         const stageActionLead = kanbanV30StageActionLead(
           items[0],
           stage,
-          stages,
+          stages[stageIndex + 1],
           effectiveKanbanLens,
         );
+        const validValue = items.reduce(
+          (sum, lead) => sum + validLeadValue(lead.budget_max),
+          0,
+        );
+        const decisionHeader = buildKanbanStageDecisionHeader({
+          stageLabel: stage.label,
+          volume: items.length,
+          validValue,
+          urgent: health.urgent,
+          noAction: health.noAction,
+          stalled: health.stalled,
+          hot: health.hot,
+        });
         return {
           ...stage,
           items,
-          value: items.reduce(
-            (sum, lead) => sum + Number(lead.budget_max ?? 0),
-            0,
-          ),
+          value: validValue,
           health,
           decision,
+          decisionHeader,
           microcopy,
           v30Command,
           stageActionLead,
         };
       }),
-    [effectiveKanbanLens, stages, visibleLeads],
+    [effectiveKanbanLens, leadsByStage, stages],
   );
   const boardStages = useMemo(
     () =>
@@ -1997,21 +2409,20 @@ export default function PipelinePage() {
     Math.max(0, boardStages.length - 1) * 12,
   );
   const kanbanV30DetailPreview = useMemo<KanbanV30DetailPreview | null>(() => {
-    const lead = previewLeadId
-      ? visibleLeads.find((item) => item.id === previewLeadId)
-      : null;
+    const lead = previewLeadId ? leadById.get(previewLeadId) : null;
     if (!lead) return null;
 
     const stage =
-      stages.find((item) => item.key === (lead.status ?? "novo")) || stages[0];
+      stageByKey.get((lead.status ?? "novo") as StageKey) || stages[0];
     if (!stage) return null;
+    const stageIndex = stageIndexByKey.get(stage.key) ?? -1;
 
     const guidance = brokerGuidance(lead);
     const snapshot = kanbanV30CardSnapshot(
       lead,
       guidance,
       stage,
-      stages,
+      stageIndex >= 0 ? stages[stageIndex + 1] : undefined,
       effectiveKanbanLens,
     );
     const contact = phoneLinks(lead.phone);
@@ -2038,7 +2449,14 @@ export default function PipelinePage() {
       title: snapshot.headline,
       tone: snapshot.tone,
     };
-  }, [effectiveKanbanLens, previewLeadId, stages, visibleLeads]);
+  }, [
+    effectiveKanbanLens,
+    leadById,
+    previewLeadId,
+    stageByKey,
+    stageIndexByKey,
+    stages,
+  ]);
   const stageBottleneckRanking = useMemo(
     () =>
       stageData
@@ -2204,6 +2622,7 @@ export default function PipelinePage() {
         external: Boolean(stage?.stageActionLead?.external || contact),
         lead: candidate,
         stageLabel,
+        targetStage: stage?.stageActionLead?.targetStage,
         title: stage?.stageActionLead?.detail || "Executar próxima melhor ação",
         tone,
       };
@@ -2308,7 +2727,7 @@ export default function PipelinePage() {
         : `Movendo ${draggedLead.name || "lead"}. Escolha uma etapa para soltar.`;
     if (kanbanRecoveryState)
       return `${kanbanRecoveryState.title}. ${kanbanRecoveryState.action}.`;
-    return `Kanban pronto com ${visibleLeads.filter(isOpenLead).length} oportunidades visíveis em ${boardStages.length} etapas.`;
+    return `Kanban pronto com ${visibleOpenLeadCount} oportunidades visíveis em ${boardStages.length} etapas.`;
   }, [
     boardStages.length,
     dragTargetStage,
@@ -2318,10 +2737,9 @@ export default function PipelinePage() {
     movingLead,
     savingId,
     stages,
-    visibleLeads,
+    visibleOpenLeadCount,
   ]);
   const kanbanLensQueue = useMemo(() => {
-    const stageByKey = new Map(stages.map((stage) => [stage.key, stage]));
     return visibleLeads
       .filter(isOpenLead)
       .map((lead) => {
@@ -2350,7 +2768,7 @@ export default function PipelinePage() {
         return priorityWeight(b.lead) - priorityWeight(a.lead);
       })
       .slice(0, 5);
-  }, [effectiveKanbanLens, stages, visibleLeads]);
+  }, [effectiveKanbanLens, stageByKey, visibleLeads]);
   const dailyFocus = useMemo(
     () =>
       kanbanLensQueue
@@ -2358,10 +2776,7 @@ export default function PipelinePage() {
         .map((item) => item.lead),
     [kanbanLensQueue],
   );
-  const priorityCandidateCount = useMemo(
-    () => visibleLeads.filter(isOpenLead).length,
-    [visibleLeads],
-  );
+  const priorityCandidateCount = visibleOpenLeadCount;
 
   const kanbanFocusStrip = useMemo<KanbanFocusItem[]>(() => {
     const open = leads.filter(isOpenLead);
@@ -2405,7 +2820,7 @@ export default function PipelinePage() {
         label: "Quentes sem ação",
         value: hotWithoutAction.length,
         detail: hotWithoutAction.length
-          ? "Alta chance precisa compromisso"
+          ? "Alta prioridade precisa compromisso"
           : "Quentes protegidos",
         tone: hotWithoutAction.length ? "warning" : "success",
         action: "Ver oportunidades",
@@ -2772,9 +3187,8 @@ export default function PipelinePage() {
 
     return open
       .map((lead) => {
-        const stageIndex = stages.findIndex(
-          (stage) => stage.key === (lead.status || "novo"),
-        );
+        const stageIndex =
+          stageIndexByKey.get((lead.status || "novo") as StageKey) ?? -1;
         const stage = stageIndex >= 0 ? stages[stageIndex] : undefined;
         const nextStage = stageIndex >= 0 ? stages[stageIndex + 1] : undefined;
         const sla = firstContactSla(lead);
@@ -2915,7 +3329,7 @@ export default function PipelinePage() {
       })
       .sort((a, b) => b.weight - a.weight)
       .slice(0, 4);
-  }, [effectiveKanbanLens, stages, visibleLeads]);
+  }, [effectiveKanbanLens, stageIndexByKey, stages, visibleLeads]);
 
   const kanbanV30Heatline = useMemo<KanbanV30HeatlineItem[]>(
     () =>
@@ -3162,7 +3576,9 @@ export default function PipelinePage() {
     const item = kanbanV30BatchItems[0] ?? kanbanV30Heatline[0];
     const lead = item?.lead;
     const contact = lead ? phoneLinks(lead.phone) : null;
-    const projectLabel = lead ? leadProjectLabel(lead) : "Projeto não vinculado";
+    const projectLabel = lead
+      ? leadProjectLabel(lead)
+      : "Projeto não vinculado";
 
     return {
       actions: lead
@@ -3334,6 +3750,7 @@ export default function PipelinePage() {
   return (
     <div
       className="atlas-decision-page space-y-5 pb-8"
+      data-reliable-state-contract={ATLAS_RELIABLE_STATE_CONTRACT}
       data-phase="37-pipeline-movement-workspace 102-decision-first-layout 108-decision-kanban 109-kanban-copilot-bridge 110-kanban-execution-handoff 112-kanban-action-playbook 113-kanban-focus-strip 116-kanban-role-lenses 125-pipeline-decision-os 128-pipeline-v30-kanban-decision-board 143-kanban-v30-recovery-states"
       data-pipeline-layout="movement-first"
       data-layout-principle="decision-first-ui"
@@ -3804,29 +4221,46 @@ export default function PipelinePage() {
           data-v30-phase="143-kanban-v30-recovery-states"
           data-state={kanbanRecoveryState.mode}
           data-tone={kanbanRecoveryState.tone}
-          role={kanbanRecoveryState.mode === "error" ? "alert" : "status"}
+          data-reliable-state-contract={ATLAS_RELIABLE_STATE_CONTRACT}
+          data-zero-meaning={
+            kanbanRecoveryState.mode === "empty_base"
+              ? "verified-empty"
+              : undefined
+          }
+          role={kanbanRecoveryState.mode === "error" ? undefined : "status"}
         >
-          <div className="atlas-kanban-v30-recovery-copy">
-            <span>Kanban V30 · orientação automática</span>
-            <h3>{kanbanRecoveryState.title}</h3>
-            <p>{kanbanRecoveryState.detail}</p>
-          </div>
-          <div className="atlas-kanban-v30-recovery-steps">
-            {kanbanRecoveryState.steps.map((step, index) => (
-              <span key={`${kanbanRecoveryState.mode}-${step}`}>
-                <small>{String(index + 1).padStart(2, "0")}</small>
-                <b>{step}</b>
-              </span>
-            ))}
-          </div>
+          {kanbanRecoveryState.mode !== "error" ? (
+            <>
+              <div className="atlas-kanban-v30-recovery-copy">
+                <span>Kanban V30 · orientação automática</span>
+                <h3>{kanbanRecoveryState.title}</h3>
+                <p>{kanbanRecoveryState.detail}</p>
+              </div>
+              <div className="atlas-kanban-v30-recovery-steps">
+                {kanbanRecoveryState.steps.map((step, index) => (
+                  <span key={`${kanbanRecoveryState.mode}-${step}`}>
+                    <small>{String(index + 1).padStart(2, "0")}</small>
+                    <b>{step}</b>
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : null}
           <div className="atlas-kanban-v30-recovery-actions">
             {kanbanRecoveryState.mode === "error" ? (
-              <AtlasRecoverableError
+              <ReliableState
+                kind="recoverable-error"
                 title={kanbanRecoveryState.title}
                 description={kanbanRecoveryState.detail}
-                onRetry={() => void load()}
-                retryLabel={kanbanRecoveryState.action}
-                busy={loading}
+                action={
+                  <button
+                    type="button"
+                    onClick={() => void load()}
+                    disabled={loading}
+                  >
+                    {loading ? "Atualizando..." : kanbanRecoveryState.action}
+                  </button>
+                }
                 secondaryAction={<Link href="/leads">Abrir base de leads</Link>}
               />
             ) : kanbanRecoveryState.mode === "empty_base" ? (
@@ -3928,21 +4362,20 @@ export default function PipelinePage() {
             </small>
             <div className="atlas-kanban-move-feedback-actions">
               {movementFeedback.state === "success" && lastMove ? (
-              <button
-                type="button"
-                onClick={() => void undoLastMove()}
-                disabled={Boolean(savingId)}
-              >
-                Desfazer
-              </button>
+                <button
+                  type="button"
+                  onClick={() => void undoLastMove()}
+                  disabled={Boolean(savingId)}
+                >
+                  Desfazer
+                </button>
               ) : null}
               {movementFeedback.state !== "saving" ? (
                 <button
                   type="button"
                   onClick={() => {
                     setMovementFeedback(null);
-                    if (movementFeedback.state === "success")
-                      setLastMove(null);
+                    if (movementFeedback.state === "success") setLastMove(null);
                   }}
                 >
                   Fechar
@@ -4084,9 +4517,8 @@ export default function PipelinePage() {
             const guidance = brokerGuidance(lead);
             const contact = phoneLinks(lead.phone);
             const risk = leadRisk(lead);
-            const currentStageIndex = stages.findIndex(
-              (stage) => stage.key === (lead.status || "novo"),
-            );
+            const currentStageIndex =
+              stageIndexByKey.get((lead.status || "novo") as StageKey) ?? -1;
             const currentStage = stages[currentStageIndex];
             const nextStage =
               currentStageIndex >= 0
@@ -4278,7 +4710,7 @@ export default function PipelinePage() {
                 {focusOptions.find((option) => option.key === "prioridade")
                   ?.count ?? 0}
               </strong>
-              <small>Leads com maior chance, risco ou atraso.</small>
+              <small>Leads com maior prioridade, risco ou atraso.</small>
             </button>
             <button
               type="button"
@@ -4413,9 +4845,10 @@ export default function PipelinePage() {
                 {kanbanLensQueue.map((item, index) => {
                   const contact = phoneLinks(item.lead.phone);
                   const leadName = item.lead.name || "Lead sem nome";
-                  const currentStageIndex = stages.findIndex(
-                    (stage) => stage.key === (item.lead.status || "novo"),
-                  );
+                  const currentStageIndex =
+                    stageIndexByKey.get(
+                      (item.lead.status || "novo") as StageKey,
+                    ) ?? -1;
                   const nextStage =
                     currentStageIndex >= 0
                       ? stages[currentStageIndex + 1]
@@ -4661,7 +5094,7 @@ export default function PipelinePage() {
                   setMobileStage(first.currentStage);
                   setFocusMode(true);
                   setCompact(true);
-                  setPreviewLeadId(first.lead.id);
+                  openLeadPreview(first.lead.id, "queue");
                 }}
                 disabled={!kanbanV30Heatline[0]}
               >
@@ -4683,7 +5116,7 @@ export default function PipelinePage() {
                         setMobileStage(item.currentStage);
                         setFocusMode(true);
                         setCompact(true);
-                        setPreviewLeadId(item.lead.id);
+                        openLeadPreview(item.lead.id, "queue");
                       }}
                     >
                       <span>{String(item.rank).padStart(2, "0")}</span>
@@ -4741,7 +5174,7 @@ export default function PipelinePage() {
                   setFocusMode(true);
                   setCompact(true);
                   setMobileStage(first.currentStage);
-                  setPreviewLeadId(first.lead.id);
+                  openLeadPreview(first.lead.id, "queue");
                 }}
                 disabled={!kanbanV30BatchHasSelection}
               >
@@ -4980,7 +5413,7 @@ export default function PipelinePage() {
                     setCompact(true);
                     setHideEmpty(true);
                     setMobileStage(item.currentStage);
-                    setPreviewLeadId(item.lead.id);
+                    openLeadPreview(item.lead.id, "queue");
                   }}
                 >
                   Ativar foco
@@ -5163,12 +5596,19 @@ export default function PipelinePage() {
             ))}
           </div>
         </AtlasDetailDisclosure>
-        <div className="sr-only" role="status" aria-live="polite">
+        <div
+          className="sr-only"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           {kanbanA11yStatus}
         </div>
         <div
           className="atlas-kanban-v30-mobile-decision"
           data-v30-phase="145-kanban-v30-mobile-decision-mode"
+          data-v3000-phase="44-single-primary-action"
+          data-primary-action-count="1"
           data-tone={kanbanV30MobileDecision.tone}
         >
           <div>
@@ -5177,16 +5617,23 @@ export default function PipelinePage() {
             <small>{kanbanV30MobileDecision.detail}</small>
           </div>
           <div className="atlas-kanban-v30-mobile-decision-actions">
-            {kanbanV30MobileDecision.lead ? (
-              <Link href={`/leads/${kanbanV30MobileDecision.lead.id}`}>
-                Abrir lead
-              </Link>
-            ) : (
-              <button type="button" onClick={resetKanbanFilters}>
-                Ver prioridade
+            {kanbanV30MobileDecision.targetStage &&
+            kanbanV30MobileDecision.lead ? (
+              <button
+                type="button"
+                disabled={savingId === kanbanV30MobileDecision.lead.id}
+                onClick={() =>
+                  void moveLead(
+                    kanbanV30MobileDecision.lead!.id,
+                    kanbanV30MobileDecision.targetStage!,
+                  )
+                }
+              >
+                {savingId === kanbanV30MobileDecision.lead.id
+                  ? "Movendo..."
+                  : kanbanV30MobileDecision.actionLabel}
               </button>
-            )}
-            {kanbanV30MobileDecision.external ? (
+            ) : kanbanV30MobileDecision.external ? (
               <a
                 href={kanbanV30MobileDecision.actionHref}
                 target="_blank"
@@ -5199,19 +5646,36 @@ export default function PipelinePage() {
                 {kanbanV30MobileDecision.actionLabel}
               </Link>
             )}
-            {kanbanV30MobileDecision.lead ? (
-              <Link
-                href={copilotIntentUrl(
-                  kanbanV30MobileDecision.lead,
-                  "follow_up",
-                )}
-              >
-                IA
-              </Link>
-            ) : (
-              <Link href="/leads/reactivation-governance">Reativar</Link>
-            )}
           </div>
+          <details
+            className="atlas-kanban-v30-mobile-secondary"
+            data-secondary-actions="context-only"
+          >
+            <summary>Outras ações</summary>
+            <div>
+              {kanbanV30MobileDecision.lead ? (
+                <Link href={`/leads/${kanbanV30MobileDecision.lead.id}`}>
+                  Abrir Lead 360
+                </Link>
+              ) : (
+                <button type="button" onClick={resetKanbanFilters}>
+                  Ver prioridade
+                </button>
+              )}
+              {kanbanV30MobileDecision.lead ? (
+                <Link
+                  href={copilotIntentUrl(
+                    kanbanV30MobileDecision.lead,
+                    "follow_up",
+                  )}
+                >
+                  Preparar com IA
+                </Link>
+              ) : (
+                <Link href="/leads/reactivation-governance">Reativar</Link>
+              )}
+            </div>
+          </details>
         </div>
         <div
           className="atlas-kanban-mobile-nav"
@@ -5248,8 +5712,10 @@ export default function PipelinePage() {
             <div
               className="atlas-kanban-drag-preview"
               data-drag-preview="phase-115"
+              data-motion-purpose="state-change"
               role="status"
               aria-live="polite"
+              aria-atomic="true"
             >
               <span>Movendo lead</span>
               <strong>{draggedLead.name || "Lead sem nome"}</strong>
@@ -5264,6 +5730,7 @@ export default function PipelinePage() {
             <div
               className="atlas-kanban-movement-intent"
               data-ux-phase="37-just-in-time-movement-rule"
+              data-motion-purpose="state-change"
               role="status"
             >
               <span>Movimentação disponível</span>
@@ -5288,6 +5755,9 @@ export default function PipelinePage() {
             className={`atlas-kanban-board atlas-kanban-board-v30 ${compact ? "is-compact" : ""}`}
             data-redesign="phase-125"
             data-v30-kanban="decision-board"
+            data-v3000-phase="53-decision-kanban"
+            data-v3000-accessibility-phase="54-motion-focus-accessibility"
+            data-motion-purpose={loading ? "data-arrival" : "none"}
             data-v30-phase="144-kanban-v30-accessible-motion 147-kanban-v30-predictive-heatline"
             style={
               {
@@ -5324,6 +5794,9 @@ export default function PipelinePage() {
               </div>
             ) : (
               boardStages.map((stage) => {
+                const stageIndex = stageIndexByKey.get(stage.key) ?? -1;
+                const nextStage =
+                  stageIndex >= 0 ? stages[stageIndex + 1] : undefined;
                 const stageVisibleLimit = compact
                   ? 5
                   : KANBAN_PROGRESSIVE_VISIBLE_LIMIT;
@@ -5387,36 +5860,53 @@ export default function PipelinePage() {
                   >
                     <div
                       className="atlas-pipeline-column-header atlas-pipeline-column-header-v40 atlas-kanban-stage-decision-zone"
-                      data-ux-phase="40-command-to-priority-flow"
+                      data-ux-phase="40-command-to-priority-flow 53-decision-kanban"
                       data-rhythm-zone="stage-decision"
                       data-priority-continuation={
                         stage.items.length > 0 ? "lead" : "empty"
                       }
                     >
                       <div
-                        className="atlas-kanban-stage-numeric-summary"
-                        data-ux-phase="42-stage-numeric-summary"
-                        aria-label={`${stage.label}: ${stage.items.length} oportunidades, ${brl.format(stage.value)} em VGV e ${stage.probability}% de chance configurada para a etapa`}
+                        className="atlas-kanban-v3000-decision-header"
+                        data-v3000-phase="53-decision-header"
+                        aria-label={`${stage.label}: ${stage.decisionHeader.volume} oportunidades, ${brl.format(stage.decisionHeader.validValue)} em valor válido. Gargalo principal: ${stage.decisionHeader.bottleneck.label}.`}
                       >
                         <h3 className="text-sm font-semibold text-white">
                           {stage.label}
                         </h3>
-                        <div className="atlas-kanban-stage-numeric-line">
+                        <div className="atlas-kanban-v3000-decision-metrics">
                           <span data-stage-metric="volume">
-                            <strong>{stage.items.length}</strong>
+                            <strong>{stage.decisionHeader.volume}</strong>
                             <small>leads</small>
                           </span>
-                          <span data-stage-metric="value">
-                            <strong>{brl.format(stage.value)}</strong>
-                            <small>VGV</small>
+                          <span data-stage-metric="valid-value">
+                            <strong>
+                              {brl.format(stage.decisionHeader.validValue)}
+                            </strong>
+                            <small>valor válido</small>
                           </span>
-                          <span data-stage-metric="probability">
-                            <strong>{stage.probability}%</strong>
-                            <small>chance da etapa</small>
+                          <span
+                            data-stage-metric="main-bottleneck"
+                            data-tone={stage.decisionHeader.bottleneck.tone}
+                          >
+                            <strong>
+                              {stage.decisionHeader.bottleneck.label}
+                            </strong>
+                            <small>
+                              {stage.decisionHeader.bottleneck.detail}
+                            </small>
                           </span>
                         </div>
-                        <AtlasProgress value={stage.probability} />
                       </div>
+                    </div>
+                    <details
+                      className="atlas-kanban-v3000-stage-support"
+                      data-v3000-phase="53-progressive-stage-support"
+                    >
+                      <summary>
+                        <span>Comando e contexto</span>
+                        <strong>{stage.v30Command.label}</strong>
+                      </summary>
                       <div
                         className="atlas-kanban-v30-stage-command atlas-kanban-v30-stage-decision-bridge"
                         data-v30-phase="137-kanban-v30-stage-command"
@@ -5451,7 +5941,24 @@ export default function PipelinePage() {
                               <b>{stage.stageActionLead.scoreLabel}</b>
                               <em>{stage.stageActionLead.valueLabel}</em>
                             </p>
-                            {stage.stageActionLead.external ? (
+                            {stage.stageActionLead.targetStage ? (
+                              <button
+                                type="button"
+                                disabled={
+                                  savingId === stage.stageActionLead.lead.id
+                                }
+                                onClick={() =>
+                                  void moveLead(
+                                    stage.stageActionLead!.lead.id,
+                                    stage.stageActionLead!.targetStage!,
+                                  )
+                                }
+                              >
+                                {savingId === stage.stageActionLead.lead.id
+                                  ? "Movendo..."
+                                  : stage.stageActionLead.actionLabel}
+                              </button>
+                            ) : stage.stageActionLead.external ? (
                               <a
                                 href={stage.stageActionLead.actionHref}
                                 target="_blank"
@@ -5494,19 +6001,11 @@ export default function PipelinePage() {
                           </button>
                         ) : null}
                       </div>
-                      <details
+                      <div
                         className="atlas-kanban-stage-context"
                         data-ux-phase="39-progressive-column-density"
                         data-visual-priority="secondary-context"
                       >
-                        <summary>
-                          <span>Contexto da etapa</span>
-                          <strong>
-                            {stage.health.urgent > 0
-                              ? `${stage.health.urgent} urgente(s)`
-                              : `${stage.health.hot} quente(s)`}
-                          </strong>
-                        </summary>
                         <div
                           className="atlas-stage-decision-row"
                           data-tone={stage.decision.tone}
@@ -5557,8 +6056,8 @@ export default function PipelinePage() {
                           <p>{stage.microcopy.detail}</p>
                           <em>{stage.microcopy.cta}</em>
                         </div>
-                      </details>
-                    </div>
+                      </div>
+                    </details>
                     {draggedId && dragOverStage === stage.key ? (
                       <div
                         className="atlas-kanban-drop-hint"
@@ -5638,21 +6137,81 @@ export default function PipelinePage() {
                             lead,
                             guidance,
                             stage,
-                            stages,
+                            nextStage,
                             effectiveKanbanLens,
                           );
+                          const roleOrientedCard = buildRoleOrientedCard({
+                            actionDetail: v30Card.primaryAction.detail,
+                            actionLabel: v30Card.primaryAction.label,
+                            assignedName: lead.assigned_name,
+                            exception:
+                              v30Card.decisiveObjection.status !== "clear"
+                                ? {
+                                    detail: v30Card.decisiveObjection.detail,
+                                    label: v30Card.decisiveObjection.headline,
+                                    tone: v30Card.decisiveObjection.tone,
+                                  }
+                                : null,
+                            potentialLabel: lead.budget_max
+                              ? brl.format(lead.budget_max)
+                              : null,
+                            projectName: leadProjectLabel(lead),
+                            role: identityLens,
+                            stageLabel: stage.label,
+                          });
+                          const v30CommercialClock = commercialClock(
+                            lead,
+                            guidance,
+                          );
+                          const v30Conversation =
+                            kanbanV30ConversationContinuity(lead);
+                          const projectCompatibility =
+                            lead.project_compatibility;
+                          const projectValidationState =
+                            projectCompatibility?.status ?? "unavailable";
+                          const projectValidationLabel =
+                            projectCompatibility?.status ===
+                            "evidence_available"
+                              ? "Aderência comprovada"
+                              : projectCompatibility?.status ===
+                                  "needs_qualification"
+                                ? "Validar aderência"
+                                : projectCompatibility?.status ===
+                                    "project_unavailable"
+                                  ? "Vincular projeto"
+                                  : "Validação pendente";
                           const v30NextStage = v30Card.nextStage;
                           const v30PrioritySignal = kanbanV30PriorityIndex.get(
                             lead.id,
                           );
+                          const accessibleStageIndex =
+                            stageIndexByKey.get(stage.key) ?? -1;
+                          const cardAccessibility =
+                            buildKanbanCardAccessibility({
+                              busy: savingId === lead.id,
+                              currentStageLabel: stage.label,
+                              leadName: lead.name,
+                              nextActionLabel: v30Card.primaryAction.label,
+                              nextStageLabel:
+                                accessibleStageIndex >= 0
+                                  ? stages[accessibleStageIndex + 1]?.label
+                                  : null,
+                              previousStageLabel:
+                                accessibleStageIndex > 0
+                                  ? stages[accessibleStageIndex - 1]?.label
+                                  : null,
+                              projectName: leadProjectLabel(lead),
+                            });
                           return (
                             <article
                               key={lead.id}
                               draggable={!savingId}
                               tabIndex={0}
-                              aria-disabled={Boolean(savingId)}
+                              aria-busy={savingId === lead.id}
+                              aria-keyshortcuts={cardAccessibility.keyShortcuts}
+                              data-disabled={Boolean(savingId)}
                               aria-describedby={`lead-${lead.id}-kanban-hint`}
-                              aria-label={`${lead.name || "Lead sem nome"}, etapa ${stage.label}. Alt mais seta move entre etapas.`}
+                              aria-label={cardAccessibility.label}
                               onFocus={() => setMovementIntentLeadId(lead.id)}
                               onBlur={(event) => {
                                 if (
@@ -5695,6 +6254,22 @@ export default function PipelinePage() {
                               }}
                               className={`atlas-pipeline-lead atlas-pipeline-lead-v30 group ${savingId === lead.id ? "opacity-60" : ""} ${draggedId === lead.id ? "is-dragging" : ""}`}
                               data-risk={risk}
+                              data-adaptive-density="role-and-device"
+                              data-adaptive-density-contract={
+                                ATLAS_ADAPTIVE_DENSITY_CONTRACT
+                              }
+                              data-decision-contract={
+                                ATLAS_DECISION_CARD_CONTRACT
+                              }
+                              data-progressive-contract={
+                                ATLAS_PROGRESSIVE_DECISION_CONTRACT
+                              }
+                              data-progressive-reading="decision-context-history"
+                              data-decision-preserved="project validation next-action movement-audit"
+                              data-v3000-accessibility="wcag-aa keyboard-movement live-status reduced-motion"
+                              data-motion-purpose={
+                                draggedId === lead.id ? "state-change" : "none"
+                              }
                               data-card-decision={guidance.tone}
                               data-card-shell="phase-114"
                               data-noise-reduction="phase-125"
@@ -5712,20 +6287,49 @@ export default function PipelinePage() {
                                 id={`lead-${lead.id}-kanban-hint`}
                                 className="sr-only"
                               >
-                                Use Alt mais seta para mover etapa. Abra
-                                contexto para ver roteiro, histórico, execução e
-                                atalhos de IA.
+                                {cardAccessibility.description}
                               </span>
                               <div className="atlas-kanban-v30-card-head">
-                                <div className="atlas-kanban-v30-card-person">
+                                <div
+                                  className="atlas-kanban-v30-commercial-identity"
+                                  data-commercial-identity="complete"
+                                  data-v3000-phase="42-commercial-identity"
+                                >
                                   <Link href={`/leads/${lead.id}`}>
                                     {lead.name || "Lead sem nome"}
                                   </Link>
-                                  <span>
-                                    {lead.phone ||
-                                      lead.email ||
-                                      "Contato a qualificar"}
-                                  </span>
+                                  <strong>{leadProjectLabel(lead)}</strong>
+                                  <dl aria-label="Identidade comercial da oportunidade">
+                                    <div>
+                                      <dt>Etapa</dt>
+                                      <dd>{stage.label}</dd>
+                                    </div>
+                                    <div>
+                                      <dt>Origem</dt>
+                                      <dd>
+                                        {lead.source?.trim() ||
+                                          metaCampaign(lead) ||
+                                          "Origem não informada"}
+                                      </dd>
+                                    </div>
+                                    <div>
+                                      <dt>Responsável</dt>
+                                      <dd>
+                                        {lead.assigned_name?.trim() ||
+                                          (lead.assigned_to
+                                            ? "Responsável vinculado"
+                                            : "Sem responsável")}
+                                      </dd>
+                                    </div>
+                                  </dl>
+                                  <p>
+                                    <span>Última interação</span>
+                                    <b>
+                                      {lead.last_interaction_at
+                                        ? relativeTime(lead.last_interaction_at)
+                                        : "Sem interação registrada"}
+                                    </b>
+                                  </p>
                                 </div>
                                 {v30PrioritySignal ? (
                                   <div
@@ -5750,9 +6354,167 @@ export default function PipelinePage() {
                               </div>
 
                               <div
+                                className="atlas-kanban-v3000-decision-preservation"
+                                data-v3000-phase="53-decision-preservation"
+                                aria-label="Contexto preservado da decisão"
+                              >
+                                <span>
+                                  <small>Projeto</small>
+                                  <strong>{leadProjectLabel(lead)}</strong>
+                                </span>
+                                <span data-state={projectValidationState}>
+                                  <small>Validação</small>
+                                  <strong>{projectValidationLabel}</strong>
+                                </span>
+                                <span>
+                                  <small>Próxima ação</small>
+                                  <strong>{v30Card.primaryAction.label}</strong>
+                                </span>
+                              </div>
+
+                              <details
+                                className="atlas-kanban-v3000-card-context"
+                                data-v3000-phase="53-progressive-card-context"
+                                data-motion-purpose="disclosure"
+                              >
+                                <summary>
+                                  <span>Contexto operacional</span>
+                                  <strong>{v30CommercialClock.deadline}</strong>
+                                </summary>
+
+                                <section
+                                  className="atlas-kanban-v30-commercial-clock"
+                                  data-clock-state={v30CommercialClock.state}
+                                  data-tone={v30CommercialClock.tone}
+                                  data-v3000-phase="43-commercial-clock"
+                                  aria-label={`Relógio comercial: ${v30CommercialClock.deadline}. Causa: ${v30CommercialClock.cause}. Ação: ${v30CommercialClock.action}.`}
+                                >
+                                  <header>
+                                    <span>Relógio comercial</span>
+                                    <strong>
+                                      {v30CommercialClock.deadline}
+                                    </strong>
+                                  </header>
+                                  <dl>
+                                    <div>
+                                      <dt>Causa</dt>
+                                      <dd>{v30CommercialClock.cause}</dd>
+                                    </div>
+                                    <div>
+                                      <dt>Impacto</dt>
+                                      <dd>{v30CommercialClock.impact}</dd>
+                                    </div>
+                                    <div>
+                                      <dt>Ação</dt>
+                                      <dd>{v30CommercialClock.action}</dd>
+                                    </div>
+                                  </dl>
+                                </section>
+
+                                <section
+                                  className="atlas-kanban-v30-conversation-continuity"
+                                  data-response-state={v30Conversation.state}
+                                  data-tone={v30Conversation.tone}
+                                  data-channel-confirmed={
+                                    v30Conversation.channelConfirmed
+                                  }
+                                  data-v3000-phase="45-conversation-continuity"
+                                  aria-label={`Continuidade da conversa: ${v30Conversation.statusLabel}. ${v30Conversation.channelLabel}. Último contato: ${v30Conversation.lastContactLabel}. Próximo compromisso: ${v30Conversation.nextCommitmentLabel}.`}
+                                >
+                                  <header>
+                                    <span>Continuidade</span>
+                                    <strong>
+                                      {v30Conversation.statusLabel}
+                                    </strong>
+                                  </header>
+                                  <p>
+                                    <b>{v30Conversation.channelLabel}</b>
+                                    <span>
+                                      {v30Conversation.lastContactLabel}
+                                    </span>
+                                  </p>
+                                  <small>
+                                    Próximo compromisso:{" "}
+                                    {v30Conversation.nextCommitmentLabel}
+                                  </small>
+                                </section>
+
+                                {projectCompatibility ? (
+                                  <section
+                                    className="atlas-kanban-project-compatibility"
+                                    data-status={projectCompatibility.status}
+                                    data-v3000-phase="46-project-compatibility"
+                                  >
+                                    <header>
+                                      <span>Cliente × projeto</span>
+                                      <strong>
+                                        {projectCompatibility.evidence_count > 0
+                                          ? `${projectCompatibility.evidence_count} ${
+                                              projectCompatibility.evidence_count ===
+                                              1
+                                                ? "sinal"
+                                                : "sinais"
+                                            }`
+                                          : "Qualificar"}
+                                      </strong>
+                                    </header>
+                                    <div className="atlas-kanban-project-compatibility-body">
+                                      <p>
+                                        <span>Empreendimento considerado</span>
+                                        <b>
+                                          {projectCompatibility.project_name ||
+                                            "Ainda não vinculado"}
+                                        </b>
+                                      </p>
+                                      {projectCompatibility.signals.length >
+                                      0 ? (
+                                        <ul aria-label="Evidências de compatibilidade">
+                                          {projectCompatibility.signals.map(
+                                            (signal) => (
+                                              <li
+                                                key={signal.key}
+                                                data-state={signal.state}
+                                              >
+                                                <span>{signal.label}</span>
+                                                <small>{signal.evidence}</small>
+                                              </li>
+                                            ),
+                                          )}
+                                        </ul>
+                                      ) : null}
+                                      {projectCompatibility.missing ? (
+                                        <aside className="atlas-kanban-project-compatibility-question">
+                                          <span>Pergunta que destrava</span>
+                                          <strong>
+                                            {
+                                              projectCompatibility.missing
+                                                .question
+                                            }
+                                          </strong>
+                                        </aside>
+                                      ) : (
+                                        <aside data-complete="true">
+                                          <span>Leitura disponível</span>
+                                          <strong>
+                                            Sinais essenciais registrados para a
+                                            próxima decisão.
+                                          </strong>
+                                        </aside>
+                                      )}
+                                    </div>
+                                  </section>
+                                ) : null}
+                              </details>
+
+                              <div
                                 className="atlas-kanban-v30-card-command atlas-kanban-card-command"
                                 data-tone={v30Card.tone}
                                 data-card-command="135-kanban-v30-card-command"
+                                data-v3000-phase="44-single-primary-action"
+                                data-primary-action-count="1"
+                                data-primary-action-kind={
+                                  v30Card.primaryAction.kind
+                                }
                               >
                                 <div>
                                   <span>Próxima ação</span>
@@ -5764,7 +6526,22 @@ export default function PipelinePage() {
                                   data-primary-command="phase-34"
                                   data-action-priority="primary"
                                 >
-                                  {v30Card.primaryAction.external ? (
+                                  {v30Card.primaryAction.targetStage ? (
+                                    <button
+                                      type="button"
+                                      disabled={savingId === lead.id}
+                                      onClick={() =>
+                                        void moveLead(
+                                          lead.id,
+                                          v30Card.primaryAction.targetStage!,
+                                        )
+                                      }
+                                    >
+                                      {savingId === lead.id
+                                        ? "Movendo..."
+                                        : v30Card.primaryAction.label}
+                                    </button>
+                                  ) : v30Card.primaryAction.external ? (
                                     <a
                                       href={v30Card.primaryAction.href}
                                       target="_blank"
@@ -5781,10 +6558,321 @@ export default function PipelinePage() {
                               </div>
 
                               <details
+                                className="atlas-kanban-recommendation-explanation"
+                                data-evidence-level={
+                                  v30Card.recommendationEvidence.evidenceLevel
+                                }
+                                data-v3000-phase="47-recommendation-confidence"
+                              >
+                                <summary>
+                                  <span>Por que está na fila?</span>
+                                  <strong>
+                                    {
+                                      v30Card.recommendationEvidence
+                                        .operationalPriorityLabel
+                                    }
+                                  </strong>
+                                </summary>
+                                <div className="atlas-kanban-recommendation-explanation-body">
+                                  <dl>
+                                    <div>
+                                      <dt>Score cadastrado</dt>
+                                      <dd>
+                                        {v30Card.recommendationEvidence.score
+                                          .value ?? "Não informado"}
+                                      </dd>
+                                    </div>
+                                    <div>
+                                      <dt>Prioridade operacional</dt>
+                                      <dd>
+                                        {
+                                          v30Card.recommendationEvidence
+                                            .operationalPriorityLabel
+                                        }
+                                      </dd>
+                                    </div>
+                                    <div>
+                                      <dt>Confiança da recomendação</dt>
+                                      <dd>
+                                        {
+                                          v30Card.recommendationEvidence
+                                            .evidenceLabel
+                                        }
+                                      </dd>
+                                    </div>
+                                    <div>
+                                      <dt>Confiança IA</dt>
+                                      <dd>
+                                        {
+                                          v30Card.recommendationEvidence
+                                            .aiConfidence.label
+                                        }
+                                      </dd>
+                                    </div>
+                                  </dl>
+                                  {v30Card.recommendationEvidence.reasons
+                                    .length > 0 ? (
+                                    <ul aria-label="Motivos da prioridade operacional">
+                                      {v30Card.recommendationEvidence.reasons.map(
+                                        (reason) => (
+                                          <li key={`${lead.id}-${reason}`}>
+                                            {reason}
+                                          </li>
+                                        ),
+                                      )}
+                                    </ul>
+                                  ) : null}
+                                  <p className="atlas-kanban-recommendation-provenance">
+                                    <span>
+                                      <b>Método</b>{" "}
+                                      {
+                                        v30Card.recommendationEvidence
+                                          .methodLabel
+                                      }
+                                    </span>
+                                    <span>
+                                      <b>Origem</b>{" "}
+                                      {
+                                        v30Card.recommendationEvidence
+                                          .originLabel
+                                      }
+                                    </span>
+                                    <span>
+                                      <b>Base considerada até</b>{" "}
+                                      {v30Card.recommendationEvidence
+                                        .evaluatedAt
+                                        ? dateLabel(
+                                            v30Card.recommendationEvidence
+                                              .evaluatedAt,
+                                          )
+                                        : "Sem atualização registrada"}
+                                    </span>
+                                    <span>
+                                      <b>Peso do forecast</b>{" "}
+                                      {stage.probability}% nesta etapa
+                                    </span>
+                                  </p>
+                                  <em>
+                                    {v30Card.recommendationEvidence.disclaimer}
+                                  </em>
+                                </div>
+                              </details>
+
+                              {v30Card.behavioralSignals.length > 0 ? (
+                                <details
+                                  className="atlas-kanban-behavioral-signals"
+                                  data-v3000-phase="48-behavioral-signals"
+                                >
+                                  <summary>
+                                    <span>Sinais que mudam a decisão</span>
+                                    <strong>
+                                      {v30Card.behavioralSignals.length}/3
+                                    </strong>
+                                  </summary>
+                                  <div className="atlas-kanban-behavioral-signals-body">
+                                    <ul aria-label="Sinais comportamentais registrados">
+                                      {v30Card.behavioralSignals.map(
+                                        (signal) => (
+                                          <li
+                                            key={`${lead.id}-${signal.kind}-${signal.occurredAt || "current"}`}
+                                            data-tone={signal.tone}
+                                          >
+                                            <span aria-hidden="true" />
+                                            <div>
+                                              <b>{signal.label}</b>
+                                              <p>{signal.detail}</p>
+                                              <small>
+                                                {signal.source} ·{" "}
+                                                {signal.occurredAt
+                                                  ? relativeTime(
+                                                      signal.occurredAt,
+                                                    )
+                                                  : "Etapa atual"}
+                                              </small>
+                                            </div>
+                                            <em>{signal.decisionImpact}</em>
+                                          </li>
+                                        ),
+                                      )}
+                                    </ul>
+                                    <Link href={`/leads/${lead.id}`}>
+                                      Ver histórico completo no Lead 360
+                                    </Link>
+                                  </div>
+                                </details>
+                              ) : null}
+
+                              <section
+                                aria-label={roleOrientedCard.eyebrow}
+                                className="atlas-kanban-role-orientation"
+                                data-mode={roleOrientedCard.mode}
+                                data-role={roleOrientedCard.role}
+                                data-role-visibility="authenticated-api-and-rls"
+                                data-tone={roleOrientedCard.tone}
+                                data-v3000-phase="51-role-oriented-card"
+                              >
+                                <header>
+                                  <small>{roleOrientedCard.eyebrow}</small>
+                                  <span>{roleOrientedCard.scopeLabel}</span>
+                                </header>
+                                <strong>{roleOrientedCard.headline}</strong>
+                                <p>{roleOrientedCard.detail}</p>
+                                <footer>
+                                  <span>
+                                    <small>
+                                      {roleOrientedCard.metricLabel}
+                                    </small>
+                                    <b>{roleOrientedCard.metricValue}</b>
+                                  </span>
+                                  {roleOrientedCard.ownerLabel ? (
+                                    <span>
+                                      <small>Responsável</small>
+                                      <b>{roleOrientedCard.ownerLabel}</b>
+                                    </span>
+                                  ) : null}
+                                  <em>{roleOrientedCard.evidenceLabel}</em>
+                                </footer>
+                              </section>
+
+                              {v30Card.decisiveObjection.status !== "clear" ? (
+                                <section
+                                  aria-label="Objeção ou lacuna decisiva"
+                                  className="atlas-kanban-decisive-objection"
+                                  data-status={v30Card.decisiveObjection.status}
+                                  data-tone={v30Card.decisiveObjection.tone}
+                                  data-v3000-phase="50-decisive-objection"
+                                >
+                                  <header>
+                                    <small>
+                                      {v30Card.decisiveObjection.eyebrow}
+                                    </small>
+                                    <strong>
+                                      {v30Card.decisiveObjection.headline}
+                                    </strong>
+                                  </header>
+                                  <p>{v30Card.decisiveObjection.detail}</p>
+                                  {v30Card.decisiveObjection.question ? (
+                                    <div className="atlas-kanban-decisive-objection-question">
+                                      <span>Pergunta objetiva</span>
+                                      <b>
+                                        {v30Card.decisiveObjection.question}
+                                      </b>
+                                    </div>
+                                  ) : null}
+                                  <footer>
+                                    <small>
+                                      {v30Card.decisiveObjection.source}
+                                    </small>
+                                    <Link href={`/leads/${lead.id}`}>
+                                      {v30Card.decisiveObjection.actionLabel}
+                                    </Link>
+                                  </footer>
+                                </section>
+                              ) : null}
+
+                              <details
+                                className="atlas-kanban-opportunity-attribution"
+                                data-v3000-phase="49-opportunity-attribution"
+                              >
+                                <summary>
+                                  <span>Rastro da oportunidade</span>
+                                  <strong
+                                    data-status={
+                                      v30Card.opportunityAttribution.status
+                                    }
+                                  >
+                                    {v30Card.opportunityAttribution.statusLabel}
+                                  </strong>
+                                </summary>
+                                <div className="atlas-kanban-opportunity-attribution-body">
+                                  <ol aria-label="Campanha até etapa comercial">
+                                    {v30Card.opportunityAttribution.steps.map(
+                                      (step) => (
+                                        <li
+                                          key={`${lead.id}-${step.key}`}
+                                          data-state={step.state}
+                                        >
+                                          <small>{step.label}</small>
+                                          <b>{step.value}</b>
+                                        </li>
+                                      ),
+                                    )}
+                                  </ol>
+                                  <dl>
+                                    {v30Card.opportunityAttribution.contexts.map(
+                                      (context) => (
+                                        <div
+                                          key={`${lead.id}-${context.key}`}
+                                          data-state={context.state}
+                                        >
+                                          <dt>{context.label}</dt>
+                                          <dd>{context.value}</dd>
+                                        </div>
+                                      ),
+                                    )}
+                                  </dl>
+                                  {v30Card.opportunityAttribution.status ===
+                                  "conflict" ? (
+                                    <p
+                                      className="atlas-kanban-opportunity-attribution-warning"
+                                      role="status"
+                                    >
+                                      A incorporadora da campanha diverge do
+                                      projeto. Revise o vínculo antes de
+                                      atribuir resultado.
+                                    </p>
+                                  ) : v30Card.opportunityAttribution.missing
+                                      .length > 0 ? (
+                                    <p className="atlas-kanban-opportunity-attribution-missing">
+                                      Falta vincular:{" "}
+                                      {v30Card.opportunityAttribution.missing.join(
+                                        ", ",
+                                      )}
+                                      .
+                                    </p>
+                                  ) : null}
+                                  {v30Card.opportunityAttribution.financials ? (
+                                    <p className="atlas-kanban-opportunity-attribution-financials">
+                                      <span>
+                                        Custo atribuído{" "}
+                                        {brl.format(
+                                          v30Card.opportunityAttribution
+                                            .financials.attributedCost,
+                                        )}
+                                      </span>
+                                      <span>
+                                        Receita atribuída{" "}
+                                        {brl.format(
+                                          v30Card.opportunityAttribution
+                                            .financials.attributedRevenue,
+                                        )}
+                                      </span>
+                                      <small>
+                                        {dateLabel(
+                                          v30Card.opportunityAttribution
+                                            .financials.periodStart,
+                                        )}{" "}
+                                        a{" "}
+                                        {dateLabel(
+                                          v30Card.opportunityAttribution
+                                            .financials.periodEnd,
+                                        )}
+                                      </small>
+                                    </p>
+                                  ) : (
+                                    <small className="atlas-kanban-opportunity-attribution-guard">
+                                      Custos e receita permanecem ocultos sem
+                                      período e atribuição válidos.
+                                    </small>
+                                  )}
+                                </div>
+                              </details>
+
+                              <details
                                 className="atlas-kanban-v30-card-context"
                                 data-v30-phase="144-kanban-v30-accessible-motion"
                               >
-                                <summary>Ver dados e outras ações</summary>
+                                <summary>Outras ações e dados</summary>
                                 <div
                                   className="atlas-kanban-v30-card-quickstrip"
                                   data-v30-phase="142-kanban-v30-clean-card-reading"
@@ -5808,19 +6896,17 @@ export default function PipelinePage() {
                                     </span>
                                   ))}
                                 </div>
-                                <div className="atlas-kanban-v30-card-score">
-                                  <small>Score</small>
-                                  <strong>{lead.score ?? 0}</strong>
-                                  <em>{v30Card.confidenceLabel}</em>
-                                </div>
                                 <div
                                   className="atlas-kanban-v30-card-actions"
                                   data-v30-phase="144-kanban-v30-accessible-motion"
                                   data-action-priority="secondary"
+                                  data-secondary-actions="context-only"
                                 >
                                   <button
                                     type="button"
-                                    onClick={() => setPreviewLeadId(lead.id)}
+                                    onClick={() =>
+                                      openLeadPreview(lead.id, "preview")
+                                    }
                                   >
                                     <strong>Preview</strong>
                                     <small>Ver sem sair do quadro.</small>
@@ -5841,7 +6927,8 @@ export default function PipelinePage() {
                                       {v30Card.secondaryAction.detail}
                                     </small>
                                   </Link>
-                                  {v30NextStage ? (
+                                  {v30NextStage &&
+                                  v30Card.primaryAction.kind !== "advance" ? (
                                     <button
                                       type="button"
                                       onClick={() =>
@@ -6077,10 +7164,9 @@ export default function PipelinePage() {
                                     onClick={() => moveByKeyboard(lead, -1)}
                                     disabled={
                                       savingId === lead.id ||
-                                      stages.findIndex(
-                                        (item) =>
-                                          item.key === (lead.status || "novo"),
-                                      ) <= 0
+                                      (stageIndexByKey.get(
+                                        (lead.status || "novo") as StageKey,
+                                      ) ?? -1) <= 0
                                     }
                                     aria-label="Mover para a etapa anterior"
                                   >
@@ -6114,10 +7200,9 @@ export default function PipelinePage() {
                                     onClick={() => moveByKeyboard(lead, 1)}
                                     disabled={
                                       savingId === lead.id ||
-                                      stages.findIndex(
-                                        (item) =>
-                                          item.key === (lead.status || "novo"),
-                                      ) >=
+                                      (stageIndexByKey.get(
+                                        (lead.status || "novo") as StageKey,
+                                      ) ?? -1) >=
                                         stages.length - 1
                                     }
                                     aria-label="Mover para a próxima etapa"
@@ -6241,11 +7326,31 @@ export default function PipelinePage() {
               </ol>
             </div>
 
-            <div className="atlas-kanban-v30-inline-preview-actions">
-              <Link href={`/leads/${kanbanV30DetailPreview.lead.id}`}>
-                Abrir Lead 360
-              </Link>
-              {kanbanV30DetailPreview.primaryAction.external ? (
+            <div
+              className="atlas-kanban-v30-inline-preview-actions"
+              data-v3000-phase="44-single-primary-action"
+              data-primary-action-count="1"
+              data-primary-action-kind={
+                kanbanV30DetailPreview.primaryAction.kind
+              }
+              data-secondary-actions="context-only"
+            >
+              {kanbanV30DetailPreview.primaryAction.targetStage ? (
+                <button
+                  type="button"
+                  disabled={savingId === kanbanV30DetailPreview.lead.id}
+                  onClick={() =>
+                    void moveLead(
+                      kanbanV30DetailPreview.lead.id,
+                      kanbanV30DetailPreview.primaryAction.targetStage!,
+                    )
+                  }
+                >
+                  {savingId === kanbanV30DetailPreview.lead.id
+                    ? "Movendo..."
+                    : kanbanV30DetailPreview.primaryAction.label}
+                </button>
+              ) : kanbanV30DetailPreview.primaryAction.external ? (
                 <a
                   href={kanbanV30DetailPreview.primaryAction.href}
                   target="_blank"
@@ -6258,6 +7363,9 @@ export default function PipelinePage() {
                   {kanbanV30DetailPreview.primaryAction.label}
                 </Link>
               )}
+              <Link href={`/leads/${kanbanV30DetailPreview.lead.id}`}>
+                Abrir Lead 360
+              </Link>
               <Link
                 href={copilotIntentUrl(
                   kanbanV30DetailPreview.lead,
@@ -6280,7 +7388,10 @@ export default function PipelinePage() {
               ) : null}
               {(() => {
                 const nextStage = kanbanV30DetailPreview.nextStage;
-                if (!nextStage) {
+                if (
+                  !nextStage ||
+                  kanbanV30DetailPreview.primaryAction.kind === "advance"
+                ) {
                   return null;
                 }
 
@@ -6467,9 +7578,15 @@ export default function PipelinePage() {
                 onClick={() => {
                   const decision = pendingMove;
                   setPendingMove(null);
-                  void moveLead(decision.leadId, decision.to, undefined, {
-                    notes: decision.notes,
-                  }, "decision");
+                  void moveLead(
+                    decision.leadId,
+                    decision.to,
+                    undefined,
+                    {
+                      notes: decision.notes,
+                    },
+                    "decision",
+                  );
                 }}
               >
                 Confirmar decisão

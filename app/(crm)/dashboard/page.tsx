@@ -10,12 +10,16 @@ import { LoadingState } from "@/components/atlas/loading-state";
 import { MetricCard } from "@/components/atlas/metric-card";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
-import { DecisionContractStrip } from "@/components/atlas/decision-contract-strip";
+import { ATLAS_RELIABLE_STATE_CONTRACT } from "@/components/atlas/reliable-state";
 import {
   AtlasDetailDisclosure,
   AtlasMetricDeck,
 } from "@/components/atlas/information-primitives";
-import { getScreenDecisionContract } from "@/lib/ui/screen-decision-contract";
+import {
+  buildCommandCenterExceptionQueue,
+  selectCommandCenterSupportIndicators,
+  type CommandCenterExceptionCandidate,
+} from "@/lib/atlas/command-center-exceptions";
 
 // Fase 40 · SLA do time permanece como base da fila; a Fase 35 amplia sua medição.
 
@@ -1510,11 +1514,6 @@ export default function DashboardPage() {
     : roleActions.items.length
       ? "Ação necessária"
       : "Em dia";
-  const screenDecisionContract = getScreenDecisionContract(
-    "/dashboard",
-    viewerRole,
-  );
-
   const selectedDecisionReport = decisionReports[decisionPeriod];
   const predictiveSignal = predictiveBriefing?.signals[0];
   const aiDecision = isManager
@@ -1721,88 +1720,150 @@ export default function DashboardPage() {
     const healthScore = moduleHealth.length
       ? Math.round((operationalModules / moduleHealth.length) * 100)
       : 0;
-    const frictionScore =
-      metrics.overdue * 3 +
-      metrics.unassigned * 2 +
-      degradedModules +
-      unavailableModules * 4;
-    const topFocus =
-      metrics.overdue > 0
-        ? "SLA vencido"
-        : metrics.unassigned > 0
-          ? "Distribuição"
-          : metrics.hot > 0
-            ? "Leads quentes"
-            : unavailableModules > 0
-              ? "Estabilidade"
-              : "Cadência";
     const operatorSignal = isDirector
       ? `${metrics.pipeline ? brl.format(metrics.pipeline) : "VGV não informado"} monitorado no pipeline visível.`
       : isManager || isSuperintendent
         ? `${teamPerformance.length} pessoas visíveis na estrutura comercial.`
         : `${priorities.length} prioridades ordenadas pela IA local.`;
-    const cards = [
-      {
-        id: "act-now",
-        label: "Ação",
-        title: metrics.overdue > 0 ? "Recuperar SLA" : "Atender agora",
-        value: metrics.overdue || metrics.hot,
-        detail:
-          metrics.overdue > 0
-            ? "follow-ups vencidos"
-            : "leads com maior intenção",
-        href: metrics.overdue > 0 ? "/tasks" : "/pipeline",
-      },
-      {
-        id: "assign",
-        label: "Dono",
-        title: "Distribuir sem dono",
-        value: metrics.unassigned,
-        detail: "leads sem corretor único",
-        href: "/distribution",
-      },
-      {
-        id: "pipeline",
-        label: "Vendas",
-        title: "Mover pipeline",
-        value: opportunities.length,
-        detail: "oportunidades abertas",
-        href: "/sales",
-      },
-      {
-        id: "learning",
-        label: "IA",
-        title: "Memória ativa",
-        value: activeInsights.length,
-        detail: aiMode.label,
-        href: "/ai-dashboard",
-      },
-    ];
 
     return {
       healthScore,
-      frictionScore,
-      topFocus,
       operatorSignal,
-      cards,
     };
   }, [
-    activeInsights.length,
-    aiMode.label,
-    degradedModules,
     isDirector,
     isManager,
     isSuperintendent,
-    metrics.hot,
-    metrics.overdue,
     metrics.pipeline,
-    metrics.unassigned,
     moduleHealth.length,
     operationalModules,
-    opportunities.length,
     priorities.length,
     teamPerformance.length,
-    unavailableModules,
+  ]);
+
+  const commandExceptionQueue = useMemo(() => {
+    const candidates: CommandCenterExceptionCandidate[] = [];
+
+    if (metrics.overdue > 0) {
+      candidates.push({
+        id: "overdue-actions",
+        title: `Recuperar ${metrics.overdue} ações atrasadas`,
+        detail: "Follow-ups vencidos precisam de resultado registrado.",
+        evidence: `${metrics.overdue} ações fora do SLA no recorte atual.`,
+        href: "/tasks",
+        actionLabel: "Abrir tarefas",
+        tone: "critical",
+        score: 100,
+      });
+    }
+    if (metrics.unassigned > 0) {
+      candidates.push({
+        id: "unassigned-leads",
+        title: `Atribuir ${metrics.unassigned} leads sem responsável`,
+        detail:
+          "Cada lead precisa de um corretor responsável e uma próxima ação.",
+        evidence: `${metrics.unassigned} leads estão sem responsável no escopo autenticado.`,
+        href: "/distribution",
+        actionLabel: "Abrir distribuição",
+        tone: "critical",
+        score: 95,
+      });
+    }
+    if (metrics.hot > 0) {
+      candidates.push({
+        id: "hot-leads",
+        title: `Avançar ${metrics.hot} leads quentes`,
+        detail: "Intenção ativa pede contato, visita, simulação ou proposta.",
+        evidence: `${metrics.hot} leads têm sinal quente no recorte atual.`,
+        href: "/pipeline",
+        actionLabel: "Abrir pipeline",
+        tone: "attention",
+        score: 90,
+      });
+    }
+
+    moduleHealth
+      .filter((module) => module.state !== "operational")
+      .slice(0, 3)
+      .forEach((module, index) => {
+        candidates.push({
+          id: `module-${module.id}`,
+          title: `${module.label} precisa de revisão`,
+          detail: module.detail,
+          evidence:
+            module.state === "unavailable"
+              ? "Módulo indisponível no último diagnóstico."
+              : "Módulo em sincronização no último diagnóstico.",
+          href: module.href,
+          actionLabel: "Revisar módulo",
+          tone: module.state === "unavailable" ? "critical" : "monitor",
+          score: (module.state === "unavailable" ? 80 : 60) - index,
+        });
+      });
+
+    roleActions.items.forEach((item, index) => {
+      candidates.push({
+        id: `role-priority-${index}`,
+        title: item.title,
+        detail: item.detail,
+        evidence: `${roleActions.eyebrow} · prioridade registrada no escopo atual.`,
+        href: item.href,
+        actionLabel: item.action,
+        tone:
+          item.priority === "Agora" || item.priority === "Intervir"
+            ? "critical"
+            : item.priority === "Revisar" || item.priority === "Apoiar"
+              ? "attention"
+              : "monitor",
+        score: 70 - index,
+      });
+    });
+
+    return buildCommandCenterExceptionQueue({
+      primary: {
+        title: commandDecision.title,
+        href: commandDecision.href,
+      },
+      candidates,
+    });
+  }, [
+    commandDecision.href,
+    commandDecision.title,
+    metrics.hot,
+    metrics.overdue,
+    metrics.unassigned,
+    moduleHealth,
+    roleActions.eyebrow,
+    roleActions.items,
+  ]);
+
+  const commandSupportIndicators = selectCommandCenterSupportIndicators([
+    {
+      id: "operational-health",
+      label: "Saúde operacional",
+      value: `${v30Cockpit.healthScore}%`,
+      detail: v30Cockpit.operatorSignal,
+      tone:
+        v30Cockpit.healthScore >= 90
+          ? "positive"
+          : v30Cockpit.healthScore >= 70
+            ? "neutral"
+            : "attention",
+    },
+    {
+      id: "active-portfolio",
+      label: "Carteira ativa",
+      value: String(metrics.active),
+      detail: "leads visíveis no seu escopo autenticado",
+      tone: "neutral",
+    },
+    {
+      id: "registered-pipeline",
+      label: "Pipeline registrado",
+      value: metrics.pipeline ? brl.format(metrics.pipeline) : "Sem valor",
+      detail: `${opportunities.length} oportunidades abertas e visíveis`,
+      tone: metrics.pipeline > 0 ? "positive" : "neutral",
+    },
   ]);
 
   const intakeDays =
@@ -1818,6 +1879,7 @@ export default function DashboardPage() {
   if (viewer && viewer.active !== true)
     return (
       <ErrorState
+        kind="permission-blocked"
         title="Perfil aguardando ativação"
         description="Seu login está correto, mas o perfil comercial está inativo. Um administrador deve ativar seu acesso antes de abrir a operação."
         action={
@@ -1830,6 +1892,7 @@ export default function DashboardPage() {
   if (!viewerRole)
     return (
       <ErrorState
+        kind="permission-blocked"
         title="Perfil comercial não identificado"
         description="Seu usuário está autenticado, mas ainda não possui um papel comercial ativo nesta organização."
         action={
@@ -1843,6 +1906,7 @@ export default function DashboardPage() {
   return (
     <div
       className="atlas-command-shell space-y-6 pb-10"
+      data-reliable-state-contract={ATLAS_RELIABLE_STATE_CONTRACT}
       data-command-mode={commandMode}
       data-dashboard-layout="decision-first"
       data-copilot-command-center="role-aware"
@@ -1906,7 +1970,7 @@ export default function DashboardPage() {
                   : "Leads, tarefas e próximos contatos ordenados para você agir sem procurar em várias telas."}
           </p>
           <div className="atlas-command-actions">
-            <Link href={primaryCommand.href} className="atlas-button-primary">
+            <Link href={commandDecision.href} className="atlas-button-primary">
               Agir agora
             </Link>
             <button
@@ -1914,8 +1978,8 @@ export default function DashboardPage() {
               className="atlas-button-secondary"
               onClick={() =>
                 openCopilot(
-                  `Explique por que esta é a próxima prioridade e prepare um plano curto, sem executar nenhuma ação: ${primaryCommand.title}. ${primaryCommand.action}`,
-                  { ...aiContext, primaryCommand },
+                  `Explique por que esta é a próxima prioridade e prepare um plano curto, sem executar nenhuma ação: ${commandDecision.title}. ${commandDecision.next}`,
+                  { ...aiContext, commandDecision },
                 )
               }
             >
@@ -1951,40 +2015,27 @@ export default function DashboardPage() {
               <strong>{commandStatus}</strong>
             </div>
             <div className="atlas-command-priority-count">
-              <b>{roleActions.items.length}</b>
-              <span>prioridades visíveis</span>
+              <b>{commandExceptionQueue.length}</b>
+              <span>exceções secundárias</span>
             </div>
           </div>
           <div className="atlas-command-primary-signal">
             <StatusBadge
               tone={
-                primaryCommand.priority === "Agora" ||
-                primaryCommand.priority === "Intervir"
+                commandDecision.tone === "danger"
                   ? "danger"
-                  : primaryCommand.priority === "Em dia"
-                    ? "success"
-                    : "info"
+                  : commandDecision.tone === "warning"
+                    ? "warning"
+                    : commandDecision.tone === "success"
+                      ? "success"
+                      : "info"
               }
             >
-              {primaryCommand.priority.toUpperCase()}
+              {commandDecision.eyebrow.toUpperCase()}
             </StatusBadge>
-            <strong>{primaryCommand.title}</strong>
-            <p>{primaryCommand.detail}</p>
-            <Link href={primaryCommand.href}>{primaryCommand.action} →</Link>
-          </div>
-          <div className="atlas-command-pulse-grid">
-            <div>
-              <strong>{metrics.hot}</strong>
-              <span>quentes</span>
-            </div>
-            <div>
-              <strong>{metrics.overdue}</strong>
-              <span>atrasadas</span>
-            </div>
-            <div>
-              <strong>{metrics.unassigned}</strong>
-              <span>sem corretor</span>
-            </div>
+            <strong>{commandDecision.title}</strong>
+            <p>{commandDecision.detail}</p>
+            <Link href={commandDecision.href}>{commandDecision.next} →</Link>
           </div>
           <small>
             {lastUpdated
@@ -1993,11 +2044,6 @@ export default function DashboardPage() {
           </small>
         </div>
       </section>
-
-      <DecisionContractStrip
-        contract={screenDecisionContract}
-        currentDecision={roleSummaryLoading ? undefined : primaryCommand.action}
-      />
 
       <section
         className="atlas-dashboard-toolbar"
@@ -2321,136 +2367,69 @@ export default function DashboardPage() {
 
       <section
         className="atlas-command-v30-cockpit"
-        data-phase="127-command-center-v30-cockpit"
-        aria-label="Cockpit decisivo V30"
+        data-v3000-phase="52-command-center-exceptions"
+        aria-label="Exceções e indicadores de apoio"
       >
-        <div className="atlas-command-v30-cockpit-main">
-          <div className="atlas-command-v30-cockpit-kicker">
-            <StatusBadge
-              tone={
-                commandDecision.tone === "danger"
-                  ? "danger"
-                  : commandDecision.tone === "warning"
-                    ? "warning"
-                    : commandDecision.tone === "success"
-                      ? "success"
-                      : "info"
-              }
-            >
-              {v30Cockpit.topFocus}
-            </StatusBadge>
-            <span>V30 · decisão limpa</span>
+        <div className="atlas-command-exception-queue">
+          <div className="atlas-command-exception-head">
+            <div>
+              <span>Fila por exceção</span>
+              <h2>O que merece atenção depois</h2>
+            </div>
+            <b>{commandExceptionQueue.length} de 3</b>
           </div>
-          <h2>{commandDecision.title}</h2>
-          <p>{commandDecision.detail}</p>
-          <div className="atlas-command-v30-cockpit-actions">
-            <Link href={commandDecision.href}>Abrir prioridade</Link>
-            <button
-              type="button"
-              onClick={() =>
-                openCopilot(
-                  `Reduza esta prioridade a uma sequência prática de 3 passos para executar hoje: ${commandDecision.title}. Contexto: ${commandDecision.evidence}`,
-                  {
-                    ...aiContext,
-                    commandDecision,
-                    v30Cockpit,
-                    viewerRole: viewerRoleLabel,
-                  },
-                )
-              }
-            >
-              IA: próximos 3 passos
-            </button>
-          </div>
-        </div>
-        <div className="atlas-command-v30-cockpit-grid">
-          {v30Cockpit.cards.map((card) => (
-            <Link
-              key={card.id}
-              href={card.href}
-              className="atlas-command-v30-cockpit-card"
-            >
-              <span>{card.label}</span>
-              <strong>{card.value}</strong>
-              <b>{card.title}</b>
-              <small>{card.detail}</small>
-            </Link>
-          ))}
+          {commandExceptionQueue.length ? (
+            <div className="atlas-command-exception-list">
+              {commandExceptionQueue.map((exception, index) => (
+                <Link
+                  key={exception.id}
+                  href={exception.href}
+                  className="atlas-command-exception-item"
+                  data-tone={exception.tone}
+                >
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <div>
+                    <strong>{exception.title}</strong>
+                    <p>{exception.detail}</p>
+                    <small>{exception.evidence}</small>
+                  </div>
+                  <b>{exception.actionLabel} →</b>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="atlas-command-exception-empty">
+              <span aria-hidden="true">✓</span>
+              <div>
+                <strong>Nenhuma exceção secundária comprovada</strong>
+                <p>
+                  Conclua a decisão principal e mantenha a cadência registrada.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
         <aside
-          className="atlas-command-v30-cockpit-health"
-          aria-label="Saúde e ruído da operação"
+          className="atlas-command-support-panel"
+          aria-label="Sinais de apoio"
         >
-          <span>Saúde V30</span>
-          <strong>{v30Cockpit.healthScore}%</strong>
-          <p>{v30Cockpit.operatorSignal}</p>
-          <div>
-            <span>Ruído operacional</span>
-            <b>
-              {v30Cockpit.frictionScore === 0
-                ? "baixo"
-                : v30Cockpit.frictionScore < 8
-                  ? "controlado"
-                  : "alto"}
-            </b>
+          <div className="atlas-command-support-head">
+            <span>Sinais de apoio</span>
+            <b>Leitura rápida</b>
           </div>
+          <div className="atlas-command-support-grid">
+            {commandSupportIndicators.map((indicator) => (
+              <article key={indicator.id} data-tone={indicator.tone}>
+                <span>{indicator.label}</span>
+                <strong>{indicator.value}</strong>
+                <p>{indicator.detail}</p>
+              </article>
+            ))}
+          </div>
+          <small>
+            Apoio contextual; a única ação principal permanece no topo.
+          </small>
         </aside>
-      </section>
-
-      <section
-        className="atlas-command-detail atlas-command-decision-layer"
-        data-phase="103-command-center-decision-layer"
-        data-tone={commandDecision.tone}
-        aria-label="Detalhes da prioridade decisiva"
-      >
-        <div className="atlas-command-decision-main">
-          <span>{commandDecision.eyebrow}</span>
-          <h2>{commandDecision.title}</h2>
-          <p>{commandDecision.detail}</p>
-          <div className="atlas-command-decision-actions">
-            <Link href={commandDecision.href}>Abrir prioridade →</Link>
-            <button
-              type="button"
-              onClick={() =>
-                openCopilot(
-                  `Transforme esta prioridade em um plano de ação curto, objetivo e seguro: ${commandDecision.title}. Próxima ação sugerida: ${commandDecision.next}`,
-                  {
-                    ...aiContext,
-                    commandDecision,
-                    viewerRole: viewerRoleLabel,
-                  },
-                )
-              }
-            >
-              Pedir plano à IA
-            </button>
-          </div>
-        </div>
-        <div
-          className="atlas-command-decision-grid"
-          aria-label="Resumo de evidências da decisão"
-        >
-          {[
-            ["Evidência", commandDecision.evidence, "DADO"],
-            ["Próximo passo", commandDecision.next, "AÇÃO"],
-            ["IA", aiMode.label, aiMode.detail],
-            [
-              "Módulos",
-              `${operationalModules}/${moduleHealth.length} operacionais`,
-              unavailableModules
-                ? `${unavailableModules} indisponíveis`
-                : degradedModules
-                  ? `${degradedModules} sincronizando`
-                  : "Leitura estável",
-            ],
-          ].map(([title, value, label]) => (
-            <article key={title}>
-              <span>{label}</span>
-              <strong>{title}</strong>
-              <p>{value}</p>
-            </article>
-          ))}
-        </div>
       </section>
 
       <section
@@ -2596,6 +2575,7 @@ export default function DashboardPage() {
 
       {warnings.length ? (
         <ErrorState
+          kind="partial"
           title="Atualização parcial do Command Center"
           description={warnings.join(" · ")}
           action={

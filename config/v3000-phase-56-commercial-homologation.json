@@ -1,0 +1,49 @@
+{
+  "phase": 56,
+  "status": "commercial-release-gate-enforced",
+  "previousPhase": {
+    "phase": 55,
+    "status": "decision-performance-adopted"
+  },
+  "automatedGates": [
+    { "id": "contracts", "command": "npm test" },
+    { "id": "typecheck", "command": "npm run typecheck" },
+    { "id": "lint", "command": "npm run lint" },
+    { "id": "build", "command": "npm run build" },
+    { "id": "smoke", "command": "npm run smoke:v3" },
+    { "id": "rbac", "command": "npm run auth-rbac:check" },
+    {
+      "id": "tenant-isolation",
+      "command": "node --test tests/contracts/conversion-core-isolated-preflight.test.mjs"
+    },
+    {
+      "id": "desktop",
+      "command": "npm run test:e2e -- --project=desktop-chromium"
+    },
+    {
+      "id": "mobile",
+      "command": "npm run test:e2e -- --project=mobile-chromium"
+    },
+    {
+      "id": "package-verification",
+      "command": "npm run package:hostinger:clean-build"
+    }
+  ],
+  "requiredHumanApprovals": ["director", "manager", "broker"],
+  "releaseOutcomes": ["passed", "pending-human", "blocked"],
+  "acceptance": {
+    "openP0": 0,
+    "openP1": 0,
+    "criticalActionsPersist": true,
+    "metricsDoNotDuplicate": true,
+    "humanApprovalRequired": true
+  },
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "aiCall": false,
+    "visibilityExpansion": false,
+    "syntheticBusinessData": false,
+    "automaticProductionPromotion": false
+  }
+}

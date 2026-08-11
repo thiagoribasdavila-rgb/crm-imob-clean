@@ -1,0 +1,36 @@
+{
+  "phase": 51,
+  "status": "role-oriented-cards-adopted",
+  "previousPhase": {
+    "phase": 50,
+    "status": "decisive-objection-adopted"
+  },
+  "identity": {
+    "roleSource": "authenticated-profile",
+    "visibilitySource": "authenticated-api-and-rls",
+    "manualLensChangesVisibility": false
+  },
+  "readings": {
+    "broker": {
+      "mode": "execution",
+      "scope": "own-portfolio",
+      "ownerDisclosure": false
+    },
+    "manager": {
+      "mode": "intervention",
+      "scope": "own-structure",
+      "ownerDisclosure": true
+    },
+    "director": {
+      "mode": "impact",
+      "scope": "organization",
+      "aggregatesAndProvenExceptionsOnly": true
+    }
+  },
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "aiCall": false,
+    "clientSideVisibilityExpansion": false
+  }
+}

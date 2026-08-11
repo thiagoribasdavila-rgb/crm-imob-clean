@@ -51,6 +51,758 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* V3000 Fase 054 — Movimento, foco e acessibilidade do Kanban. */
+.atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"] {
+  --atlas-kanban-accessible-focus: #7dd3fc;
+  --atlas-kanban-accessible-text: #f8fafc;
+  --atlas-kanban-accessible-muted: #cbd5e1;
+}
+
+.atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+  .atlas-pipeline-lead-v30[data-motion-purpose="state-change"] {
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+
+.atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+  [data-motion-purpose="none"] {
+  animation: none;
+}
+
+.atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+  :is(strong, summary) {
+  color: var(--atlas-kanban-accessible-text);
+}
+
+.atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+  :is(small, p, dd) {
+  color: var(--atlas-kanban-accessible-muted);
+}
+
+.atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+  :is(a, button, select, summary, [role="button"]) {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+  .atlas-kanban-v30-card-command[data-primary-action-count="1"]
+  [data-action-priority="primary"]
+  > :is(a, button),
+.atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+  .atlas-kanban-v30-board-empty-shell
+  button {
+  min-height: 44px;
+}
+
+.atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+  .atlas-pipeline-lead-v30:focus-visible,
+.atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+  :is(a, button, select, summary, [role="button"]):focus-visible {
+  outline: 3px solid var(--atlas-kanban-accessible-focus);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 2px #020617,
+    0 0 0 6px rgba(125, 211, 252, 0.28);
+}
+
+@media (prefers-contrast: more) {
+  .atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+    .atlas-pipeline-lead-v30 {
+    border-color: #94a3b8;
+  }
+
+  .atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+    :is(a, button, select, summary, [role="button"]):focus-visible {
+    outline-color: #fff;
+  }
+}
+
+@media (forced-colors: active) {
+  .atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+    :is(a, button, select, summary, [role="button"]):focus-visible,
+  .atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+    .atlas-pipeline-lead-v30:focus-visible {
+    outline: 3px solid Highlight;
+    box-shadow: none;
+    forced-color-adjust: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+    *,
+  .atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+    *::before,
+  .atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+    *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .atlas-kanban-board[data-v3000-accessibility-phase="54-motion-focus-accessibility"]
+    .atlas-pipeline-lead-v30.is-dragging {
+    transform: none !important;
+  }
+}
+
+/* V3000 Fase 053 — Kanban por decisão, não por decoração */
+.atlas-kanban-v3000-decision-header {
+  display: grid;
+  gap: 10px;
+}
+
+.atlas-kanban-v3000-decision-header > h3 {
+  margin: 0;
+}
+
+.atlas-kanban-v3000-decision-metrics {
+  display: grid;
+  grid-template-columns: 0.65fr 1fr 1.35fr;
+  gap: 6px;
+}
+
+.atlas-kanban-v3000-decision-metrics > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  padding: 8px 9px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.atlas-kanban-v3000-decision-metrics strong {
+  overflow: hidden;
+  color: rgba(248, 250, 252, 0.96);
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-kanban-v3000-decision-metrics small {
+  color: rgba(148, 163, 184, 0.78);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-v3000-decision-metrics
+  [data-stage-metric="main-bottleneck"][data-tone="danger"] {
+  border-color: rgba(251, 113, 133, 0.32);
+  background: rgba(127, 29, 29, 0.17);
+}
+
+.atlas-kanban-v3000-decision-metrics
+  [data-stage-metric="main-bottleneck"][data-tone="warning"] {
+  border-color: rgba(251, 191, 36, 0.28);
+  background: rgba(120, 53, 15, 0.14);
+}
+
+.atlas-kanban-v3000-decision-metrics
+  [data-stage-metric="main-bottleneck"][data-tone="opportunity"],
+.atlas-kanban-v3000-decision-metrics
+  [data-stage-metric="main-bottleneck"][data-tone="healthy"] {
+  border-color: rgba(52, 211, 153, 0.25);
+  background: rgba(6, 78, 59, 0.14);
+}
+
+.atlas-kanban-v3000-stage-support,
+.atlas-kanban-v3000-card-context {
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.24);
+}
+
+.atlas-kanban-v3000-stage-support > summary,
+.atlas-kanban-v3000-card-context > summary {
+  display: flex;
+  min-height: 36px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  color: rgba(186, 230, 253, 0.82);
+  font-size: 9px;
+  font-weight: 800;
+  list-style: none;
+}
+
+.atlas-kanban-v3000-stage-support > summary::-webkit-details-marker,
+.atlas-kanban-v3000-card-context > summary::-webkit-details-marker {
+  display: none;
+}
+
+.atlas-kanban-v3000-stage-support > summary::after,
+.atlas-kanban-v3000-card-context > summary::after {
+  content: "+";
+  color: rgba(125, 211, 252, 0.8);
+}
+
+.atlas-kanban-v3000-stage-support[open] > summary::after,
+.atlas-kanban-v3000-card-context[open] > summary::after {
+  content: "−";
+}
+
+.atlas-kanban-v3000-stage-support > summary strong,
+.atlas-kanban-v3000-card-context > summary strong {
+  margin-left: auto;
+  overflow: hidden;
+  color: rgba(248, 250, 252, 0.92);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-kanban-v3000-stage-support[open],
+.atlas-kanban-v3000-card-context[open] {
+  padding-bottom: 8px;
+}
+
+.atlas-kanban-v3000-stage-support[open] > :not(summary),
+.atlas-kanban-v3000-card-context[open] > :not(summary) {
+  margin-inline: 8px;
+}
+
+.atlas-kanban-v3000-decision-preservation {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.atlas-kanban-v3000-decision-preservation > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.34);
+}
+
+.atlas-kanban-v3000-decision-preservation small {
+  color: rgba(148, 163, 184, 0.76);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-v3000-decision-preservation strong {
+  overflow: hidden;
+  color: rgba(241, 245, 249, 0.94);
+  font-size: 10px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-kanban-v3000-decision-preservation [data-state="evidence_available"] {
+  border-color: rgba(52, 211, 153, 0.22);
+}
+
+.atlas-kanban-v3000-decision-preservation [data-state="needs_qualification"],
+.atlas-kanban-v3000-decision-preservation [data-state="project_unavailable"] {
+  border-color: rgba(251, 191, 36, 0.24);
+}
+
+.atlas-kanban-board[data-v3000-phase~="53-decision-kanban"]
+  .atlas-pipeline-lead-v30 {
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .atlas-kanban-board[data-v3000-phase~="53-decision-kanban"] {
+    min-width: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .atlas-kanban-board[data-v3000-phase~="53-decision-kanban"]
+    .atlas-pipeline-column {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .atlas-kanban-board[data-v3000-phase~="53-decision-kanban"]
+    .atlas-pipeline-column.is-mobile-hidden {
+    display: none;
+  }
+
+  .atlas-kanban-v3000-decision-preservation {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .atlas-kanban-v3000-decision-metrics {
+    grid-template-columns: 0.65fr 1fr 1.35fr;
+  }
+}
+
+/* V3000 Fase 052 — Command Center por exceção. */
+.atlas-command-v30-cockpit[data-v3000-phase="52-command-center-exceptions"] {
+  grid-template-columns: minmax(0, 1.28fr) minmax(260px, 0.72fr);
+  gap: 12px;
+  padding: 12px;
+}
+
+.atlas-command-exception-queue,
+.atlas-command-support-panel {
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 22px;
+  background: rgba(2, 6, 23, 0.5);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.026);
+}
+
+.atlas-command-exception-queue {
+  padding: clamp(16px, 2vw, 22px);
+}
+
+.atlas-command-exception-head,
+.atlas-command-support-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.atlas-command-exception-head span,
+.atlas-command-support-head span {
+  color: rgba(125, 211, 252, 0.76);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.atlas-command-exception-head h2 {
+  margin-top: 5px;
+  color: #f8fafc;
+  font-size: clamp(18px, 2vw, 24px);
+  font-weight: 760;
+  letter-spacing: -0.035em;
+}
+
+.atlas-command-exception-head > b,
+.atlas-command-support-head > b {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 999px;
+  color: rgba(186, 230, 253, 0.86);
+  background: rgba(14, 165, 233, 0.07);
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.atlas-command-exception-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.atlas-command-exception-item {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 78px;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.09);
+  border-radius: 17px;
+  background: rgba(15, 23, 42, 0.38);
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.atlas-command-exception-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(125, 211, 252, 0.27);
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.atlas-command-exception-item[data-tone="critical"] {
+  border-left: 2px solid rgba(251, 113, 133, 0.72);
+}
+
+.atlas-command-exception-item[data-tone="attention"] {
+  border-left: 2px solid rgba(251, 191, 36, 0.72);
+}
+
+.atlas-command-exception-item[data-tone="monitor"] {
+  border-left: 2px solid rgba(56, 189, 248, 0.64);
+}
+
+.atlas-command-exception-item > span {
+  color: rgba(125, 211, 252, 0.5);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.atlas-command-exception-item strong {
+  display: block;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.atlas-command-exception-item p,
+.atlas-command-exception-item small,
+.atlas-command-support-grid p,
+.atlas-command-support-panel > small {
+  color: rgba(148, 163, 184, 0.74);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.atlas-command-exception-item p {
+  margin-top: 3px;
+}
+
+.atlas-command-exception-item small {
+  display: block;
+  margin-top: 4px;
+}
+
+.atlas-command-exception-item > b {
+  color: rgba(186, 230, 253, 0.88);
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.atlas-command-exception-empty {
+  display: flex;
+  min-height: 132px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px dashed rgba(52, 211, 153, 0.2);
+  border-radius: 18px;
+  background: rgba(16, 185, 129, 0.045);
+}
+
+.atlas-command-exception-empty > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  color: #bbf7d0;
+  background: rgba(16, 185, 129, 0.12);
+  font-weight: 900;
+}
+
+.atlas-command-exception-empty strong {
+  color: #ecfdf5;
+  font-size: 12px;
+}
+
+.atlas-command-exception-empty p {
+  margin-top: 4px;
+  color: rgba(167, 243, 208, 0.66);
+  font-size: 10px;
+}
+
+.atlas-command-support-panel {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(16px, 2vw, 20px);
+}
+
+.atlas-command-support-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.atlas-command-support-grid article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: baseline;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 15px;
+  background: rgba(15, 23, 42, 0.34);
+}
+
+.atlas-command-support-grid article > span {
+  color: rgba(203, 213, 225, 0.68);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.atlas-command-support-grid article > strong {
+  color: #f8fafc;
+  font-size: 17px;
+  font-weight: 820;
+  letter-spacing: -0.035em;
+}
+
+.atlas-command-support-grid article > p {
+  grid-column: 1 / -1;
+}
+
+.atlas-command-support-grid article[data-tone="positive"] > strong {
+  color: #86efac;
+}
+
+.atlas-command-support-grid article[data-tone="attention"] > strong {
+  color: #fde68a;
+}
+
+.atlas-command-support-panel > small {
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.atlas-command-shell[data-command-mode="focus"]
+  .atlas-command-v30-cockpit[data-v3000-phase="52-command-center-exceptions"] {
+  grid-template-columns: minmax(0, 1.28fr) minmax(240px, 0.72fr);
+}
+
+@media (max-width: 980px) {
+  .atlas-command-v30-cockpit[data-v3000-phase="52-command-center-exceptions"],
+  .atlas-command-shell[data-command-mode="focus"]
+    .atlas-command-v30-cockpit[data-v3000-phase="52-command-center-exceptions"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .atlas-command-exception-item {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .atlas-command-exception-item > b {
+    grid-column: 2;
+  }
+}
+
+/* V3000 Fase 051 — card orientado pelo papel autenticado */
+.atlas-kanban-role-orientation {
+  --atlas-role-accent: 56 189 248;
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgb(var(--atlas-role-accent) / 0.14);
+  border-radius: 13px;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--atlas-role-accent) / 0.055),
+    rgba(15, 23, 42, 0.24)
+  );
+  padding: 9px 10px;
+}
+
+.atlas-kanban-role-orientation[data-mode="execution"] {
+  --atlas-role-accent: 16 185 129;
+}
+
+.atlas-kanban-role-orientation[data-mode="intervention"] {
+  --atlas-role-accent: 245 158 11;
+}
+
+.atlas-kanban-role-orientation[data-mode="impact"] {
+  --atlas-role-accent: 139 92 246;
+}
+
+.atlas-kanban-role-orientation[data-tone="danger"] {
+  --atlas-role-accent: 244 63 94;
+}
+
+.atlas-kanban-role-orientation > header,
+.atlas-kanban-role-orientation > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.atlas-kanban-role-orientation > header small,
+.atlas-kanban-role-orientation > header span {
+  font-size: 7px;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-role-orientation > header small {
+  color: rgb(var(--atlas-role-accent) / 0.9);
+}
+
+.atlas-kanban-role-orientation > header span {
+  color: rgba(148, 163, 184, 0.62);
+}
+
+.atlas-kanban-role-orientation > strong {
+  color: rgba(241, 245, 249, 0.94);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.atlas-kanban-role-orientation > p {
+  margin: 0;
+  color: rgba(203, 213, 225, 0.72);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.atlas-kanban-role-orientation > footer {
+  align-items: flex-end;
+  border-top: 1px solid rgb(var(--atlas-role-accent) / 0.1);
+  padding-top: 6px;
+}
+
+.atlas-kanban-role-orientation > footer > span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.atlas-kanban-role-orientation > footer small,
+.atlas-kanban-role-orientation > footer em {
+  color: rgba(148, 163, 184, 0.58);
+  font-size: 7px;
+  font-style: normal;
+}
+
+.atlas-kanban-role-orientation > footer b {
+  overflow: hidden;
+  color: rgba(226, 232, 240, 0.86);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-kanban-role-orientation > footer em {
+  color: rgb(var(--atlas-role-accent) / 0.82);
+  font-weight: 800;
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .atlas-kanban-role-orientation > footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .atlas-kanban-role-orientation > footer em {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+}
+
+/* V3000 Fase 050 — objeção ou lacuna decisiva */
+.atlas-kanban-decisive-objection {
+  --atlas-decisive-accent: 56 189 248;
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgb(var(--atlas-decisive-accent) / 0.16);
+  border-left: 3px solid rgb(var(--atlas-decisive-accent) / 0.68);
+  border-radius: 13px;
+  background: rgb(var(--atlas-decisive-accent) / 0.045);
+  padding: 9px 10px;
+}
+
+.atlas-kanban-decisive-objection[data-tone="danger"] {
+  --atlas-decisive-accent: 244 63 94;
+}
+
+.atlas-kanban-decisive-objection[data-tone="warning"] {
+  --atlas-decisive-accent: 245 158 11;
+}
+
+.atlas-kanban-decisive-objection[data-tone="success"] {
+  --atlas-decisive-accent: 16 185 129;
+}
+
+.atlas-kanban-decisive-objection > header {
+  display: grid;
+  gap: 2px;
+}
+
+.atlas-kanban-decisive-objection > header small,
+.atlas-kanban-decisive-objection-question > span {
+  color: rgb(var(--atlas-decisive-accent) / 0.86);
+  font-size: 7px;
+  font-weight: 850;
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-decisive-objection > header strong {
+  color: rgba(241, 245, 249, 0.94);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.atlas-kanban-decisive-objection > p {
+  margin: 0;
+  color: rgba(203, 213, 225, 0.75);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.atlas-kanban-decisive-objection-question {
+  display: grid;
+  gap: 3px;
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 7px 8px;
+}
+
+.atlas-kanban-decisive-objection-question > b {
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.atlas-kanban-decisive-objection > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.atlas-kanban-decisive-objection > footer small {
+  color: rgba(148, 163, 184, 0.58);
+  font-size: 7px;
+}
+
+.atlas-kanban-decisive-objection > footer a {
+  color: rgb(var(--atlas-decisive-accent) / 0.92);
+  font-size: 8px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.atlas-kanban-decisive-objection > footer a:hover {
+  color: rgba(240, 249, 255, 0.98);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .atlas-kanban-decisive-objection > footer a {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -2467,10 +3219,9 @@ textarea:focus {
 }
 .atlas-customer-row {
   display: grid;
-  grid-template-columns: minmax(210px, 0.9fr) minmax(420px, 1.45fr) minmax(
-      190px,
-      0.72fr
-    ) auto;
+  grid-template-columns:
+    minmax(210px, 0.9fr) minmax(420px, 1.45fr) minmax(190px, 0.72fr)
+    auto;
   gap: 18px;
   align-items: center;
   min-height: 112px;
@@ -8601,8 +9352,7 @@ tbody tr:hover {
   outline-offset: 3px;
 }
 
-.atlas-kanban-board-v30
-  .atlas-pipeline-column.is-empty-stage.is-drop-target {
+.atlas-kanban-board-v30 .atlas-pipeline-column.is-empty-stage.is-drop-target {
   min-height: 500px;
   border-style: solid;
   border-color: rgba(56, 189, 248, 0.52);
@@ -8715,8 +9465,7 @@ tbody tr:hover {
   margin-bottom: 0;
 }
 
-.atlas-kanban-v30-stage-decision-bridge
-  > .atlas-kanban-v30-stage-command-copy {
+.atlas-kanban-v30-stage-decision-bridge > .atlas-kanban-v30-stage-command-copy {
   padding-inline: 2px;
 }
 
@@ -8737,8 +9486,7 @@ tbody tr:hover {
   align-items: center;
 }
 
-.atlas-kanban-v30-stage-decision-bridge
-  > .atlas-kanban-v30-stage-focus-action {
+.atlas-kanban-v30-stage-decision-bridge > .atlas-kanban-v30-stage-focus-action {
   justify-self: start;
   border: 0;
   background: transparent;
@@ -8768,8 +9516,7 @@ tbody tr:hover {
     0 12px 30px rgba(2, 132, 199, 0.04);
 }
 
-.atlas-pipeline-column.is-empty-stage
-  .atlas-kanban-v30-stage-decision-bridge {
+.atlas-pipeline-column.is-empty-stage .atlas-kanban-v30-stage-decision-bridge {
   gap: 6px;
 }
 
@@ -8777,6 +9524,1067 @@ tbody tr:hover {
   .atlas-kanban-v30-stage-decision-bridge
     > .atlas-kanban-v30-stage-priority-bridge {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* V3000 Fase 045 — continuidade comprovada da conversa. */
+.atlas-kanban-v30-conversation-continuity {
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.11);
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.atlas-kanban-v30-conversation-continuity > header,
+.atlas-kanban-v30-conversation-continuity > p {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+}
+
+.atlas-kanban-v30-conversation-continuity > header span {
+  color: rgba(148, 163, 184, 0.72);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-v30-conversation-continuity > header strong {
+  color: #e2e8f0;
+  font-size: 10px;
+  font-weight: 850;
+  text-align: right;
+}
+
+.atlas-kanban-v30-conversation-continuity > p b {
+  color: rgba(186, 230, 253, 0.86);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.atlas-kanban-v30-conversation-continuity > p span {
+  color: rgba(203, 213, 225, 0.74);
+  font-size: 9px;
+  text-align: right;
+}
+
+.atlas-kanban-v30-conversation-continuity > small {
+  color: rgba(148, 163, 184, 0.78);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.atlas-kanban-v30-conversation-continuity[data-tone="success"] {
+  border-color: rgba(52, 211, 153, 0.2);
+  box-shadow: inset 3px 0 0 rgba(52, 211, 153, 0.44);
+}
+
+.atlas-kanban-v30-conversation-continuity[data-tone="warning"] {
+  border-color: rgba(251, 191, 36, 0.2);
+  box-shadow: inset 3px 0 0 rgba(251, 191, 36, 0.42);
+}
+
+.atlas-kanban-v30-conversation-continuity[data-tone="info"] {
+  box-shadow: inset 3px 0 0 rgba(56, 189, 248, 0.32);
+}
+
+.atlas-kanban-v30-conversation-continuity[data-channel-confirmed="false"]
+  > p
+  b {
+  color: rgba(148, 163, 184, 0.72);
+}
+
+@media (max-width: 760px) {
+  .atlas-kanban-v30-conversation-continuity > header,
+  .atlas-kanban-v30-conversation-continuity > p {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .atlas-kanban-v30-conversation-continuity > header strong,
+  .atlas-kanban-v30-conversation-continuity > p span {
+    text-align: left;
+  }
+}
+
+/* V3000 Fase 046 — compatibilidade explicável entre cliente e projeto. */
+.atlas-kanban-project-compatibility {
+  overflow: hidden;
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.24);
+}
+
+.atlas-kanban-project-compatibility > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  color: rgba(186, 230, 253, 0.86);
+  cursor: pointer;
+  list-style: none;
+}
+
+.atlas-kanban-project-compatibility > summary::-webkit-details-marker {
+  display: none;
+}
+
+.atlas-kanban-project-compatibility > summary::after {
+  content: "+";
+  color: rgba(148, 163, 184, 0.72);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.atlas-kanban-project-compatibility[open] > summary::after {
+  content: "−";
+}
+
+.atlas-kanban-project-compatibility > summary span {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-project-compatibility > summary strong {
+  margin-left: auto;
+  color: #e2e8f0;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.atlas-kanban-project-compatibility-body {
+  display: grid;
+  gap: 9px;
+  padding: 0 12px 12px;
+}
+
+.atlas-kanban-project-compatibility-body > p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding-top: 9px;
+  border-top: 1px solid rgba(148, 163, 184, 0.09);
+}
+
+.atlas-kanban-project-compatibility-body > p span,
+.atlas-kanban-project-compatibility-body > aside span {
+  color: rgba(148, 163, 184, 0.7);
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-project-compatibility-body > p b {
+  color: #e2e8f0;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.atlas-kanban-project-compatibility-body > ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-kanban-project-compatibility-body > ul li {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.09);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.36);
+}
+
+.atlas-kanban-project-compatibility-body > ul li > span {
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.atlas-kanban-project-compatibility-body > ul li > small {
+  color: rgba(148, 163, 184, 0.78);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.atlas-kanban-project-compatibility-body > ul li[data-state="aligned"] {
+  border-color: rgba(52, 211, 153, 0.18);
+  box-shadow: inset 2px 0 0 rgba(52, 211, 153, 0.42);
+}
+
+.atlas-kanban-project-compatibility-body > ul li[data-state="attention"] {
+  border-color: rgba(251, 191, 36, 0.18);
+  box-shadow: inset 2px 0 0 rgba(251, 191, 36, 0.42);
+}
+
+.atlas-kanban-project-compatibility-body > ul li[data-state="known"] {
+  box-shadow: inset 2px 0 0 rgba(56, 189, 248, 0.32);
+}
+
+.atlas-kanban-project-compatibility-body > aside {
+  display: grid;
+  gap: 3px;
+  padding: 8px 9px;
+  border: 1px solid rgba(251, 191, 36, 0.16);
+  border-radius: 11px;
+  background: rgba(120, 53, 15, 0.08);
+}
+
+.atlas-kanban-project-compatibility-question {
+  box-shadow: inset 2px 0 0 rgba(251, 191, 36, 0.34);
+}
+
+.atlas-kanban-project-compatibility-body > aside strong {
+  color: rgba(254, 243, 199, 0.9);
+  font-size: 9px;
+  font-weight: 760;
+  line-height: 1.45;
+}
+
+.atlas-kanban-project-compatibility-body > aside[data-complete="true"] {
+  border-color: rgba(52, 211, 153, 0.16);
+  background: rgba(6, 78, 59, 0.08);
+}
+
+.atlas-kanban-project-compatibility-body > aside[data-complete="true"] strong {
+  color: rgba(209, 250, 229, 0.88);
+}
+
+.atlas-kanban-project-compatibility[data-status="project_unavailable"] {
+  border-color: rgba(251, 191, 36, 0.18);
+}
+
+@media (max-width: 760px) {
+  .atlas-kanban-project-compatibility > summary {
+    min-height: 44px;
+  }
+}
+
+/* V3000 Fase 047 — confiança e explicação da recomendação. */
+.atlas-kanban-recommendation-explanation {
+  overflow: hidden;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 14px;
+  background: rgba(8, 15, 29, 0.5);
+}
+
+.atlas-kanban-recommendation-explanation > summary {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  padding: 9px 11px;
+  color: rgba(186, 230, 253, 0.84);
+  cursor: pointer;
+  list-style: none;
+}
+
+.atlas-kanban-recommendation-explanation > summary::-webkit-details-marker {
+  display: none;
+}
+
+.atlas-kanban-recommendation-explanation > summary::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #fbbf24;
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.08);
+  content: "";
+}
+
+.atlas-kanban-recommendation-explanation[data-evidence-level="medium"]
+  > summary::before {
+  background: #38bdf8;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.08);
+}
+
+.atlas-kanban-recommendation-explanation[data-evidence-level="high"]
+  > summary::before {
+  background: #34d399;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.08);
+}
+
+.atlas-kanban-recommendation-explanation > summary span {
+  overflow: hidden;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.atlas-kanban-recommendation-explanation > summary strong {
+  color: #e2e8f0;
+  font-size: 9px;
+  font-weight: 850;
+  text-align: right;
+}
+
+.atlas-kanban-recommendation-explanation-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 11px 11px;
+}
+
+.atlas-kanban-recommendation-explanation-body > dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.09);
+}
+
+.atlas-kanban-recommendation-explanation-body > dl div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.atlas-kanban-recommendation-explanation-body dt,
+.atlas-kanban-recommendation-provenance b {
+  color: rgba(148, 163, 184, 0.7);
+  font-size: 7px;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-recommendation-explanation-body dd {
+  overflow: hidden;
+  margin: 0;
+  color: rgba(226, 232, 240, 0.92);
+  font-size: 9px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+}
+
+.atlas-kanban-recommendation-explanation-body > ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-kanban-recommendation-explanation-body > ul li {
+  position: relative;
+  padding-left: 11px;
+  color: rgba(203, 213, 225, 0.84);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.atlas-kanban-recommendation-explanation-body > ul li::before {
+  position: absolute;
+  top: 0.5em;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.7);
+  content: "";
+}
+
+.atlas-kanban-recommendation-provenance {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.atlas-kanban-recommendation-provenance span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(203, 213, 225, 0.76);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.atlas-kanban-recommendation-explanation-body > em {
+  color: rgba(148, 163, 184, 0.68);
+  font-size: 7px;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .atlas-kanban-recommendation-explanation-body > dl {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* V3000 Fase 048 — sinais comportamentais compactos e factuais. */
+.atlas-kanban-behavioral-signals {
+  overflow: hidden;
+  border: 1px solid rgba(167, 139, 250, 0.14);
+  border-radius: 14px;
+  background: rgba(15, 15, 35, 0.4);
+}
+
+.atlas-kanban-behavioral-signals > summary {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  color: rgba(221, 214, 254, 0.86);
+  cursor: pointer;
+  list-style: none;
+}
+
+.atlas-kanban-behavioral-signals > summary::-webkit-details-marker {
+  display: none;
+}
+
+.atlas-kanban-behavioral-signals > summary span {
+  overflow: hidden;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.atlas-kanban-behavioral-signals > summary strong {
+  min-width: 30px;
+  padding: 3px 7px;
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.08);
+  color: rgba(237, 233, 254, 0.9);
+  font-size: 8px;
+  font-weight: 850;
+  text-align: center;
+}
+
+.atlas-kanban-behavioral-signals-body {
+  display: grid;
+  gap: 9px;
+  padding: 0 11px 11px;
+}
+
+.atlas-kanban-behavioral-signals-body > ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 9px 0 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.08);
+  list-style: none;
+}
+
+.atlas-kanban-behavioral-signals-body > ul li {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 10px;
+  background: rgba(8, 15, 29, 0.34);
+}
+
+.atlas-kanban-behavioral-signals-body > ul li > span {
+  width: 7px;
+  height: 7px;
+  margin-top: 3px;
+  border-radius: 999px;
+  background: #38bdf8;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.07);
+}
+
+.atlas-kanban-behavioral-signals-body > ul li[data-tone="success"] > span {
+  background: #34d399;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.07);
+}
+
+.atlas-kanban-behavioral-signals-body > ul li[data-tone="warning"] > span {
+  background: #fbbf24;
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.07);
+}
+
+.atlas-kanban-behavioral-signals-body > ul li[data-tone="danger"] > span {
+  background: #fb7185;
+  box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.07);
+}
+
+.atlas-kanban-behavioral-signals-body > ul li > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.atlas-kanban-behavioral-signals-body b {
+  color: rgba(241, 245, 249, 0.92);
+  font-size: 9px;
+  font-weight: 820;
+}
+
+.atlas-kanban-behavioral-signals-body p,
+.atlas-kanban-behavioral-signals-body small,
+.atlas-kanban-behavioral-signals-body em {
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.atlas-kanban-behavioral-signals-body p {
+  color: rgba(203, 213, 225, 0.78);
+}
+
+.atlas-kanban-behavioral-signals-body small {
+  color: rgba(148, 163, 184, 0.62);
+}
+
+.atlas-kanban-behavioral-signals-body em {
+  grid-column: 2;
+  padding-top: 5px;
+  border-top: 1px solid rgba(148, 163, 184, 0.07);
+  color: rgba(196, 181, 253, 0.76);
+  font-style: normal;
+}
+
+.atlas-kanban-behavioral-signals-body > a {
+  justify-self: start;
+  color: rgba(125, 211, 252, 0.82);
+  font-size: 8px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.atlas-kanban-behavioral-signals-body > a:hover {
+  color: #e0f2fe;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .atlas-kanban-behavioral-signals > summary {
+    min-height: 44px;
+  }
+}
+
+/* V3000 Fase 049 — atribuição factual da oportunidade */
+.atlas-kanban-opportunity-attribution {
+  overflow: hidden;
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  border-radius: 14px;
+  background: rgba(8, 15, 29, 0.7);
+}
+
+.atlas-kanban-opportunity-attribution > summary {
+  display: flex;
+  min-height: 36px;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  color: rgba(226, 232, 240, 0.86);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.atlas-kanban-opportunity-attribution > summary::-webkit-details-marker {
+  display: none;
+}
+
+.atlas-kanban-opportunity-attribution > summary::after {
+  color: rgba(125, 211, 252, 0.62);
+  content: "+";
+  font-size: 13px;
+  line-height: 1;
+}
+
+.atlas-kanban-opportunity-attribution[open] > summary::after {
+  content: "−";
+}
+
+.atlas-kanban-opportunity-attribution > summary strong {
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 3px 6px;
+  background: rgba(245, 158, 11, 0.1);
+  color: rgba(253, 230, 138, 0.92);
+  font-size: 7px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-opportunity-attribution > summary strong[data-status="complete"] {
+  background: rgba(16, 185, 129, 0.11);
+  color: rgba(167, 243, 208, 0.94);
+}
+
+.atlas-kanban-opportunity-attribution > summary strong[data-status="conflict"] {
+  background: rgba(244, 63, 94, 0.11);
+  color: rgba(253, 164, 175, 0.94);
+}
+
+.atlas-kanban-opportunity-attribution-body {
+  display: grid;
+  gap: 9px;
+  border-top: 1px solid rgba(56, 189, 248, 0.09);
+  padding: 10px;
+}
+
+.atlas-kanban-opportunity-attribution-body ol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-kanban-opportunity-attribution-body ol li {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  border: 1px solid rgba(16, 185, 129, 0.12);
+  border-radius: 9px;
+  background: rgba(16, 185, 129, 0.045);
+  padding: 6px;
+}
+
+.atlas-kanban-opportunity-attribution-body ol li:not(:last-child)::after {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  right: -6px;
+  width: 7px;
+  color: rgba(125, 211, 252, 0.48);
+  content: "›";
+  font-size: 11px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+.atlas-kanban-opportunity-attribution-body ol li[data-state="missing"] {
+  border-color: rgba(245, 158, 11, 0.13);
+  background: rgba(245, 158, 11, 0.045);
+}
+
+.atlas-kanban-opportunity-attribution-body ol small,
+.atlas-kanban-opportunity-attribution-body dt {
+  color: rgba(148, 163, 184, 0.66);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-opportunity-attribution-body ol b {
+  overflow: hidden;
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 8px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-kanban-opportunity-attribution-body dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+}
+
+.atlas-kanban-opportunity-attribution-body dl > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  border-left: 2px solid rgba(56, 189, 248, 0.34);
+  padding-left: 6px;
+}
+
+.atlas-kanban-opportunity-attribution-body dl > div[data-state="missing"] {
+  border-left-color: rgba(245, 158, 11, 0.42);
+}
+
+.atlas-kanban-opportunity-attribution-body dl > div[data-state="conflict"] {
+  border-left-color: rgba(244, 63, 94, 0.58);
+}
+
+.atlas-kanban-opportunity-attribution-body dd {
+  overflow: hidden;
+  margin: 0;
+  color: rgba(203, 213, 225, 0.8);
+  font-size: 8px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-kanban-opportunity-attribution-warning,
+.atlas-kanban-opportunity-attribution-missing {
+  margin: 0;
+  border-radius: 9px;
+  padding: 7px 8px;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.atlas-kanban-opportunity-attribution-warning {
+  border: 1px solid rgba(244, 63, 94, 0.14);
+  background: rgba(244, 63, 94, 0.06);
+  color: rgba(253, 164, 175, 0.9);
+}
+
+.atlas-kanban-opportunity-attribution-missing {
+  border: 1px solid rgba(245, 158, 11, 0.12);
+  background: rgba(245, 158, 11, 0.045);
+  color: rgba(253, 230, 138, 0.84);
+}
+
+.atlas-kanban-opportunity-attribution-financials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 9px;
+  margin: 0;
+  color: rgba(167, 243, 208, 0.9);
+  font-size: 8px;
+  font-weight: 750;
+}
+
+.atlas-kanban-opportunity-attribution-financials small {
+  flex-basis: 100%;
+  color: rgba(148, 163, 184, 0.68);
+  font-size: 7px;
+}
+
+.atlas-kanban-opportunity-attribution-guard {
+  color: rgba(148, 163, 184, 0.6);
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+@media (max-width: 760px) {
+  .atlas-kanban-opportunity-attribution > summary {
+    min-height: 44px;
+  }
+
+  .atlas-kanban-opportunity-attribution-body ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .atlas-kanban-opportunity-attribution-body ol li:nth-child(2)::after {
+    display: none;
+  }
+}
+
+/* V3000 Fase 041 — estados confiáveis e semanticamente distintos */
+.atlas-reliable-state {
+  --atlas-state-accent: 56 189 248;
+  --atlas-state-surface: 14 165 233;
+  position: relative;
+  display: grid;
+  gap: 16px;
+  overflow: hidden;
+  border: 1px solid rgb(var(--atlas-state-accent) / 0.2);
+  border-radius: 22px;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgb(var(--atlas-state-surface) / 0.12),
+      transparent 42%
+    ),
+    linear-gradient(145deg, rgb(8 15 29 / 0.96), rgb(6 12 23 / 0.9));
+  padding: 18px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035);
+}
+
+.atlas-reliable-state::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgb(var(--atlas-state-accent) / 0.9),
+    transparent
+  );
+  content: "";
+}
+
+.atlas-reliable-state[data-density="compact"] {
+  gap: 12px;
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.atlas-reliable-state-heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.atlas-reliable-state-symbol {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border: 2px solid rgb(var(--atlas-state-accent) / 0.95);
+  border-radius: 999px;
+  background: rgb(var(--atlas-state-accent) / 0.18);
+  box-shadow: 0 0 18px rgb(var(--atlas-state-accent) / 0.28);
+}
+
+.atlas-reliable-state-label {
+  color: rgb(var(--atlas-state-accent) / 0.98);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.atlas-reliable-state h2 {
+  margin-top: 5px;
+  color: #f8fafc;
+  font-size: clamp(14px, 1.2vw, 17px);
+  font-weight: 780;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.atlas-reliable-state p {
+  max-width: 760px;
+  margin-top: 5px;
+  color: rgb(148 163 184 / 0.9);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.atlas-reliable-state-skeleton {
+  display: grid;
+  gap: 8px;
+}
+
+.atlas-reliable-state-skeleton span {
+  display: block;
+  width: min(100%, 640px);
+  height: 11px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgb(30 41 59 / 0.7),
+    rgb(var(--atlas-state-accent) / 0.18),
+    rgb(30 41 59 / 0.7)
+  );
+  background-size: 220% 100%;
+  animation: atlas-reliable-state-shimmer 1.7s ease-in-out infinite;
+}
+
+.atlas-reliable-state-skeleton span:nth-child(2n) {
+  width: min(78%, 500px);
+}
+
+.atlas-reliable-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}
+
+.atlas-reliable-state-actions > a,
+.atlas-reliable-state-actions > button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(var(--atlas-state-accent) / 0.24);
+  border-radius: 12px;
+  background: rgb(var(--atlas-state-accent) / 0.1);
+  padding: 8px 12px;
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 750;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.atlas-reliable-state-actions > a:hover,
+.atlas-reliable-state-actions > button:hover:not(:disabled) {
+  border-color: rgb(var(--atlas-state-accent) / 0.5);
+  background: rgb(var(--atlas-state-accent) / 0.17);
+  transform: translateY(-1px);
+}
+
+.atlas-reliable-state-actions > button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.atlas-reliable-state[data-reliable-state="empty"] {
+  --atlas-state-accent: 148 163 184;
+  --atlas-state-surface: 100 116 139;
+}
+
+.atlas-reliable-state[data-reliable-state="partial"],
+.atlas-reliable-state[data-reliable-state="stale"] {
+  --atlas-state-accent: 251 191 36;
+  --atlas-state-surface: 245 158 11;
+}
+
+.atlas-reliable-state[data-reliable-state="recoverable-error"] {
+  --atlas-state-accent: 251 113 133;
+  --atlas-state-surface: 244 63 94;
+}
+
+.atlas-reliable-state[data-reliable-state="permission-blocked"] {
+  --atlas-state-accent: 167 139 250;
+  --atlas-state-surface: 139 92 246;
+}
+
+.atlas-reliable-state[data-reliable-state="success"] {
+  --atlas-state-accent: 52 211 153;
+  --atlas-state-surface: 16 185 129;
+}
+
+@keyframes atlas-reliable-state-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .atlas-reliable-state {
+    border-radius: 18px;
+    padding: 15px;
+  }
+
+  .atlas-reliable-state-actions,
+  .atlas-reliable-state-actions > a,
+  .atlas-reliable-state-actions > button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-reliable-state-skeleton span {
+    animation: none;
+  }
+
+  .atlas-reliable-state-actions > a,
+  .atlas-reliable-state-actions > button {
+    transition: none;
+  }
+}
+
+/* V3000 Fase 6 — contrato canônico de teclado, foco e responsividade. */
+.atlas-v3000-page,
+.atlas-v3000-page > *,
+.atlas-v3000-focus-target {
+  min-width: 0;
+}
+
+.atlas-v3000-page {
+  overflow-wrap: anywhere;
+}
+
+.atlas-v3000-skip-link {
+  position: fixed;
+  inset-block-start: 16px;
+  inset-inline-start: 16px;
+  z-index: 1000;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(calc(-100% - 32px));
+  border: 1px solid var(--atlas-accent, #38bdf8);
+  border-radius: 999px;
+  background: var(--atlas-surface-raised, #0f172a);
+  padding: 10px 16px;
+  color: var(--atlas-text-primary, #f8fafc);
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.4);
+  transition: transform 160ms ease;
+}
+
+.atlas-v3000-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--atlas-accent, #38bdf8);
+  outline-offset: 3px;
+}
+
+.atlas-v3000-focus-target {
+  scroll-margin-block-start: 96px;
+  border-radius: 24px;
+}
+
+.atlas-v3000-focus-target:focus {
+  outline: none;
+}
+
+.atlas-v3000-focus-target:focus-visible {
+  outline: 2px solid var(--atlas-accent, #38bdf8);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px var(--atlas-accent-faint, rgba(56, 189, 248, 0.12));
+}
+
+@media (max-width: 639px) {
+  .atlas-v3000-page {
+    overflow-x: clip;
+  }
+
+  .atlas-v3000-page [data-workspace-layout] {
+    gap: 16px;
+  }
+
+  .atlas-v3000-page .atlas-section-action,
+  .atlas-v3000-page .atlas-priority-heading > :last-child {
+    width: 100%;
+  }
+
+  .atlas-v3000-page .atlas-section-action > *,
+  .atlas-v3000-page .atlas-priority-heading > :last-child:not(:first-child) {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-v3000-skip-link {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .atlas-v3000-skip-link,
+  .atlas-v3000-focus-target:focus-visible {
+    border: 2px solid ButtonText;
+    outline: 2px solid Highlight;
+    box-shadow: none;
   }
 }
 
@@ -8829,8 +10637,7 @@ tbody tr:hover {
   margin-top: 2px;
 }
 
-.atlas-pipeline-column.is-empty-collapsed
-  .atlas-kanban-stage-decision-zone {
+.atlas-pipeline-column.is-empty-collapsed .atlas-kanban-stage-decision-zone {
   margin-bottom: 0;
   padding-bottom: 8px;
 }
@@ -12543,6 +14350,130 @@ tbody tr:hover {
   }
 }
 
+/* V3000 Fase 040 — densidade adaptativa por papel e dispositivo. */
+.atlas-app-shell[data-adaptive-density="role-and-device"]
+  .atlas-decision-card[data-card-density="adaptive"]
+  [data-progressive-layer="decision-in-3s"]
+  > div:nth-child(2) {
+  display: grid;
+}
+
+.atlas-app-shell[data-decision-density-profile="execution"]
+  .atlas-decision-card[data-card-density="adaptive"]
+  .atlas-card-header {
+  padding: 16px 18px;
+}
+
+.atlas-app-shell[data-decision-density-profile="execution"]
+  .atlas-decision-card[data-card-density="adaptive"]
+  [data-progressive-layer="decision-in-3s"]
+  > div:nth-child(2) {
+  gap: 8px;
+  padding: 14px 18px;
+}
+
+.atlas-app-shell[data-decision-density-profile="execution"]
+  .atlas-decision-card[data-card-density="adaptive"]
+  [data-decision-layer="primary-action"] {
+  padding: 14px 18px;
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.08), transparent 72%);
+}
+
+.atlas-app-shell[data-decision-density-profile="exceptions"]
+  .atlas-decision-card[data-card-density="adaptive"]
+  [data-decision-layer="urgency"] {
+  order: 1;
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.12);
+}
+
+.atlas-app-shell[data-decision-density-profile="exceptions"]
+  .atlas-decision-card[data-card-density="adaptive"]
+  [data-decision-layer="relevance"] {
+  order: 2;
+}
+
+.atlas-app-shell[data-decision-density-profile="exceptions"]
+  .atlas-decision-card[data-card-density="adaptive"]
+  [data-decision-layer="evidence"] {
+  order: 3;
+}
+
+.atlas-app-shell[data-decision-density-profile="executive"]
+  .atlas-decision-card[data-card-density="adaptive"]
+  [data-decision-layer="evidence"] {
+  order: 1;
+}
+
+.atlas-app-shell[data-decision-density-profile="executive"]
+  .atlas-decision-card[data-card-density="adaptive"]
+  [data-decision-layer="relevance"] {
+  order: 2;
+}
+
+.atlas-app-shell[data-decision-density-profile="executive"]
+  .atlas-decision-card[data-card-density="adaptive"]
+  [data-decision-layer="urgency"] {
+  order: 3;
+}
+
+@media (min-width: 1180px) {
+  .atlas-app-shell[data-desktop-density="compact"]
+    .atlas-decision-card[data-card-density="adaptive"]
+    .atlas-card-header,
+  .atlas-app-shell[data-desktop-density="compact"]
+    .atlas-decision-card[data-card-density="adaptive"]
+    [data-decision-layer="primary-action"] {
+    padding: 14px 16px;
+  }
+
+  .atlas-app-shell[data-desktop-density="compact"]
+    .atlas-decision-card[data-card-density="adaptive"]
+    [data-progressive-layer="decision-in-3s"]
+    > div:nth-child(2) {
+    gap: 8px;
+    padding: 12px 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  .atlas-app-shell[data-adaptive-density="role-and-device"]
+    .atlas-decision-card[data-card-density="adaptive"]
+    .atlas-card-header {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .atlas-app-shell[data-adaptive-density="role-and-device"]
+    .atlas-decision-card[data-card-density="adaptive"]
+    [data-progressive-layer="decision-in-3s"]
+    > div:nth-child(2) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .atlas-app-shell[data-adaptive-density="role-and-device"]
+    .atlas-decision-card[data-card-density="adaptive"]
+    [data-decision-layer="primary-action"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .atlas-app-shell[data-adaptive-density="role-and-device"]
+    .atlas-decision-card[data-card-density="adaptive"]
+    [data-density-anchor="primary-action"]
+    > :last-child,
+  .atlas-app-shell[data-adaptive-density="role-and-device"]
+    .atlas-decision-card[data-card-density="adaptive"]
+    [data-density-anchor="primary-action"]
+    > :last-child
+    > * {
+    width: 100%;
+  }
+}
+
 /* Fase 033 — workspace adaptativo para tablets e telas intermediárias. */
 @media (min-width: 768px) and (max-width: 1179px) {
   .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
@@ -13865,10 +15796,9 @@ tbody tr:hover {
 /* Fase 128 — Pipeline V30 Kanban Decision Board */
 .atlas-pipeline-v30-decision-layer {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr) minmax(
-      320px,
-      1.2fr
-    ) minmax(180px, 0.48fr);
+  grid-template-columns:
+    minmax(0, 1.05fr) minmax(280px, 0.95fr) minmax(320px, 1.2fr)
+    minmax(180px, 0.48fr);
   gap: 12px;
   padding: 12px;
   border: 1px solid rgba(125, 211, 252, 0.12);
@@ -14483,7 +16413,11 @@ tbody tr:hover {
   overflow: hidden;
   border: 1px solid rgba(125, 211, 252, 0.12);
   border-radius: 26px;
-  background: linear-gradient(145deg, rgba(8, 15, 31, 0.96), rgba(5, 10, 23, 0.9));
+  background: linear-gradient(
+    145deg,
+    rgba(8, 15, 31, 0.96),
+    rgba(5, 10, 23, 0.9)
+  );
   box-shadow: 0 18px 58px rgba(2, 6, 23, 0.28);
 }
 
@@ -14502,7 +16436,9 @@ tbody tr:hover {
   color: rgba(148, 163, 184, 0.82);
   font-size: 11px;
   font-weight: 700;
-  transition: color 0.16s ease, background 0.16s ease;
+  transition:
+    color 0.16s ease,
+    background 0.16s ease;
 }
 
 .atlas-lead360-timeline-overflow summary::-webkit-details-marker {
@@ -15332,6 +17268,179 @@ tbody tr:hover {
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* V3000 Fase 042 — identidade comercial inequívoca no primeiro olhar. */
+.atlas-kanban-v30-commercial-identity {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.atlas-kanban-v30-commercial-identity > a {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-kanban-v30-commercial-identity > a:hover {
+  color: #7dd3fc;
+}
+
+.atlas-kanban-v30-commercial-identity > strong {
+  overflow: hidden;
+  color: rgba(186, 230, 253, 0.86);
+  font-size: 11px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-kanban-v30-commercial-identity dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 3px 0 0;
+}
+
+.atlas-kanban-v30-commercial-identity dl > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.45);
+  padding: 6px 7px;
+}
+
+.atlas-kanban-v30-commercial-identity dt,
+.atlas-kanban-v30-commercial-identity p span {
+  color: rgba(148, 163, 184, 0.72);
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-v30-commercial-identity dd {
+  overflow: hidden;
+  margin: 0;
+  color: rgba(226, 232, 240, 0.94);
+  font-size: 10px;
+  font-weight: 720;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-kanban-v30-commercial-identity p {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+
+.atlas-kanban-v30-commercial-identity p b {
+  overflow: hidden;
+  color: rgba(203, 213, 225, 0.82);
+  font-size: 9px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .atlas-kanban-v30-commercial-identity dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* V3000 Fase 043 — prazo acionável com causa, impacto e ação explícitos. */
+.atlas-kanban-v30-commercial-clock {
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  border-radius: 14px;
+  background: rgba(8, 15, 29, 0.72);
+  padding: 9px 10px;
+}
+
+.atlas-kanban-v30-commercial-clock[data-tone="danger"] {
+  border-color: rgba(251, 113, 133, 0.34);
+  background: rgba(76, 5, 25, 0.16);
+}
+
+.atlas-kanban-v30-commercial-clock[data-tone="warning"] {
+  border-color: rgba(250, 204, 21, 0.28);
+  background: rgba(66, 32, 6, 0.16);
+}
+
+.atlas-kanban-v30-commercial-clock[data-tone="success"] {
+  border-color: rgba(52, 211, 153, 0.24);
+  background: rgba(6, 78, 59, 0.12);
+}
+
+.atlas-kanban-v30-commercial-clock header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.atlas-kanban-v30-commercial-clock header span,
+.atlas-kanban-v30-commercial-clock dt {
+  color: rgba(148, 163, 184, 0.76);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.atlas-kanban-v30-commercial-clock header strong {
+  overflow: hidden;
+  color: rgba(240, 249, 255, 0.96);
+  font-size: 10px;
+  font-weight: 850;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-kanban-v30-commercial-clock dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+}
+
+.atlas-kanban-v30-commercial-clock dl > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  padding-top: 6px;
+}
+
+.atlas-kanban-v30-commercial-clock dd {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 9px;
+  font-weight: 680;
+  line-height: 1.3;
+}
+
+@media (max-width: 640px) {
+  .atlas-kanban-v30-commercial-clock dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .atlas-kanban-v30-card-score {
@@ -18376,7 +20485,8 @@ tbody tr:hover {
 /* Fase 43 — comando dominante, contexto progressivo discreto. */
 .atlas-kanban-v30-stage-command[data-visual-priority="primary-command"] {
   box-shadow:
-    inset 3px 0 0 color-mix(in srgb, var(--atlas-accent, #38bdf8) 54%, transparent),
+    inset 3px 0 0
+      color-mix(in srgb, var(--atlas-accent, #38bdf8) 54%, transparent),
     inset 0 1px rgba(255, 255, 255, 0.035),
     0 8px 22px rgba(2, 8, 23, 0.12);
 }
@@ -18464,7 +20574,8 @@ tbody tr:hover {
   border-top-color: transparent;
   border-radius: 12px 12px 18px 18px;
   box-shadow:
-    inset 3px 0 0 color-mix(in srgb, var(--atlas-accent, #38bdf8) 42%, transparent),
+    inset 3px 0 0
+      color-mix(in srgb, var(--atlas-accent, #38bdf8) 42%, transparent),
     inset 0 1px rgba(255, 255, 255, 0.025),
     0 8px 20px rgba(2, 8, 23, 0.12);
 }
@@ -18665,13 +20776,21 @@ tbody tr:hover {
   min-width: 0;
   border: 1px solid rgba(52, 211, 153, 0.16);
   border-radius: 24px;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.07), rgba(2, 6, 23, 0.5));
+  background: linear-gradient(
+    135deg,
+    rgba(16, 185, 129, 0.07),
+    rgba(2, 6, 23, 0.5)
+  );
   padding: 18px;
 }
 
 .atlas-lead360-attendance-kit[data-tone="warning"] {
   border-color: rgba(251, 191, 36, 0.18);
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.07), rgba(2, 6, 23, 0.5));
+  background: linear-gradient(
+    135deg,
+    rgba(245, 158, 11, 0.07),
+    rgba(2, 6, 23, 0.5)
+  );
 }
 
 .atlas-lead360-attendance-kit-primary {
@@ -18808,5 +20927,153 @@ tbody tr:hover {
   .atlas-material-attendance-context .atlas-button-secondary {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* V3000 Fase 044 — uma ação primária por oportunidade. */
+.atlas-kanban-v30-card-command[data-v3000-phase="44-single-primary-action"] {
+  grid-template-columns: minmax(0, 1fr) auto;
+  box-shadow: inset 3px 0 0 rgba(56, 189, 248, 0.42);
+}
+
+.atlas-kanban-v30-card-command[data-v3000-phase="44-single-primary-action"]
+  [data-action-priority="primary"]
+  > a,
+.atlas-kanban-v30-card-command[data-v3000-phase="44-single-primary-action"]
+  [data-action-priority="primary"]
+  > button {
+  min-width: 148px;
+  min-height: 38px;
+  border-color: rgba(125, 211, 252, 0.34);
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.82),
+    rgba(14, 165, 233, 0.62)
+  );
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(14, 165, 233, 0.16);
+}
+
+.atlas-kanban-v30-card-command[data-primary-action-kind="advance"]
+  [data-action-priority="primary"]
+  > button {
+  border-color: rgba(52, 211, 153, 0.34);
+  background: linear-gradient(
+    135deg,
+    rgba(5, 150, 105, 0.86),
+    rgba(20, 184, 166, 0.68)
+  );
+  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.15);
+}
+
+.atlas-kanban-v30-card-command[data-v3000-phase="44-single-primary-action"]
+  [data-action-priority="primary"]
+  > a:focus-visible,
+.atlas-kanban-v30-card-command[data-v3000-phase="44-single-primary-action"]
+  [data-action-priority="primary"]
+  > button:focus-visible,
+.atlas-kanban-v30-mobile-secondary > summary:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.72);
+  outline-offset: 3px;
+}
+
+.atlas-kanban-v30-card-actions[data-secondary-actions="context-only"] {
+  border-top: 1px solid rgba(148, 163, 184, 0.09);
+  padding-top: 8px;
+}
+
+.atlas-kanban-v30-inline-preview-actions[data-primary-action-count="1"]
+  > :first-child {
+  border-color: rgba(125, 211, 252, 0.34);
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.76),
+    rgba(14, 165, 233, 0.54)
+  );
+  color: #fff;
+}
+
+.atlas-kanban-v30-mobile-secondary {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .atlas-kanban-v30-mobile-decision[data-primary-action-count="1"]
+    .atlas-kanban-v30-mobile-decision-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .atlas-kanban-v30-mobile-decision[data-primary-action-count="1"]
+    .atlas-kanban-v30-mobile-decision-actions
+    > a,
+  .atlas-kanban-v30-mobile-decision[data-primary-action-count="1"]
+    .atlas-kanban-v30-mobile-decision-actions
+    > button {
+    border-color: rgba(125, 211, 252, 0.34);
+    background: linear-gradient(
+      135deg,
+      rgba(37, 99, 235, 0.84),
+      rgba(14, 165, 233, 0.62)
+    );
+    color: #fff;
+  }
+
+  .atlas-kanban-v30-mobile-secondary {
+    display: grid;
+    gap: 7px;
+  }
+
+  .atlas-kanban-v30-mobile-secondary > summary {
+    min-height: 32px;
+    cursor: pointer;
+    color: rgba(186, 230, 253, 0.82);
+    font-size: 10px;
+    font-weight: 850;
+    list-style: none;
+  }
+
+  .atlas-kanban-v30-mobile-secondary > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .atlas-kanban-v30-mobile-secondary > summary::after {
+    content: " +";
+  }
+
+  .atlas-kanban-v30-mobile-secondary[open] > summary::after {
+    content: " −";
+  }
+
+  .atlas-kanban-v30-mobile-secondary > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .atlas-kanban-v30-mobile-secondary a,
+  .atlas-kanban-v30-mobile-secondary button {
+    display: inline-flex;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.045);
+    color: rgba(226, 232, 240, 0.9);
+    font-size: 10px;
+    font-weight: 850;
+  }
+
+  .atlas-kanban-v30-card-command[data-v3000-phase="44-single-primary-action"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .atlas-kanban-v30-card-command[data-v3000-phase="44-single-primary-action"]
+    [data-action-priority="primary"]
+    > a,
+  .atlas-kanban-v30-card-command[data-v3000-phase="44-single-primary-action"]
+    [data-action-priority="primary"]
+    > button {
+    width: 100%;
   }
 }

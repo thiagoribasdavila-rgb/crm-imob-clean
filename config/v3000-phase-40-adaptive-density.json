@@ -1,0 +1,117 @@
+{
+  "phase": 40,
+  "title": "Densidade adaptativa por tela e papel",
+  "status": "adaptive-density-adopted",
+  "previousPhaseRegistry": "config/v3000-phase-39-progressive-card-hierarchy.json",
+  "businessRuntimeMutationAllowed": false,
+  "databaseMutationAllowed": false,
+  "apiDuplicationAllowed": false,
+  "ruleDuplicationAllowed": false,
+  "primaryActionMayBeHidden": false,
+  "densityModes": [
+    "compact",
+    "comfortable",
+    "executive"
+  ],
+  "roleProfiles": [
+    {
+      "profile": "execution",
+      "roles": ["broker"],
+      "focus": "next-action"
+    },
+    {
+      "profile": "exceptions",
+      "roles": ["manager", "superintendent"],
+      "focus": "urgency-and-exceptions"
+    },
+    {
+      "profile": "executive",
+      "roles": ["director", "admin", "director_decisor"],
+      "focus": "impact-and-evidence"
+    }
+  ],
+  "devicePolicy": {
+    "mobile": "single-column-action-full-width",
+    "tablet": "adaptive-workspace",
+    "desktop": "comfortable-or-user-compact"
+  },
+  "sharedDataContract": {
+    "sameDom": true,
+    "cssOnlyReordering": true,
+    "duplicatedApis": false,
+    "duplicatedRules": false
+  },
+  "shell": {
+    "file": "components/atlas/app-shell.tsx",
+    "roleResolverFile": "components/atlas/shell-types.ts",
+    "requiredMarkers": [
+      "resolveDecisionDensityProfile",
+      "data-adaptive-density=\"role-and-device\"",
+      "data-decision-density-profile={decisionDensityProfile}"
+    ]
+  },
+  "canonicalPrimitive": {
+    "file": "components/ui/AtlasCard.tsx",
+    "requiredExports": [
+      "ATLAS_ADAPTIVE_DENSITY_MODES",
+      "ATLAS_ADAPTIVE_DENSITY_CONTRACT",
+      "AtlasDecisionCard"
+    ],
+    "requiredMarkers": [
+      "density = \"adaptive\"",
+      "data-adaptive-density={density}",
+      "data-density-detail=\"supporting\"",
+      "data-density-anchor=\"primary-action\""
+    ],
+    "forbiddenTokens": [
+      "\"use client\"",
+      "'use client'",
+      "useState(",
+      "useEffect(",
+      "window.",
+      "document."
+    ]
+  },
+  "presentation": {
+    "cssFile": "app/globals.css",
+    "requiredMarkers": [
+      "V3000 Fase 040",
+      "data-decision-density-profile=\"execution\"",
+      "data-decision-density-profile=\"exceptions\"",
+      "data-decision-density-profile=\"executive\"",
+      "@media (max-width: 767px)",
+      "data-density-anchor=\"primary-action\""
+    ]
+  },
+  "adoptionSurfaces": [
+    {
+      "id": "command-center",
+      "route": "/dashboard",
+      "source": "app/(crm)/dashboard/page.tsx"
+    },
+    {
+      "id": "leads",
+      "route": "/leads",
+      "source": "app/(crm)/leads/page.tsx"
+    },
+    {
+      "id": "pipeline",
+      "route": "/pipeline",
+      "source": "app/(crm)/pipeline/page.tsx"
+    }
+  ],
+  "acceptanceCriteria": [
+    "Corretor prioriza execução e mantém a próxima ação evidente.",
+    "Gerente prioriza urgência e exceções sem nova consulta.",
+    "Diretor prioriza impacto e evidência sem nova regra de negócio.",
+    "Desktop aceita o modo compacto já existente.",
+    "Mobile usa uma coluna e preserva a ação primária em largura total.",
+    "Todos os perfis usam a mesma árvore de dados.",
+    "A ordem visual é aplicada somente por CSS.",
+    "Nenhuma API é duplicada entre perfis ou dispositivos.",
+    "Nenhuma regra comercial é duplicada entre perfis ou dispositivos.",
+    "Sala de Comando, Leads e Pipeline declaram o mesmo contrato adaptativo.",
+    "A primitiva continua server-safe.",
+    "Nenhuma alteração de banco é autorizada pela Fase 40."
+  ]
+}

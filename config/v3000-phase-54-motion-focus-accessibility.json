@@ -1,0 +1,27 @@
+{
+  "phase": 54,
+  "status": "motion-focus-accessibility-adopted",
+  "previousPhase": {
+    "phase": 53,
+    "status": "decision-kanban-adopted"
+  },
+  "accessibility": {
+    "wcagTarget": "AA",
+    "minimumTextContrast": 4.5,
+    "minimumTargetSize": 24,
+    "primaryTargetSize": 44,
+    "keyboardMovement": ["Alt+ArrowLeft", "Alt+ArrowRight"],
+    "motionPurposes": ["state-change", "data-arrival", "disclosure"],
+    "liveRegion": "polite",
+    "reducedMotion": true,
+    "textAlternative": true,
+    "forcedColors": true
+  },
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "aiCall": false,
+    "visibilityExpansion": false,
+    "syntheticData": false
+  }
+}

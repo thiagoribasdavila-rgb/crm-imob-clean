@@ -10,6 +10,12 @@ import { LoadingState } from "@/components/atlas/loading-state";
 import { MetricCard } from "@/components/atlas/metric-card";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { AtlasDetailDisclosure } from "@/components/atlas/information-primitives";
+import { ATLAS_RELIABLE_STATE_CONTRACT } from "@/components/atlas/reliable-state";
+import {
+  ATLAS_ADAPTIVE_DENSITY_CONTRACT,
+  ATLAS_DECISION_CARD_CONTRACT,
+  ATLAS_PROGRESSIVE_DECISION_CONTRACT,
+} from "@/components/ui/AtlasCard";
 
 type Lead = {
   id: string;
@@ -1228,6 +1234,7 @@ export default function LeadsPage() {
   return (
     <div
       className="space-y-5 pb-10"
+      data-reliable-state-contract={ATLAS_RELIABLE_STATE_CONTRACT}
       data-phase="36-leads-action-workspace"
       data-v30-phase="129-leads-customers-v30-decision-layer"
       data-leads-layout="action-first"
@@ -1519,7 +1526,15 @@ export default function LeadsPage() {
         ) : visiblePriorityQueue.length ? (
           <div className="atlas-leads-action-list">
             {visiblePriorityQueue.slice(0, 3).map((priority, index) => (
-              <article key={priority.lead.id} data-tone={priority.tone}>
+              <article
+                key={priority.lead.id}
+                data-adaptive-density="role-and-device"
+                data-adaptive-density-contract={ATLAS_ADAPTIVE_DENSITY_CONTRACT}
+                data-decision-contract={ATLAS_DECISION_CARD_CONTRACT}
+                data-progressive-contract={ATLAS_PROGRESSIVE_DECISION_CONTRACT}
+                data-progressive-reading="decision-context-history"
+                data-tone={priority.tone}
+              >
                 <div className="atlas-leads-action-rank">
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   <StatusBadge tone={priority.tone}>

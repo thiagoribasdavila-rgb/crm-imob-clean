@@ -1,0 +1,34 @@
+{
+  "phase": 50,
+  "status": "decisive-objection-adopted",
+  "previousPhase": {
+    "phase": 49,
+    "status": "opportunity-attribution-adopted"
+  },
+  "scope": {
+    "allowedKinds": [
+      "price",
+      "credit",
+      "deadline",
+      "region",
+      "typology",
+      "no-return"
+    ],
+    "evidencePriority": [
+      "explicit-objection",
+      "project-mismatch",
+      "no-return",
+      "missing-qualification"
+    ],
+    "maxVisible": 1,
+    "registeredFactsOnly": true,
+    "freeTextNotesAreEvidence": false,
+    "objectiveActionRequired": true
+  },
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "aiCall": false,
+    "freeTextInference": false
+  }
+}

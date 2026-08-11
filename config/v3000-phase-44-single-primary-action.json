@@ -1,0 +1,49 @@
+{
+  "phase": 44,
+  "title": "Uma ação primária por oportunidade",
+  "status": "single-primary-action-adopted",
+  "previousPhaseRegistry": "config/v3000-phase-43-commercial-clock.json",
+  "databaseMutationAllowed": false,
+  "apiDuplicationAllowed": false,
+  "businessRuleMutationAllowed": false,
+  "requiredActionKinds": [
+    "contact",
+    "schedule",
+    "material",
+    "record",
+    "advance"
+  ],
+  "pipelineSurface": {
+    "file": "app/(crm)/pipeline/page.tsx",
+    "requiredMarkers": [
+      "function kanbanV30PrimaryAction(",
+      "data-v3000-phase=\"44-single-primary-action\"",
+      "data-primary-action-count=\"1\"",
+      "data-primary-action-kind={v30Card.primaryAction.kind}",
+      "v30Card.primaryAction.targetStage",
+      "data-secondary-actions=\"context-only\"",
+      "v30Card.primaryAction.kind !== \"advance\""
+    ]
+  },
+  "presentation": {
+    "file": "app/globals.css",
+    "requiredMarkers": [
+      "V3000 Fase 044",
+      "[data-v3000-phase=\"44-single-primary-action\"]",
+      "[data-primary-action-count=\"1\"]",
+      ":focus-visible"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Cada oportunidade expõe somente uma ação dominante no primeiro nível.",
+    "SLA vencido prioriza contato imediato quando há telefone válido.",
+    "Follow-up vencido prioriza a retomada da conversa.",
+    "Oportunidade sem compromisso prioriza registrar a próxima ação.",
+    "Visita prioriza confirmação de agenda e proposta prioriza revisão comercial.",
+    "Oportunidade quente pode avançar de etapa em um clique.",
+    "Ações secundárias continuam disponíveis somente no contexto expandido.",
+    "Card, decisão mobile e preview lateral usam o mesmo seletor de ação.",
+    "A ação de avanço não é repetida quando já é a recomendação primária.",
+    "Nenhuma tabela, policy, API ou regra comercial persistida é alterada."
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "phase": 13,
+  "origin": "https://atlasaios.com.br",
+  "route": "/notifications",
+  "requiredStatus": "approved",
+  "requiredChecks": [
+    "currentReleaseRetained",
+    "candidateInstalled",
+    "applicationStarted",
+    "loginApproved",
+    "authenticatedRouteApproved",
+    "notificationsApproved",
+    "rollbackCommandDocumented",
+    "rollbackTargetVerified"
+  ],
+  "requiredStringFields": [
+    "candidateReleaseIdentifier",
+    "previousReleaseIdentifier",
+    "rollbackOwner",
+    "reviewedBy",
+    "installedAt",
+    "reviewedAt"
+  ],
+  "requiredBusinessDataMutations": 0,
+  "requiredDatabaseMigrations": 0,
+  "requiredBootstrapExecutions": 0,
+  "requiredSecretValuesRecorded": false,
+  "deploymentPerformedByGate": false,
+  "databaseMutationAllowedByGate": false,
+  "automaticPromotionAllowed": false
+}

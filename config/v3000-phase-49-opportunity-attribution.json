@@ -1,0 +1,36 @@
+{
+  "phase": 49,
+  "status": "opportunity-attribution-adopted",
+  "previousPhase": {
+    "phase": 48,
+    "status": "behavioral-signals-adopted"
+  },
+  "scope": {
+    "surface": "pipeline-opportunity-card",
+    "path": [
+      "campaign",
+      "lead",
+      "broker",
+      "stage"
+    ],
+    "contexts": [
+      "source",
+      "project",
+      "developer"
+    ],
+    "registeredFactsOnly": true,
+    "perOpportunity": true,
+    "progressiveDisclosure": true
+  },
+  "financialGuard": {
+    "requiresCompleteAttribution": true,
+    "requiresValidPeriod": true,
+    "requiresExplicitNonNegativeValues": true
+  },
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "aiCall": false,
+    "aggregation": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "phase": 12,
+  "status": "ready-for-authorized-installation",
+  "artifact": "atlas-one-v3000-phase-10-proven.zip",
+  "candidateSha256": "80170576910f3681b50a5a5a43bd24ce0cc29153b9a8d7b22235d9f701336715",
+  "sourceFingerprint": "sha256:8cff80d9cde28c4bf0cf078a4b5e47a8acd4d3a35961fdde162db7c349450aa6",
+  "target": "hostinger",
+  "origin": "https://atlasaios.com.br",
+  "installationMode": "artifact-only-no-database-migration",
+  "bootstrapPolicy": "disabled-existing-administrator",
+  "existingAdministratorPreserved": true,
+  "databaseMutations": 0,
+  "deploymentPerformed": false,
+  "secretValuesIncluded": false,
+  "rollbackPolicy": "retain-current-hostinger-release"
+}

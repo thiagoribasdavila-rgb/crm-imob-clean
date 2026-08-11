@@ -40,7 +40,6 @@ export default defineConfig({
     ["html", { outputFolder: "artifacts/e2e/report", open: "never" }],
   ],
   use: {
-    ...devices["Desktop Chrome"],
     baseURL,
     launchOptions: chromiumExecutablePath
       ? { executablePath: chromiumExecutablePath }
@@ -51,6 +50,16 @@ export default defineConfig({
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },
+  projects: [
+    {
+      name: "desktop-chromium",
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "mobile-chromium",
+      use: { ...devices["Pixel 7"] },
+    },
+  ],
   expect: { timeout: 12_000 },
   webServer: runsLocally
     ? {

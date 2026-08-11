@@ -1,0 +1,31 @@
+{
+  "phase": 53,
+  "status": "decision-kanban-adopted",
+  "previousPhase": {
+    "phase": 52,
+    "status": "command-center-exceptions-adopted"
+  },
+  "board": {
+    "visibleHeaderMetrics": ["volume", "valid-value", "main-bottleneck"],
+    "preservedCardContext": [
+      "project",
+      "validation",
+      "next-action",
+      "movement-audit"
+    ],
+    "progressiveContext": [
+      "commercial-clock",
+      "conversation-continuity",
+      "project-compatibility"
+    ],
+    "mobileColumns": 1,
+    "governedMovement": ["drag-and-drop", "keyboard-alt-arrows", "undo-audit"]
+  },
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "aiCall": false,
+    "visibilityExpansion": false,
+    "syntheticData": false
+  }
+}

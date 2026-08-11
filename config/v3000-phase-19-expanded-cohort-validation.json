@@ -1,0 +1,56 @@
+{
+  "phase": 19,
+  "requiredStatus": "approved",
+  "requiredChecks": [
+    "humanValidationApproved",
+    "requiredJourneysValidated",
+    "roleVisibilityValidated",
+    "tenantIsolationValidated",
+    "leadScopeValidated",
+    "taskScopeValidated",
+    "pipelineScopeValidated",
+    "monitoringCoverageConfirmed",
+    "supportCoverageConfirmed",
+    "rollbackStillReady",
+    "noCriticalIncident",
+    "noUnresolvedHighSeverityIncident",
+    "dataPrivacyReviewed"
+  ],
+  "requiredStringFields": [
+    "releaseIdentifier",
+    "validationOwner",
+    "rollbackOwner",
+    "reviewedBy",
+    "sanitizedValidationReference",
+    "observationStartedAt",
+    "observationEndedAt",
+    "reviewedAt"
+  ],
+  "requiredRoles": [
+    "DIRETOR",
+    "GERENTE",
+    "CORRETOR"
+  ],
+  "requiredJourneys": [
+    "authenticatedSession",
+    "roleScopedNavigation",
+    "leadReadWithinScope",
+    "taskReadWithinScope",
+    "pipelineReadWithinScope",
+    "logout"
+  ],
+  "minimumObservationDurationMinutes": 120,
+  "maximumCriticalIncidents": 0,
+  "maximumUnresolvedHighSeverityIncidents": 0,
+  "requiredDatabaseMigrationsByGate": 0,
+  "requiredBootstrapExecutionsByGate": 0,
+  "requiredBusinessDataMutationsByGate": 0,
+  "requiredUsersProvisionedByGate": 0,
+  "requiredSecretValuesRecorded": false,
+  "requiredPersonalDataInEvidence": false,
+  "deploymentPerformedByGate": false,
+  "databaseMutationAllowedByGate": false,
+  "automaticUserProvisioningAllowed": false,
+  "automaticExpansionAllowed": false,
+  "automaticRollbackAllowed": false
+}

@@ -1,0 +1,17 @@
+{
+  "phase": 8,
+  "pilot": "notifications",
+  "route": "/notifications",
+  "localContract": "approved",
+  "authenticatedProductionRoute": "missing",
+  "productionExperience": "atlas-app-404",
+  "consoleWarnings": 0,
+  "consoleErrors": 0,
+  "desktopProof": "blocked-by-release-parity",
+  "mobileProof": "blocked-by-release-parity",
+  "keyboardProof": "blocked-by-release-parity",
+  "realActionsProof": "blocked-by-release-parity",
+  "eligibleForTemplatePromotion": false,
+  "dataMutations": 0,
+  "nextGate": "deploy-current-pilot-and-repeat-authenticated-proof"
+}

@@ -1,0 +1,38 @@
+{
+  "phase": 14,
+  "origin": "https://atlasaios.com.br",
+  "route": "/notifications",
+  "requiredStatus": "approved",
+  "requiredChecks": [
+    "releaseRemainedAvailable",
+    "authenticationHealthy",
+    "dashboardHealthy",
+    "notificationsHealthy",
+    "dataIntegrityConfirmed",
+    "rollbackStillReady",
+    "noCriticalIncident",
+    "humanObservationApproved"
+  ],
+  "requiredStringFields": [
+    "releaseIdentifier",
+    "rollbackOwner",
+    "observedBy",
+    "reviewedBy",
+    "observationStartedAt",
+    "observationEndedAt",
+    "reviewedAt"
+  ],
+  "minimumObservationMinutes": 30,
+  "minimumAuthenticatedChecks": 2,
+  "minimumDashboardChecks": 2,
+  "minimumNotificationChecks": 2,
+  "maximumCriticalIncidents": 0,
+  "requiredBusinessDataMutations": 0,
+  "requiredDatabaseMigrations": 0,
+  "requiredBootstrapExecutions": 0,
+  "requiredSecretValuesRecorded": false,
+  "deploymentPerformedByGate": false,
+  "databaseMutationAllowedByGate": false,
+  "automaticExpansionAllowed": false,
+  "automaticRollbackAllowed": false
+}

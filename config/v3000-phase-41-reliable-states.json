@@ -1,0 +1,142 @@
+{
+  "phase": 41,
+  "title": "Estados confiáveis e consistentes",
+  "status": "reliable-states-adopted",
+  "previousPhaseRegistry": "config/v3000-phase-40-adaptive-density.json",
+  "businessRuntimeMutationAllowed": false,
+  "databaseMutationAllowed": false,
+  "apiDuplicationAllowed": false,
+  "ruleDuplicationAllowed": false,
+  "inventedMetricsAllowed": false,
+  "technicalErrorsMayReachUser": false,
+  "ambiguousZeroAllowed": false,
+  "stateKinds": [
+    "loading",
+    "empty",
+    "partial",
+    "stale",
+    "recoverable-error",
+    "permission-blocked",
+    "success"
+  ],
+  "invariants": {
+    "zeroIsVerifiedEmpty": true,
+    "failureNeverRendersAsZero": true,
+    "noInventedMetrics": true,
+    "technicalErrorsHidden": true,
+    "nanForbidden": true,
+    "permissionIsNotSystemFailure": true,
+    "recoverableErrorRequiresAction": true
+  },
+  "canonicalPrimitive": {
+    "file": "components/atlas/reliable-state.tsx",
+    "requiredExports": [
+      "ATLAS_RELIABLE_STATE_KINDS",
+      "ATLAS_RELIABLE_STATE_CONTRACT",
+      "safeOperationalDescription",
+      "ReliableState"
+    ],
+    "requiredMarkers": [
+      "technicalFailurePattern",
+      "data-reliable-state={kind}",
+      "data-zero-meaning={resolvedZeroMeaning}",
+      "data-recovery-action={",
+      "O Atlas registrou a inconsistência. Seus dados continuam protegidos."
+    ],
+    "forbiddenTokens": [
+      "\"use client\"",
+      "'use client'",
+      "useState(",
+      "useEffect(",
+      "window.",
+      "document.",
+      "fetch(",
+      "supabase."
+    ]
+  },
+  "legacyAdapters": [
+    {
+      "file": "components/atlas/loading-state.tsx",
+      "requiredMarkers": ["ReliableState", "kind=\"loading\""]
+    },
+    {
+      "file": "components/atlas/empty-state.tsx",
+      "requiredMarkers": ["ReliableState", "kind=\"empty\"", "verified-empty"]
+    },
+    {
+      "file": "components/atlas/error-state.tsx",
+      "requiredMarkers": [
+        "ReliableState",
+        "recoverable-error",
+        "permission-blocked"
+      ]
+    }
+  ],
+  "template": {
+    "file": "components/atlas/v3000-page-template.tsx",
+    "requiredMarkers": [
+      "ATLAS_RELIABLE_STATE_CONTRACT",
+      "data-reliable-state-contract={ATLAS_RELIABLE_STATE_CONTRACT}",
+      "data-page-feedback=\"reliable-operational-state\""
+    ]
+  },
+  "presentation": {
+    "file": "app/globals.css",
+    "requiredMarkers": [
+      "V3000 Fase 041",
+      ".atlas-reliable-state",
+      "data-reliable-state=\"recoverable-error\"",
+      "data-reliable-state=\"permission-blocked\"",
+      "prefers-reduced-motion"
+    ]
+  },
+  "adoptionSurfaces": [
+    {
+      "id": "command-center",
+      "route": "/dashboard",
+      "source": "app/(crm)/dashboard/page.tsx",
+      "requiredMarkers": [
+        "ATLAS_RELIABLE_STATE_CONTRACT",
+        "data-reliable-state-contract={ATLAS_RELIABLE_STATE_CONTRACT}",
+        "kind=\"permission-blocked\"",
+        "kind=\"partial\""
+      ]
+    },
+    {
+      "id": "leads",
+      "route": "/leads",
+      "source": "app/(crm)/leads/page.tsx",
+      "requiredMarkers": [
+        "ATLAS_RELIABLE_STATE_CONTRACT",
+        "data-reliable-state-contract={ATLAS_RELIABLE_STATE_CONTRACT}"
+      ]
+    },
+    {
+      "id": "pipeline",
+      "route": "/pipeline",
+      "source": "app/(crm)/pipeline/page.tsx",
+      "requiredMarkers": [
+        "ATLAS_RELIABLE_STATE_CONTRACT",
+        "data-reliable-state-contract={ATLAS_RELIABLE_STATE_CONTRACT}",
+        "ReliableState",
+        "kind=\"recoverable-error\"",
+        "verified-empty"
+      ]
+    }
+  ],
+  "acceptanceCriteria": [
+    "Carregamento possui skeleton e semântica aria-busy.",
+    "Vazio representa somente ausência confirmada no recorte consultado.",
+    "Zero real usa o marcador verified-empty.",
+    "Falha nunca é convertida silenciosamente em zero.",
+    "Leitura parcial é distinta de erro recuperável.",
+    "Dado desatualizado é distinto de carregamento.",
+    "Bloqueio de permissão não é apresentado como falha do sistema.",
+    "Erro recuperável oferece uma ação de recuperação.",
+    "Mensagens técnicas de banco e stack não chegam ao usuário.",
+    "Nenhuma métrica inventada ou NaN é autorizada.",
+    "Sala de Comando, Leads e Pipeline declaram o mesmo contrato.",
+    "Os adapters legados convergem para uma primitiva server-safe.",
+    "Nenhuma alteração de banco, API ou regra comercial é autorizada."
+  ]
+}

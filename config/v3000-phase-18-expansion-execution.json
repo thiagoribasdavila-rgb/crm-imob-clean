@@ -1,0 +1,46 @@
+{
+  "phase": 18,
+  "requiredStatus": "completed",
+  "requiredChecks": [
+    "manualExecutionConfirmed",
+    "authorizedArtifactPreserved",
+    "authorizedRolesPreserved",
+    "authorizedUserLimitPreserved",
+    "tenantIsolationVerified",
+    "accessValidationCompleted",
+    "monitoringActive",
+    "supportAvailable",
+    "rollbackStillReady",
+    "noCriticalIncident",
+    "noUnresolvedHighSeverityIncident"
+  ],
+  "requiredStringFields": [
+    "releaseIdentifier",
+    "executionOwner",
+    "rollbackOwner",
+    "validatedBy",
+    "sanitizedExecutionReference",
+    "executionStartedAt",
+    "executionEndedAt",
+    "validatedAt"
+  ],
+  "requiredRoles": [
+    "DIRETOR",
+    "GERENTE",
+    "CORRETOR"
+  ],
+  "minimumExecutionDurationMinutes": 30,
+  "maximumCriticalIncidents": 0,
+  "maximumUnresolvedHighSeverityIncidents": 0,
+  "requiredDatabaseMigrationsByGate": 0,
+  "requiredBootstrapExecutionsByGate": 0,
+  "requiredBusinessDataMutationsByGate": 0,
+  "requiredUsersProvisionedByGate": 0,
+  "requiredSecretValuesRecorded": false,
+  "requiredPersonalDataInEvidence": false,
+  "deploymentPerformedByGate": false,
+  "databaseMutationAllowedByGate": false,
+  "automaticUserProvisioningAllowed": false,
+  "automaticExpansionAllowed": false,
+  "automaticRollbackAllowed": false
+}

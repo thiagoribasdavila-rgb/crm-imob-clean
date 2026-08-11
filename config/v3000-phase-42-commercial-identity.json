@@ -1,0 +1,61 @@
+{
+  "phase": 42,
+  "title": "Identidade comercial inequívoca",
+  "status": "commercial-identity-adopted",
+  "previousPhaseRegistry": "config/v3000-phase-41-reliable-states.json",
+  "databaseMutationAllowed": false,
+  "apiDuplicationAllowed": false,
+  "businessRuleMutationAllowed": false,
+  "requiredSignals": [
+    "name",
+    "project",
+    "stage",
+    "source",
+    "responsible",
+    "lastInteraction"
+  ],
+  "pipelineSurface": {
+    "file": "app/(crm)/pipeline/page.tsx",
+    "requiredMarkers": [
+      "data-commercial-identity=\"complete\"",
+      "42-commercial-identity",
+      "leadProjectLabel(lead)",
+      "Etapa",
+      "Origem",
+      "Responsável",
+      "Última interação",
+      "Projeto não vinculado",
+      "Origem não informada",
+      "Sem responsável",
+      "Sem interação registrada"
+    ]
+  },
+  "pipelineApi": {
+    "file": "app/api/v1/pipeline/route.ts",
+    "requiredMarkers": [
+      "LIVE_PROFILE_SELECT",
+      "assignedProfileIds",
+      ".eq(\"organization_id\", identity.organizationId)",
+      "assignedNameById",
+      "assigned_name:",
+      "pipeline.assigned_profiles_unavailable"
+    ]
+  },
+  "presentation": {
+    "file": "app/globals.css",
+    "requiredMarkers": [
+      "V3000 Fase 042",
+      ".atlas-kanban-v30-commercial-identity",
+      "grid-template-columns: repeat(3, minmax(0, 1fr))"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Todo card visível identifica o lead sem abrir o Lead 360.",
+    "Todo card visível identifica projeto, etapa e origem.",
+    "Todo card visível informa o responsável ou um fallback inequívoco.",
+    "Todo card visível informa a última interação real ou sua ausência.",
+    "O responsável é resolvido somente dentro da organização autenticada.",
+    "Falha da referência auxiliar não impede a leitura do Pipeline.",
+    "Nenhuma tabela, policy ou regra comercial é alterada."
+  ]
+}

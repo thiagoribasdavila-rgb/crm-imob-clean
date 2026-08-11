@@ -1,0 +1,31 @@
+{
+  "phase": 52,
+  "status": "command-center-exceptions-adopted",
+  "previousPhase": {
+    "phase": 51,
+    "status": "role-oriented-cards-adopted"
+  },
+  "composition": {
+    "primaryDecisions": 1,
+    "exceptionQueueLimit": 3,
+    "supportIndicatorLimit": 3,
+    "maxClicksToOpportunity": 2,
+    "deduplicateBy": "normalized-title-and-href"
+  },
+  "sources": {
+    "primary": "existing-command-decision",
+    "exceptions": [
+      "authenticated-role-priorities",
+      "module-health",
+      "existing-operational-metrics"
+    ],
+    "support": ["existing-module-health", "authenticated-scope-aggregates"]
+  },
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "aiCall": false,
+    "visibilityExpansion": false,
+    "syntheticData": false
+  }
+}

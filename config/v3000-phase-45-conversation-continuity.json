@@ -1,0 +1,33 @@
+{
+  "phase": 45,
+  "status": "conversation-continuity-adopted",
+  "title": "Continuidade comprovada da conversa",
+  "previousPhase": {
+    "phase": 44,
+    "status": "single-primary-action-adopted"
+  },
+  "scope": {
+    "surface": "pipeline-opportunity-card",
+    "readOnly": true,
+    "tenantScoped": true,
+    "messageContentExposed": false,
+    "channelEvidenceRequired": true
+  },
+  "states": [
+    "customer_replied",
+    "waiting_customer",
+    "recorded",
+    "history_only",
+    "no_evidence"
+  ],
+  "sources": {
+    "conversation": "public.conversations",
+    "messageEvidence": "public.messages",
+    "fallback": "leads.last_interaction_at"
+  },
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "whatsappInferenceWithoutEvidence": false
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "phase": 48,
+  "status": "behavioral-signals-adopted",
+  "previousPhase": {
+    "phase": 47,
+    "status": "recommendation-confidence-adopted"
+  },
+  "scope": {
+    "surface": "pipeline-opportunity-card",
+    "maxSignals": 3,
+    "registeredFactsOnly": true,
+    "fullHistoryRoute": "/leads/[id]",
+    "timelineInCard": false,
+    "progressiveDisclosure": true,
+    "readOnly": true
+  },
+  "signals": [
+    "customer-return",
+    "silence",
+    "visit",
+    "material-open",
+    "preference-change"
+  ],
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "aiCall": false
+  }
+}

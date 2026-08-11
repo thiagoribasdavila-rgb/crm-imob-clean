@@ -1,0 +1,49 @@
+{
+  "phase": 55,
+  "status": "decision-performance-adopted",
+  "previousPhase": {
+    "phase": 54,
+    "status": "motion-focus-accessibility-adopted"
+  },
+  "budgets": {
+    "interactionFeedbackMs": 100,
+    "telemetryPayloadBytes": 1024,
+    "operationalLeadLimit": 500
+  },
+  "comparisonFixture": {
+    "leadCount": 500,
+    "stageCount": 7,
+    "previousComparisons": 3500,
+    "optimizedOperations": 507,
+    "reductionPercent": 85.51
+  },
+  "decisionEvents": [
+    "atlas.pipeline_priority_identified",
+    "atlas.pipeline_opportunity_opened",
+    "atlas.pipeline_action_started",
+    "atlas.pipeline_result_registered"
+  ],
+  "privacy": {
+    "personalContent": false,
+    "leadIdentity": false,
+    "contactData": false,
+    "conversationContent": false,
+    "allowedPayload": [
+      "performanceVersion",
+      "durationMs",
+      "loadedLeadCount",
+      "visibleStageCount",
+      "method",
+      "fromStage",
+      "toStage",
+      "result"
+    ]
+  },
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "aiCall": false,
+    "visibilityExpansion": false,
+    "syntheticBusinessData": false
+  }
+}

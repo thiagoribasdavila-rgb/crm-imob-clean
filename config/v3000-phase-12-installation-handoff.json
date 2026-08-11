@@ -1,0 +1,60 @@
+{
+  "phase": 12,
+  "target": "hostinger",
+  "origin": "https://atlasaios.com.br",
+  "installationMode": "artifact-only-no-database-migration",
+  "environmentTemplate": ".env.homologation.example",
+  "node": ">=22",
+  "recommendedNode": "24",
+  "buildCommand": "npm run build",
+  "startCommand": "npm start",
+  "requiredArchiveEntries": [
+    ".env.example",
+    ".env.homologation.example",
+    ".nvmrc",
+    "package.json",
+    "package-lock.json",
+    "next.config.ts",
+    "postcss.config.mjs",
+    "ecosystem.config.cjs",
+    "proxy.ts",
+    "scripts/build.mjs",
+    "app/(crm)/notifications/page.tsx",
+    "components/atlas/notifications-v3000-surface.tsx",
+    "HOSTINGER_PACKAGE.json",
+    "RELEASE_FILES.sha256",
+    "INSTALACAO.md"
+  ],
+  "requiredEnvironmentNames": [
+    "ATLAS_ENV",
+    "ATLAS_HOSTING_PROVIDER",
+    "ATLAS_BASE_URL",
+    "NEXT_PUBLIC_APP_URL",
+    "ATLAS_DEFAULT_ORGANIZATION_ID",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "DATABASE_URL",
+    "ATLAS_CRON_SECRET"
+  ],
+  "forbiddenArchiveBasenames": [
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "hostinger.env",
+    "credentials.json",
+    "service-account.json",
+    "id_rsa",
+    "id_ed25519"
+  ],
+  "forbiddenArchiveSuffixes": [
+    ".pem",
+    ".p12",
+    ".pfx"
+  ],
+  "bootstrapPolicy": "disabled-existing-administrator",
+  "rollbackPolicy": "retain-current-hostinger-release",
+  "databaseMigrationAllowed": false,
+  "secretValuesAllowed": false
+}

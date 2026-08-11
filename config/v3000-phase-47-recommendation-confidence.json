@@ -1,0 +1,37 @@
+{
+  "phase": 47,
+  "status": "recommendation-confidence-adopted",
+  "previousPhase": {
+    "phase": 46,
+    "status": "project-compatibility-adopted"
+  },
+  "scope": {
+    "surface": "pipeline-opportunity-card",
+    "separatesScorePriorityAndConfidence": true,
+    "explanationProgressive": true,
+    "qualitativeEvidenceOnly": true,
+    "aiConfidenceMeasured": false,
+    "salesProbabilityDisplayed": false,
+    "evaluatedAtVisible": true,
+    "readOnly": true
+  },
+  "confidence": {
+    "levels": [
+      "initial",
+      "medium",
+      "high"
+    ],
+    "totalSignals": 9,
+    "meaning": "quality-of-recorded-evidence-not-sales-probability"
+  },
+  "sources": [
+    "lead operational fields",
+    "first contact SLA",
+    "project compatibility"
+  ],
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "aiCall": false
+  }
+}

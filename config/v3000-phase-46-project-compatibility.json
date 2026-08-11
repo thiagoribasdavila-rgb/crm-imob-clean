@@ -1,0 +1,37 @@
+{
+  "phase": 46,
+  "status": "project-compatibility-adopted",
+  "previousPhase": {
+    "phase": 45,
+    "status": "conversation-continuity-adopted"
+  },
+  "scope": {
+    "surface": "pipeline-opportunity-card",
+    "evidenceOnly": true,
+    "tenantScoped": true,
+    "readOnly": true,
+    "progressiveDisclosure": true,
+    "missingDataBecomesQuestion": true,
+    "aiProbabilityDisplayed": false
+  },
+  "criteria": [
+    "budget",
+    "region",
+    "typology",
+    "timeline",
+    "purpose"
+  ],
+  "sources": {
+    "projects": [
+      "public.developments",
+      "public.crm_projects"
+    ],
+    "qualification": "public.lead_qualification_profiles",
+    "fallback": "lead operational fields"
+  },
+  "constraints": {
+    "databaseMigration": false,
+    "businessMutation": false,
+    "aiCall": false
+  }
+}
