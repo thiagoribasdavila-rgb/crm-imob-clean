@@ -44,7 +44,14 @@ const scripts = collectPhaseIds("scripts");
 const tests = collectPhaseIds("tests");
 const phases = snapshot.consolidation.phases;
 const completed = phases.filter((phase) => phase.status === "complete");
+const current = phases.find(
+  (phase) => phase.id === snapshot.consolidation.currentPhase,
+);
 const next = phases.filter((phase) => phase.status === "next");
+const completedThrough =
+  current?.status === "complete"
+    ? snapshot.consolidation.currentPhase
+    : snapshot.consolidation.currentPhase - 1;
 const failures = [];
 
 assert(
@@ -78,13 +85,27 @@ assert(
   failures,
 );
 assert(
-  completed.length === snapshot.consolidation.currentPhase,
-  "O gate atual não corresponde às fases comprovadas.",
+  completed.length === completedThrough &&
+    completed.every((phase, index) => phase.id === index + 1),
+  "Os gates concluídos não correspondem às fases comprovadas.",
   failures,
 );
 assert(
-  next.length === 1 && next[0].id === snapshot.consolidation.currentPhase + 1,
-  "A próxima fase da consolidação não é única ou sequencial.",
+  current && ["complete", "in_progress"].includes(current.status),
+  "O gate atual não está identificado como concluído ou em progresso.",
+  failures,
+);
+assert(
+  next.length <= 1 &&
+    (next.length === 0 || next[0].id === snapshot.consolidation.currentPhase + 1),
+  "A próxima fase explícita da consolidação não é única ou sequencial.",
+  failures,
+);
+assert(
+  phases
+    .filter((phase) => phase.id > snapshot.consolidation.currentPhase)
+    .every((phase) => ["pending", "next"].includes(phase.status)),
+  "Um gate futuro foi promovido antes do gate atual.",
   failures,
 );
 assert(snapshot.program.targetPhases === 3000, "A meta V3000 foi alterada.", failures);
@@ -103,7 +124,9 @@ const result = {
   consolidation: {
     completed: completed.length,
     total: phases.length,
-    next: next[0]?.id ?? null,
+    current: current?.id ?? null,
+    currentStatus: current?.status ?? null,
+    next: next[0]?.id ?? Math.min(snapshot.consolidation.currentPhase + 1, phases.length),
   },
   failures,
 };

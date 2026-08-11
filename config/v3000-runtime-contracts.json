@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "atlas.v3000.runtime-contracts.v1",
+  "phase": 381,
+  "consolidationGate": 8,
+  "baseUrl": "https://atlasaios.com.br",
+  "publicProbes": [
+    {
+      "id": "login_public",
+      "path": "/login",
+      "expectedStatus": 200,
+      "expectedContentType": "text/html"
+    },
+    {
+      "id": "setup_public",
+      "path": "/setup",
+      "expectedStatus": 200,
+      "expectedContentType": "text/html"
+    },
+    {
+      "id": "dashboard_requires_session",
+      "path": "/dashboard",
+      "expectedStatus": 307,
+      "expectedLocation": "/login?next=%2Fdashboard"
+    },
+    {
+      "id": "auth_me_rejects_anonymous",
+      "path": "/api/v1/auth/me",
+      "expectedStatus": 401,
+      "expectedContentType": "application/json",
+      "expectedErrorCode": "UNAUTHENTICATED"
+    }
+  ],
+  "contractFiles": {
+    "proxy": "proxy.ts",
+    "authMe": "app/api/v1/auth/me/route.ts",
+    "accessContext": "lib/api/security.ts",
+    "bearerIdentity": "lib/security/api-auth.ts",
+    "rlsAudit": "scripts/check-rls.mjs",
+    "rlsMatrix": "scripts/check-atlas-rls-access-matrix-phase-007.mjs"
+  },
+  "authenticatedRuntimeProof": {
+    "status": "PENDING",
+    "reasonCode": "SAFE_SESSION_UNAVAILABLE",
+    "requiredEvidence": [
+      "authenticated_session_resolves_profile",
+      "profile_resolves_active_organization",
+      "role_is_loaded_from_profile",
+      "tenant_scoped_data_read_succeeds",
+      "cross_tenant_data_read_is_denied"
+    ],
+    "forbiddenShortcuts": [
+      "copy_browser_cookies",
+      "log_passwords_or_tokens",
+      "use_service_role_as_user_proof",
+      "run_bootstrap_again",
+      "mutate_remote_database"
+    ]
+  }
+}

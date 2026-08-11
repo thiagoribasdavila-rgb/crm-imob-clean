@@ -3,13 +3,13 @@
     "name": "Atlas One V3000",
     "targetPhases": 3000,
     "legacyPhasesRequested": 380,
-    "verifiedHistoricalPhases": 380,
-    "phaseContractsFound": 60,
-    "lastVerifiedPhase": 380
+    "verifiedHistoricalPhases": 381,
+    "phaseContractsFound": 61,
+    "lastVerifiedPhase": 381
   },
   "consolidation": {
     "totalPhases": 16,
-    "currentPhase": 7,
+    "currentPhase": 8,
     "phases": [
       {
         "id": 1,
@@ -56,8 +56,8 @@
       {
         "id": 8,
         "name": "Provar contratos de runtime",
-        "status": "next",
-        "outcome": "Autenticação, organização e dados sem regressão."
+        "status": "in_progress",
+        "outcome": "Fronteira anônima, contratos de autenticação, tenant, papéis e RLS comprovados; sessão autenticada e negação cross-tenant ainda pendentes."
       },
       {
         "id": 9,

@@ -95,7 +95,7 @@ test("governança fecha a fase histórica 380 e avança ao gate 8", () => {
     "complete",
   );
   assert.ok(
-    ["next", "complete"].includes(
+    ["next", "in_progress", "complete"].includes(
       progress.consolidation.phases.find((phase) => phase.id === 8)?.status,
     ),
   );

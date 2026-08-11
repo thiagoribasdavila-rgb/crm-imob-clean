@@ -27,15 +27,27 @@ test("somente gates comprovados aparecem concluídos", () => {
   const complete = snapshot.consolidation.phases.filter(
     (phase) => phase.status === "complete",
   );
+  const current = snapshot.consolidation.phases.find(
+    (phase) => phase.id === snapshot.consolidation.currentPhase,
+  );
   const next = snapshot.consolidation.phases.filter(
     (phase) => phase.status === "next",
   );
+  const completedThrough =
+    current?.status === "complete"
+      ? snapshot.consolidation.currentPhase
+      : snapshot.consolidation.currentPhase - 1;
 
   assert.deepEqual(
     complete.map((phase) => phase.id),
-    Array.from({ length: snapshot.consolidation.currentPhase }, (_, index) => index + 1),
+    Array.from({ length: completedThrough }, (_, index) => index + 1),
   );
-  assert.deepEqual(next.map((phase) => phase.id), [snapshot.consolidation.currentPhase + 1]);
+  assert.ok(current);
+  assert.ok(["complete", "in_progress"].includes(current.status));
+  assert.ok(next.length <= 1);
+  if (next.length === 1) {
+    assert.equal(next[0].id, snapshot.consolidation.currentPhase + 1);
+  }
 });
 
 test("página canônica usa template V3000 e remove programa inflado", () => {
