@@ -48,7 +48,7 @@
       "requiredMarkers": [
         "ATLAS_DECISION_CARD_CONTRACT",
         "data-decision-contract={ATLAS_DECISION_CARD_CONTRACT}",
-        "atlas-command-detail atlas-command-decision-layer"
+        "atlas-command-primary-signal"
       ]
     },
     {

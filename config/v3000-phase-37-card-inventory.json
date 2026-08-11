@@ -40,7 +40,7 @@
         "/api/v1/analytics/broker-daily"
       ],
       "requiredMarkers": [
-        "DecisionContractStrip",
+        "atlas-command-primary-signal",
         "AtlasMetricDeck",
         "/api/v1/analytics/lead-intake?days=14"
       ],

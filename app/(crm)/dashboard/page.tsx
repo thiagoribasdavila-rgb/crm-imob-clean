@@ -10,7 +10,6 @@ import { LoadingState } from "@/components/atlas/loading-state";
 import { MetricCard } from "@/components/atlas/metric-card";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
-import { DecisionContractStrip } from "@/components/atlas/decision-contract-strip";
 import { ATLAS_RELIABLE_STATE_CONTRACT } from "@/components/atlas/reliable-state";
 import {
   AtlasDetailDisclosure,
@@ -26,7 +25,6 @@ import {
   selectCommandCenterSupportIndicators,
   type CommandCenterExceptionCandidate,
 } from "@/lib/atlas/command-center-exceptions";
-import { getScreenDecisionContract } from "@/lib/ui/screen-decision-contract";
 
 // Fase 40 · SLA do time permanece como base da fila; a Fase 35 amplia sua medição.
 
@@ -1723,17 +1721,6 @@ export default function DashboardPage() {
     };
   })();
 
-  const screenDecisionContract = getScreenDecisionContract(
-    "/dashboard",
-    isDirector
-      ? "director"
-      : isSuperintendent
-        ? "superintendent"
-        : isManager
-          ? "manager"
-          : viewerRole,
-  );
-
   const v30Cockpit = useMemo(() => {
     const healthScore = moduleHealth.length
       ? Math.round((operationalModules / moduleHealth.length) * 100)
@@ -2017,6 +2004,11 @@ export default function DashboardPage() {
         </div>
         <div
           className="atlas-command-pulse atlas-command-pulse-with-robot"
+          data-adaptive-density="role-and-device"
+          data-adaptive-density-contract={ATLAS_ADAPTIVE_DENSITY_CONTRACT}
+          data-decision-contract={ATLAS_DECISION_CARD_CONTRACT}
+          data-progressive-contract={ATLAS_PROGRESSIVE_DECISION_CONTRACT}
+          data-progressive-reading="decision-context-history"
           aria-live="polite"
         >
           <Image
@@ -2061,20 +2053,6 @@ export default function DashboardPage() {
               : "Sincronizando dados"}
           </small>
         </div>
-      </section>
-
-      <section
-        className="atlas-command-detail atlas-command-decision-layer"
-        data-adaptive-density="role-and-device"
-        data-adaptive-density-contract={ATLAS_ADAPTIVE_DENSITY_CONTRACT}
-        data-decision-contract={ATLAS_DECISION_CARD_CONTRACT}
-        data-progressive-contract={ATLAS_PROGRESSIVE_DECISION_CONTRACT}
-        data-progressive-reading="decision-context-history"
-      >
-        <DecisionContractStrip
-          contract={screenDecisionContract}
-          currentDecision={commandDecision.title}
-        />
       </section>
 
       <section

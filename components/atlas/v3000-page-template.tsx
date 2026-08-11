@@ -102,7 +102,7 @@ export function V3000PageTemplate({
         <div
           aria-atomic="true"
           aria-live="polite"
-          data-page-feedback="recoverable-state"
+          data-page-feedback="reliable-operational-state"
           data-reliable-state-system="loading-empty-partial-stale-error-permission-success"
         >
           {feedback}

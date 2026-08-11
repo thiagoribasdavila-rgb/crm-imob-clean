@@ -40,7 +40,7 @@ test("estados e conteúdo operacional entram por slots tipados", () => {
   assert.match(template, /feedback\?: ReactNode/);
   assert.match(template, /workspace: V3000Workspace/);
   assert.match(template, /content: ReactNode/);
-  assert.match(template, /data-page-feedback="recoverable-state"/);
+  assert.match(template, /data-page-feedback="reliable-operational-state"/);
   assert.match(template, /data-workspace-layout=/);
 });
 
