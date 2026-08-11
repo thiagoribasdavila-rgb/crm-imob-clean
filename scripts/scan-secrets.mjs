@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const excludedDirectories = new Set([".git", ".next", "node_modules", "dist", "tmp", "outputs"]);
@@ -14,7 +14,9 @@ function filesystemFiles(directory = ".") {
 let files;
 let usingGitIndex = false;
 try {
-  files = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\0").filter(Boolean);
+  files = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+    .split("\0")
+    .filter((file) => file && existsSync(file));
   usingGitIndex = files.length > 0;
   if (!usingGitIndex) files = filesystemFiles();
 } catch {

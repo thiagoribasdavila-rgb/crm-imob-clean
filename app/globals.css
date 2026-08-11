@@ -238,6 +238,13 @@
   list-style: none;
 }
 
+.atlas-kanban-v3000-stage-support > summary:focus-visible,
+.atlas-kanban-v3000-card-context > summary:focus-visible {
+  border-radius: 12px;
+  outline: 2px solid rgba(125, 211, 252, 0.78);
+  outline-offset: 2px;
+}
+
 .atlas-kanban-v3000-stage-support > summary::-webkit-details-marker,
 .atlas-kanban-v3000-card-context > summary::-webkit-details-marker {
   display: none;

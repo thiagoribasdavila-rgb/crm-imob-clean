@@ -3,13 +3,13 @@
     "name": "Atlas One V3000",
     "targetPhases": 3000,
     "legacyPhasesRequested": 380,
-    "verifiedHistoricalPhases": 377,
-    "phaseContractsFound": 57,
-    "lastVerifiedPhase": 377
+    "verifiedHistoricalPhases": 378,
+    "phaseContractsFound": 58,
+    "lastVerifiedPhase": 378
   },
   "consolidation": {
     "totalPhases": 16,
-    "currentPhase": 4,
+    "currentPhase": 5,
     "phases": [
       {
         "id": 1,
@@ -38,13 +38,13 @@
       {
         "id": 5,
         "name": "Limpar duplicações físicas",
-        "status": "next",
-        "outcome": "Remover apenas cópias comprovadamente isoladas."
+        "status": "complete",
+        "outcome": "Doze stubs vazios removidos sem alterar a superfície ativa."
       },
       {
         "id": 6,
         "name": "Validar rotas ativas",
-        "status": "pending",
+        "status": "next",
         "outcome": "Comprovar páginas, APIs e redirecionamentos canônicos."
       },
       {

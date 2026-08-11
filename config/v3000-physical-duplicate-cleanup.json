@@ -1,0 +1,77 @@
+{
+  "phase": 378,
+  "consolidationGate": 5,
+  "baselineEvidence": "docs/evidence/V3000_PHASE_02_ROUTE_INVENTORY.json",
+  "removedEmptyStubs": [
+    {
+      "path": "app/(ai)/ai-dashboard/page.tsx",
+      "replacement": "app/(crm)/ai-dashboard/page.tsx",
+      "reason": "Rota vazia em grupo legado colidia fisicamente com o cockpit canônico já funcional."
+    },
+    {
+      "path": "components/core/DataTable.tsx",
+      "replacement": "Tabelas de domínio já implementadas nas páginas operacionais",
+      "reason": "Stub vazio, sem exportação ou importação."
+    },
+    {
+      "path": "components/core/LoadingSkeleton.tsx",
+      "replacement": "components/atlas/progressive-loading.tsx",
+      "reason": "Stub vazio, sem exportação ou importação."
+    },
+    {
+      "path": "components/core/StatCard.tsx",
+      "replacement": "components/ui/AtlasCard.tsx",
+      "reason": "Stub vazio, sem exportação ou importação."
+    },
+    {
+      "path": "components/crm/leads/LeadActions.tsx",
+      "replacement": "app/(crm)/leads/actions/page.tsx",
+      "reason": "Stub vazio; o workspace funcional de ações permanece preservado."
+    },
+    {
+      "path": "components/crm/leads/LeadFilters.tsx",
+      "replacement": "app/(crm)/leads/page.tsx",
+      "reason": "Stub vazio; filtros persistidos reais permanecem na página canônica."
+    },
+    {
+      "path": "components/crm/leads/LeadRow.tsx",
+      "replacement": "app/(crm)/leads/page.tsx",
+      "reason": "Stub vazio, sem exportação ou importação."
+    },
+    {
+      "path": "components/crm/leads/LeadsTable.tsx",
+      "replacement": "app/(crm)/leads/page.tsx",
+      "reason": "Stub vazio; a rota de tabela antiga continua isolada pela quarentena."
+    },
+    {
+      "path": "components/crm/leads/modals/LeadModal.tsx",
+      "replacement": "Fluxos reais de criação e detalhe em app/(crm)/leads",
+      "reason": "Stub vazio, sem exportação ou importação."
+    },
+    {
+      "path": "components/ui/input.tsx",
+      "replacement": "Controles de formulário existentes nos módulos de domínio",
+      "reason": "Stub vazio nunca adotado; não havia primitive funcional para preservar."
+    },
+    {
+      "path": "components/ui/modal.tsx",
+      "replacement": "Diálogos existentes nos módulos de domínio",
+      "reason": "Stub vazio, sem exportação ou importação."
+    },
+    {
+      "path": "components/ui/search-input.tsx",
+      "replacement": "Buscas existentes nos módulos de domínio",
+      "reason": "Stub vazio, sem exportação ou importação."
+    }
+  ],
+  "expectedRouteInventory": {
+    "routeFiles": 448,
+    "activeRouteFiles": 268,
+    "quarantinedRouteFiles": 180,
+    "activePages": 95,
+    "activeApis": 173,
+    "activeCollisions": 0,
+    "allSourceCollisions": 16,
+    "inactiveNavigationDestinations": 0
+  }
+}

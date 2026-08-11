@@ -25,16 +25,24 @@ test("fase 34 define o card essencial com quatro informações visíveis", () =>
 
 test("identidade, urgência, próxima ação e comando aparecem antes do contexto", () => {
   const card = pipeline.indexOf('data-ux-phase="34-essential-decision-card"');
-  const identity = pipeline.indexOf("atlas-kanban-v30-card-person", card);
+  const identity = pipeline.indexOf(
+    "atlas-kanban-v30-commercial-identity",
+    card,
+  );
   const urgency = pipeline.indexOf("atlas-kanban-v30-card-priority-mark", card);
-  const nextAction = pipeline.indexOf("<span>Próxima ação</span>", card);
+  const preservation = pipeline.indexOf(
+    "atlas-kanban-v3000-decision-preservation",
+    card,
+  );
+  const nextAction = pipeline.indexOf("<small>Próxima ação</small>", preservation);
   const command = pipeline.indexOf('data-primary-command="phase-34"', card);
   const context = pipeline.indexOf("atlas-kanban-v30-card-context", card);
 
   assert.ok(card >= 0);
   assert.ok(card < identity);
   assert.ok(identity < urgency);
-  assert.ok(urgency < nextAction);
+  assert.ok(urgency < preservation);
+  assert.ok(preservation < nextAction);
   assert.ok(nextAction < command);
   assert.ok(command < context);
 });
@@ -44,15 +52,16 @@ test("score, sinais, fatos e comandos secundários ficam sob demanda", () => {
   for (const marker of [
     "atlas-kanban-v30-card-quickstrip",
     "atlas-kanban-v30-card-facts",
-    "atlas-kanban-v30-card-score",
+    "v30Card.quickSignals",
     "Preview",
     "IA resumir",
-    "Abrir Lead 360",
+    "v30Card.secondaryAction.label",
     "Avançar:",
   ]) {
     assert.ok(pipeline.indexOf(marker, context) > context, marker);
   }
-  assert.match(pipeline, /<summary>Ver dados e outras ações<\/summary>/);
+  assert.match(pipeline, /<summary>Outras ações e dados<\/summary>/);
+  assert.match(pipeline, /data-v3000-phase="53-progressive-card-context"/);
 });
 
 test("o comando principal continua contextual e executável", () => {
@@ -60,9 +69,9 @@ test("o comando principal continua contextual e executável", () => {
   assert.match(pipeline, /href=\{v30Card\.primaryAction\.href\}/);
   assert.match(pipeline, /v30Card\.primaryAction\.label/);
   assert.match(pipeline, /WhatsApp agora/);
-  assert.match(pipeline, /Preparar proposta/);
+  assert.match(pipeline, /Revisar proposta/);
   assert.match(pipeline, /Confirmar visita/);
-  assert.match(pipeline, /IA preparar contato/);
+  assert.match(pipeline, /Preparar abordagem/);
 });
 
 test("movimentação, dados e segurança permanecem intactos", () => {

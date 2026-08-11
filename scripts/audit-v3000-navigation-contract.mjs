@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import ts from "typescript";
 import vm from "node:vm";
@@ -38,6 +38,7 @@ function trackedFiles(directory) {
   })
     .split("\0")
     .filter(Boolean)
+    .filter((file) => existsSync(resolve(root, file)))
     .sort();
 }
 

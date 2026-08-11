@@ -11,53 +11,52 @@ const config = JSON.parse(
   ),
 );
 
-test("fase 42 reúne as três métricas existentes em uma leitura", () => {
+test("fase 42 permanece registrada como base histórica da síntese", () => {
   assert.equal(config.phase, 42);
   assert.deepEqual(config.metrics, [
     "lead_volume",
     "stage_value",
     "stage_probability",
   ]);
-  assert.match(pipeline, /className="atlas-kanban-stage-numeric-summary"/);
-  assert.match(pipeline, /className="atlas-kanban-stage-numeric-line"/);
-  for (const metric of ["volume", "value", "probability"])
-    assert.match(pipeline, new RegExp(`data-stage-metric="${metric}"`));
+  assert.equal(config.singleReadingLine, true);
+  assert.equal(config.newIndicatorCreated, false);
 });
 
-test("volume, VGV e chance recebem rótulos explícitos", () => {
+test("fase 53 substitui a síntese histórica pelo cabeçalho decisório canônico", () => {
+  assert.doesNotMatch(
+    pipeline,
+    /className="atlas-kanban-stage-numeric-summary"/,
+  );
+  assert.match(pipeline, /className="atlas-kanban-v3000-decision-header"/);
   assert.match(pipeline, /<small>leads<\/small>/);
-  assert.match(pipeline, /<small>VGV<\/small>/);
-  assert.match(pipeline, /<small>chance da etapa<\/small>/);
+  assert.match(pipeline, /<small>valor válido<\/small>/);
+  assert.match(pipeline, /data-stage-metric="main-bottleneck"/);
   assert.equal(config.probabilityExplicitlyLabeled, true);
 });
 
-test("resumo é acessível e mantém a barra canônica", () => {
+test("cabeçalho decisório mantém uma leitura acessível da etapa", () => {
   assert.match(
     pipeline,
-    /aria-label=\{`\$\{stage\.label\}: \$\{stage\.items\.length\} oportunidades,[\s\S]*chance configurada para a etapa`\}/,
+    /aria-label=\{`\$\{stage\.label\}: \$\{stage\.decisionHeader\.volume\} oportunidades,[\s\S]*Gargalo principal: \$\{stage\.decisionHeader\.bottleneck\.label\}/,
   );
-  assert.match(pipeline, /<AtlasProgress value=\{stage\.probability\} \/>/);
-  assert.match(styles, /\.atlas-kanban-stage-numeric-summary \.atlas-progress-track/);
+  assert.match(pipeline, /data-v3000-phase="53-decision-header"/);
 });
 
 test("leitura compacta não cria um novo painel", () => {
   assert.equal(config.singleReadingLine, true);
   assert.equal(config.newIndicatorCreated, false);
-  assert.match(
-    styles,
-    /\.atlas-kanban-stage-numeric-line[\s\S]*grid-template-columns: auto minmax\(0, 1fr\) auto/,
-  );
-  assert.match(
-    styles,
-    /\.atlas-kanban-board\.is-compact \.atlas-kanban-stage-numeric-summary/,
-  );
+  assert.match(styles, /\.atlas-kanban-v3000-decision-header/);
+  assert.match(styles, /\.atlas-kanban-v3000-decision-metrics/);
 });
 
 test("cálculos, movimentação e infraestrutura permanecem intactos", () => {
   assert.equal(config.canonicalCalculationsPreserved, true);
   assert.match(pipeline, /\{stage\.items\.length\}/);
-  assert.match(pipeline, /\{brl\.format\(stage\.value\)\}/);
-  assert.match(pipeline, /\{stage\.probability\}%/);
+  assert.match(
+    pipeline,
+    /\{brl\.format\(stage\.decisionHeader\.validValue\)\}/,
+  );
+  assert.match(pipeline, /\{stage\.decisionHeader\.bottleneck\.label\}/);
   assert.match(pipeline, /onDrop=\{\(event\) => onDrop\(event, stage\.key\)\}/);
   assert.equal(config.cardMovementPreserved, true);
   assert.equal(config.databaseMutation, false);

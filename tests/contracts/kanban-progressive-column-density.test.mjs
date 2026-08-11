@@ -44,9 +44,15 @@ test("saúde, diagnóstico, lente e microcopy ficam no mesmo contexto progressiv
 test("divulgação nativa é compacta e acessível por teclado", () => {
   assert.equal(config.nativeDisclosure, true);
   assert.equal(config.keyboardAccessible, true);
-  assert.match(pipeline, /<details\s+className="atlas-kanban-stage-context"/);
-  assert.match(pipeline, /<summary>/);
-  assert.match(styles, /\.atlas-kanban-stage-context > summary:focus-visible/);
+  assert.match(
+    pipeline,
+    /<details\s+className="atlas-kanban-v3000-stage-support"/,
+  );
+  assert.match(pipeline, /<span>Comando e contexto<\/span>/);
+  assert.match(
+    styles,
+    /\.atlas-kanban-v3000-stage-support > summary:focus-visible/,
+  );
 });
 
 test("coluna vazia compacta não reintroduz análise secundária", () => {

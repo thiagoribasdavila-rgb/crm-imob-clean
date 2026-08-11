@@ -33,7 +33,7 @@ Esses arquivos são a base oficial. Wrappers existentes continuam válidos quand
 | Cabeçalho de página | `PageHeader` | Título decisório, contexto progressivo e no máximo uma ação principal. |
 | Link de ação | `AtlasActionLink` | Links com semântica de ação primária ou secundária. |
 | Botão de formulário | `components/ui/button.tsx` | Base para ações mutáveis, submissões e controles locais. |
-| Campo de formulário | `components/ui/input.tsx` | Base para inputs; validação e rótulo continuam no formulário de domínio. |
+| Campo de formulário | Controles dos formulários de domínio | Não havia primitive compartilhado funcional; o stub vazio foi retirado sem alterar formulários ativos. |
 | Seção informacional | `AtlasSection` | Agrupa uma responsabilidade clara da página. |
 | Faixa de decisão | `AtlasDecisionStrip` | Até cinco sinais principais, sem repetir o dashboard inteiro. |
 | Deck de métricas | `AtlasMetricDeck` | Indicadores secundários entram em disclosure progressivo. |
@@ -47,11 +47,9 @@ Esses arquivos são a base oficial. Wrappers existentes continuam válidos quand
 - `components/atlas/MetricCard.tsx`: implementação antiga com nome conflitante por diferença de maiúsculas. Ainda é usada somente por `app/(atlas)/dashboard/page.tsx`.
 - `components/analytics/MetricCard.tsx`: componente inline, tipagem `any`, aparência desconectada e sem adoção confirmada.
 - `components/analytics/StartCard.tsx`: arquivo chamado `StartCard`, mas exporta `StatCard`; aparência inline e sem adoção confirmada.
-- `components/core/StatCard.tsx`: arquivo vazio.
-- `components/core/DataTable.tsx`: arquivo vazio.
-- `components/core/Loading.tsx` e `components/core/LoadingSkeleton.tsx`: não devem competir com os estados canônicos.
+- `components/core/Loading.tsx`: não deve competir com os estados canônicos.
 
-Nenhum desses arquivos será removido antes de a referência ativa do dashboard alternativo ser migrada e os testes de importação confirmarem ausência de consumo.
+Os stubs vazios listados originalmente foram removidos na fase 378 após prova de ausência de consumo. Implementações não vazias continuam preservadas até migração e teste específicos.
 
 ### Compatibilidade preservada
 
@@ -84,7 +82,7 @@ Nenhum desses arquivos será removido antes de a referência ativa do dashboard 
 
 - migrar o dashboard alternativo de `components/atlas/MetricCard.tsx` para `components/atlas/metric-card.tsx`;
 - substituir cards analíticos inline por `AtlasMetric`;
-- retirar arquivos vazios após prova de ausência de referências.
+- arquivos vazios retirados na fase 378 após prova de ausência de referências.
 
 ### Onda 3 — normalização
 

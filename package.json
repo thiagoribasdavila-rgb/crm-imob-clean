@@ -684,6 +684,8 @@
     "test:v3000:clean:phase3": "npm run audit:v3000:navigation && node --test tests/contracts/v3000-clean-consolidation-phase-03-navigation-consolidation.test.mjs",
     "audit:v3000:progress": "node scripts/audit-v3000-progress-governance.mjs",
     "test:v3000:clean:phase4": "npm run audit:v3000:progress && node --test tests/contracts/v3000-clean-consolidation-phase-04-progress-governance.test.mjs",
+    "audit:v3000:duplicates": "node scripts/audit-v3000-physical-duplicates.mjs",
+    "test:v3000:clean:phase5": "npm run audit:v3000:duplicates && node --test tests/contracts/v3000-evolution-phase-378-physical-duplicate-cleanup.test.mjs",
     "architecture:canonical": "node scripts/check-canonical-entities.mjs",
     "contracts:data": "node scripts/check-data-contracts.mjs",
     "architecture:modules": "node scripts/check-module-boundaries.mjs",
