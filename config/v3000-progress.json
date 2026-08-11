@@ -1,0 +1,112 @@
+{
+  "program": {
+    "name": "Atlas One V3000",
+    "targetPhases": 3000,
+    "legacyPhasesRequested": 380,
+    "verifiedHistoricalPhases": 377,
+    "phaseContractsFound": 57,
+    "lastVerifiedPhase": 377
+  },
+  "consolidation": {
+    "totalPhases": 16,
+    "currentPhase": 4,
+    "phases": [
+      {
+        "id": 1,
+        "name": "Congelar a linha de base",
+        "status": "complete",
+        "outcome": "HEAD, inventário, riscos e regras de preservação registrados."
+      },
+      {
+        "id": 2,
+        "name": "Inventariar rotas canônicas",
+        "status": "complete",
+        "outcome": "Superfície ativa, quarentena e colisões identificadas."
+      },
+      {
+        "id": 3,
+        "name": "Consolidar a navegação",
+        "status": "complete",
+        "outcome": "29 de 29 destinos governados ativos e sem colisões."
+      },
+      {
+        "id": 4,
+        "name": "Governar progresso e evidências",
+        "status": "complete",
+        "outcome": "Percentuais passam a vir de inventário verificável."
+      },
+      {
+        "id": 5,
+        "name": "Limpar duplicações físicas",
+        "status": "next",
+        "outcome": "Remover apenas cópias comprovadamente isoladas."
+      },
+      {
+        "id": 6,
+        "name": "Validar rotas ativas",
+        "status": "pending",
+        "outcome": "Comprovar páginas, APIs e redirecionamentos canônicos."
+      },
+      {
+        "id": 7,
+        "name": "Fechar paridade funcional",
+        "status": "pending",
+        "outcome": "Ocultar placeholders e provar módulos operacionais."
+      },
+      {
+        "id": 8,
+        "name": "Provar contratos de runtime",
+        "status": "pending",
+        "outcome": "Autenticação, organização e dados sem regressão."
+      },
+      {
+        "id": 9,
+        "name": "Validar integrações",
+        "status": "pending",
+        "outcome": "Estados reais, sem credenciais fictícias ou promessas."
+      },
+      {
+        "id": 10,
+        "name": "Executar a suíte completa",
+        "status": "pending",
+        "outcome": "Contratos críticos executados sem falha."
+      },
+      {
+        "id": 11,
+        "name": "Aprovar build de produção",
+        "status": "pending",
+        "outcome": "Next.js compila no mesmo modo usado pela Hostinger."
+      },
+      {
+        "id": 12,
+        "name": "Empacotar por allowlist",
+        "status": "pending",
+        "outcome": "Somente arquivos necessários e nenhum segredo."
+      },
+      {
+        "id": 13,
+        "name": "Instalar o pacote limpo",
+        "status": "pending",
+        "outcome": "npm ci reproduzível fora do workspace original."
+      },
+      {
+        "id": 14,
+        "name": "Executar smoke de instalação",
+        "status": "pending",
+        "outcome": "Login, dashboard e rotas críticas respondem."
+      },
+      {
+        "id": 15,
+        "name": "Comprovar rollback e checksum",
+        "status": "pending",
+        "outcome": "Release recuperável, identificada e auditável."
+      },
+      {
+        "id": 16,
+        "name": "Gerar ZIP canônico",
+        "status": "pending",
+        "outcome": "Artefato final aprovado para instalação real."
+      }
+    ]
+  }
+}

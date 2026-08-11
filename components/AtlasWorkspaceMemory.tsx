@@ -29,7 +29,7 @@ const labels: Record<string, string> = {
   "/intelligence": "Atlas Intelligence",
   "/decision-center": "Centro de Decisão",
   "/atlas-v2": "Atlas V2",
-  "/atlas-v3": "Atlas V3",
+  "/atlas-v3": "Atlas One V3000",
   "/atlas-2030": "Atlas 2030",
 };
 

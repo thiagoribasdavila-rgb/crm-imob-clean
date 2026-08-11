@@ -24,7 +24,7 @@ const titles: Record<string, string> = {
   "/users": "Usuários",
   "/settings": "Configurações",
   "/atlas-v2": "Atlas V2 · Growth Layer",
-  "/atlas-v3": "Atlas OS V3",
+  "/atlas-v3": "Atlas One V3000",
   "/atlas-2030": "Atlas 2030 · Platform Layer",
 };
 
