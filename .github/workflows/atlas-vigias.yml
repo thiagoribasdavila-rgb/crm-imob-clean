@@ -72,10 +72,11 @@ on:
     - cron: '30 10 * * *'    # entrega matinal ao corretor   — 07h30 em São Paulo
     - cron: '0 10 * * *'     # relatório diário da Meta      — 07h00 em São Paulo
     - cron: '0 10 * * 0'     # relatório semanal (domingo)   — 07h00 em São Paulo
+    - cron: '20 11 * * *'    # squads pró-ativos (9 squads)  — 08h20 em São Paulo
   workflow_dispatch:
     inputs:
       grupo:
-        description: 'Grupo a executar agora (curto, dez, hora, hora_backfill, hora_ingestao, quatro_horas, diario_0010, diario_0300, diario_0330, diario_0425, diario_0440, diario_0700, diario_0810, semanal)'
+        description: 'Grupo a executar agora (curto, dez, hora, hora_backfill, hora_ingestao, quatro_horas, diario_0010, diario_0300, diario_0330, diario_0425, diario_0440, diario_0700, diario_0810, diario_0820, semanal)'
         required: true
         default: curto
 
@@ -119,6 +120,7 @@ jobs:
             '10 11 * * *')  ROTAS="ai/sombra-do-atendimento/process" ;;
             '0 10 * * *')   ROTAS="meta/daily-report" ;;
             '0 10 * * 0')   ROTAS="developers/weekly-reports/process" ;;
+            '20 11 * * *')  ROTAS="ai/squads-proativos/process" ;;
             *)
               case "${GRUPO:-curto}" in
                 curto)        ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process crm/aviso-ao-corretor/process" ;;
@@ -134,6 +136,7 @@ jobs:
                 diario_0440)  ROTAS="marketing/investimento/process" ;;
                 diario_0810)  ROTAS="ai/sombra-do-atendimento/process" ;;
                 diario_0700)  ROTAS="meta/daily-report" ;;
+                diario_0820)  ROTAS="ai/squads-proativos/process" ;;
                 semanal)      ROTAS="developers/weekly-reports/process" ;;
                 *) echo "Grupo desconhecido: ${GRUPO}"; exit 1 ;;
               esac
